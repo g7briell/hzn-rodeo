@@ -44,13 +44,15 @@ export default function AdminDashboard() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
 
   useEffect(() => {
+    alert("SISTEMA CARREGADO COM SUCESSO! SE VOCÊ ESTÁ VENDO ISSO, O JAVASCRIPT ESTÁ FUNCIONANDO.");
     fetchLicenses();
     const interval = setInterval(fetchLicenses, 15000);
     return () => clearInterval(interval);
   }, []);
 
   async function fetchLicenses() {
-    const { data } = await supabase.from("licencas").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("licencas").select("*").order("created_at", { ascending: false });
+    if (error) console.error("Erro ao carregar licenças:", error);
     if (data) setLicenses(data);
   }
 
@@ -73,6 +75,9 @@ export default function AdminDashboard() {
       setGeneratedKey(newKey);
       setFormData({ nome: "", email: "", whatsapp: "", descricao: "", plano: 30 });
       fetchLicenses();
+    } else {
+      console.error("Erro Supabase:", error);
+      alert("Erro ao gerar chave: " + error.message);
     }
     setLoading(false);
   };
@@ -96,15 +101,20 @@ export default function AdminDashboard() {
       setGeneratedKey(newKey);
       setSelectedClientToRelease(null);
       fetchLicenses();
+    } else {
+      console.error("Erro Supabase:", error);
+      alert("Erro ao liberar chave: " + error.message);
     }
     setLoading(false);
   };
 
-  const toggleLicenseStatus = async (id: string, currentStatus: boolean) => {
+  const handleToggleActive = async (id: string, currentStatus: boolean) => {
     const { error } = await supabase.from("licencas").update({ is_active: !currentStatus }).eq("id", id);
     if (!error) {
       setSelectedLicense(null);
       fetchLicenses();
+    } else {
+      alert("Erro ao alterar status: " + error.message);
     }
   };
 
@@ -374,7 +384,7 @@ export default function AdminDashboard() {
 
             <div className="flex gap-4">
               <button 
-                onClick={() => toggleLicenseStatus(selectedLicense.id, selectedLicense.is_active)}
+                onClick={() => handleToggleActive(selectedLicense.id, selectedLicense.is_active)}
                 className={`flex-1 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all ${selectedLicense.is_active ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20'}`}
               >
                 {selectedLicense.is_active ? <><Pause className="w-4 h-4 fill-current" /> PAUSAR PLANO</> : <><Play className="w-4 h-4 fill-current" /> ATIVAR PLANO</>}
