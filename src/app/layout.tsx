@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RodeoApp Admin",
-  description: "Painel Administrativo HZN RodeoApp",
+  title: "HZN RodeoApp",
+  description: "O sistema definitivo para profissionais do rodeio.",
 };
 
 export default function RootLayout({
