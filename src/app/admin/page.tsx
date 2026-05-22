@@ -55,8 +55,7 @@ export default function AdminDashboard() {
   const [licenses, setLicenses] = useState<any[]>([]);
   const [boiadas, setBoiadas] = useState<any[]>([]);
   const [boiadaName, setBoiadaName] = useState("");
-  const [tourosE, setTourosE] = useState("");
-  const [tourosD, setTourosD] = useState("");
+  const [tourosTexto, setTourosTexto] = useState("");
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -190,12 +189,10 @@ export default function AdminDashboard() {
     
     // Parse touros
     const splitLines = (text: string) => text.split("\n").map(l => l.trim().toUpperCase()).filter(l => l);
-    const tourosEsquerda = splitLines(tourosE);
-    const tourosDireita = splitLines(tourosD);
+    const touros = splitLines(tourosTexto);
     
     const lados: Record<string, string> = {};
-    tourosEsquerda.forEach(t => lados[t] = "E");
-    tourosDireita.forEach(t => lados[t] = "D");
+    touros.forEach(t => lados[t] = "");
 
     const { error } = await supabase.from("boiadas_oficiais").insert([{
       nome: boiadaName.trim().toUpperCase(),
@@ -205,8 +202,7 @@ export default function AdminDashboard() {
     if (!error) {
       alert("Boiada cadastrada com sucesso no banco oficial!");
       setBoiadaName("");
-      setTourosE("");
-      setTourosD("");
+      setTourosTexto("");
       fetchBoiadas();
     } else {
       alert("Erro ao cadastrar boiada: " + error.message);
@@ -644,15 +640,9 @@ export default function AdminDashboard() {
                 <form onSubmit={handleSaveBoiada} className="space-y-6">
                   <InputGroup label="NOME DA COMPANHIA" placeholder="Ex: CIA Tércio Miranda" value={boiadaName} onChange={setBoiadaName} />
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1">Lado Certo (Esquerda)</label>
-                      <textarea value={tourosE} onChange={e=>setTourosE(e.target.value)} placeholder="Um touro por linha" className="w-full h-32 bg-black border border-white/10 rounded-2xl p-4 font-bold text-xs outline-none focus:border-emerald-500 transition-all resize-none"></textarea>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-red-500 uppercase tracking-widest ml-1">Lado Contrário (Direita)</label>
-                      <textarea value={tourosD} onChange={e=>setTourosD(e.target.value)} placeholder="Um touro por linha" className="w-full h-32 bg-black border border-white/10 rounded-2xl p-4 font-bold text-xs outline-none focus:border-red-500 transition-all resize-none"></textarea>
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">TOUROS (Um por linha)</label>
+                    <textarea value={tourosTexto} onChange={e=>setTourosTexto(e.target.value)} placeholder="Cole aqui a lista de touros da CIA..." className="w-full h-64 bg-black border border-white/10 rounded-2xl p-4 font-bold text-xs outline-none focus:border-yellow-500 transition-all resize-none"></textarea>
                   </div>
                   
                   <button type="submit" disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50 mt-4">
