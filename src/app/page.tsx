@@ -183,7 +183,7 @@ export default function LandingPage() {
       </footer>
 
       {/* Styles */}
-      <style jsx global>{\`
+      <style jsx global>{`
         @keyframes bounce-subtle {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
@@ -198,7 +198,7 @@ export default function LandingPage() {
         .animate-bounce-subtle { animation: bounce-subtle 4s ease-in-out infinite; }
         .animate-shine { animation: shine 3s linear infinite; }
         .animate-pulse-slow { animation: pulse-slow 6s ease-in-out infinite; }
-      \`}</style>
+      `}</style>
     </div>
   );
 }
@@ -219,11 +219,11 @@ function FeatureCard({ icon, title, description }: any) {
 
 function PlanCard({ title, price, period, color, highlighted = false }: any) {
   return (
-    <div className={\`\${color} border border-white/10 p-10 md:p-12 rounded-[3rem] md:rounded-[3.5rem] text-center transition-transform hover:scale-105 \${highlighted ? 'shadow-2xl shadow-yellow-500/20' : ''}\`}>
+    <div className={`${color} border border-white/10 p-10 md:p-12 rounded-[3rem] md:rounded-[3.5rem] text-center transition-transform hover:scale-105 ${highlighted ? 'shadow-2xl shadow-yellow-500/20' : ''}`}>
       <h3 className="text-[10px] md:text-xs font-black tracking-[0.4em] mb-6 opacity-50 uppercase">{title}</h3>
       <div className="text-4xl md:text-5xl font-black italic mb-2 tracking-tighter uppercase">{price}</div>
       <div className="text-[9px] md:text-[10px] font-black tracking-widest opacity-50 uppercase mb-8">{period}</div>
-      <button className={\`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest border \${highlighted ? 'bg-black text-white border-black' : 'bg-white/5 border-white/10 hover:bg-white/10'}\`}>
+      <button className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest border ${highlighted ? 'bg-black text-white border-black' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
         SOLICITAR
       </button>
     </div>

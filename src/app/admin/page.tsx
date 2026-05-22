@@ -170,7 +170,7 @@ export default function AdminDashboard() {
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const newKey = \`APP-\${Math.random().toString(36).substring(2, 7).toUpperCase()}\`;
+    const newKey = `APP-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
     
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + formData.plano);
@@ -248,7 +248,7 @@ export default function AdminDashboard() {
       setSelectedLicense({ ...selectedLicense, dias_validos: newDays, data_ativacao: nowISO });
       fetchLicenses();
       if (selectedLicense && selectedLicense.email) sendLicenseBroadcast(selectedLicense.email);
-      alert(\`Atualizado! Cronômetro reiniciado com \${newDays} dias.\`);
+      alert(`Atualizado! Cronômetro reiniciado com ${newDays} dias.`);
     } else {
       alert("Erro ao atualizar dias: " + error.message);
     }
@@ -365,7 +365,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Sidebar */}
-      <aside className={\`\${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-y-0 left-0 w-72 md:w-80 bg-black/95 md:bg-white/5 border-r border-white/10 flex flex-col p-8 backdrop-blur-xl transition-transform duration-300 z-50\`}>
+      <aside className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-y-0 left-0 w-72 md:w-80 bg-black/95 md:bg-white/5 border-r border-white/10 flex flex-col p-8 backdrop-blur-xl transition-transform duration-300 z-50`}>
         <div className="hidden md:flex flex-col items-start gap-3 mb-16">
            <img src="/logo_branca.png" alt="RODEOAPP Logo" className="h-10 object-contain" />
            <p className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.4em] ml-1">Admin Pro</p>
@@ -532,8 +532,8 @@ export default function AdminDashboard() {
                   : !rt || rt.total <= 0
                   ? 'EXPIRADO'
                   : rt.days > 0
-                  ? \`\${rt.days}d \${rt.hours}h restantes\`
-                  : \`\${rt.hours}h \${rt.minutes}min restantes\`;
+                  ? `${rt.days}d ${rt.hours}h restantes`
+                  : `${rt.hours}h ${rt.minutes}min restantes`;
 
                 return (
                   <div
@@ -541,7 +541,7 @@ export default function AdminDashboard() {
                     className="group bg-white/5 border border-white/5 p-6 md:p-8 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-white/10 hover:border-white/10 transition-all backdrop-blur-sm"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-                      <div className={\`w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-[1rem] md:rounded-[1.5rem] flex items-center justify-center border-2 \${l.is_active ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : 'bg-white/5 border-white/5 text-white/20'}\`}>
+                      <div className={`w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-[1rem] md:rounded-[1.5rem] flex items-center justify-center border-2 ${l.is_active ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : 'bg-white/5 border-white/5 text-white/20'}`}>
                         <Key className="w-6 h-6 md:w-7 md:h-7" />
                       </div>
                       <div>
@@ -550,7 +550,7 @@ export default function AdminDashboard() {
                           <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> <span className="truncate max-w-[200px]">{l.email}</span></span>
                           <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {l.whatsapp}</span>
                         </div>
-                        <div className={\`text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mt-3 \${urgency}\`}>
+                        <div className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mt-3 ${urgency}`}>
                           <Clock className="w-3 h-3 inline mr-1" />{timeLabel}
                         </div>
                         <div className="flex gap-2 mt-3 flex-wrap">
@@ -670,7 +670,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
                 onClick={() => handleToggleActive(selectedLicense.id, selectedLicense.is_active)}
-                className={\`w-full py-5 md:py-6 rounded-[1rem] md:rounded-[1.5rem] font-black text-[10px] md:text-xs tracking-[0.2em] flex items-center justify-center gap-3 transition-all uppercase \${selectedLicense.is_active ? 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10' : 'bg-yellow-500 text-black border border-yellow-500/20'}\`}
+                className={`w-full py-5 md:py-6 rounded-[1rem] md:rounded-[1.5rem] font-black text-[10px] md:text-xs tracking-[0.2em] flex items-center justify-center gap-3 transition-all uppercase ${selectedLicense.is_active ? 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10' : 'bg-yellow-500 text-black border border-yellow-500/20'}`}
               >
                 {selectedLicense.is_active ? <><Pause className="w-4 h-4 fill-current" /> Pausar Acesso</> : <><Play className="w-4 h-4 fill-current" /> Retomar Acesso</>}
               </button>
@@ -686,7 +686,7 @@ function SidebarLink({ icon, label, active, onClick }: any) {
   return (
     <button 
       onClick={onClick}
-      className={\`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all \${active ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}\`}
+      className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${active ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
     >
       {icon} {label}
     </button>
