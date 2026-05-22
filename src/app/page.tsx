@@ -36,7 +36,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 w-full z-[100] transition-all duration-300 px-6 py-4 ${isScrolled ? 'bg-black/90 backdrop-blur-xl border-b border-yellow-500/20' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <img src="/splash_logo.png" alt="RODEOAPP Logo" className="h-10 object-contain hover:scale-105 transition-transform" />
+            <img src="/header_logo.png" alt="RODEOAPP Logo" className="h-14 md:h-20 object-contain hover:scale-105 transition-transform" />
           </div>
 
           <div className="hidden md:flex items-center gap-10 text-[10px] font-black uppercase tracking-[0.3em] text-white/50">
@@ -65,7 +65,7 @@ export default function LandingPage() {
           </div>
           
           <div className="mb-12 flex justify-center">
-            <img src="/splash_logo.png" alt="RODEOAPP Logo Grande" className="h-24 md:h-32 object-contain drop-shadow-[0_0_30px_rgba(234,179,8,0.3)] animate-pulse-slow" />
+            <img src="/splash_logo.png" alt="RODEOAPP Logo Grande" className="h-40 md:h-64 object-contain drop-shadow-[0_0_30px_rgba(234,179,8,0.3)] animate-pulse-slow" />
           </div>
 
           <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter leading-[0.9] mb-8 text-white uppercase">
