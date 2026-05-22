@@ -39,8 +39,7 @@ import {
   LogOut,
   Fingerprint,
   Menu,
-  ChevronRight,
-  Download
+  ChevronRight
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -589,6 +588,7 @@ export default function AdminDashboard() {
                   : rt.days > 0
                   ? `${rt.days}d ${rt.hours}h restantes`
                   : `${rt.hours}h ${rt.minutes}min restantes`;
+                const isOnline = l.last_seen ? (new Date().getTime() - new Date(l.last_seen).getTime() < 3 * 60 * 1000) : false;
 
                 return (
                   <div
@@ -600,7 +600,21 @@ export default function AdminDashboard() {
                         <Key className="w-6 h-6 md:w-7 md:h-7" />
                       </div>
                       <div>
-                        <div className="text-xl md:text-2xl font-black uppercase tracking-tighter text-white break-words">{l.nome}</div>
+                        <div className="text-sm md:text-base font-black text-white uppercase tracking-wider mb-1 flex items-center gap-3">
+                          {l.nome}
+                          {isOnline && (
+                            <span className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/20 text-green-400 text-[9px] rounded-full uppercase tracking-widest font-black">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                              Online
+                            </span>
+                          )}
+                          {l.app_version && (
+                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-[9px] rounded uppercase tracking-widest font-black border border-purple-500/20">
+                              {l.app_version}
+                            </span>
+                          )}
+                          {!l.is_active && <span className="px-2 py-1 bg-red-500/20 text-red-500 text-[8px] rounded uppercase tracking-widest">Desativado</span>}
+                        </div>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-4 text-[9px] md:text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-2">
                           <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> <span className="truncate max-w-[200px]">{l.email}</span></span>
                           <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {l.whatsapp}</span>
