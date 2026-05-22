@@ -1,484 +1,231 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabase";
+import Link from "next/link";
 import { 
-  LayoutDashboard, 
-  UserPlus, 
-  ShieldCheck, 
-  Key, 
-  Search, 
-  Plus, 
-  Clock, 
-  AlertCircle,
-  Trash2,
-  Phone,
-  Mail,
-  Zap,
-  X,
-  Pause,
-  Play,
-  MessageCircle,
-  ExternalLink,
-  Info
+  Trophy, 
+  Shield, 
+  Zap, 
+  Users, 
+  Download, 
+  ArrowRight, 
+  Monitor, 
+  Smartphone,
+  Star,
+  PlayCircle,
+  Menu,
+  ChevronRight,
+  FileSpreadsheet,
+  Tv,
+  ListOrdered
 } from "lucide-react";
+import { useState, useEffect } from "react";
 
-export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [licenses, setLicenses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  
-  // States para Cadastro
-  const [formData, setFormData] = useState({
-    nome: "",
-    email: "",
-    whatsapp: "",
-    descricao: "",
-    plano: 30
-  });
-
-  // States para Detalhes e Liberação
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLicense, setSelectedLicense] = useState<any>(null);
-  const [selectedClientToRelease, setSelectedClientToRelease] = useState<any>(null);
-  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+export default function LandingPage() {
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    alert("SISTEMA CARREGADO COM SUCESSO! SE VOCÊ ESTÁ VENDO ISSO, O JAVASCRIPT ESTÁ FUNCIONANDO.");
-    fetchLicenses();
-    const interval = setInterval(fetchLicenses, 15000);
-    return () => clearInterval(interval);
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  async function fetchLicenses() {
-    const { data, error } = await supabase.from("licencas").select("*").order("created_at", { ascending: false });
-    if (error) console.error("Erro ao carregar licenças:", error);
-    if (data) setLicenses(data);
-  }
-
-  const handleCreateClient = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const newKey = `HZN-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    
-    const { error } = await supabase.from("licencas").insert([{
-      nome: formData.nome,
-      email: formData.email,
-      whatsapp: formData.whatsapp,
-      descricao: formData.descricao,
-      key_code: newKey,
-      dias_validos: formData.plano,
-      is_active: true
-    }]);
-
-    if (!error) {
-      setGeneratedKey(newKey);
-      setFormData({ nome: "", email: "", whatsapp: "", descricao: "", plano: 30 });
-      fetchLicenses();
-    } else {
-      console.error("Erro Supabase:", error);
-      alert("Erro ao gerar chave: " + error.message);
-    }
-    setLoading(false);
-  };
-
-  const handleReleaseKey = async (days: number) => {
-    const client = selectedClientToRelease;
-    if (!client) return;
-    setLoading(true);
-    const newKey = `HZN-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    
-    const { error } = await supabase.from("licencas").insert([{
-      nome: client.nome,
-      email: client.email,
-      whatsapp: client.whatsapp,
-      key_code: newKey,
-      dias_validos: days,
-      is_active: true
-    }]);
-
-    if (!error) {
-      setGeneratedKey(newKey);
-      setSelectedClientToRelease(null);
-      fetchLicenses();
-    } else {
-      console.error("Erro Supabase:", error);
-      alert("Erro ao liberar chave: " + error.message);
-    }
-    setLoading(false);
-  };
-
-  const handleToggleActive = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase.from("licencas").update({ is_active: !currentStatus }).eq("id", id);
-    if (!error) {
-      setSelectedLicense(null);
-      fetchLicenses();
-    } else {
-      alert("Erro ao alterar status: " + error.message);
-    }
-  };
-
-  const deleteLicense = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir permanentemente esta licença?")) {
-      const { error } = await supabase.from("licencas").delete().eq("id", id);
-      if (!error) {
-        setSelectedLicense(null);
-        fetchLicenses();
-      }
-    }
-  };
-
-  const isOnline = (lastSeen: string) => {
-    if (!lastSeen) return false;
-    const last = new Date(lastSeen).getTime();
-    const now = new Date().getTime();
-    return now - last < 60000;
-  };
-
   return (
-    <div className="flex min-h-screen bg-[#020617] text-slate-100 font-sans">
+    <div className="min-h-screen bg-[#000000] text-white font-sans selection:bg-yellow-500 selection:text-black overflow-x-hidden">
       
-      {/* Sidebar */}
-      <aside className="w-72 bg-slate-900/50 border-r border-slate-800/50 p-8 flex flex-col gap-10">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-600/30">
-            <Zap className="w-6 h-6 fill-current" />
+      {/* Navigation */}
+      <nav className={`fixed top-0 w-full z-[100] transition-all duration-300 px-6 py-4 ${isScrolled ? 'bg-black/90 backdrop-blur-xl border-b border-yellow-500/20' : 'bg-transparent'}`}>
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <img src="/logo_branca.png" alt="RODEOAPP Logo" className="h-10 object-contain hover:scale-105 transition-transform" />
           </div>
-          <h1 className="text-2xl font-black italic tracking-tighter">HZN <span className="text-indigo-400">ADMIN</span></h1>
+
+          <div className="hidden md:flex items-center gap-10 text-[10px] font-black uppercase tracking-[0.3em] text-white/50">
+            <a href="#features" className="hover:text-yellow-500 transition-colors">Funcionalidades</a>
+            <a href="#about" className="hover:text-yellow-500 transition-colors">Tecnologia</a>
+            <a href="#plans" className="hover:text-yellow-500 transition-colors">Planos</a>
+            <Link href="/admin" className="text-yellow-500 border border-yellow-500/30 px-4 py-2 rounded-lg hover:bg-yellow-500 hover:text-black transition-all">Painel Admin</Link>
+          </div>
+
+          <div className="md:hidden flex items-center">
+             <Link href="/admin" className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-500 mr-4 border border-yellow-500/30 px-3 py-1.5 rounded-lg">Admin</Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center pt-20 pb-20 overflow-hidden">
+        {/* Background Image Overlay */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/95 to-[#050505] z-10" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-500/10 via-transparent to-transparent z-10 opacity-50" />
         </div>
 
-        <nav className="flex flex-col gap-2">
-          <SidebarLink icon={<LayoutDashboard />} label="Dashboard" active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} />
-          <SidebarLink icon={<UserPlus />} label="Novo Cliente" active={activeTab === "cadastro"} onClick={() => setActiveTab("cadastro")} />
-          <SidebarLink icon={<ShieldCheck />} label="Licenças Ativas" active={activeTab === "licencas"} onClick={() => setActiveTab("licencas")} />
-          <SidebarLink icon={<Key />} label="Liberar Licença" active={activeTab === "liberacao"} onClick={() => setActiveTab("liberacao")} />
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-12 overflow-y-auto">
-        
-        {/* Tab: Dashboard */}
-        {activeTab === "dashboard" && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-4xl font-black mb-10">Visão Geral</h2>
-            <div className="grid grid-cols-2 gap-8">
-              <DashboardCard 
-                title="Vencendo em breve" 
-                icon={<Clock className="text-amber-500" />} 
-                items={licenses.filter(l => {
-                  if (!l.data_ativacao) return false;
-                  const expiry = new Date(l.data_ativacao);
-                  expiry.setDate(expiry.getDate() + l.dias_validos);
-                  const days = (expiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
-                  return days > 0 && days <= 7;
-                })} 
-                emptyMsg="Nenhum cliente vencendo nos próximos 7 dias."
-              />
-              <DashboardCard 
-                title="Vencidos recentemente" 
-                icon={<AlertCircle className="text-red-500" />} 
-                items={licenses.filter(l => {
-                  if (!l.data_ativacao) return false;
-                  const expiry = new Date(l.data_ativacao);
-                  expiry.setDate(expiry.getDate() + l.dias_validos);
-                  return expiry < new Date();
-                })} 
-                emptyMsg="Nenhum cliente vencido recentemente."
-              />
-            </div>
+        <div className="relative z-20 max-w-7xl mx-auto px-6 text-center mt-10">
+          <div className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 px-6 py-2 rounded-full mb-8 animate-bounce-subtle">
+            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-yellow-500">Elite Performance Management</span>
           </div>
-        )}
-
-        {/* Tab: Cadastro de Cliente */}
-        {activeTab === "cadastro" && (
-          <div className="max-w-3xl animate-in fade-in slide-in-from-left-4 duration-500">
-            <h2 className="text-4xl font-black mb-10">Adicionar Cliente</h2>
-            <form onSubmit={handleCreateClient} className="bg-slate-900/40 border border-slate-800/50 p-10 rounded-[2.5rem] space-y-8">
-              <div className="grid grid-cols-2 gap-6">
-                <InputGroup label="Nome Completo" value={formData.nome} onChange={(v: any) => setFormData({...formData, nome: v})} placeholder="Ex: João Silva" />
-                <InputGroup label="E-mail Principal" value={formData.email} onChange={(v: any) => setFormData({...formData, email: v})} placeholder="joao@email.com" type="email" />
-                <InputGroup label="WhatsApp" value={formData.whatsapp} onChange={(v: any) => setFormData({...formData, whatsapp: v})} placeholder="(00) 00000-0000" />
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Tempo de Plano</label>
-                  <select 
-                    value={formData.plano} 
-                    onChange={(e: any) => setFormData({...formData, plano: parseInt(e.target.value)})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
-                  >
-                    <option value={5}>5 Dias (Teste)</option>
-                    <option value={30}>30 Dias (Mensal)</option>
-                    <option value={90}>90 Dias (Trimestral)</option>
-                    <option value={365}>1 Ano (Anual)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Descrição / Observações</label>
-                <textarea 
-                  value={formData.descricao} 
-                  onChange={(e: any) => setFormData({...formData, descricao: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-indigo-500 h-32 resize-none"
-                  placeholder="Informações adicionais sobre o cliente..."
-                ></textarea>
-              </div>
-              <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-3">
-                <UserPlus className="w-6 h-6" />
-                CADASTRAR E GERAR CHAVE
-              </button>
-            </form>
+          
+          <div className="mb-12 flex justify-center">
+            <img src="/logo_branca.png" alt="RODEOAPP Logo Grande" className="h-24 md:h-32 object-contain drop-shadow-[0_0_30px_rgba(234,179,8,0.3)] animate-pulse-slow" />
           </div>
-        )}
 
-        {/* Tab: Licenças Ativas */}
-        {activeTab === "licencas" && (
-          <div className="animate-in fade-in duration-500">
-            <div className="flex justify-between items-center mb-10">
-              <h2 className="text-4xl font-black">Licenças Ativas</h2>
-              <div className="relative w-72">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 w-4 h-4" />
-                <input type="text" placeholder="Filtrar..." className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" onChange={(e) => setSearchQuery(e.target.value)} />
-              </div>
-            </div>
-            <div className="bg-slate-900/40 border border-slate-800/50 rounded-[2.5rem] overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                  <tr>
-                    <th className="px-8 py-6">CLIENTE / STATUS</th>
-                    <th className="px-8 py-6">CHAVE</th>
-                    <th className="px-8 py-6">VALIDADE</th>
-                    <th className="px-8 py-6 text-right">INFO</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50">
-                  {licenses
-                    .filter(l => l.nome?.toLowerCase().includes(searchQuery.toLowerCase()) || l.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map(l => (
-                    <tr 
-                      key={l.id} 
-                      onClick={() => setSelectedLicense(l)}
-                      className={`hover:bg-indigo-500/5 transition-all cursor-pointer group ${!l.is_active ? 'opacity-40 grayscale' : ''}`}
-                    >
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2.5 h-2.5 rounded-full ${isOnline(l.last_seen) ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-slate-700'}`}></div>
-                          <div>
-                            <div className="font-bold group-hover:text-indigo-400 transition-colors">{l.nome || 'Sem Nome'}</div>
-                            <div className="text-xs text-slate-500">{l.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6 font-mono text-indigo-400 font-bold">{l.key_code}</td>
-                      <td className="px-8 py-6 text-sm font-medium">{l.dias_validos} dias</td>
-                      <td className="px-8 py-6 text-right">
-                        <div className="flex justify-end">
-                          <div className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-500 group-hover:text-indigo-400 group-hover:border-indigo-500/30 transition-all">
-                            <Info className="w-4 h-4" />
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter leading-[0.9] mb-8 text-white uppercase">
+            O CONTROLE ABSOLUTO <br />
+            DA SUA <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-600 to-yellow-400 bg-[length:200%_auto] animate-shine">ARENA</span>
+          </h1>
+          
+          <p className="max-w-2xl mx-auto text-white/60 text-base md:text-xl font-bold mb-12 leading-relaxed uppercase tracking-tight">
+            Gestão total de competidores, animais, rankings instantâneos e integração com o telão. O sistema definitivo para profissionais do rodeio.
+          </p>
 
-        {/* Tab: Liberar Licença */}
-        {activeTab === "liberacao" && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <h2 className="text-4xl font-black mb-10">Liberar Nova Licença</h2>
-            <div className="relative mb-10">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 w-6 h-6" />
-              <input 
-                type="text" 
-                placeholder="Pesquisar por nome, e-mail ou WhatsApp..." 
-                className="w-full bg-slate-900/40 border border-slate-800/50 rounded-[2rem] pl-16 pr-8 py-6 outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-xl"
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-6">
-              {licenses
-                .filter(l => (l.nome?.toLowerCase().includes(searchQuery.toLowerCase()) || l.email.toLowerCase().includes(searchQuery.toLowerCase()) || l.whatsapp?.includes(searchQuery)))
-                .reduce((acc: any[], current) => {
-                   if (!acc.find(item => item.email === current.email)) acc.push(current);
-                   return acc;
-                }, [])
-                .map(client => (
-                <button 
-                  key={client.id} 
-                  onClick={() => setSelectedClientToRelease(client)}
-                  className="bg-slate-900/40 border border-slate-800/50 p-8 rounded-[2rem] text-left hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all group"
-                >
-                  <div className="font-black text-xl mb-1 group-hover:text-indigo-400 transition-colors">{client.nome || 'Sem Nome'}</div>
-                  <div className="text-sm text-slate-500 mb-4">{client.email}</div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    <Phone className="w-3 h-3" /> {client.whatsapp || 'N/A'}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      {/* MODAL: DETALHES DO CLIENTE */}
-      {selectedLicense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-slate-800 p-12 rounded-[3.5rem] max-w-2xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300">
-            <button onClick={() => setSelectedLicense(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors">
-              <X className="w-8 h-8" />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+            <button className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-12 py-6 rounded-2xl font-black text-xl flex items-center justify-center gap-3 hover:from-yellow-400 hover:to-yellow-500 transition-all shadow-2xl shadow-yellow-500/20 active:scale-95 group uppercase">
+              BAIXAR AGORA <Download className="w-6 h-6 group-hover:translate-y-1 transition-transform" />
             </button>
-            
-            <div className="flex items-start gap-8 mb-10">
-              <div className="w-24 h-24 bg-indigo-600/20 rounded-[2rem] flex items-center justify-center border border-indigo-500/30">
-                <UserPlus className="w-10 h-10 text-indigo-400" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-4xl font-black italic tracking-tighter mb-1">{selectedLicense.nome || 'Cliente sem Nome'}</h2>
-                <div className="flex items-center gap-4 text-slate-400 font-medium">
-                  <div className="flex items-center gap-1.5"><Mail className="w-4 h-4" /> {selectedLicense.email}</div>
-                  <div className="flex items-center gap-1.5"><Phone className="w-4 h-4" /> {selectedLicense.whatsapp || 'N/A'}</div>
-                </div>
-              </div>
-            </div>
+            <a href="#features" className="w-full sm:w-auto bg-white/5 backdrop-blur-md border border-white/10 px-12 py-6 rounded-2xl font-black text-xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-95 uppercase">
+              RECURSOS <ArrowRight className="w-6 h-6" />
+            </a>
+          </div>
+        </div>
+      </section>
 
-            <div className="grid grid-cols-2 gap-6 mb-10">
-              <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Chave Atual</div>
-                <div className="text-xl font-mono font-black text-indigo-400">{selectedLicense.key_code}</div>
-              </div>
-              <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 relative group">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Dias de Acesso</div>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="number" 
-                    value={selectedLicense.dias_validos} 
-                    onChange={async (e) => {
-                      const newVal = parseInt(e.target.value);
-                      const { data } = await supabase.from('licencas').update({ dias_validos: newVal }).eq('id', selectedLicense.id).select().single();
-                      if (data) {
-                        setSelectedLicense(data);
-                        fetchLicenses();
-                      }
-                    }}
-                    className="bg-transparent text-3xl font-black outline-none w-24 text-indigo-400 focus:ring-1 focus:ring-indigo-500 rounded-lg px-2"
-                  />
-                  <span className="text-slate-500 font-bold uppercase text-xs">Dias</span>
-                </div>
-                <div className="absolute -bottom-6 left-6 text-[8px] text-slate-600 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                  Clique para alterar o tempo
-                </div>
-              </div>
-            </div>
+      {/* Features Grid */}
+      <section id="features" className="py-32 px-6 relative bg-[#050505] border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-24">
+            <h2 className="text-5xl md:text-6xl font-black italic tracking-tighter mb-4 uppercase">TECNOLOGIA DE PONTA</h2>
+            <div className="w-24 h-2 bg-yellow-500 mx-auto rounded-full shadow-[0_0_20px_rgba(234,179,8,0.5)]" />
+            <p className="text-white/40 mt-6 font-bold uppercase tracking-widest text-sm">Tudo o que seu evento precisa em um só lugar</p>
+          </div>
 
-            <div className="mb-10">
-              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Descrição</div>
-              <p className="bg-slate-950 p-6 rounded-3xl border border-slate-800 text-slate-300 min-h-[100px]">
-                {selectedLicense.descricao || 'Nenhuma descrição informada.'}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <FeatureCard 
+              icon={<Shield className="w-8 h-8 text-yellow-500" />}
+              title="SORTEIOS BLINDADOS"
+              description="Algoritmo avançado para cruzamento de competidores e animais, com regras rigorosas para evitar repetições indesejadas."
+            />
+            <FeatureCard 
+              icon={<Trophy className="w-8 h-8 text-yellow-500" />}
+              title="RANKINGS INSTANTÂNEOS"
+              description="Classificação em tempo real de Competidores e Animais, gerando rankings com médias precisas a cada montaria."
+            />
+            <FeatureCard 
+              icon={<ListOrdered className="w-8 h-8 text-yellow-500" />}
+              title="ORDEM DE EMBRETAMENTO"
+              description="Organização impecável dos currais. Crie as ordens de saída e distribua para a equipe de brete num clique."
+            />
+            <FeatureCard 
+              icon={<FileSpreadsheet className="w-8 h-8 text-yellow-500" />}
+              title="EXPORTAÇÃO PROFISSIONAL"
+              description="Gere relatórios de Melhor Animal, Melhor Cia e Resultados em PDF de altíssima resolução e planilhas de Excel."
+            />
+            <FeatureCard 
+              icon={<Tv className="w-8 h-8 text-yellow-500" />}
+              title="INTEGRAÇÃO COM TELÃO"
+              description="Apresente os dados da montaria diretamente no telão da arena usando a central de mídia nativa do sistema."
+            />
+            <FeatureCard 
+              icon={<Zap className="w-8 h-8 text-yellow-500" />}
+              title="LANÇAMENTO OFFLINE"
+              description="O sistema salva tudo no seu computador e sincroniza com a nuvem automaticamente quando houver internet."
+            />
+          </div>
+        </div>
+      </section>
 
-            <div className="flex gap-4">
-              <button 
-                onClick={() => handleToggleActive(selectedLicense.id, selectedLicense.is_active)}
-                className={`flex-1 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all ${selectedLicense.is_active ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20'}`}
-              >
-                {selectedLicense.is_active ? <><Pause className="w-4 h-4 fill-current" /> PAUSAR PLANO</> : <><Play className="w-4 h-4 fill-current" /> ATIVAR PLANO</>}
+      {/* Pricing/Plans Section */}
+      <section id="plans" className="py-32 px-6 relative bg-black">
+        <div className="max-w-7xl mx-auto">
+           <div className="text-center mb-24">
+            <h2 className="text-5xl md:text-6xl font-black italic tracking-tighter mb-4 uppercase">PLANOS E LICENÇAS</h2>
+            <div className="w-24 h-2 bg-yellow-500 mx-auto rounded-full shadow-[0_0_20px_rgba(234,179,8,0.5)] mb-6" />
+            <p className="text-white/40 font-bold uppercase tracking-widest text-sm">Escolha a potência do seu evento</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <PlanCard title="MENSAL" price="R$ 297" period="POR MÊS" color="bg-white/5" />
+            <PlanCard title="TRIMESTRAL" price="R$ 797" period="POR 3 MESES" color="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black" highlighted />
+            <PlanCard title="ANUAL" price="R$ 2.497" period="POR ANO" color="bg-white/5" />
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-32 px-6 bg-[#050505]">
+        <div className="max-w-5xl mx-auto bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-[3rem] md:rounded-[4rem] p-10 md:p-16 text-center relative overflow-hidden shadow-2xl shadow-yellow-500/20">
+          <div className="absolute inset-0 bg-black/10 backdrop-blur-sm z-0"></div>
+          <div className="relative z-10">
+            <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter mb-8 leading-none uppercase text-black">PROFISSIONALIZE<br />SUA ARENA AGORA</h2>
+            <p className="text-black/80 text-lg md:text-xl mb-12 max-w-xl mx-auto font-black uppercase">
+              Entre em contato e junte-se aos maiores rodeios do país.
+            </p>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+              <button className="bg-black text-white w-full md:w-auto px-14 py-6 rounded-2xl font-black text-xl hover:scale-105 transition-transform active:scale-95 shadow-2xl uppercase tracking-tighter">
+                FALAR NO WHATSAPP
               </button>
-              
-              <a 
-                href={`https://wa.me/55${selectedLicense.whatsapp?.replace(/\D/g, '')}`} 
-                target="_blank"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all text-white"
-              >
-                <MessageCircle className="w-4 h-4 fill-current" /> WHATSAPP
-              </a>
-
-              <button 
-                onClick={() => deleteLicense(selectedLicense.id)}
-                className="w-16 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-2xl flex items-center justify-center transition-all"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
             </div>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* Outros Modais (Liberação e Sucesso) Mantidos... */}
-      {selectedClientToRelease && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 p-12 rounded-[3.5rem] max-w-md w-full text-center relative">
-            <button onClick={() => setSelectedClientToRelease(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white"><X className="w-8 h-8" /></button>
-            <h2 className="text-3xl font-black mb-10 italic">LIBERAR PLANO</h2>
-            <div className="grid grid-cols-1 gap-4">
-              <PlanButton label="5 Dias (Teste)" onClick={() => handleReleaseKey(5)} />
-              <PlanButton label="1 Mês (Mensal)" onClick={() => handleReleaseKey(30)} />
-              <PlanButton label="1 Ano (Anual)" onClick={() => handleReleaseKey(365)} />
-            </div>
+      {/* Footer */}
+      <footer className="py-20 border-t border-white/5 px-6 bg-black">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
+          <div className="flex items-center gap-3">
+            <img src="/logo_branca.png" alt="RODEOAPP Logo" className="h-8 object-contain opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />
+          </div>
+          <div className="text-white/20 font-black text-[10px] tracking-[0.3em] text-center md:text-right uppercase">
+            © 2026 RODEOAPP.PRO - TECNOLOGIA PARA PERFORMANCE<br/>
+            TODOS OS DIREITOS RESERVADOS
           </div>
         </div>
-      )}
+      </footer>
 
-      {generatedKey && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
-          <div className="bg-slate-900 border border-slate-800 p-12 rounded-[3.5rem] max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="w-24 h-24 bg-emerald-500/20 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-emerald-500/30 rotate-12">
-              <ShieldCheck className="w-12 h-12 text-emerald-500" />
-            </div>
-            <h2 className="text-3xl font-black mb-10">CHAVE GERADA!</h2>
-            <div className="bg-slate-950 border-2 border-indigo-500/50 p-6 rounded-3xl mb-10 flex items-center justify-between cursor-pointer active:scale-95 transition-all" onClick={() => { navigator.clipboard.writeText(generatedKey); alert("Copiado!"); }}>
-              <span className="text-3xl font-black text-indigo-400 font-mono">{generatedKey}</span>
-            </div>
-            <button onClick={() => setGeneratedKey(null)} className="w-full bg-slate-800 hover:bg-slate-700 py-5 rounded-2xl font-black">FECHAR</button>
-          </div>
-        </div>
-      )}
-
+      {/* Styles */}
+      <style jsx global>{\`
+        @keyframes bounce-subtle {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+        @keyframes shine {
+          to { background-position: 200% center; }
+        }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(0.98); }
+        }
+        .animate-bounce-subtle { animation: bounce-subtle 4s ease-in-out infinite; }
+        .animate-shine { animation: shine 3s linear infinite; }
+        .animate-pulse-slow { animation: pulse-slow 6s ease-in-out infinite; }
+      \`}</style>
     </div>
   );
 }
 
-// Subcomponentes mantidos...
-function SidebarLink({ icon, label, active, onClick }: any) {
+function FeatureCard({ icon, title, description }: any) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-500 hover:bg-slate-800/50 hover:text-slate-300'}`}>
-      {icon} {label}
-    </button>
-  );
-}
-
-function DashboardCard({ title, icon, items, emptyMsg }: any) {
-  return (
-    <div className="bg-slate-900/40 border border-slate-800/50 rounded-[2.5rem] p-8 flex flex-col h-[400px]">
-      <div className="flex items-center gap-3 mb-8">{icon}<h3 className="text-xl font-black uppercase tracking-tighter italic">{title}</h3></div>
-      <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-        {items.length === 0 ? <p className="text-slate-600 text-sm italic">{emptyMsg}</p> : items.map((item: any) => (
-          <div key={item.id} className="bg-slate-950/50 border border-slate-800/50 p-5 rounded-2xl flex justify-between items-center">
-            <div><div className="font-bold">{item.nome || 'Sem Nome'}</div><div className="text-[10px] text-slate-500 uppercase font-black">{item.email}</div></div>
-            <div className="text-xs font-black bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">{item.dias_validos}D</div>
-          </div>
-        ))}
+    <div className="group bg-white/5 border border-white/5 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] hover:bg-white/10 hover:border-yellow-500/30 transition-all duration-500 hover:-translate-y-2">
+      <div className="w-16 h-16 md:w-20 md:h-20 bg-black rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center mb-6 md:mb-8 border border-white/10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-2xl">
+        {icon}
       </div>
+      <h3 className="text-xl md:text-2xl font-black italic mb-4 uppercase tracking-tighter text-yellow-500">{title}</h3>
+      <p className="text-white/40 font-bold leading-relaxed group-hover:text-white/80 transition-colors uppercase text-xs md:text-sm">
+        {description}
+      </p>
     </div>
   );
 }
 
-function InputGroup({ label, value, onChange, placeholder, type = "text" }: any) {
+function PlanCard({ title, price, period, color, highlighted = false }: any) {
   return (
-    <div className="space-y-2">
-      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium" />
+    <div className={\`\${color} border border-white/10 p-10 md:p-12 rounded-[3rem] md:rounded-[3.5rem] text-center transition-transform hover:scale-105 \${highlighted ? 'shadow-2xl shadow-yellow-500/20' : ''}\`}>
+      <h3 className="text-[10px] md:text-xs font-black tracking-[0.4em] mb-6 opacity-50 uppercase">{title}</h3>
+      <div className="text-4xl md:text-5xl font-black italic mb-2 tracking-tighter uppercase">{price}</div>
+      <div className="text-[9px] md:text-[10px] font-black tracking-widest opacity-50 uppercase mb-8">{period}</div>
+      <button className={\`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest border \${highlighted ? 'bg-black text-white border-black' : 'bg-white/5 border-white/10 hover:bg-white/10'}\`}>
+        SOLICITAR
+      </button>
     </div>
-  );
-}
-
-function PlanButton({ label, onClick }: any) {
-  return (
-    <button onClick={onClick} className="w-full bg-slate-950 hover:bg-indigo-600 border border-slate-800 hover:border-indigo-500 py-4 rounded-2xl font-bold transition-all active:scale-95">{label}</button>
   );
 }
