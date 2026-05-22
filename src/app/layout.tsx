@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HZN RodeoApp",
+  title: "RodeoApp",
   description: "O sistema definitivo para profissionais do rodeio.",
 };
 
