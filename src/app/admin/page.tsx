@@ -39,7 +39,8 @@ import {
   LogOut,
   Fingerprint,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Database
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -52,6 +53,10 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile menu toggle
   const [licenses, setLicenses] = useState<any[]>([]);
+  const [boiadas, setBoiadas] = useState<any[]>([]);
+  const [boiadaName, setBoiadaName] = useState("");
+  const [tourosE, setTourosE] = useState("");
+  const [tourosD, setTourosD] = useState("");
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -111,7 +116,11 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (session) {
       fetchLicenses();
-      const interval = setInterval(fetchLicenses, 15000);
+      fetchBoiadas();
+      const interval = setInterval(() => {
+        fetchLicenses();
+        fetchBoiadas();
+      }, 15000);
       return () => clearInterval(interval);
     }
   }, [session]);
@@ -167,6 +176,55 @@ export default function AdminDashboard() {
     if (error) console.error("Erro ao carregar licenças:", error);
     if (data) setLicenses(data);
   }
+
+  async function fetchBoiadas() {
+    const { data, error } = await supabase.from("boiadas_oficiais").select("*").order("nome", { ascending: true });
+    if (error) console.error("Erro ao carregar boiadas:", error);
+    if (data) setBoiadas(data);
+  }
+
+  const handleSaveBoiada = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!boiadaName.trim()) return alert("Digite o nome da CIA");
+    setLoading(true);
+    
+    // Parse touros
+    const splitLines = (text: string) => text.split("\n").map(l => l.trim().toUpperCase()).filter(l => l);
+    const tourosEsquerda = splitLines(tourosE);
+    const tourosDireita = splitLines(tourosD);
+    
+    const lados: Record<string, string> = {};
+    tourosEsquerda.forEach(t => lados[t] = "E");
+    tourosDireita.forEach(t => lados[t] = "D");
+
+    const { error } = await supabase.from("boiadas_oficiais").insert([{
+      nome: boiadaName.trim().toUpperCase(),
+      lados: lados
+    }]);
+
+    if (!error) {
+      alert("Boiada cadastrada com sucesso no banco oficial!");
+      setBoiadaName("");
+      setTourosE("");
+      setTourosD("");
+      fetchBoiadas();
+    } else {
+      alert("Erro ao cadastrar boiada: " + error.message);
+    }
+    setLoading(false);
+  };
+
+  const handleDeleteBoiada = async (id: string, nome: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir a CIA ${nome} do banco oficial?`)) {
+      const { error } = await supabase.from("boiadas_oficiais").delete().eq("id", id);
+      if (!error) {
+        fetchBoiadas();
+        alert("Boiada excluída!");
+      } else {
+        alert("Erro ao excluir: " + error.message);
+      }
+    }
+  };
 
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -408,6 +466,7 @@ export default function AdminDashboard() {
           <SidebarLink icon={<LayoutDashboard className="w-5 h-5" />} label="DASHBOARD" active={activeTab === "dashboard"} onClick={() => { setActiveTab("dashboard"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<UserPlus className="w-5 h-5" />} label="NOVO CLIENTE" active={activeTab === "new"} onClick={() => { setActiveTab("new"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<Key className="w-5 h-5" />} label="GERENCIAR CHAVES" active={activeTab === "keys"} onClick={() => { setActiveTab("keys"); setIsSidebarOpen(false); }} />
+          <SidebarLink icon={<Database className="w-5 h-5" />} label="BOIADAS (NUVEM)" active={activeTab === "boiadas"} onClick={() => { setActiveTab("boiadas"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<Download className="w-5 h-5" />} label="LINK PARA DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} />
         </nav>
 
@@ -570,6 +629,60 @@ export default function AdminDashboard() {
                 >
                   COPIAR LINK
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "boiadas" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-10">Boiadas em Nuvem</h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm">
+                <h3 className="font-black italic uppercase text-yellow-500 mb-6">Cadastrar Nova Boiada</h3>
+                <form onSubmit={handleSaveBoiada} className="space-y-6">
+                  <InputGroup label="NOME DA COMPANHIA" placeholder="Ex: CIA Tércio Miranda" value={boiadaName} onChange={setBoiadaName} />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1">Lado Certo (Esquerda)</label>
+                      <textarea value={tourosE} onChange={e=>setTourosE(e.target.value)} placeholder="Um touro por linha" className="w-full h-32 bg-black border border-white/10 rounded-2xl p-4 font-bold text-xs outline-none focus:border-emerald-500 transition-all resize-none"></textarea>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-red-500 uppercase tracking-widest ml-1">Lado Contrário (Direita)</label>
+                      <textarea value={tourosD} onChange={e=>setTourosD(e.target.value)} placeholder="Um touro por linha" className="w-full h-32 bg-black border border-white/10 rounded-2xl p-4 font-bold text-xs outline-none focus:border-red-500 transition-all resize-none"></textarea>
+                    </div>
+                  </div>
+                  
+                  <button type="submit" disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50 mt-4">
+                    {loading ? "SALVANDO..." : "SALVAR NO BANCO OFICIAL"} <Database className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm flex flex-col max-h-[600px]">
+                <h3 className="font-black italic uppercase text-white mb-6">Boiadas Salvas ({boiadas.length})</h3>
+                <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
+                  {boiadas.length === 0 ? (
+                     <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhuma boiada cadastrada</div>
+                  ) : (
+                    boiadas.map(b => {
+                      const totalTouros = Object.keys(b.lados || {}).length;
+                      return (
+                        <div key={b.id} className="bg-black border border-white/10 p-5 rounded-2xl flex justify-between items-center group hover:border-yellow-500/50 transition-all">
+                          <div>
+                            <div className="font-black uppercase text-sm mb-1">{b.nome}</div>
+                            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{totalTouros} TOUROS</div>
+                          </div>
+                          <button onClick={() => handleDeleteBoiada(b.id, b.nome)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </div>
