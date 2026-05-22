@@ -282,7 +282,7 @@ export default function AdminDashboard() {
 
         <div className="max-w-md w-full relative z-10">
           <div className="text-center mb-10">
-            <img src="/logo_branca.png" alt="RODEOAPP Logo" className="h-20 mx-auto mb-6 object-contain" />
+            <img src="/splash_logo.png" alt="RODEOAPP Logo" className="h-20 mx-auto mb-6 object-contain" />
             <p className="text-white/30 font-black text-[10px] uppercase tracking-[0.4em]">Acesso Administrativo Master</p>
           </div>
 
@@ -358,7 +358,7 @@ export default function AdminDashboard() {
       
       {/* Mobile Header (Hambúrguer) */}
       <div className="md:hidden flex items-center justify-between p-6 border-b border-white/10 bg-black/90 backdrop-blur-md z-40">
-        <img src="/logo_branca.png" alt="RODEOAPP Logo" className="h-8 object-contain" />
+        <img src="/header_logo.png" alt="RODEOAPP Logo" className="h-8 object-contain" />
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-yellow-500 p-2 bg-yellow-500/10 rounded-xl">
           {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -367,7 +367,7 @@ export default function AdminDashboard() {
       {/* Sidebar */}
       <aside className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-y-0 left-0 w-72 md:w-80 bg-black/95 md:bg-white/5 border-r border-white/10 flex flex-col p-8 backdrop-blur-xl transition-transform duration-300 z-50`}>
         <div className="hidden md:flex flex-col items-start gap-3 mb-16">
-           <img src="/logo_branca.png" alt="RODEOAPP Logo" className="h-10 object-contain" />
+           <img src="/header_logo.png" alt="RODEOAPP Logo" className="h-10 object-contain" />
            <p className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.4em] ml-1">Admin Pro</p>
         </div>
 
