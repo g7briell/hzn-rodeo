@@ -231,7 +231,7 @@ export default function AdminDashboard() {
         await realtimeChannel.send({
           type: "broadcast",
           event: "force-update",
-          payload: { email }
+          payload: { email: email.toLowerCase().trim() }
         });
         alert("Comando de atualização remota enviado para " + email);
       } else {
