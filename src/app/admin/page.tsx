@@ -38,7 +38,8 @@ import {
   LogOut,
   Fingerprint,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Download
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -375,6 +376,7 @@ export default function AdminDashboard() {
           <SidebarLink icon={<LayoutDashboard className="w-5 h-5" />} label="DASHBOARD" active={activeTab === "dashboard"} onClick={() => { setActiveTab("dashboard"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<UserPlus className="w-5 h-5" />} label="NOVO CLIENTE" active={activeTab === "new"} onClick={() => { setActiveTab("new"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<Key className="w-5 h-5" />} label="GERENCIAR CHAVES" active={activeTab === "keys"} onClick={() => { setActiveTab("keys"); setIsSidebarOpen(false); }} />
+          <SidebarLink icon={<Download className="w-5 h-5" />} label="LINK PARA DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} />
         </nav>
 
         <div className="mt-auto pt-8 border-t border-white/10 space-y-4">
@@ -504,6 +506,40 @@ export default function AdminDashboard() {
                 {loading ? "Processando..." : "Gerar e Enviar Acesso"}
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === "download" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-4xl md:text-5xl font-black mb-8 md:mb-10 italic uppercase tracking-tighter">Instalador Oficial</h2>
+            <div className="bg-white/5 border border-white/10 p-6 md:p-12 rounded-[2rem] md:rounded-[3.5rem] space-y-8 backdrop-blur-xl max-w-3xl">
+              <div className="flex flex-col md:flex-row items-center gap-8">
+                <div className="w-24 h-24 bg-gradient-to-tr from-yellow-500 to-yellow-700 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-yellow-500/20 shrink-0">
+                  <Download className="w-10 h-10 text-black" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-yellow-500 mb-2">RODEOAPP SETUP 1.0.0</h3>
+                  <p className="text-white/40 font-bold text-sm uppercase tracking-widest leading-relaxed">
+                    Hospede o arquivo ".exe" no seu Google Drive, copie o link público e deixe aqui. Quando o cliente solicitar, basta vir aqui e copiar o link da versão mais recente!
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-black border border-white/10 p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <input 
+                  type="text"
+                  placeholder="Cole o link do seu Google Drive aqui..."
+                  className="bg-transparent text-yellow-500 font-mono text-sm sm:text-base outline-none w-full"
+                  defaultValue="https://drive.google.com/file/d/SEU_LINK_AQUI"
+                />
+                <button 
+                  onClick={() => alert("Lembre-se de hospedar o arquivo .exe atualizado no seu Google Drive e colar o link real aqui!")}
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all w-full sm:w-auto shrink-0"
+                >
+                  COPIAR LINK
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
