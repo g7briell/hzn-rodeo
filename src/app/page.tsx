@@ -59,10 +59,7 @@ export default function LandingPage() {
         </div>
 
         <div className="relative z-20 max-w-7xl mx-auto px-6 text-center mt-10">
-          <div className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 px-6 py-2 rounded-full mb-8 animate-bounce-subtle">
-            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-yellow-500">Elite Performance Management</span>
-          </div>
+
           
           <div className="mb-12 flex justify-center">
             <img src="/splash_logo.png" alt="RODEOAPP Logo Grande" className="h-40 md:h-64 object-contain drop-shadow-[0_0_30px_rgba(234,179,8,0.3)] animate-pulse-slow" />
@@ -77,12 +74,17 @@ export default function LandingPage() {
             Gestão total de competidores, animais, rankings instantâneos e integração com o telão. O sistema definitivo para profissionais do rodeio.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <button className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-12 py-6 rounded-2xl font-black text-xl flex items-center justify-center gap-3 hover:from-yellow-400 hover:to-yellow-500 transition-all shadow-2xl shadow-yellow-500/20 active:scale-95 group uppercase">
-              BAIXAR AGORA <Download className="w-6 h-6 group-hover:translate-y-1 transition-transform" />
-            </button>
-            <a href="#features" className="w-full sm:w-auto bg-white/5 backdrop-blur-md border border-white/10 px-12 py-6 rounded-2xl font-black text-xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-95 uppercase">
-              RECURSOS <ArrowRight className="w-6 h-6" />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-8">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 px-6 py-4 rounded-xl font-black text-sm md:text-base text-center uppercase tracking-widest shadow-lg">
+                Rodeio Touros / Cutiano
+              </div>
+              <div className="bg-white/5 border border-white/10 text-white/50 px-6 py-4 rounded-xl font-bold text-sm md:text-base text-center uppercase tracking-widest flex items-center justify-center gap-2">
+                3 Tambores <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded-md font-black">FUTURAMENTE</span>
+              </div>
+            </div>
+            <a href="#features" className="w-full sm:w-auto bg-white/5 backdrop-blur-md border border-white/10 px-10 py-5 rounded-xl font-black text-sm md:text-base flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-95 uppercase tracking-widest">
+              RECURSOS <ArrowRight className="w-5 h-5" />
             </a>
           </div>
         </div>
@@ -119,14 +121,9 @@ export default function LandingPage() {
               description="Gere relatórios de Melhor Animal, Melhor Cia e Resultados em PDF de altíssima resolução e planilhas de Excel."
             />
             <FeatureCard 
-              icon={<Tv className="w-8 h-8 text-yellow-500" />}
-              title="INTEGRAÇÃO COM TELÃO"
-              description="Apresente os dados da montaria diretamente no telão da arena usando a central de mídia nativa do sistema."
-            />
-            <FeatureCard 
               icon={<Zap className="w-8 h-8 text-yellow-500" />}
-              title="LANÇAMENTO OFFLINE"
-              description="O sistema salva tudo no seu computador e sincroniza com a nuvem automaticamente quando houver internet."
+              title="SISTEMA OFFLINE"
+              description="O sistema funciona 100% sem internet, salvando todos os dados da competição diretamente no seu computador com segurança."
             />
           </div>
         </div>
