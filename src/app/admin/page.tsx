@@ -227,16 +227,17 @@ export default function AdminDashboard() {
 
   const sendForceUpdateBroadcast = async (email: string) => {
     try {
-      if (realtimeChannel) {
-        await realtimeChannel.send({
-          type: "broadcast",
-          event: "force-update",
-          payload: { email: email.toLowerCase().trim() }
-        });
-        alert("Comando de atualização remota enviado para " + email);
-      } else {
-        alert("Erro: Canal de comunicação desconectado.");
-      }
+      const forceChannel = supabase.channel("rodeo-force-update-channel");
+      forceChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await forceChannel.send({
+            type: "broadcast",
+            event: "force-update",
+            payload: { email: email.toLowerCase().trim() }
+          });
+          alert("Comando de atualização remota enviado para " + email);
+        }
+      });
     } catch (e) {
       console.error(e);
       alert("Erro ao enviar comando.");
