@@ -285,6 +285,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteLicense = async (id: string, nome: string) => {
+    if (window.confirm(`ATENÇÃO: Tem certeza que deseja excluir DEFINITIVAMENTE a licença do cliente ${nome}?`)) {
+      const { error } = await supabase.from("licencas").delete().eq("id", id);
+      if (!error) {
+        if (selectedLicense && selectedLicense.id === id) setSelectedLicense(null);
+        fetchLicenses();
+        alert("Cliente excluído com sucesso!");
+      } else {
+        alert("Erro ao excluir cliente: " + error.message);
+      }
+    }
+  };
+
   const filteredLicenses = licenses.filter(l => 
     l.nome?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     l.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -643,7 +656,8 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex gap-3 w-full sm:w-auto">
                         <button onClick={() => sendForceUpdateBroadcast(l.email)} title="Forçar Atualização Remota no Computador do Cliente" className="flex-1 sm:flex-none p-4 md:p-5 bg-black rounded-xl md:rounded-2xl flex justify-center hover:bg-blue-500/20 transition-all border border-white/10 text-white/40 hover:text-blue-500"><Download className="w-5 h-5 md:w-6 md:h-6" /></button>
-                        <button onClick={() => setSelectedLicense(l)} className="flex-1 sm:flex-none p-4 md:p-5 bg-black rounded-xl md:rounded-2xl flex justify-center hover:bg-white/5 transition-all border border-white/10 text-white/40 hover:text-white"><Info className="w-5 h-5 md:w-6 md:h-6" /></button>
+                        <button onClick={() => setSelectedLicense(l)} title="Informações da Licença" className="flex-1 sm:flex-none p-4 md:p-5 bg-black rounded-xl md:rounded-2xl flex justify-center hover:bg-white/5 transition-all border border-white/10 text-white/40 hover:text-white"><Info className="w-5 h-5 md:w-6 md:h-6" /></button>
+                        <button onClick={() => handleDeleteLicense(l.id, l.nome)} title="Excluir Cliente" className="flex-1 sm:flex-none p-4 md:p-5 bg-black rounded-xl md:rounded-2xl flex justify-center hover:bg-red-500/20 transition-all border border-white/10 text-white/40 hover:text-red-500"><Trash2 className="w-5 h-5 md:w-6 md:h-6" /></button>
                       </div>
                     </div>
                   </div>
