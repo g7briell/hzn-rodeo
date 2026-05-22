@@ -25,6 +25,7 @@ import {
   Plus, 
   Clock, 
   Trash2,
+  Download,
   Phone,
   Mail,
   Zap,
@@ -222,6 +223,24 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error("Erro ao enviar broadcast:", err);
+    }
+  };
+
+  const sendForceUpdateBroadcast = async (email: string) => {
+    try {
+      if (realtimeChannel) {
+        await realtimeChannel.send({
+          type: "broadcast",
+          event: "force-update",
+          payload: { email }
+        });
+        alert("Comando de atualização remota enviado para " + email);
+      } else {
+        alert("Erro: Canal de comunicação desconectado.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao enviar comando.");
     }
   };
 
@@ -602,12 +621,13 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 md:gap-12 mt-4 md:mt-0 pt-4 md:pt-0 border-t border-white/5 md:border-none w-full md:w-auto">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-6 mt-6 md:mt-0 w-full md:w-auto shrink-0">
                       <div className="text-left md:text-right flex-1 sm:flex-none">
                         <div className="text-2xl md:text-3xl font-black font-mono text-yellow-500 leading-none tracking-tighter break-all">{l.key_code}</div>
                         <div className="text-[9px] md:text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">{l.dias_validos} DIAS</div>
                       </div>
-                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <div className="flex gap-3 w-full sm:w-auto">
+                        <button onClick={() => sendForceUpdateBroadcast(l.email)} title="Forçar Atualização Remota no Computador do Cliente" className="flex-1 sm:flex-none p-4 md:p-5 bg-black rounded-xl md:rounded-2xl flex justify-center hover:bg-blue-500/20 transition-all border border-white/10 text-white/40 hover:text-blue-500"><Download className="w-5 h-5 md:w-6 md:h-6" /></button>
                         <button onClick={() => setSelectedLicense(l)} className="flex-1 sm:flex-none p-4 md:p-5 bg-black rounded-xl md:rounded-2xl flex justify-center hover:bg-white/5 transition-all border border-white/10 text-white/40 hover:text-white"><Info className="w-5 h-5 md:w-6 md:h-6" /></button>
                       </div>
                     </div>
