@@ -108,7 +108,7 @@ function App() {
       // Validar código nativo de e-mail do Supabase
       const { error } = await supabase.auth.verifyOtp({
         email: regEmail,
-        token: regOtpCode,
+        token: regOtpCode.trim(),
         type: 'signup'
       });
 
@@ -340,9 +340,8 @@ function App() {
                     type="text" 
                     className="form-input" 
                     style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '8px' }}
-                    maxLength={6}
                     value={regOtpCode}
-                    onChange={(e) => setRegOtpCode(e.target.value)}
+                    onChange={(e) => setRegOtpCode(e.target.value.trim())}
                     required 
                   />
                 </div>
@@ -397,9 +396,8 @@ function App() {
                     type="text" 
                     className="form-input" 
                     style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '8px' }}
-                    maxLength={6}
                     value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
+                    onChange={(e) => setOtpCode(e.target.value.trim())}
                     required 
                   />
                 </div>
