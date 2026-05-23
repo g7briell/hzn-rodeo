@@ -1503,15 +1503,22 @@ function App() {
                                         return;
                                       }
                                       setIsPeaoProfileLoading(true);
-                                      const { data, error } = await supabase.from('perfis_portal').select('*').eq('cpf', peao.cpf).single();
+                                      const cleanCpf = peao.cpf.replace(/\D/g, '');
+                                      const { data, error } = await supabase.from('perfis_portal').select('*').eq('cpf', cleanCpf).limit(1);
                                       setIsPeaoProfileLoading(false);
-                                      if (error || !data) {
+                                      
+                                      const profileData = data && data.length > 0 ? data[0] : null;
+
+                                      if (error || !profileData) {
                                         alert("Este competidor ainda não criou o cadastro no Portal RodeoApp.");
                                       } else {
                                         // Calcular historico
                                         const historico: any[] = [];
                                         eventosOficiais.forEach(ev => {
-                                          const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => r.cpf === peao.cpf);
+                                          const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
+                                            const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+                                            return rCpf === cleanCpf;
+                                          });
                                           if (rankIndex !== undefined && rankIndex >= 0) {
                                             historico.push({
                                               eventoNome: ev.nome,
@@ -1520,7 +1527,7 @@ function App() {
                                             });
                                           }
                                         });
-                                        setSelectedPeaoProfile({ ...data, historico });
+                                        setSelectedPeaoProfile({ ...profileData, historico });
                                       }
                                     }}
                                   >
