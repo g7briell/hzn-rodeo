@@ -44,6 +44,8 @@ function App() {
   const [eventosOficiais, setEventosOficiais] = useState<any[]>([]);
   const [selectedBoiada, setSelectedBoiada] = useState<any>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedPeaoProfile, setSelectedPeaoProfile] = useState<any>(null);
+  const [isPeaoProfileLoading, setIsPeaoProfileLoading] = useState(false);
   const [isBoiadasLoading, setIsBoiadasLoading] = useState(false);
 
   // Tropeiro Boiada States
@@ -1403,7 +1405,56 @@ function App() {
             {/* EVENTOS TAB (formerly Explore) */}
             {currentTab === 'explore' && (
               <div>
-                {selectedEvent ? (
+                {selectedPeaoProfile ? (
+                  <div className="peao-profile-view fade-in">
+                    <button className="back-btn" onClick={() => setSelectedPeaoProfile(null)} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                      Voltar
+                    </button>
+
+                    <div className="profile-header-banner" style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem' }}>
+                      {selectedPeaoProfile.foto ? (
+                        <img src={selectedPeaoProfile.foto} alt={selectedPeaoProfile.nome} style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '50%', background: 'rgba(0,0,0,0.4)', padding: '4px', border: '2px solid #E11D48' }} />
+                      ) : (
+                        <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: '900', border: '2px solid #E11D48' }}>
+                          {selectedPeaoProfile.nome.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <span className="profile-badge" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.8rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>COMPETIDOR OFICIAL</span>
+                        <h2 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0', lineHeight: 1, fontWeight: '900', textTransform: 'uppercase' }}>{selectedPeaoProfile.nome}</h2>
+                        
+                        <div style={{ display: 'flex', gap: '1.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            {selectedPeaoProfile.cidade || selectedPeaoProfile.endereco || 'Cidade N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="profile-history-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico em Eventos (HZN)</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {selectedPeaoProfile.historico && selectedPeaoProfile.historico.length > 0 ? (
+                          selectedPeaoProfile.historico.map((hist: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
+                              <div>
+                                <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem' }}>{hist.eventoNome}</h4>
+                                <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{hist.cidade}</span>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: '900', color: '#E11D48', fontSize: '1.2rem' }}>{hist.posicao}º Lugar</div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum histórico encontrado para este competidor.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : selectedEvent ? (
                   <div className="event-detail-view fade-in">
                     <button className="back-btn" onClick={() => setSelectedEvent(null)} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
@@ -1442,8 +1493,38 @@ function App() {
                               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
                                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                   <span style={{ fontWeight: '900', color: '#E11D48', width: '20px' }}>{idx + 1}º</span>
-                                  <span style={{ fontWeight: 'bold', cursor: 'pointer' }} className="hover:text-primary transition-colors" title="Em breve: Perfil do Competidor">
-                                    {peao.nome}
+                                  <span 
+                                    style={{ fontWeight: 'bold', cursor: 'pointer' }} 
+                                    className="hover:text-primary transition-colors" 
+                                    title="Ver Perfil do Competidor"
+                                    onClick={async () => {
+                                      if (!peao.cpf) {
+                                        alert("Este competidor não possui um CPF vinculado pelo diretor do evento.");
+                                        return;
+                                      }
+                                      setIsPeaoProfileLoading(true);
+                                      const { data, error } = await supabase.from('perfis_portal').select('*').eq('cpf', peao.cpf).single();
+                                      setIsPeaoProfileLoading(false);
+                                      if (error || !data) {
+                                        alert("Este competidor ainda não criou o cadastro no Portal RodeoApp.");
+                                      } else {
+                                        // Calcular historico
+                                        const historico: any[] = [];
+                                        eventosOficiais.forEach(ev => {
+                                          const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => r.cpf === peao.cpf);
+                                          if (rankIndex !== undefined && rankIndex >= 0) {
+                                            historico.push({
+                                              eventoNome: ev.nome,
+                                              cidade: ev.cidade,
+                                              posicao: rankIndex + 1
+                                            });
+                                          }
+                                        });
+                                        setSelectedPeaoProfile({ ...data, historico });
+                                      }
+                                    }}
+                                  >
+                                    {peao.nome} {isPeaoProfileLoading ? '...' : ''}
                                   </span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
