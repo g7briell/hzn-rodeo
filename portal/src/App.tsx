@@ -46,10 +46,12 @@ function App() {
         .from('perfis_portal')
         .select('*')
         .ilike('email', email.trim())
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
       
-      if (data) {
-        setUserProfile(data);
+      if (data && data.length > 0) {
+        const profile = data[0];
+        setUserProfile(profile);
         // Load bio and foto from localStorage
         const savedBio = localStorage.getItem(`bio_${email.toLowerCase().trim()}`);
         const savedFoto = localStorage.getItem(`foto_${email.toLowerCase().trim()}`);
