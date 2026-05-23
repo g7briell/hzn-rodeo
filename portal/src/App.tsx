@@ -40,6 +40,18 @@ function App() {
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Public Profile States
+  const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(null);
+  const [publicProfile, setPublicProfile] = useState<any>(null);
+  const [publicProfileBio, setPublicProfileBio] = useState('');
+  const [publicProfileFoto, setPublicProfileFoto] = useState('');
+  const [isPublicProfileLoading, setIsPublicProfileLoading] = useState(false);
+
+  const navigateTo = (path: string) => {
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   const fetchUserProfile = async (email: string) => {
     try {
       const { data } = await supabase
@@ -167,6 +179,78 @@ function App() {
     setIsLogoutConfirmOpen(false);
     setCurrentTab('home');
   };
+
+  const handleCopyShareLink = () => {
+    if (!userProfile?.nome) return;
+    
+    const slugify = (text: string) => {
+      return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+    };
+
+    const slug = slugify(userProfile.nome);
+    const shareUrl = `${window.location.origin}/perfil/${slug}`;
+    
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert("Link de compartilhamento copiado!");
+    }).catch(() => {
+      alert(`Copie o link: ${shareUrl}`);
+    });
+  };
+
+  useEffect(() => {
+    const handleRouting = async () => {
+      const path = window.location.pathname;
+      if (path.startsWith('/perfil/')) {
+        const slug = path.replace('/perfil/', '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (slug) {
+          setPublicProfileSlug(slug);
+          setIsPublicProfileLoading(true);
+          try {
+            const queryPattern = '%' + slug.split('').join('%') + '%';
+            const { data } = await supabase
+              .from('perfis_portal')
+              .select('*')
+              .ilike('nome', queryPattern)
+              .order('created_at', { ascending: false });
+
+            const slugify = (text: string) => {
+              return text
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, '');
+            };
+
+            const match = data?.find(p => slugify(p.nome) === slug);
+            if (match) {
+              setPublicProfile(match);
+              const savedBio = localStorage.getItem(`bio_${match.email.toLowerCase().trim()}`);
+              const savedFoto = localStorage.getItem(`foto_${match.email.toLowerCase().trim()}`);
+              setPublicProfileBio(savedBio || '');
+              setPublicProfileFoto(savedFoto || '');
+            } else {
+              setPublicProfile(null);
+            }
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setIsPublicProfileLoading(false);
+          }
+        }
+      } else {
+        setPublicProfileSlug(null);
+        setPublicProfile(null);
+      }
+    };
+
+    handleRouting();
+    window.addEventListener('popstate', handleRouting);
+    return () => window.removeEventListener('popstate', handleRouting);
+  }, []);
 
   // Mock de eventos da semana
   const weeklyEvents = [
@@ -354,12 +438,100 @@ function App() {
     }
   };
 
+  if (publicProfileSlug) {
+    return (
+      <div className="container">
+        {/* Header */}
+        <header className="header">
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}>RODEO<span className="text-primary">APP</span></div>
+          <div className="header-buttons">
+            <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
+          </div>
+        </header>
+
+        <div className="profile-container" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {isPublicProfileLoading ? (
+            <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600 }}>Carregando Perfil...</div>
+          ) : publicProfile ? (
+            <div className="profile-card" style={{ width: '100%' }}>
+              
+              {/* Left Column: Avatar & Role */}
+              <div className="profile-sidebar">
+                <div className="profile-avatar-wrapper">
+                  <img 
+                    src={publicProfileFoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80"} 
+                    alt="Foto de Perfil" 
+                    className={`profile-avatar ${publicProfile.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
+                  />
+                </div>
+                
+                <div style={{ marginTop: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{publicProfile.nome}</h3>
+                  <span className="badge badge-role" style={{ marginTop: '0.5rem' }}>
+                    {publicProfile.cargo ? publicProfile.cargo.replace('_', ' ') : 'Membro'}
+                  </span>
+                </div>
+
+                {publicProfile.veio_do_app_desktop && (
+                  <span className="badge badge-rodeoapp" style={{ marginTop: '0.5rem' }}>
+                    Sincronizado RodeoApp
+                  </span>
+                )}
+              </div>
+
+              {/* Right Column: Bio & Details */}
+              <div className="profile-details">
+                <div>
+                  <h4 className="profile-section-title">Biografia</h4>
+                  <p style={{ 
+                    background: 'var(--bg-input)', 
+                    border: '1px solid var(--border-light)', 
+                    borderRadius: '12px', 
+                    padding: '1.5rem',
+                    color: 'var(--text-main)',
+                    fontSize: '1rem',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    minHeight: '100px'
+                  }}>
+                    {publicProfileBio || "Este competidor ainda não adicionou uma biografia."}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="profile-section-title">Contato e Localização</h4>
+                  <div className="profile-info-grid">
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">WhatsApp</span>
+                      <span className="profile-info-value">{publicProfile.whatsapp || '-'}</span>
+                    </div>
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">Endereço</span>
+                      <span className="profile-info-value">{publicProfile.endereco || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#ff4444' }}>Perfil Não Encontrado</h2>
+              <p className="text-muted" style={{ marginBottom: '2rem' }}>O competidor solicitado não foi encontrado ou o link é inválido.</p>
+              <button className="btn btn-primary" onClick={() => navigateTo('/')}>Voltar ao Início</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="container">
         {/* Header */}
         <header className="header">
-          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => setCurrentTab('home')}>RODEO<span className="text-primary">APP</span></div>
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => { setCurrentTab('home'); navigateTo('/'); }}>RODEO<span className="text-primary">APP</span></div>
           <div className="header-buttons" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             {user ? (
               <>
@@ -465,6 +637,14 @@ function App() {
                     Sincronizado RodeoApp
                   </span>
                 )}
+
+                <button 
+                  className="photo-upload-btn" 
+                  style={{ marginTop: '1.5rem', width: '100%', fontSize: '0.8rem', padding: '0.6rem 1rem' }}
+                  onClick={handleCopyShareLink}
+                >
+                  🔗 Copiar Link Público
+                </button>
               </div>
 
               {/* Right Column: Bio & Details */}
