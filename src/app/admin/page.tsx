@@ -207,12 +207,23 @@ export default function AdminDashboard() {
 
   const handleRejectEvento = async (id: string) => {
     if (!window.confirm("Rejeitar/Excluir este evento?")) return;
-    const { error } = await supabase.from("eventos_oficiais").delete().eq("id", id);
-    if (!error) {
-      alert("Evento removido!");
-      fetchEventos();
-    } else {
-      alert("Erro ao remover evento: " + error.message);
+    
+    try {
+      const res = await fetch('/api/admin-delete-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      const json = await res.json();
+      
+      if (json.success) {
+        alert("Evento removido!");
+        fetchEventos();
+      } else {
+        alert("Erro ao remover evento: " + (json.error || 'Desconhecido'));
+      }
+    } catch (e: any) {
+      alert("Erro ao conectar com a API: " + e.message);
     }
   };
 
