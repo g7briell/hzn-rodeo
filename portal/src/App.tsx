@@ -1497,11 +1497,6 @@ function App() {
                       {/* Right Column: Bio & Data */}
                       <div className="profile-details">
                         <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                          <label>Nome Completo</label>
-                          <div className="read-only-field">{selectedPeaoProfile.nome}</div>
-                        </div>
-                        
-                        <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                           <label>Cidade / Estado</label>
                           <div className="read-only-field">{selectedPeaoProfile.cidade || selectedPeaoProfile.endereco || 'Não informado'}</div>
                         </div>
