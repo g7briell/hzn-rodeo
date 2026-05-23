@@ -295,6 +295,12 @@
                 <h2 id="control-event-name" class="text-6xl font-black italic tracking-tighter uppercase text-white">NOME DO EVENTO</h2>
                 <p id="control-event-info" class="text-accent font-black uppercase tracking-[0.4em] text-[10px] mt-4">CIDADE - 0 DIAS - 0 JUIZES</p>
             </div>
+            <div>
+                <button onclick="window.sendEventToPortal(currentEvent.id)" id="btn-sync-dashboard" class="bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 border border-blue-500/30 shadow-lg hover:scale-[1.02] transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    Sincronizar Portal
+                </button>
+            </div>
         </div>
         <div class="grid grid-cols-3 gap-6">
             <!-- Botão Cadastro -->

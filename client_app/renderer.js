@@ -4712,7 +4712,11 @@ window.sendEventToPortal = async (id) => {
     
     const email = getCurrentUserEmail();
     const btnText = document.querySelector(`button[onclick*="sendEventToPortal('${id}')"]`);
+    const btnSyncDash = document.getElementById('btn-sync-dashboard');
+    const originalTextDash = btnSyncDash ? btnSyncDash.innerHTML : '';
+    
     if (btnText) btnText.innerHTML = `<span class="animate-pulse">Enviando...</span>`;
+    if (btnSyncDash) btnSyncDash.innerHTML = `<span class="animate-pulse">Sincronizando...</span>`;
 
     try {
         const res = await window.electronAPI.sendEventToPortal({ email, eventId: id });
@@ -4725,6 +4729,7 @@ window.sendEventToPortal = async (id) => {
         alert('Erro ao conectar com a nuvem.');
         console.error(e);
     } finally {
+        if (btnSyncDash) btnSyncDash.innerHTML = originalTextDash;
         renderEvents();
     }
 };
