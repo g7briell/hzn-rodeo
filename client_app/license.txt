@@ -1,0 +1,24 @@
+Termos de Uso e Licenciamento - HZN RodeoApp
+
+1. ACEITAÇAO DOS TERMOS
+Ao instalar e utilizar o software HZN RodeoApp ("Aplicativo"), você concorda em ficar vinculado a estes termos de uso. Se você não concordar com estes termos, não instale ou utilize o Aplicativo.
+
+2. LICENÇA DE USO
+Concedemos a você uma licença revogável, não exclusiva e intransferível para usar o Aplicativo para seus fins internos de gerenciamento de eventos, estritamente de acordo com estes termos. O Aplicativo requer uma licença ativa e conectividade com a internet para validação periódica.
+
+3. RESTRIÇOES
+Você não deve:
+a) Modificar, realizar engenharia reversa, descompilar ou desmontar o Aplicativo;
+b) Alugar, arrendar, emprestar, vender ou sublicenciar o Aplicativo a terceiros;
+c) Remover, alterar ou ocultar qualquer aviso de direitos autorais ou marca registrada.
+
+4. ATUALIZAÇOES E SUPORTE
+O Aplicativo inclui um sistema de atualizações automáticas. Ao aceitar estes termos, você concorda que o Aplicativo pode baixar e instalar atualizações, correções de bugs e novos recursos periodicamente sem aviso prévio.
+
+5. ISENÇÃO DE RESPONSABILIDADE
+O Aplicativo é fornecido "no estado em que se encontra". Não garantimos que o uso do Aplicativo será ininterrupto ou livre de erros. Não nos responsabilizamos por perdas de dados decorrentes do mau uso do sistema ou falhas de hardware do usuário.
+
+6. PRIVACIDADE
+O Aplicativo coleta dados básicos de telemetria e gerenciamento de licenças para fins de validação de segurança. Seus dados de rodeio são armazenados localmente e criptografados, sincronizados apenas com o banco de dados oficial (Supabase) vinculado à sua assinatura.
+
+Ao clicar em "Eu aceito" ou "Instalar", você reconhece que leu e compreendeu este contrato e concorda com seus termos.

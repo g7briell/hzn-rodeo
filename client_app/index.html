@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RODEOAPP - Desktop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --event-accent: #EAB308;
+            --event-accent-rgb: 234, 179, 8;
+        }
+        body { 
+            background-color: #000000; 
+            color: #f8fafc; 
+            font-family: 'Inter', sans-serif; 
+            overflow: hidden;
+        }
+        .glass { 
+            background: rgba(10, 10, 10, 0.8); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(var(--event-accent-rgb), 0.1); 
+        }
+        
+        /* Custom Scrollbar Premium */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--event-accent, #EAB308); }
+        .scroll-custom { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+        
+        .text-accent { color: var(--event-accent); }
+        .bg-accent { background-color: var(--event-accent); }
+        .border-accent { border-color: var(--event-accent); }
+        
+        .fade-in-out {
+            animation: fadeInOut 2.5s ease-in-out forwards;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: scale(0.95); }
+            30% { opacity: 1; transform: scale(1); }
+            80% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.05); }
+        }
+
+        .reveal-item {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .animate-reveal {
+            animation: revealUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        @keyframes revealUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Scrollbar Custom */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #EAB308; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #fbbf24; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen relative">
+    
+    <!-- Background Decor -->
+    <div class="absolute top-0 -left-20 w-80 h-80 bg-yellow-500/5 blur-[100px] rounded-full"></div>
+    <div class="absolute bottom-0 -right-20 w-80 h-80 bg-yellow-600/5 blur-[100px] rounded-full"></div>
+
+
+    <div class="absolute top-0 -left-20 w-80 h-80 bg-yellow-500/5 blur-[100px] rounded-full"></div>
+    <div class="absolute bottom-0 -right-20 w-80 h-80 bg-yellow-600/5 blur-[100px] rounded-full"></div>
+
+    <!-- Overlay de Carregamento -->
+    <div id="loading-overlay" class="fixed inset-0 z-[300] bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center hidden">
+        <div class="relative">
+            <div class="w-20 h-20 border-4 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin"></div>
+        </div>
+        <div class="mt-8 text-center">
+            <h3 id="loading-text" class="text-xl font-black italic tracking-widest text-white animate-pulse uppercase">PROCESSANDO</h3>
+            <p id="loading-subtext" class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-2">Validando Licença RODEOAPP</p>
+        </div>
+    </div>
+
+    <!-- Tela de Introdução (Splash) -->
+    <div id="intro-screen" class="fixed inset-0 z-[200] bg-[#000000] flex items-center justify-center hidden text-center">
+        <div class="relative flex flex-col items-center">
+            <img src="assets/splash_logo.png" class="w-72 h-auto object-contain mb-6 fade-in-out">
+        </div>
+    </div>
+
+    <!-- Botão de Suporte -->
+    <a id="support-btn" href="https://wa.me/5518981226665" target="_blank" class="fixed bottom-8 right-8 z-[100] flex items-center gap-3 bg-yellow-600 hover:bg-yellow-500 px-6 py-4 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 group animate-float hidden">
+        <div class="font-black text-xs uppercase tracking-widest text-black">Suporte</div>
+        <svg class="w-6 h-6 text-black fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.659 1.432 5.631 1.433h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+    </a>
+
+    <!-- Modal de Cadastro de Evento -->
+    <div id="modal-evento" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
+            <button onclick="closeModalEvento()" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic mb-8 uppercase text-yellow-500">CRIAR NOVO EVENTO</h2>
+            <form id="form-evento" class="space-y-6">
+                <!-- Upload de Logo -->
+                <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-3xl p-6 hover:border-yellow-500/50 transition-all group relative overflow-hidden">
+                    <input type="file" id="event-logo-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10">
+                    <div id="logo-preview-container" class="text-center">
+                        <div class="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                            <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo do Evento</p>
+                    </div>
+                    <img id="logo-preview-img" class="absolute inset-0 w-full h-full object-cover hidden">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Tipo</label>
+                        <select id="event-type" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none">
+                            <option value="RODEIO">RODEIO</option>
+                            <option value="PROVA">PROVA</option>
+                            <option value="OUTRO">OUTRO</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Nome</label>
+                        <input type="text" id="event-name" placeholder="Ex: Barretos" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                    </div>
+                </div>
+                <input type="text" id="event-city" placeholder="Cidade / UF" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="event-days" placeholder="Dias" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                    <input type="number" id="event-judges" placeholder="Juízes" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                </div>
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-black uppercase shadow-xl transition-all active:scale-95">CRIAR EVENTO</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="max-w-md w-full glass p-10 rounded-[2.5rem] shadow-2xl relative z-10 hidden">
+        <div class="text-center mb-10">
+            <div class="w-48 h-auto mx-auto mb-6">
+                <img src="assets/splash_logo.png" class="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+            </div>
+            <h1 class="text-4xl font-black tracking-tight italic text-white uppercase tracking-tighter">RODEO<span class="text-yellow-500">APP</span></h1>
+            <p class="text-slate-500 mt-2 font-bold text-xs uppercase tracking-[0.2em]">Gestão Profissional</p>
+        </div>
+
+        <div class="space-y-6">
+            <input type="email" id="email" placeholder="E-mail de Acesso" class="w-full bg-black border border-white/5 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all text-white">
+            <input type="text" id="key" placeholder="Chave de Licença" class="w-full bg-black border border-white/5 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-mono font-bold tracking-wider uppercase text-white">
+            <button id="btn-activate" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-lg transition-all active:scale-95 text-black uppercase">ATIVAR SISTEMA</button>
+            <p id="error-msg" class="text-red-400 text-sm text-center font-medium bg-red-400/10 py-3 rounded-xl border border-red-400/20 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Tela de Seleção de Esporte -->
+    <div id="sport-select-screen" class="max-w-4xl w-full glass p-12 rounded-[3.5rem] shadow-2xl relative z-10 hidden text-center animate-in fade-in zoom-in-95 duration-500">
+        <div class="mb-10">
+            <div class="w-48 h-auto mx-auto mb-6">
+                <img src="assets/splash_logo.png" class="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+            </div>
+            <h2 class="text-4xl font-black italic tracking-tighter text-white uppercase">Selecione o <span class="text-yellow-500">Esporte</span></h2>
+            <p class="text-slate-500 mt-2 font-bold text-xs uppercase tracking-[0.2em]">Escolha a modalidade para gerenciar</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-8">
+            <!-- Botão Rodeio -->
+            <button id="btn-sport-rodeio" onclick="selectSport('rodeio')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div>
+                    <h3 class="font-black text-2xl text-white tracking-tighter uppercase leading-none">Rodeio</h3>
+                    <p class="text-xs text-slate-500 mt-2 font-medium uppercase tracking-tight">Montarias em Touro/Cutiano</p>
+                </div>
+                <div id="badge-rodeio" class="absolute top-6 right-6 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Liberado</div>
+            </button>
+
+            <!-- Botão 3 Tambores -->
+            <button id="btn-sport-3tambores" onclick="selectSport('3tambores')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <h3 class="font-black text-2xl text-white tracking-tighter uppercase leading-none">3 Tambores</h3>
+                    <p class="text-xs text-slate-500 mt-2 font-medium uppercase tracking-tight">Velocidade e Precisão</p>
+                </div>
+                <div id="badge-3tambores" class="absolute top-6 right-6 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Liberado</div>
+            </button>
+
+            <!-- Botão Em Criação -->
+            <button id="btn-sport-criacao" disabled class="glass p-8 rounded-[2.5rem] border-white/5 opacity-40 text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] cursor-not-allowed">
+                <div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700">
+                    <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                </div>
+                <div>
+                    <h3 class="font-black text-2xl text-slate-500 tracking-tighter uppercase leading-none">Em Criação</h3>
+                    <p class="text-xs text-slate-600 mt-2 font-medium uppercase tracking-tight">Novas modalidades</p>
+                </div>
+                <div class="absolute top-6 right-6 text-[10px] font-black text-slate-500 bg-slate-800 border border-slate-700 px-3 py-1 rounded-full uppercase tracking-widest">Breve</div>
+            </button>
+        </div>
+
+        <div class="mt-12 flex justify-center gap-4">
+            <button onclick="confirmLogout()" class="bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/20 px-6 py-3 rounded-2xl text-xs font-black text-red-500 uppercase tracking-widest transition-all active:scale-95">Sair da Licença</button>
+        </div>
+    </div>
+
+    <!-- Tela Principal (Home) -->
+    <div id="home-screen" class="max-w-5xl w-full glass p-12 rounded-[3rem] shadow-2xl relative z-10 hidden">
+        <div class="flex items-center justify-between mb-16 reveal-item">
+            <div class="flex flex-col items-start gap-2">
+                <img src="assets/header_logo.png" class="h-14 w-auto object-contain">
+                <div class="flex items-center gap-2 ml-1">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-[0.3em]">SISTEMA ATIVO</p>
+                    <span id="sport-active-badge" class="text-[9px] font-black bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded uppercase tracking-wider ml-2">RODEO</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="days-badge" class="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-wider">
+                    -- dias restantes
+                </div>
+                <button onclick="backToSports()" class="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 p-3 rounded-2xl hover:bg-yellow-500 hover:text-black transition-all group shadow-lg" title="Mudar de Esporte">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <button onclick="openSettingsModal()" class="bg-slate-800 text-slate-400 border border-slate-700 p-3 rounded-2xl hover:bg-slate-700 hover:text-white transition-all group shadow-lg" title="Configurações">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </button>
+                <button onclick="confirmLogout()" class="bg-red-500/10 text-red-500 border border-red-500/20 p-3 rounded-2xl hover:bg-red-500 hover:text-white transition-all group shadow-lg" title="Sair do Sistema">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-8">
+            <button onclick="openTab('eventos')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.2s">
+                <div class="w-16 h-16 bg-yellow-500/10 rounded-2xl mb-8 flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <h3 class="font-black text-2xl text-white tracking-tighter uppercase">EVENTOS</h3>
+                <p class="text-sm text-slate-500 mt-2 font-medium uppercase tracking-tight">Gerenciar rodeios</p>
+            </button>
+
+            <button onclick="openTab('contratos')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.3s">
+                <div class="w-16 h-16 bg-yellow-500/10 rounded-2xl mb-8 flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <h3 class="font-black text-2xl text-white tracking-tighter uppercase">CONTRATOS</h3>
+                <p class="text-sm text-slate-500 mt-2 font-medium uppercase tracking-tight">Gerar contratos</p>
+            </button>
+
+            <button onclick="openTab('exportar')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.4s">
+                <div class="w-16 h-16 bg-yellow-500/10 rounded-2xl mb-8 flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <h3 class="font-black text-2xl text-white tracking-tighter uppercase">EXPORTAR</h3>
+                <p class="text-sm text-slate-500 mt-2 font-medium uppercase tracking-tight">Relatórios oficiais</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- Área de Conteúdo (Dinâmica) -->
+    <div id="content-view" class="fixed inset-0 z-50 bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-12">
+            <h2 id="view-title" class="text-5xl font-black italic tracking-tighter uppercase text-yellow-500">TITULO</h2>
+            <button onclick="closeTab()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl hover:text-red-500 transition-all text-slate-500">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+        <div id="view-body" class="flex-1"></div>
+    </div>
+
+    <!-- Tela de Controle do Evento (Interna) -->
+    <div id="event-control-view" class="fixed inset-0 z-[60] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-12 text-left">
+            <div>
+                <button onclick="closeEventControl()" class="text-slate-500 hover:text-white flex items-center gap-2 mb-4 font-bold text-xs uppercase tracking-widest">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    Voltar aos Eventos
+                </button>
+                <h2 id="control-event-name" class="text-6xl font-black italic tracking-tighter uppercase text-white">NOME DO EVENTO</h2>
+                <p id="control-event-info" class="text-accent font-black uppercase tracking-[0.4em] text-[10px] mt-4">CIDADE - 0 DIAS - 0 JUIZES</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-6">
+            <!-- Botão Cadastro -->
+            <button onclick="document.getElementById('modal-menu-cadastro').classList.remove('hidden')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-accent/50 hover:bg-accent/10 transition-all group text-left">
+                <div class="w-14 h-14 bg-accent/10 rounded-2xl mb-6 flex items-center justify-center border border-accent/20"><svg class="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg></div>
+                <h3 class="font-black text-xl text-white uppercase tracking-tighter">CADASTRO</h3>
+            </button>
+            
+            <!-- Botão Listas -->
+            <button onclick="document.getElementById('modal-menu-lista').classList.remove('hidden')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-accent/50 hover:bg-accent/10 transition-all group text-left">
+                <div class="w-14 h-14 bg-accent/10 rounded-2xl mb-6 flex items-center justify-center border border-accent/20"><svg class="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></div>
+                <h3 class="font-black text-xl text-white uppercase tracking-tighter">LISTAS</h3>
+            </button>
+            
+            <!-- Botão Sorteios -->
+            <button onclick="document.getElementById('modal-menu-sorteios').classList.remove('hidden')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-accent/50 hover:bg-accent/10 transition-all group text-left">
+                <div class="w-14 h-14 bg-accent/10 rounded-2xl mb-6 flex items-center justify-center border border-accent/20"><svg class="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                <h3 class="font-black text-xl text-white uppercase tracking-tighter">SORTEIOS</h3>
+            </button>
+            
+            <!-- Botão Exportar -->
+            <button onclick="openExportFlow()" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left">
+                <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl mb-6 flex items-center justify-center border border-yellow-500/20 group-hover:scale-110 transition-transform"><svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <h3 class="font-black text-xl text-white uppercase tracking-tighter">EXPORTAR</h3>
+            </button>
+
+            <!-- Botão Registrar Notas -->
+            <button onclick="openNotasDays()" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-blue-500/50 hover:bg-blue-500/10 transition-all group text-left">
+                <div class="w-14 h-14 bg-blue-500/10 rounded-2xl mb-6 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform"><svg class="w-7 h-7 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></div>
+                <h3 class="font-black text-xl text-white uppercase tracking-tighter">REGISTRAR NOTAS</h3>
+            </button>
+            
+                        <!-- Botão Rankings -->
+            <button onclick="document.getElementById('modal-menu-rankings').classList.remove('hidden')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-pink-500/50 hover:bg-pink-500/10 transition-all group text-left">
+                <div class="w-14 h-14 bg-pink-500/10 rounded-2xl mb-6 flex items-center justify-center border border-pink-500/20 group-hover:scale-110 transition-transform"><svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
+                <h3 class="font-black text-xl text-white uppercase tracking-tighter">RANKINGS</h3>
+            </button>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- NOVOS MODAIS DE MENU (Organização da Tela do Evento) -->
+    <div id="modal-menu-cadastro" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-menu-cadastro').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-accent mb-8">O QUE DESEJA CADASTRAR?</h2>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="document.getElementById('modal-menu-cadastro').classList.add('hidden'); openModalPeao()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    COMPETIDORES
+                </button>
+                <button onclick="document.getElementById('modal-menu-cadastro').classList.add('hidden'); openModalBoiada()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    COMPANHIAS (CIAS)
+                </button>
+                <button onclick="document.getElementById('modal-menu-cadastro').classList.add('hidden'); openModalJuiz()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    JUÍZES
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-menu-lista" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-menu-lista').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-accent mb-8">QUAL LISTA ABRIR?</h2>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="document.getElementById('modal-menu-lista').classList.add('hidden'); openListPeoes()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    COMPETIDORES
+                </button>
+                <button onclick="document.getElementById('modal-menu-lista').classList.add('hidden'); openListBoiadas()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    COMPANHIAS (CIAS)
+                </button>
+                <button onclick="document.getElementById('modal-menu-lista').classList.add('hidden'); openListJuizes()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    JUÍZES
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-menu-sorteios" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-xl w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-menu-sorteios').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-accent mb-8">SESSÃO DE SORTEIOS</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="document.getElementById('modal-menu-sorteios').classList.add('hidden'); openSorteioManual()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    SORTEIO MANUAL
+                </button>
+                <button onclick="alert('O Sorteio Automático será liberado em breve!');" class="bg-slate-950/50 border border-slate-800/50 p-6 rounded-2xl font-black text-slate-500 hover:border-accent text-left transition-all cursor-not-allowed">
+                    SORTEIO AUTOMÁTICO
+                </button>
+                <button onclick="document.getElementById('modal-menu-sorteios').classList.add('hidden'); openOrdemDaySelection('manual')" class="mt-4 bg-emerald-600 border border-emerald-500 p-6 rounded-2xl font-black text-white hover:border-emerald-400 hover:bg-emerald-500 transition-all text-left">
+                    EMBRETAMENTO MANUAL
+                </button>
+                <button onclick="document.getElementById('modal-menu-sorteios').classList.add('hidden'); openOrdemDaySelection('smart')" class="mt-4 bg-blue-600 border border-blue-500 p-6 rounded-2xl font-black text-white hover:border-blue-400 hover:bg-blue-500 transition-all text-left">
+                    EMBRETAMENTO INTELIGENTE
+                </button>
+                <button onclick="document.getElementById('modal-menu-sorteios').classList.add('hidden'); openSorteiosList()" class="col-span-2 mt-4 bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
+                    HISTÓRICO DE SORTEIOS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-menu-rankings" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-menu-rankings').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-pink-500 mb-8">QUAL RANKING ABRIR?</h2>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="document.getElementById('modal-menu-rankings').classList.add('hidden'); openRankingView()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-purple-500 hover:bg-purple-500/10 text-left transition-all">
+                    COMPETIDORES
+                </button>
+                <button onclick="document.getElementById('modal-menu-rankings').classList.add('hidden'); openRankingAnimaisView()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-emerald-500 hover:bg-emerald-500/10 text-left transition-all">
+                    ANIMAIS (TOUROS / CAVALOS)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais de Ordem de Embretamento -->
+    <div id="modal-ordem-days" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-xl w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-ordem-days').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-accent mb-8">SELECIONE O DIA DA ORDEM</h2>
+            <div id="ordem-days-container" class="grid grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+
+    <div id="modal-ordem-dragdrop" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl relative">
+            <button onclick="document.getElementById('modal-ordem-dragdrop').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-emerald-500 mb-2">ORDEM DE EMBRETAMENTO</h2>
+            <p class="text-slate-400 font-bold text-xs mb-8 uppercase tracking-widest">Arraste os cards para cima ou para baixo para reordenar a saída.</p>
+            
+            <div id="ordem-list-container" class="flex-1 overflow-y-auto pr-4 space-y-3 custom-scroll">
+                <!-- Cards will be injected here -->
+            </div>
+            
+            <div class="mt-8 flex justify-between items-center">
+                <button onclick="document.getElementById('modal-ordem-dragdrop').classList.add('hidden'); document.getElementById('modal-ordem-days').classList.remove('hidden');" class="text-slate-500 font-bold uppercase text-sm">Voltar</button>
+                <button onclick="saveAndExportOrdem()" class="bg-emerald-600 hover:bg-emerald-500 px-12 py-5 rounded-2xl font-black text-white shadow-xl uppercase transition-all">Salvar e Exportar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-ordem-smart" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-[95vw] w-full h-[95vh] flex flex-col shadow-2xl relative">
+            <button onclick="document.getElementById('modal-ordem-smart').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div class="flex justify-between items-end mb-8">
+                <div>
+                    <h2 class="text-3xl font-black italic uppercase text-blue-500 mb-2">EMBRETAMENTO INTELIGENTE</h2>
+                    <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">Clique na Companhia para enviar suas montarias. Depois, arraste os cards para ajustar a ordem.</p>
+                </div>
+                <button onclick="resetSmartOrdem()" class="bg-slate-800 text-white px-6 py-2 rounded-xl font-black text-xs uppercase hover:bg-red-500 transition-all">Resetar Embretamento</button>
+            </div>
+            
+            <div class="flex-1 flex gap-8 overflow-hidden">
+                <!-- Left Pane: CIAs -->
+                <div class="flex-1 flex flex-col bg-slate-950/50 border border-slate-800 rounded-3xl p-6">
+                    <h3 class="text-white font-black italic uppercase mb-4">COMPANHIAS (Aguardando)</h3>
+                    <div id="smart-cias-list" class="flex-1 overflow-y-auto pr-2 space-y-4 custom-scroll">
+                        <!-- CIAs injected here -->
+                    </div>
+                </div>
+                
+                <!-- Right Pane: EMBRETAMENTO -->
+                <div class="flex-1 flex flex-col bg-slate-950/50 border border-slate-800 rounded-3xl p-6">
+                    <h3 class="text-blue-500 font-black italic uppercase mb-4">ORDEM DE EMBRETAMENTO (Final)</h3>
+                    <div id="smart-embretamento-list" class="flex-1 overflow-y-auto pr-2 space-y-3 custom-scroll pb-20">
+                        <!-- Ordered cards injected here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex justify-between items-center">
+                <button onclick="document.getElementById('modal-ordem-smart').classList.add('hidden'); document.getElementById('modal-ordem-days').classList.remove('hidden');" class="text-slate-500 font-bold uppercase text-sm">Voltar</button>
+                <button onclick="saveAndExportSmartOrdem()" class="bg-blue-600 hover:bg-blue-500 px-12 py-5 rounded-2xl font-black text-white shadow-xl uppercase transition-all">Salvar e Exportar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais (Peão, Boiada, Juizes, Scoring) permanecem com IDs originais... -->
+    <div id="modal-peao" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-md w-full shadow-2xl relative">
+            <button onclick="closeModalPeao()" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-black italic uppercase text-yellow-500">CADASTRAR PEÃO</h2>
+                <button onclick="openModalBulkPeoes()" class="bg-accent/10 text-accent px-4 py-2 rounded-xl font-black text-[10px] uppercase border border-accent/20 hover:bg-accent hover:text-black transition-all">Carregar Lista</button>
+            </div>
+            <form id="form-peao" class="space-y-6">
+                <div class="relative">
+                    <input type="text" id="peao-name" placeholder="Nome do Peão" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required autocomplete="off">
+                    <div id="peao-autocomplete-list" class="absolute z-[1000] w-full bg-slate-900 border border-slate-700 rounded-xl mt-2 overflow-hidden shadow-2xl hidden max-h-48 overflow-y-auto"></div>
+                </div>
+                <input type="text" id="peao-city" placeholder="Cidade / UF" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <input type="text" id="peao-cpf" placeholder="CPF" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500">
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-black">SALVAR PEÃO</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal List Juizes -->
+    <div id="modal-list-juizes" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-2xl w-full h-[80vh] flex flex-col shadow-2xl relative">
+            <button onclick="document.getElementById('modal-list-juizes').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="list-juizes-title" class="text-3xl font-black italic uppercase text-yellow-500">JUÍZES CADASTRADOS</h2>
+                <button onclick="document.getElementById('modal-list-juizes').classList.add('hidden'); openModalJuiz()" class="bg-yellow-500 text-black px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-yellow-400 transition-all">+ Novo Juiz</button>
+            </div>
+            <div class="flex-1 overflow-y-auto pr-2 custom-scroll">
+                <table class="w-full text-left">
+                    <tbody id="list-juizes-tbody" class="divide-y divide-slate-800/50"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Juiz Cadastro -->
+    <div id="modal-juiz" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-md w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-juiz').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-yellow-500 mb-8">CADASTRAR JUIZ</h2>
+            <form id="form-juiz" onsubmit="saveJuiz(event)" class="space-y-6">
+                <input type="text" id="juiz-nome" placeholder="Nome do Juiz" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-black">SALVAR JUIZ</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modais de Fluxo de Exportação -->
+    <div id="modal-export-days" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-export-days').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-yellow-500 mb-8">SELECIONE O DIA</h2>
+            <div id="export-days-grid" class="grid grid-cols-2 gap-4">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-export-options" class="fixed inset-0 z-[170] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-xl w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-export-options').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-yellow-500 mb-2">EXPORTAR RELATÓRIO</h2>
+            <p id="export-selected-day" class="text-slate-400 font-medium mb-8 uppercase tracking-widest text-sm">DIA SELECIONADO</p>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="selectExportType('sorteio')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                    <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+                    SORTEIO OFICIAL
+                </button>
+                <button onclick="selectExportType('touros')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                    <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></div>
+                    LISTA DE TOUROS
+                </button>
+                <button onclick="selectExportType('ordem')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                    <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
+                    ORDEM DE EMBRETAMENTO
+                </button>
+                <button onclick="selectExportType('juizes')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                    <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                    PLANILHA DE NOTAS
+                </button>
+                <button onclick="selectExportType('ranking')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-purple-500 hover:bg-purple-500/10 text-left group transition-all">
+                    <div class="text-purple-500 mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
+                    RANKING GERAL
+                </button>
+                <button onclick="selectExportType('melhor_cia')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-emerald-500 hover:bg-emerald-500/10 text-left group transition-all">
+                    <div class="text-emerald-500 mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div>
+                    MELHOR CIA
+                </button>
+                <button onclick="exportMelhorAnimalPrompt()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-orange-500 hover:bg-orange-500/10 text-left group transition-all">
+                    <div class="text-orange-500 mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg></div>
+                    MELHOR ANIMAL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Seleção de Juiz para Exportação -->
+    <div id="modal-export-juiz" class="fixed inset-0 z-[180] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-sm w-full shadow-2xl relative text-center">
+            <button onclick="document.getElementById('modal-export-juiz').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-2xl font-black italic uppercase text-yellow-500 mb-8">SELECIONE O JUIZ</h2>
+            <div id="export-juiz-list" class="flex flex-col gap-4">
+                <!-- Juizes dynamically added here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-export-format" class="fixed inset-0 z-[180] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-sm w-full shadow-2xl relative text-center">
+            <button onclick="document.getElementById('modal-export-format').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-2xl font-black italic uppercase text-white mb-8">ESCOLHA O FORMATO</h2>
+            <div class="flex flex-col gap-4">
+                <button onclick="executeExport('excel')" class="bg-[#107c41] hover:bg-[#0c5e31] py-5 rounded-2xl font-black text-white text-lg flex items-center justify-center gap-3 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    EXCEL (.xlsx)
+                </button>
+                <button onclick="executeExport('pdf')" class="bg-[#f40f02] hover:bg-[#c20c02] py-5 rounded-2xl font-black text-white text-lg flex items-center justify-center gap-3 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    PDF (.pdf)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cloud Boiadas Modal -->
+    <div id="modal-cloud-boiadas" class="fixed inset-0 z-[170] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-4xl w-full h-[80vh] flex flex-col shadow-2xl relative">
+            <button onclick="document.getElementById('modal-cloud-boiadas').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-indigo-500 mb-2">Boiadas Oficiais</h2>
+            <p class="text-slate-400 font-bold text-xs mb-8 uppercase tracking-widest">Clique em uma CIA para baixar todos os seus touros automaticamente.</p>
+            
+            <div id="cloud-boiadas-list" class="flex-1 overflow-y-auto pr-4 space-y-3 custom-scroll">
+                <div class="text-white/30 text-center py-10 font-black uppercase tracking-widest text-xs">Carregando...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-boiada" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-4xl w-full shadow-2xl relative">
+            <button onclick="closeModalBoiada()" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <h2 class="text-3xl font-black italic uppercase text-yellow-500 text-left">Cadastrar Boiada (CIA)</h2>
+        <button type="button" onclick="openCloudBoiadas()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 flex items-center gap-2 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Baixar do Banco Oficial
+        </button>
+    </div>
+            <form id="form-boiada" class="space-y-6">
+                <div class="relative">
+                    <input type="text" id="boiada-cia" placeholder="Nome da Companhia" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required autocomplete="off">
+                    <div id="boiada-autocomplete-list" class="absolute z-[1000] w-full bg-slate-900 border border-slate-700 rounded-xl mt-2 overflow-hidden shadow-2xl hidden max-h-48 overflow-y-auto"></div>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">TOUROS (Um por linha)</label>
+                    <textarea id="touros-bulk" placeholder="Cole aqui a lista de touros da CIA..." class="w-full h-64 bg-black border border-white/5 rounded-2xl p-5 text-white font-bold focus:border-yellow-500 outline-none resize-none"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-black uppercase tracking-widest shadow-xl">SALVAR CIA E TOUROS</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sorteio Manual View (Wizard) -->
+    <div id="sorteio-manual-view" class="fixed inset-0 z-[80] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-6">
+                <button onclick="closeSorteioManual()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <h2 class="text-5xl font-black italic tracking-tighter uppercase text-white">SORTEIO MANUAL</h2>
+            </div>
+            <div id="sorteio-counters" class="hidden flex items-center gap-6 bg-slate-900/50 border border-slate-800 p-4 px-8 rounded-[2rem]">
+                <div class="text-center"><div class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Peões</div><div id="count-riders" class="text-2xl font-black text-white">0</div></div>
+                <div class="w-px h-8 bg-slate-800"></div>
+                <div class="text-center"><div class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Touros</div><div id="count-bulls" class="text-2xl font-black text-white">0</div></div>
+                <div id="reride-alert" class="hidden bg-yellow-500/10 border border-yellow-500/20 px-4 py-2 rounded-xl"><span class="text-yellow-500 font-black text-xs uppercase tracking-tighter" id="reride-text">0 RE-RIDES</span></div>
+            </div>
+        </div>
+        <div id="step-1" class="sorteio-step flex-1 flex flex-col items-center justify-center">
+            <h3 class="text-2xl font-black text-slate-500 mb-10 uppercase tracking-[0.3em]">Selecione o Dia</h3>
+            <div id="days-container" class="grid grid-cols-4 gap-6 w-full max-w-4xl"></div>
+        </div>
+        <div id="step-2" class="sorteio-step flex-1 hidden">
+            <div class="flex justify-between items-center mb-8"><h3 class="text-2xl font-black italic uppercase text-white">Selecionar Competidores</h3><button onclick="selectAllRiders()" class="bg-yellow-500 text-black px-6 py-2 rounded-xl font-black text-[10px] uppercase">Selecionar Todos</button></div>
+            <div id="riders-selection-list" class="grid grid-cols-3 gap-4"></div>
+            <div class="mt-12 flex justify-between"><button onclick="goToStep(1)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="goToStep(3)" class="bg-yellow-500 px-12 py-5 rounded-2xl font-black text-black shadow-xl uppercase">Próximo</button></div>
+        </div>
+        <div id="step-3" class="sorteio-step flex-1 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black italic uppercase text-white">Selecionar Touros</h3>
+                <input type="text" id="search-bulls-step3" placeholder="Buscar touro ou cia..." class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-yellow-500 transition-all w-64" onkeyup="filterBullsStep3()">
+            </div>
+            <div id="bulls-selection-list" class="space-y-8 max-h-[50vh] overflow-y-auto pr-2 custom-scroll"></div>
+            <div class="mt-12 flex justify-between"><button onclick="goToStep(2)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="validateAndGoToReRide()" class="bg-yellow-500 px-12 py-5 rounded-2xl font-black text-black shadow-xl uppercase">Próximo (Re-Rides)</button></div>
+        </div>
+        <div id="step-reride" class="sorteio-step flex-1 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black italic uppercase text-red-500">Selecionar Touros Re-Ride</h3>
+                <input type="text" id="search-bulls-reride" placeholder="Buscar touro ou cia..." class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-red-500 transition-all w-64" onkeyup="filterBullsReRide()">
+            </div>
+            <p class="text-slate-400 font-bold text-[10px] uppercase mb-4 tracking-widest">Os touros selecionados entrarão como reservas (R1, R2...)</p>
+            <div id="bulls-reride-list" class="space-y-8 max-h-[50vh] overflow-y-auto pr-2 custom-scroll"></div>
+            <div class="mt-12 flex justify-between"><button onclick="goToStep(3)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="generateDrawListWithReRides()" class="bg-red-500 hover:bg-red-600 px-12 py-5 rounded-2xl font-black text-white shadow-xl uppercase transition-all">Gerar Lista de Sorteio</button></div>
+        </div>
+        <div id="step-4" class="sorteio-step flex-1 hidden">
+            <h3 class="text-3xl font-black italic uppercase text-white mb-10">Lista para Sorteio</h3>
+            <div id="final-draw-list" class="grid grid-cols-2 gap-4"></div>
+            <div class="mt-12 flex justify-between"><button onclick="goToStep(3)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button>
+                <div class="flex gap-4">
+                    <button onclick="exportToExcel()" class="bg-emerald-600 px-8 py-4 rounded-2xl font-black text-white text-xs uppercase tracking-widest">Exportar Excel</button>
+                    <button onclick="confirmContinueToStep5()" class="bg-yellow-500 px-12 py-4 rounded-2xl font-black text-black text-xs uppercase tracking-widest">Continuar</button>
+                </div>
+            </div>
+        </div>
+        <div id="step-5" class="sorteio-step flex-1 hidden">
+             <h3 class="text-3xl font-black italic uppercase text-white mb-10 text-left">Vincular Sorteio</h3>
+             <div id="assignment-list" class="space-y-4 max-w-4xl mx-auto"></div>
+             <div class="mt-12 flex justify-end"><button id="btn-finish-assignment" onclick="goToStep(6)" class="bg-yellow-500 px-12 py-5 rounded-2xl font-black text-black shadow-xl uppercase" disabled>Ver Confrontos</button></div>
+        </div>
+        <div id="step-6" class="sorteio-step flex-1 hidden">
+            <div class="flex justify-between items-center mb-10"><h3 class="text-3xl font-black italic uppercase text-yellow-500">Confrontos Definidos</h3>
+                <div class="flex gap-4">
+                    <button onclick="exportConfrontos()" class="bg-emerald-600 px-8 py-4 rounded-2xl font-black text-white text-xs uppercase">Exportar Sorteio</button>
+                    <button onclick="closeSorteioManual()" class="bg-yellow-500 px-12 py-4 rounded-2xl font-black text-black text-xs uppercase">Finalizar</button>
+                </div>
+            </div>
+            <div id="confrontos-list" class="grid grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- Modais de Ranking e Scoring -->
+    <div id="ranking-view" class="fixed inset-0 z-[70] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-12">
+            <h2 class="text-5xl font-black italic tracking-tighter uppercase text-yellow-500">RANKING ATUALIZADO</h2>
+            <div class="flex items-center gap-4">
+                <div id="ranking-filters" class="flex bg-slate-900 p-2 rounded-2xl border border-slate-800"></div>
+                <button onclick="closeRankingView()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+        </div>
+        <div class="overflow-x-auto scroll-custom">
+            <div id="ranking-table-container" class="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden min-w-[800px]"></div>
+        </div>
+    </div>
+
+    <!-- RANKING DE ANIMAIS VIEW -->
+    <div id="ranking-animais-view" class="fixed inset-0 z-[70] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-5xl font-black italic tracking-tighter uppercase text-emerald-500">RANKING ANIMAIS</h2>
+            <div class="flex items-center gap-4">
+                <button onclick="closeRankingAnimaisView()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+        </div>
+        
+        <div class="flex items-center justify-between mb-12">
+            <div class="flex bg-slate-900 p-2 rounded-2xl border border-slate-800">
+                <button onclick="setRankingAnimaisType('touro')" id="btn-ranking-type-touro" class="px-8 py-3 rounded-xl font-black uppercase transition-all bg-emerald-500 text-black">Touros</button>
+                <button onclick="setRankingAnimaisType('boiada')" id="btn-ranking-type-boiada" class="px-8 py-3 rounded-xl font-black uppercase transition-all text-slate-500 hover:text-white">Boiadas</button>
+            </div>
+            
+            <div id="ranking-animais-filters" class="flex bg-slate-900 p-2 rounded-2xl border border-slate-800"></div>
+        </div>
+
+        <div class="overflow-x-auto scroll-custom">
+            <div id="ranking-animais-table-container" class="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden min-w-[800px]"></div>
+        </div>
+    </div>
+
+    <!-- NOVO SISTEMA DE NOTAS -->
+    <div id="modal-notas-days" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-notas-days').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-blue-500 mb-8">LANÇAR NOTAS: SELECIONE O DIA</h2>
+            <div id="notas-days-grid" class="grid grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- TELA CHEIA DE LANÇAMENTO (LISTA DE MONTARIAS) -->
+    <div id="view-notas-list" class="fixed inset-0 z-[150] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-12">
+            <div>
+                <h2 class="text-5xl font-black italic tracking-tighter uppercase text-white" id="notas-list-title">LANÇAMENTO DE NOTAS</h2>
+                <p class="text-blue-500 font-bold uppercase mt-2 tracking-widest text-sm" id="notas-list-subtitle">EVENTO - DIA</p>
+            </div>
+            <div class="flex gap-4">
+                <button id="btn-lancar-ranking" onclick="lancarNotasRanking()" class="p-4 px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black italic uppercase rounded-2xl transition-all hidden">LANÇAR RANKING</button>
+                <button onclick="finishScoringFlow()" class="p-4 px-8 bg-blue-600 hover:bg-blue-500 text-white font-black italic uppercase rounded-2xl transition-all">CONFERIR PARCIAIS</button>
+                <button onclick="closeNotasView()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+        </div>
+        <div id="notas-cards-container" class="grid grid-cols-3 gap-6 pb-20">
+            <!-- Cards gerados dinamicamente -->
+        </div>
+    </div>
+
+    <!-- POPUP DE LANÇAMENTO DA NOTA PARA UMA MONTARIA -->
+    <div id="modal-scoring-new" class="fixed inset-0 z-[170] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden text-center overflow-y-auto">
+        <div class="bg-[#050505] border border-blue-500/20 p-10 rounded-[3.5rem] max-w-4xl w-full shadow-2xl relative my-auto">
+            <div class="absolute top-8 right-8 flex gap-4">
+                <button id="btn-unlock-score" onclick="unlockScoringModal()" class="text-blue-500/50 hover:text-blue-500 hidden" title="Editar Nota"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></button>
+                <button onclick="document.getElementById('modal-scoring-new').classList.add('hidden')" class="text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            
+            <div class="flex justify-between items-center mb-8">
+                <div class="text-left">
+                    <div class="text-[10px] font-black text-blue-500 uppercase mb-1">Competidor</div>
+                    <h3 id="score-peao-name" class="text-3xl font-black italic text-white uppercase tracking-tighter">PEÃO</h3>
+                </div>
+                <div class="text-slate-700 font-black italic text-2xl px-6">VS</div>
+                <div class="text-right">
+                    <div class="text-[10px] font-black text-blue-500 uppercase mb-1">Touro</div>
+                    <h3 id="score-touro-name" class="text-3xl font-black italic text-yellow-500 uppercase tracking-tighter">TOURO</h3>
+                </div>
+            </div>
+
+            <!-- Tempo -->
+            <div class="bg-slate-900 p-6 rounded-3xl mb-8 border border-white/5 flex items-center gap-6">
+                <label class="text-sm font-black text-slate-400 uppercase tracking-widest">TEMPO DE QUEDA</label>
+                <input type="number" id="score-tempo" step="0.01" oninput="updateScoringFields()" onchange="validateTempo(this)" class="flex-1 bg-black border-2 border-blue-500/30 rounded-2xl px-6 py-4 text-3xl font-black text-blue-400 text-center focus:border-blue-500 outline-none transition-all" placeholder="0.00">
+                <span class="text-slate-500 font-bold">Segundos</span>
+            </div>
+
+            <!-- Painel de Notas -->
+            <div id="score-panel-judges" class="grid grid-cols-2 gap-8 mb-8 hidden">
+                <!-- Juiz 1 -->
+                <div class="bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+                    <h4 class="text-center font-black text-blue-500 uppercase tracking-widest mb-6">JUIZ 1</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-500 uppercase">Touro (0-25)</label>
+                            <input type="number" id="score-j1-touro" step="0.25" oninput="calculateRealTimeScore()" onchange="validateNota(this)" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-2xl font-black text-yellow-500 text-center outline-none">
+                        </div>
+                        <div class="space-y-2 peao-score-col">
+                            <label class="text-[10px] font-black text-slate-500 uppercase">Peão (0-25)</label>
+                            <input type="number" id="score-j1-peao" step="0.25" oninput="calculateRealTimeScore()" onchange="validateNota(this)" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-2xl font-black text-white text-center outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Juiz 2 -->
+                <div class="bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+                    <h4 class="text-center font-black text-blue-500 uppercase tracking-widest mb-6">JUIZ 2</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-500 uppercase">Touro (0-25)</label>
+                            <input type="number" id="score-j2-touro" step="0.25" oninput="calculateRealTimeScore()" onchange="validateNota(this)" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-2xl font-black text-yellow-500 text-center outline-none">
+                        </div>
+                        <div class="space-y-2 peao-score-col">
+                            <label class="text-[10px] font-black text-slate-500 uppercase">Peão (0-25)</label>
+                            <input type="number" id="score-j2-peao" step="0.25" oninput="calculateRealTimeScore()" onchange="validateNota(this)" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-2xl font-black text-white text-center outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Resultado em Tempo Real -->
+            <div id="score-panel-result" class="bg-black rounded-[2.5rem] p-8 border border-white/5 mb-8 flex items-center justify-between text-left hidden">
+                <div class="flex gap-8">
+                    <div>
+                        <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">TOTAL PEÃO</div>
+                        <div id="score-live-peao" class="text-4xl font-black italic text-white">0.00</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">TOTAL TOURO</div>
+                        <div id="score-live-touro" class="text-4xl font-black italic text-yellow-500">0.00</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">TOTAL DA MONTARIA</div>
+                        <div id="score-live-total" class="text-5xl font-black italic text-blue-400">0.00</div>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button id="btn-reride-score" onclick="openRerideOptions()" class="bg-red-500/10 text-red-500 border border-red-500/20 px-8 py-4 rounded-2xl font-black text-xs uppercase hover:bg-red-500 hover:text-white transition-all">RE-RIDE</button>
+                </div>
+            </div>
+
+            <button id="btn-save-new-score" onclick="saveNewScore()" class="w-full bg-blue-600 hover:bg-blue-500 py-6 rounded-[2rem] font-black text-xl text-white shadow-2xl transition-all uppercase tracking-tighter hidden">SALVAR NOTA</button>
+        </div>
+    </div>
+
+    <!-- POPUP RE-RIDE: MOTIVO -->
+    <div id="modal-reride-reason" class="fixed inset-0 z-[180] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden text-center">
+        <div class="bg-slate-900 border border-red-500/30 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
+            <button onclick="document.getElementById('modal-reride-reason').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-red-500 mb-8">MOTIVO DO RE-RIDE</h2>
+            <div class="grid grid-cols-1 gap-6">
+                <button onclick="selectRerideReason('nota_baixa')" class="bg-black border border-white/5 p-8 rounded-3xl hover:border-red-500 hover:bg-red-500/10 transition-all text-left">
+                    <h3 class="text-xl font-black text-white uppercase mb-2">NOTA BAIXA</h3>
+                    <p class="text-slate-400 text-sm font-medium">O touro marcou pontos e vai para a média, mas o competidor ganha re-ride.</p>
+                </button>
+                <button onclick="selectRerideReason('sem_aproveitamento')" class="bg-black border border-white/5 p-8 rounded-3xl hover:border-red-500 hover:bg-red-500/10 transition-all text-left">
+                    <h3 class="text-xl font-black text-white uppercase mb-2">SEM APROVEITAMENTO</h3>
+                    <p class="text-slate-400 text-sm font-medium">Ambos ganham nota 0 e não conta para médias.</p>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- POPUP RE-RIDE: SELEÇÃO DE TOURO -->
+    <div id="modal-reride-bull" class="fixed inset-0 z-[190] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden text-left">
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-3xl w-full shadow-2xl relative flex flex-col max-h-[90vh]">
+            <button onclick="document.getElementById('modal-reride-bull').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-3xl font-black italic uppercase text-white mb-2">SELECIONAR TOURO RE-RIDE</h2>
+            <div class="mb-6 relative">
+                <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none"><svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
+                <input type="text" id="reride-search-bull" oninput="filterRerideBulls()" placeholder="BUSCAR TOURO OU CIA" class="w-full bg-black border border-slate-800 rounded-2xl pl-16 pr-6 py-4 text-white font-bold outline-none focus:border-blue-500">
+            </div>
+            <div id="reride-bull-list" class="flex-1 overflow-y-auto grid grid-cols-2 gap-4 custom-scroll pr-2 pb-4"></div>
+        </div>
+    </div>
+
+    <!-- POPUP RE-RIDE: CONFIRMAR AGORA? -->
+    <div id="modal-reride-confirm" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden text-center">
+        <div class="bg-slate-900 border border-blue-500/30 p-10 rounded-[3rem] max-w-md w-full shadow-2xl relative">
+            <h2 class="text-2xl font-black italic uppercase text-white mb-4">CONFIRMAR RE-RIDE</h2>
+            
+            <div class="mb-8">
+                <label class="block text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">LADO DO TOURO</label>
+                <div class="flex gap-4">
+                    <label class="flex-1 flex items-center justify-center gap-2 bg-slate-950 border border-slate-800 p-4 rounded-xl cursor-pointer hover:border-emerald-500 transition-all">
+                        <input type="radio" name="manual-reride-lado" value="E" class="accent-emerald-500 w-5 h-5">
+                        <span class="font-black text-emerald-500">ESQUERDO (E)</span>
+                    </label>
+                    <label class="flex-1 flex items-center justify-center gap-2 bg-slate-950 border border-slate-800 p-4 rounded-xl cursor-pointer hover:border-red-500 transition-all">
+                        <input type="radio" name="manual-reride-lado" value="D" class="accent-red-500 w-5 h-5">
+                        <span class="font-black text-red-500">DIREITO (D)</span>
+                    </label>
+                </div>
+            </div>
+
+            <p class="text-slate-400 font-bold mb-8">Deseja lançar a nota desta nova montaria (Re-ride) agora mesmo?</p>
+            <div class="flex gap-4">
+                <button onclick="confirmRerideNow(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-2xl transition-all">NÃO, MAIS TARDE</button>
+                <button onclick="confirmRerideNow(true)" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all">SIM, LANÇAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- POPUP DE CONFERÊNCIA DE NOTAS -->
+    <div id="modal-notas-summary" class="fixed inset-0 z-[160] bg-black/95 backdrop-blur-xl flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-4xl font-black italic tracking-tighter uppercase text-white">CONFERÊNCIA DE NOTAS</h2>
+            <button onclick="document.getElementById('modal-notas-summary').classList.add('hidden')" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <div class="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] overflow-hidden p-8">
+            <table class="w-full text-left border-collapse">
+                <thead class="text-[10px] font-black text-blue-500 uppercase tracking-widest border-b border-slate-800">
+                    <tr>
+                        <th class="py-4 px-4">POS</th>
+                        <th class="py-4 px-4">Peão</th>
+                        <th class="py-4 px-4">Touro</th>
+                        <th class="py-4 px-4 text-center">Tempo</th>
+                        <th class="py-4 px-4 text-center">Total Peão</th>
+                        <th class="py-4 px-4 text-center">Total Touro</th>
+                    </tr>
+                </thead>
+                <tbody id="notas-summary-tbody" class="divide-y divide-slate-800/50 text-white font-bold uppercase text-sm"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="list-peoes-view" class="fixed inset-0 z-[70] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-12"><h2 class="text-5xl font-black italic tracking-tighter uppercase text-white">LISTA DE PEÕES</h2><button onclick="closeListPeoes()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+        <div class="overflow-x-auto scroll-custom">
+            <div id="peoes-table-container" class="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden min-w-[800px]"></div>
+        </div>
+    </div>
+
+    <div id="list-boiadas-view" class="fixed inset-0 z-[70] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-12"><h2 class="text-5xl font-black italic tracking-tighter uppercase text-yellow-500">LISTA DE CIAS</h2><button onclick="closeListBoiadas()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+        <div id="boiadas-cards-container" class="grid grid-cols-3 gap-8"></div>
+    </div>
+
+    <div id="list-sorteios-view" class="fixed inset-0 z-[70] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-12"><h2 class="text-5xl font-black italic tracking-tighter uppercase text-white">SORTEIOS REALIZADOS</h2><button onclick="closeSorteiosList()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+        <div id="sorteios-table-container" class="grid grid-cols-3 gap-8"></div>
+    </div>
+
+    <!-- MODAL BULK PEOES -->
+    <div id="modal-bulk-peoes" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] hidden flex items-center justify-center p-6 text-left">
+        <div class="bg-slate-900 w-full max-w-6xl rounded-[3rem] p-12 border border-white/10 shadow-2xl relative">
+            <div class="flex justify-between items-center mb-10">
+                <div>
+                    <h2 class="text-4xl font-black italic uppercase text-white tracking-tighter">Carregar Lista de Peões</h2>
+                    <p class="text-slate-500 font-bold uppercase text-[10px] mt-2 italic">Cada linha representa um competidor. O sistema irá sincronizar as 3 colunas.</p>
+                </div>
+                <button onclick="closeModalBulkPeoes()" class="text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-6 mb-8">
+                <div>
+                    <label class="block text-[10px] font-black text-accent uppercase mb-3 ml-2">Nomes</label>
+                    <textarea id="bulk-peao-names" placeholder="Nome do Peão 1\nNome do Peão 2" class="w-full h-80 bg-black border border-white/5 rounded-3xl p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-accent uppercase mb-3 ml-2">Cidades</label>
+                    <textarea id="bulk-peao-cities" placeholder="Cidade 1\nCidade 2" class="w-full h-80 bg-black border border-white/5 rounded-3xl p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-accent uppercase mb-3 ml-2">CPFs (Opcional)</label>
+                    <textarea id="bulk-peao-cpfs" placeholder="CPF 1\nCPF 2" class="w-full h-80 bg-black border border-white/5 rounded-3xl p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
+                </div>
+            </div>
+
+            <button onclick="saveBulkPeoes()" class="w-full bg-accent text-black font-black py-6 rounded-[2rem] uppercase tracking-widest shadow-2xl hover:scale-[1.02] transition-all">Salvar Lista Completa</button>
+        </div>
+    </div>
+
+    <!-- MODAL CONTRATO CONFIG -->
+    <div id="modal-contrato-config" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] hidden flex flex-col p-12 overflow-y-auto text-left">
+        <div class="max-w-5xl mx-auto w-full">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-4xl font-black italic uppercase text-yellow-500 tracking-tighter">Configuração do Contrato</h2>
+                <button onclick="closeModalContratoConfig()" class="text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            
+            <form id="form-contrato-config" class="space-y-12">
+                <!-- Seção Contratante -->
+                <div class="glass p-8 rounded-3xl border-white/5">
+                    <h3 class="text-2xl font-black text-white uppercase mb-6">1. Dados da Contratante</h3>
+                    
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Razão Social</label>
+                            <input type="text" id="cc-razao-social" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">CNPJ</label>
+                            <input type="text" id="cc-cnpj" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                    
+                    <h4 class="text-xs font-black text-yellow-500 uppercase mb-4 mt-6">Endereço Sede</h4>
+                    <div class="grid grid-cols-3 gap-6 mb-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">CEP</label>
+                            <input type="text" id="cc-cep" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Estado</label>
+                            <input type="text" id="cc-estado" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Cidade</label>
+                            <input type="text" id="cc-cidade" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-12 gap-6 mb-6">
+                        <div class="col-span-4">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Bairro</label>
+                            <input type="text" id="cc-bairro" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div class="col-span-5">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Rua</label>
+                            <input type="text" id="cc-rua" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div class="col-span-3">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Número</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="cc-numero" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                                <label class="flex items-center gap-2 cursor-pointer text-xs text-white whitespace-nowrap">
+                                    <input type="checkbox" id="cc-sn" onchange="toggleSN()" class="w-4 h-4 accent-yellow-500"> S/N
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="text-xs font-black text-yellow-500 uppercase mb-4 mt-8">Representante Legal (Contratante)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Nome do Contratante</label>
+                            <input type="text" id="cc-nome-rep" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">CPF</label>
+                            <input type="text" id="cc-cpf-rep" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">RG</label>
+                            <input type="text" id="cc-rg-rep" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                    
+                    <label class="flex items-center gap-2 cursor-pointer text-xs text-white mb-4">
+                        <input type="checkbox" id="cc-mesmo-endereco" onchange="toggleEnderecoRep()" class="w-4 h-4 accent-yellow-500" checked> Mesmo Endereço do CNPJ
+                    </label>
+                    
+                    <div id="endereco-rep-container" class="hidden">
+                        <!-- Repete campos de endereço -->
+                        <div class="grid grid-cols-3 gap-6 mb-4">
+                            <div><label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">CEP</label><input type="text" id="cc-rep-cep" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"></div>
+                            <div><label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Estado</label><input type="text" id="cc-rep-estado" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"></div>
+                            <div><label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Cidade</label><input type="text" id="cc-rep-cidade" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"></div>
+                        </div>
+                        <div class="grid grid-cols-12 gap-6 mb-6">
+                            <div class="col-span-4"><label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Bairro</label><input type="text" id="cc-rep-bairro" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"></div>
+                            <div class="col-span-5"><label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Rua</label><input type="text" id="cc-rep-rua" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"></div>
+                            <div class="col-span-3">
+                                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Número</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="cc-rep-numero" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                                    <label class="flex items-center gap-2 cursor-pointer text-xs text-white whitespace-nowrap">
+                                        <input type="checkbox" id="cc-rep-sn" onchange="toggleRepSN()" class="w-4 h-4 accent-yellow-500"> S/N
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção Cláusula Segunda -->
+                <div class="glass p-8 rounded-3xl border-white/5">
+                    <h3 class="text-2xl font-black text-white uppercase mb-6">2. Cláusula Segunda (Prazos e Datas)</h3>
+                    
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Prazo do Contrato (Dias em NÂº)</label>
+                            <input type="text" id="cc-prazo-num" placeholder="Ex: 4" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Prazo do Contrato (Por Extenso)</label>
+                            <input type="text" id="cc-prazo-ext" placeholder="Ex: quatro" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Data de Início</label>
+                            <input type="text" id="cc-data-inicio" placeholder="Ex: 22/08/2026" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Data de Fim</label>
+                            <input type="text" id="cc-data-fim" placeholder="Ex: 26/08/2026" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção Cláusula Quarta -->
+                <div class="glass p-8 rounded-3xl border-white/5">
+                    <h3 class="text-2xl font-black text-white uppercase mb-6">3. Cláusula Quarta (Valores)</h3>
+                    
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Valor Líquido (R$)</label>
+                            <input type="text" id="cc-valor-liq" placeholder="Ex: 50.000,00" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Valor Líquido (Por extenso)</label>
+                            <input type="text" id="cc-valor-liq-ext" placeholder="Ex: Cinquenta mil reais" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Data de Pagamento</label>
+                            <input type="text" id="cc-data-pag" placeholder="Ex: 09/05/2026" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Modalidade</label>
+                            <input type="text" id="cc-modalidade" placeholder="Ex: Rodeio em Touros" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Premiação Total (R$)</label>
+                            <input type="text" id="cc-premio-total" placeholder="Ex: 10.000,00" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Premiação Total (Por extenso)</label>
+                            <input type="text" id="cc-premio-total-ext" placeholder="Ex: Dez mil reais" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-sm font-black text-yellow-500 uppercase">Distribuição da Premiação</h4>
+                            <button type="button" onclick="addCcDist()" class="text-[10px] font-black uppercase tracking-widest bg-slate-800 px-3 py-1 rounded-lg hover:bg-slate-700 text-white">+ Adicionar Posição</button>
+                        </div>
+                        <div id="cc-distribuicao-container" class="space-y-3">
+                            <!-- Inserção dinâmica -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção Cláusula Décima Segunda -->
+                <div class="glass p-8 rounded-3xl border-white/5">
+                    <h3 class="text-2xl font-black text-white uppercase mb-6">4. Fórum / Comarca</h3>
+                    <div class="grid grid-cols-1 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Cidade do Fórum (Comarca)</label>
+                            <input type="text" id="cc-cidade-forum" placeholder="Ex: Barretos" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção Recibo -->
+                <div class="glass p-8 rounded-3xl border-white/5">
+                    <h3 class="text-2xl font-black text-white uppercase mb-6">5. Recibo / Tributos</h3>
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Salário Mínimo Vigente (R$)</label>
+                            <input type="text" id="cc-recibo-bruto" placeholder="Ex: 1621,00" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-2">Porcentagem do INSS (%)</label>
+                            <input type="text" id="cc-recibo-inss" placeholder="Ex: 11" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-black uppercase tracking-widest shadow-xl">SALVAR CONFIGURAÇÃO</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EXPORT CONTRACT -->
+    <div id="modal-export-contract" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] hidden flex flex-col items-center justify-center p-12 text-center">
+        <h2 class="text-4xl font-black italic uppercase text-white tracking-tighter mb-4">Exportar Contrato(s)</h2>
+        <p id="export-contract-desc" class="text-slate-500 font-bold mb-10 uppercase text-sm">Escolha o formato desejado</p>
+        
+        <div class="grid grid-cols-2 gap-6 w-full max-w-lg">
+            <button onclick="executeExportContract('word')" class="glass p-8 rounded-3xl border-white/10 hover:border-blue-500 hover:bg-blue-500/10 transition-all group">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-600 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <span class="block text-xl font-black text-white uppercase">WORD</span>
+                <span class="block text-[10px] font-bold text-slate-500 mt-2">Formato editável (.docx)</span>
+            </button>
+            <button onclick="executeExportContract('pdf')" class="glass p-8 rounded-3xl border-white/10 hover:border-red-500 hover:bg-red-500/10 transition-all group">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-600 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h.01M9 13h.01M9 17h.01" /></svg>
+                <span class="block text-xl font-black text-white uppercase">PDF</span>
+                <span class="block text-[10px] font-bold text-slate-500 mt-2">Pronto para imprimir</span>
+            </button>
+        </div>
+        <button onclick="closeModalExportContract()" class="mt-8 text-slate-500 uppercase font-black tracking-widest text-xs hover:text-white">CANCELAR</button>
+    </div>
+
+    <!-- MODAL SETTINGS -->
+    <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-3xl shadow-2xl relative">
+            <button onclick="closeSettingsModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white transition-all bg-slate-800/50 hover:bg-red-500 p-2 rounded-xl">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <div class="mb-8">
+                <h2 class="text-3xl font-black italic uppercase tracking-tighter text-white">Configurações</h2>
+                <p class="text-sm text-slate-400 font-medium">Gerencie seu perfil e banco de dados global</p>
+            </div>
+            
+            <div class="flex gap-4 mb-6 border-b border-slate-800 pb-4 overflow-x-auto">
+                <button onclick="switchSettingsTab('profile')" id="tab-btn-profile" class="px-6 py-2 rounded-xl text-xs font-black uppercase transition-all bg-yellow-500 text-black">Meu Perfil</button>
+                <button onclick="switchSettingsTab('peoes')" id="tab-btn-peoes" class="px-6 py-2 rounded-xl text-xs font-black uppercase transition-all text-slate-400 hover:text-white">Banco de Peões</button>
+                <button onclick="switchSettingsTab('boiadas')" id="tab-btn-boiadas" class="px-6 py-2 rounded-xl text-xs font-black uppercase transition-all text-slate-400 hover:text-white">Banco de Boiadas</button>
+            </div>
+
+            <!-- TABS CONTENT -->
+            <div id="settings-tab-profile" class="settings-tab">
+                <form id="form-profile" class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Seu Nome / Nome de Exibição</label>
+                        <input type="text" id="profile-name-input" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase mt-1" required>
+                    </div>
+                    <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase text-sm py-4 rounded-2xl transition-all shadow-lg shadow-yellow-500/20">Salvar Nome</button>
+                </form>
+            </div>
+
+            <div id="settings-tab-peoes" class="settings-tab hidden flex flex-col h-[50vh]">
+                <input type="text" id="search-global-peoes" placeholder="Buscar peão..." class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-sm mb-4">
+                <div class="flex-1 overflow-y-auto scroll-custom bg-slate-950/50 rounded-2xl border border-slate-800" id="global-peoes-list">
+                    <!-- list populated via js -->
+                </div>
+            </div>
+
+            <div id="settings-tab-boiadas" class="settings-tab hidden flex flex-col h-[50vh]">
+                <input type="text" id="search-global-boiadas" placeholder="Buscar companhia..." class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-sm mb-4">
+                <div class="flex-1 overflow-y-auto scroll-custom bg-slate-950/50 rounded-2xl border border-slate-800 space-y-2 p-2" id="global-boiadas-list">
+                    <!-- list populated via js -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT GLOBAL PEAO -->
+    <div id="modal-global-peao" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative">
+            <button onclick="closeModalGlobalPeao()" class="absolute top-6 right-6 text-slate-500 hover:text-white transition-all bg-slate-800/50 hover:bg-red-500 p-2 rounded-xl">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h2 class="text-2xl font-black italic uppercase tracking-tighter text-white mb-6">EDITAR PEÃO GLOBAL</h2>
+            <form id="form-global-peao" class="space-y-4">
+                <input type="hidden" id="global-peao-idx">
+                <input type="text" id="global-peao-name" placeholder="NOME COMPLETO" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase" required>
+                <input type="text" id="global-peao-city" placeholder="CIDADE / ESTADO" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase" required>
+                <input type="text" id="global-peao-cpf" placeholder="CPF (OPCIONAL)" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase">
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase text-sm py-4 rounded-2xl transition-all mt-4">SALVAR ALTERAÇÕES</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT GLOBAL BOIADA -->
+    <div id="modal-global-boiada" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-xl shadow-2xl relative flex flex-col max-h-[90vh]">
+            <button onclick="closeModalGlobalBoiada()" class="absolute top-6 right-6 text-slate-500 hover:text-white transition-all bg-slate-800/50 hover:bg-red-500 p-2 rounded-xl">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h2 class="text-2xl font-black italic uppercase tracking-tighter text-white mb-6 flex-shrink-0">EDITAR BOIADA GLOBAL</h2>
+            <form id="form-global-boiada" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <input type="hidden" id="global-boiada-idx">
+                <input type="text" id="global-boiada-cia" placeholder="NOME DA COMPANHIA" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase mb-4 flex-shrink-0" required>
+                
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 flex-shrink-0">Lista de Touros (Um por linha)</label>
+                <textarea id="global-touros-bulk" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase flex-1 resize-none scroll-custom mb-4" placeholder="COLE AQUI A LISTA DE TOUROS..."></textarea>
+                
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase text-sm py-4 rounded-2xl transition-all shadow-lg flex-shrink-0">SALVAR ALTERAÇÕES</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL LOADING -->
+    <div id="modal-loading" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[300] hidden flex flex-col items-center justify-center p-12 text-center">
+        <svg class="animate-spin -ml-1 mr-3 h-16 w-16 text-yellow-500 mb-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <h2 class="text-3xl font-black italic uppercase text-white tracking-tighter mb-2">GERANDO CONTRATOS</h2>
+        <p class="text-slate-500 font-bold uppercase text-sm">Aguarde, este processo pode demorar alguns minutos...</p>
+    </div>
+
+    
+
+    <!-- App Version -->
+    <div id="app-version-display" class="fixed bottom-3 left-3 text-white/20 text-[10px] font-mono z-[1000] pointer-events-none select-none tracking-widest font-bold"></div>
+
+    <!-- Auto Updater Toast -->
+    <div id="updater-toast" class="fixed bottom-6 right-6 bg-slate-900 border border-slate-700 p-6 rounded-3xl shadow-2xl z-[500] hidden flex-col gap-3 w-80 transform transition-all translate-y-full opacity-0">
+        <div class="flex items-center gap-3">
+            <div id="updater-icon" class="w-10 h-10 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center animate-spin">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </div>
+            <div>
+                <h4 id="updater-title" class="text-white font-black text-sm uppercase tracking-tighter">Buscando Atualização</h4>
+                <p id="updater-desc" class="text-slate-400 text-xs">Conectando ao servidor...</p>
+            </div>
+        </div>
+        <div id="updater-progress-container" class="w-full bg-slate-800 rounded-full h-1.5 mt-2 hidden">
+            <div id="updater-progress-bar" class="bg-blue-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+        </div>
+        <button id="btn-install-update" onclick="window.electronAPI.quitAndInstall()" class="mt-2 w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-4 rounded-xl text-xs uppercase tracking-widest hidden transition-colors shadow-xl shadow-emerald-500/20">
+            Instalar Agora
+        </button>
+    </div>
+
+<script src="renderer.js"></script>
+</body>
+</html>

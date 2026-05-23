@@ -1,0 +1,60 @@
+{
+  "name": "hzn-rodeo-client",
+  "version": "1.0.34",
+  "description": "Rodeo System Client App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "release": "electron-builder -p always"
+  },
+  "dependencies": {
+    "@spfxappdev/docxmerger": "^1.0.3",
+    "@supabase/supabase-js": "^2.43.1",
+    "docx-merger": "^1.2.2",
+    "docxtemplater": "^3.68.7",
+    "electron-updater": "^6.8.3",
+    "exceljs": "^4.4.0",
+    "node-machine-id": "^1.1.12",
+    "pdf-merger-js": "^5.1.2",
+    "pizzip": "^3.2.0",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.1",
+    "electron-builder": "^26.8.1",
+    "jimp": "^0.16.13",
+    "png-to-ico": "^3.0.1"
+  },
+  "build": {
+    "appId": "com.horizon.rodeoapp",
+    "productName": "HZN RodeoApp",
+    "artifactName": "HZN-RodeoApp-Setup-${version}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "g7briell",
+        "repo": "hzn-rodeo"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "extraResources": [
+      {
+        "from": "../modelos_contrato",
+        "to": "modelos_contrato",
+        "filter": ["**/*"]
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "license": "license.txt"
+    }
+  }
+}

@@ -16,7 +16,7 @@ out/
 .env.production.local
 
 # Outras pastas que não devem subir
-client_app/
+client_app/dist/
 .vercel/
 .gemini/
 
