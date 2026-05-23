@@ -1685,6 +1685,10 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
         const ev = localData.eventos.find(e => e.id === eventId);
         if (!ev) throw new Error("Evento não encontrado localmente.");
 
+        // Buscar nome do diretor
+        const { data: userLicense } = await supabase.from('licencas').select('nome').eq('email', email).single();
+        const diretorNome = userLicense ? userLicense.nome : email;
+
         const payload = {
             nome: ev.name,
             data_inicio: ev.days + ' dias',
@@ -1694,7 +1698,9 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
             status: 'pendente',
             detalhes: {
                 ranking: ev.peoes || [],
-                boiadas: ev.boiadas || []
+                boiadas: ev.boiadas || [],
+                logo: ev.logo || null,
+                diretor: diretorNome
             }
         };
 
