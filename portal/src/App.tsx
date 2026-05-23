@@ -63,6 +63,22 @@ function App() {
       
       if (data && data.length > 0) {
         const profile = data[0];
+        
+        // Dynamic check in licencas to override veio_do_app_desktop status
+        try {
+          const { data: licenseData } = await supabase
+            .from('licencas')
+            .select('email')
+            .ilike('email', email.trim())
+            .maybeSingle();
+
+          if (licenseData && licenseData.email) {
+            profile.veio_do_app_desktop = true;
+          }
+        } catch (err) {
+          console.error('Erro ao buscar licença no Supabase:', err);
+        }
+
         setUserProfile(profile);
         // Load bio and foto from localStorage
         const savedBio = localStorage.getItem(`bio_${email.toLowerCase().trim()}`);
@@ -227,6 +243,21 @@ function App() {
 
             const match = data?.find(p => slugify(p.nome) === slug);
             if (match) {
+              // Dynamic check in licencas to override veio_do_app_desktop status
+              try {
+                const { data: licenseData } = await supabase
+                  .from('licencas')
+                  .select('email')
+                  .ilike('email', match.email.trim())
+                  .maybeSingle();
+
+                if (licenseData && licenseData.email) {
+                  match.veio_do_app_desktop = true;
+                }
+              } catch (err) {
+                console.error('Erro ao verificar licença no Supabase:', err);
+              }
+
               setPublicProfile(match);
               const savedBio = localStorage.getItem(`bio_${match.email.toLowerCase().trim()}`);
               const savedFoto = localStorage.getItem(`foto_${match.email.toLowerCase().trim()}`);
