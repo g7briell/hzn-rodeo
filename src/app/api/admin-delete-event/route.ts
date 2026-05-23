@@ -6,8 +6,8 @@ export async function POST(req: Request) {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
     
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = 'https://scivakieachwewdhnuhv.supabase.co';
+    const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjaXZha2llYWNod2V3ZGhudWh2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODU1Nzc3OSwiZXhwIjoyMDk0MTMzNzc5fQ.TvSTk7fQjKqZM9T8Qx5aRkepE0OwsnmVR_qaP2yQ0VU';
     
     if (!supabaseUrl || !supabaseServiceKey) {
        return NextResponse.json({ error: "Missing env variables" }, { status: 500 });
