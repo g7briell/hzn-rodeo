@@ -15,6 +15,8 @@ function App() {
   const [regCpf, setRegCpf] = useState('');
   const [regRg, setRegRg] = useState('');
   const [regAddress, setRegAddress] = useState('');
+  const [regCity, setRegCity] = useState('');
+  const [regState, setRegState] = useState('');
   const [regRole, setRegRole] = useState('');
   const [regOtpCode, setRegOtpCode] = useState('');
   const [isAppUser, setIsAppUser] = useState(false);
@@ -75,14 +77,15 @@ function App() {
 
       if (authError) throw new Error(authError.message);
 
-      // 2. Salvar na tabela perfis_portal
+      // 2. Salvar na tabela perfis_portal com endereço completo contendo Cidade e Estado
+      const fullAddress = `${regAddress.trim()}, ${regCity.trim()} - ${regState.trim()}`;
       const { error: dbError } = await supabase.from('perfis_portal').insert([{
         nome: regName,
         email: regEmail,
         whatsapp: regWhatsapp,
         cpf: regCpf,
         rg: regRg,
-        endereco: regAddress,
+        endereco: fullAddress,
         cargo: regRole,
         veio_do_app_desktop: isAppUser 
       }]);
@@ -120,7 +123,7 @@ function App() {
       
       // Limpar form
       setRegName(''); setRegEmail(''); setRegPassword(''); setRegWhatsapp('');
-      setRegCpf(''); setRegRg(''); setRegAddress(''); setRegRole(''); setRegOtpCode('');
+      setRegCpf(''); setRegRg(''); setRegAddress(''); setRegCity(''); setRegState(''); setRegRole(''); setRegOtpCode('');
     } catch (err: any) {
       setRegisterError(err.message);
     } finally {
@@ -303,9 +306,19 @@ function App() {
                     <input type="text" className="form-input" placeholder="00.000.000-0" value={regRg} onChange={(e) => setRegRg(e.target.value)} required />
                   </div>
 
+                  <div className="form-group">
+                    <label className="form-label">Cidade</label>
+                    <input type="text" className="form-input" placeholder="Ex: São Paulo" value={regCity} onChange={(e) => setRegCity(e.target.value)} required />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Estado</label>
+                    <input type="text" className="form-input" placeholder="Ex: SP" maxLength={2} value={regState} onChange={(e) => setRegState(e.target.value.toUpperCase())} required />
+                  </div>
+
                   <div className="form-group full">
                     <label className="form-label">Endereço Completo</label>
-                    <input type="text" className="form-input" placeholder="Rua, Número, Bairro, Cidade - UF" value={regAddress} onChange={(e) => setRegAddress(e.target.value)} required />
+                    <input type="text" className="form-input" placeholder="Rua, Número, Bairro" value={regAddress} onChange={(e) => setRegAddress(e.target.value)} required />
                   </div>
 
                   <div className="form-group full">
