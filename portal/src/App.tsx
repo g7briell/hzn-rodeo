@@ -1235,12 +1235,6 @@ function App() {
   }
 
   // Explore and feed lists
-  const exploreEvents = [
-    { id: 1, name: "Barretos International Rodeo", date: "24 a 28 Ago", location: "Barretos, SP", status: "Próximo", description: "O maior rodeio da América Latina está de volta com as finais das montarias em touros e três tambores." },
-    { id: 2, name: "Jaguariúna Rodeo Festival", date: "15 a 18 Set", location: "Jaguariúna, SP", status: "Inscrições Abertas", description: "Etapa qualificatória decisiva para o mundial, trazendo grandes shows e disputas eletrizantes na arena." },
-    { id: 3, name: "Ribeirão Rodeo Music", date: "20 a 23 Abr", location: "Ribeirão Preto, SP", status: "Concluído", description: "Grande abertura do circuito paulista de rodeio com notas recordes e montarias inesquecíveis." },
-    { id: 4, name: "Festa do Peão de Americana", date: "10 a 19 Jun", location: "Americana, SP", status: "Confirmado", description: "Uma das arenas mais tradicionais do país recebe a elite das boiadas brasileiras para mais uma edição histórica." }
-  ];
 
   const newsFeed = [
     {
@@ -1274,10 +1268,11 @@ function App() {
   ];
 
   // Filters based on search
-  const filteredEvents = exploreEvents.filter(ev => 
-    ev.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    ev.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEvents = eventosOficiais.filter(ev => {
+    if (ev.status !== 'aprovado') return false;
+    return ev.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           ev.cidade.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const filteredNews = newsFeed.filter(post => 
     post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -1310,7 +1305,7 @@ function App() {
               <svg viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Explore
+              Eventos
             </button>
             
             <button 
@@ -1404,36 +1399,48 @@ function App() {
           {/* Dynamic Tabs Content */}
           <div className="dashboard-content">
             
-            {/* EXPLORE TAB */}
+            {/* EVENTOS TAB (formerly Explore) */}
             {currentTab === 'explore' && (
               <div>
-                <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Explorar Eventos</h2>
-                <p className="text-muted" style={{ marginBottom: '2.5rem' }}>Acompanhe as etapas que estão rolando e os próximos grandes rodeios.</p>
+                <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Eventos Oficiais</h2>
+                <p className="text-muted" style={{ marginBottom: '2.5rem' }}>Acompanhe os rodeios aprovados, pontuações e detalhes dos eventos do circuito.</p>
                 
-                <div className="events-grid">
-                  {filteredEvents.map(ev => (
-                    <div key={ev.id} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="event-date">{ev.date}</span>
-                        <span className="badge badge-rodeoapp" style={{ margin: 0, padding: '0.2rem 0.5rem', fontSize: '0.65rem' }}>{ev.status}</span>
+                {filteredEvents.length === 0 ? (
+                  <div className="empty-state">
+                    <p>Nenhum evento oficial disponível no momento.</p>
+                  </div>
+                ) : (
+                  <div className="events-grid">
+                    {filteredEvents.map(ev => (
+                      <div key={ev.id} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          {ev.logo ? (
+                            <img src={ev.logo} alt={ev.nome} style={{ width: '64px', height: '64px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', padding: '6px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                          ) : (
+                            <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '900', border: '1px solid rgba(255,255,255,0.1)' }}>LOGO</div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                            <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.65rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{ev.tipo || 'RODEIO'}</span>
+                            <h3 className="event-name" style={{ fontSize: '1.25rem', margin: 0, lineHeight: 1.2, fontWeight: '900', textTransform: 'uppercase' }}>{ev.nome}</h3>
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div className="event-location" style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            {ev.cidade}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', fontWeight: '900', color: '#f8fafc', background: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            {ev.dias} Dias / {ev.juizes} Juízes
+                          </div>
+                        </div>
                       </div>
-                      <h3 className="event-name" style={{ fontSize: '1.35rem', margin: 0 }}>{ev.name}</h3>
-                      <p className="text-muted" style={{ fontSize: '0.85rem', lineHeight: '1.4', flex: 1 }}>{ev.description}</p>
-                      <div className="event-location" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                          <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                        {ev.location}
-                      </div>
-                    </div>
-                  ))}
-                  {filteredEvents.length === 0 && (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                      Nenhum evento encontrado para a busca "{searchTerm}".
-                    </div>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
