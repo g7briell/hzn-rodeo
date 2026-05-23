@@ -301,7 +301,7 @@ function App() {
                     <input type="text" className="form-input" placeholder="000.000.000-00" value={regCpf} onChange={(e) => setRegCpf(e.target.value)} required />
                   </div>
 
-                  <div className="form-group">
+                  <div className="form-group full">
                     <label className="form-label">RG</label>
                     <input type="text" className="form-input" placeholder="00.000.000-0" value={regRg} onChange={(e) => setRegRg(e.target.value)} required />
                   </div>
