@@ -1456,37 +1456,66 @@ function App() {
             {currentTab === 'explore' && (
               <div>
                 {selectedPeaoProfile ? (
-                  <div className="peao-profile-view fade-in">
+                  <div className="profile-container fade-in" style={{ padding: 0, maxWidth: '100%' }}>
                     <button className="back-btn" onClick={() => {
                       setSelectedPeaoProfile(null);
                       window.history.pushState({}, '', '/');
                     }} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                      Voltar
+                      Voltar para o Ranking
                     </button>
 
-                    <div className="profile-header-banner" style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem' }}>
-                      {selectedPeaoProfile.foto ? (
-                        <img src={selectedPeaoProfile.foto} alt={selectedPeaoProfile.nome} style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '50%', background: 'rgba(0,0,0,0.4)', padding: '4px', border: '2px solid #E11D48' }} />
-                      ) : (
-                        <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: '900', border: '2px solid #E11D48' }}>
-                          {selectedPeaoProfile.nome.charAt(0).toUpperCase()}
+                    <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Perfil do Competidor</h2>
+                    <p className="text-muted" style={{ marginBottom: '2.5rem' }}>Perfil público registrado na base do RodeoApp.</p>
+
+                    <div className="profile-card" style={{ marginBottom: '2rem' }}>
+                      {/* Left Column: Avatar & Role */}
+                      <div className="profile-sidebar">
+                        <div className="profile-avatar-wrapper">
+                          <img 
+                            src={selectedPeaoProfile.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80"} 
+                            alt="Foto de Perfil" 
+                            className={`profile-avatar ${selectedPeaoProfile.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
+                          />
                         </div>
-                      )}
-                      <div>
-                        <span className="profile-badge" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.8rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>COMPETIDOR OFICIAL</span>
-                        <h2 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0', lineHeight: 1, fontWeight: '900', textTransform: 'uppercase' }}>{selectedPeaoProfile.nome}</h2>
                         
-                        <div style={{ display: 'flex', gap: '1.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                            {selectedPeaoProfile.cidade || selectedPeaoProfile.endereco || 'Cidade N/A'}
+                        <div style={{ marginTop: '1.5rem' }}>
+                          <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>{selectedPeaoProfile.nome}</h3>
+                        </div>
+
+                        <span className="badge badge-role" style={{ marginTop: '1rem', background: '#E11D48', color: '#fff' }}>
+                          COMPETIDOR
+                        </span>
+
+                        {selectedPeaoProfile.veio_do_app_desktop && (
+                          <span className="badge badge-rodeoapp" style={{ marginTop: '0.5rem' }}>
+                            Sincronizado RodeoApp
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Right Column: Bio & Data */}
+                      <div className="profile-details">
+                        <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                          <label>Nome Completo</label>
+                          <div className="read-only-field">{selectedPeaoProfile.nome}</div>
+                        </div>
+                        
+                        <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                          <label>Cidade / Estado</label>
+                          <div className="read-only-field">{selectedPeaoProfile.cidade || selectedPeaoProfile.endereco || 'Não informado'}</div>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Biografia</label>
+                          <div className="read-only-field" style={{ minHeight: '80px' }}>
+                            {selectedPeaoProfile.bio || 'Este competidor ainda não adicionou uma biografia.'}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="profile-history-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div className="profile-history-section" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                       <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico em Eventos (HZN)</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {selectedPeaoProfile.historico && selectedPeaoProfile.historico.length > 0 ? (
