@@ -7,6 +7,7 @@ function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   
   // Register States
+  const [registerStep, setRegisterStep] = useState<'form' | 'otp'>('form');
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -15,8 +16,10 @@ function App() {
   const [regRg, setRegRg] = useState('');
   const [regAddress, setRegAddress] = useState('');
   const [regRole, setRegRole] = useState('');
+  const [regOtpCode, setRegOtpCode] = useState('');
   const [isAppUser, setIsAppUser] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [registerError, setRegisterError] = useState('');
 
   // Login States
   const [loginEmail, setLoginEmail] = useState('');
@@ -61,9 +64,10 @@ function App() {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsRegistering(true);
+    setRegisterError('');
 
     try {
-      // 1. Criar usuário no Auth do Supabase
+      // 1. Criar usuário no Auth do Supabase (Dispara e-mail de confirmação se configurado)
       const { error: authError } = await supabase.auth.signUp({
         email: regEmail,
         password: regPassword,
@@ -71,7 +75,7 @@ function App() {
 
       if (authError) throw new Error(authError.message);
 
-      // 2. Salvar na tabela perfis_portal (precisa existir no banco de dados!)
+      // 2. Salvar na tabela perfis_portal
       const { error: dbError } = await supabase.from('perfis_portal').insert([{
         nome: regName,
         email: regEmail,
@@ -80,20 +84,45 @@ function App() {
         rg: regRg,
         endereco: regAddress,
         cargo: regRole,
-        // Caso a coluna não exista, isso pode dar erro. Recomende a criação ao usuário.
-        // veio_do_app_desktop: isAppUser 
+        veio_do_app_desktop: isAppUser 
       }]);
 
       if (dbError) throw new Error(dbError.message);
 
-      alert(isAppUser ? "Sincronização com o App concluída com sucesso!" : "Cadastro realizado com sucesso!");
+      // Avança para tela de verificação de e-mail em vez de fechar
+      setRegisterStep('otp');
+      
+    } catch (err: any) {
+      setRegisterError("Erro ao realizar cadastro: " + err.message);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleVerifySignupOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRegistering(true);
+    setRegisterError('');
+
+    try {
+      // Validar código nativo de e-mail do Supabase
+      const { error } = await supabase.auth.verifyOtp({
+        email: regEmail,
+        token: regOtpCode,
+        type: 'signup'
+      });
+
+      if (error) throw new Error("Código inválido ou expirado.");
+
+      alert(isAppUser ? "Sincronização concluída! E-mail verificado com sucesso." : "Cadastro e verificação de e-mail realizados com sucesso!");
       setIsRegisterModalOpen(false);
+      setRegisterStep('form');
       
       // Limpar form
       setRegName(''); setRegEmail(''); setRegPassword(''); setRegWhatsapp('');
-      setRegCpf(''); setRegRg(''); setRegAddress(''); setRegRole('');
+      setRegCpf(''); setRegRg(''); setRegAddress(''); setRegRole(''); setRegOtpCode('');
     } catch (err: any) {
-      alert("Erro ao realizar cadastro: Verifique se a tabela 'perfis_portal' foi criada corretamente com todas as colunas. Detalhe: " + err.message);
+      setRegisterError(err.message);
     } finally {
       setIsRegistering(false);
     }
@@ -109,7 +138,6 @@ function App() {
     setIsLoading(true);
 
     try {
-      // Validar senha real no Supabase
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
@@ -117,7 +145,6 @@ function App() {
 
       if (signInError) throw new Error("E-mail ou senha incorretos.");
 
-      // Se passou, gera o código 2FA e envia por e-mail
       const code = Math.floor(100000 + Math.random() * 900000).toString();
 
       const { error: dbError } = await supabase
@@ -230,124 +257,101 @@ function App() {
       {/* MODAL DE CADASTRO */}
       {/* ==================================== */}
       <div className={`modal-overlay ${isRegisterModalOpen ? 'active' : ''}`}>
-        <div className="auth-modal">
-          <button className="close-btn" onClick={() => setIsRegisterModalOpen(false)}>×</button>
+        <div className="auth-modal" style={registerStep === 'otp' ? { maxWidth: '400px' } : {}}>
+          <button className="close-btn" onClick={() => {
+            setIsRegisterModalOpen(false);
+            setRegisterStep('form');
+            setRegisterError('');
+          }}>×</button>
+          
           <h2 className="modal-title">Crie sua <span className="text-primary">Conta</span></h2>
-          <p className="modal-subtitle">Preencha seus dados para acessar o portal do competidor.</p>
+          
+          {registerError && <div style={{ color: '#ff4444', marginBottom: '1rem', fontSize: '0.85rem' }}>{registerError}</div>}
 
-          <form onSubmit={handleRegisterSubmit}>
-            <div className="form-grid">
-              <div className="form-group full">
-                <label className="form-label">Nome Completo</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="João da Silva" 
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  required 
-                />
-              </div>
+          {registerStep === 'form' ? (
+            <>
+              <p className="modal-subtitle">Preencha seus dados para acessar o portal do competidor.</p>
+              <form onSubmit={handleRegisterSubmit}>
+                <div className="form-grid">
+                  <div className="form-group full">
+                    <label className="form-label">Nome Completo</label>
+                    <input type="text" className="form-input" placeholder="João da Silva" value={regName} onChange={(e) => setRegName(e.target.value)} required />
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">E-mail {isAppUser && <span className="text-primary" style={{marginLeft:'5px', fontSize:'0.65rem'}}>Usuário do App Detectado!</span>}</label>
-                <input 
-                  type="email" 
-                  className="form-input" 
-                  placeholder="joao@email.com" 
-                  value={regEmail}
-                  onChange={handleRegEmailChange}
-                  onBlur={checkEmailInDB}
-                  required 
-                />
-              </div>
+                  <div className="form-group">
+                    <label className="form-label">E-mail {isAppUser && <span className="text-primary" style={{marginLeft:'5px', fontSize:'0.65rem'}}>Usuário do App Detectado!</span>}</label>
+                    <input type="email" className="form-input" placeholder="joao@email.com" value={regEmail} onChange={handleRegEmailChange} onBlur={checkEmailInDB} required />
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">Crie uma Senha</label>
-                <input 
-                  type="password" 
-                  className="form-input" 
-                  placeholder="Mínimo 6 caracteres" 
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  required 
-                />
-              </div>
+                  <div className="form-group">
+                    <label className="form-label">Crie uma Senha</label>
+                    <input type="password" className="form-input" placeholder="Mínimo 6 caracteres" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required />
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">WhatsApp</label>
-                <input 
-                  type="tel" 
-                  className="form-input" 
-                  placeholder="(00) 00000-0000" 
-                  value={regWhatsapp}
-                  onChange={(e) => setRegWhatsapp(e.target.value)}
-                  required 
-                />
-              </div>
+                  <div className="form-group">
+                    <label className="form-label">WhatsApp</label>
+                    <input type="tel" className="form-input" placeholder="(00) 00000-0000" value={regWhatsapp} onChange={(e) => setRegWhatsapp(e.target.value)} required />
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">CPF</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="000.000.000-00" 
-                  value={regCpf}
-                  onChange={(e) => setRegCpf(e.target.value)}
-                  required 
-                />
-              </div>
+                  <div className="form-group">
+                    <label className="form-label">CPF</label>
+                    <input type="text" className="form-input" placeholder="000.000.000-00" value={regCpf} onChange={(e) => setRegCpf(e.target.value)} required />
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">RG</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="00.000.000-0" 
-                  value={regRg}
-                  onChange={(e) => setRegRg(e.target.value)}
-                  required 
-                />
-              </div>
+                  <div className="form-group">
+                    <label className="form-label">RG</label>
+                    <input type="text" className="form-input" placeholder="00.000.000-0" value={regRg} onChange={(e) => setRegRg(e.target.value)} required />
+                  </div>
 
-              <div className="form-group full">
-                <label className="form-label">Endereço Completo</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Rua, Número, Bairro, Cidade - UF" 
-                  value={regAddress}
-                  onChange={(e) => setRegAddress(e.target.value)}
-                  required 
-                />
-              </div>
+                  <div className="form-group full">
+                    <label className="form-label">Endereço Completo</label>
+                    <input type="text" className="form-input" placeholder="Rua, Número, Bairro, Cidade - UF" value={regAddress} onChange={(e) => setRegAddress(e.target.value)} required />
+                  </div>
 
-              <div className="form-group full">
-                <label className="form-label">Qual o seu Cargo no Rodeio?</label>
-                <select 
-                  className="form-select" 
-                  required 
-                  value={regRole}
-                  onChange={(e) => setRegRole(e.target.value)}
-                >
-                  <option value="" disabled>Selecione um cargo...</option>
-                  <option value="usuario_comum">Usuário Comum</option>
-                  <option value="diretor">Diretor</option>
-                  <option value="juiz">Juiz</option>
-                  <option value="peao_touros">Peão de Touros</option>
-                  <option value="peao_cavalos">Peão de Cavalos</option>
-                  <option value="competidor_tambores">Competidor 3 Tambores</option>
-                  <option value="competidor_team_roping">Competidor Team Roping</option>
-                  <option value="tropeiro">Tropeiro</option>
-                  <option value="treinador">Treinador</option>
-                </select>
-              </div>
-            </div>
+                  <div className="form-group full">
+                    <label className="form-label">Qual o seu Cargo no Rodeio?</label>
+                    <select className="form-select" required value={regRole} onChange={(e) => setRegRole(e.target.value)}>
+                      <option value="" disabled>Selecione um cargo...</option>
+                      <option value="usuario_comum">Usuário Comum</option>
+                      <option value="diretor">Diretor</option>
+                      <option value="juiz">Juiz</option>
+                      <option value="peao_touros">Peão de Touros</option>
+                      <option value="peao_cavalos">Peão de Cavalos</option>
+                      <option value="competidor_tambores">Competidor 3 Tambores</option>
+                      <option value="competidor_team_roping">Competidor Team Roping</option>
+                      <option value="tropeiro">Tropeiro</option>
+                      <option value="treinador">Treinador</option>
+                    </select>
+                  </div>
+                </div>
 
-            <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem', backgroundColor: isAppUser ? '#fff' : 'var(--primary)', color: '#000' }} disabled={isRegistering}>
-              {isRegistering ? 'Salvando...' : (isAppUser ? 'Sincronizar Perfil com o RodeoApp' : 'Finalizar Cadastro')}
-            </button>
-          </form>
+                <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem', backgroundColor: isAppUser ? '#fff' : 'var(--primary)', color: '#000' }} disabled={isRegistering}>
+                  {isRegistering ? 'Salvando...' : (isAppUser ? 'Sincronizar Perfil com o RodeoApp' : 'Finalizar Cadastro')}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p className="modal-subtitle">Enviamos um código de 6 dígitos para o e-mail <strong>{regEmail}</strong> para validar sua conta. Digite-o abaixo:</p>
+              <form onSubmit={handleVerifySignupOtp}>
+                <div className="form-group">
+                  <label className="form-label" style={{ textAlign: 'center' }}>Código de Validação</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '8px' }}
+                    maxLength={6}
+                    value={regOtpCode}
+                    onChange={(e) => setRegOtpCode(e.target.value)}
+                    required 
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem' }} disabled={isRegistering}>
+                  {isRegistering ? 'Verificando...' : 'Confirmar E-mail e Ativar Conta'}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </div>
 
@@ -372,23 +376,11 @@ function App() {
               <form onSubmit={handleLoginSubmit}>
                 <div className="form-group">
                   <label className="form-label">E-mail</label>
-                  <input 
-                    type="email" 
-                    className="form-input" 
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    required 
-                  />
+                  <input type="email" className="form-input" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Senha</label>
-                  <input 
-                    type="password" 
-                    className="form-input" 
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required 
-                  />
+                  <input type="password" className="form-input" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
                 </div>
                 <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem' }} disabled={isLoading}>
                   {isLoading ? 'Aguarde...' : 'Acessar Conta'}
