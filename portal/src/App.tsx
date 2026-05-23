@@ -3,24 +3,44 @@ import './index.css';
 import { supabase } from './supabaseClient';
 
 function App() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  
+  // Register States
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
   const [isAppUser, setIsAppUser] = useState(false);
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-    setIsAppUser(false); // Reseta a verificação enquanto digita
+  // Login States
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginStep, setLoginStep] = useState<'credentials' | 'otp'>('credentials');
+  const [otpCode, setOtpCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // Mock de eventos da semana para preencher a tela inicial
+  const weeklyEvents = [
+    { id: 1, name: "Barretos International Rodeo", date: "24 a 28 Ago", location: "Barretos, SP" },
+    { id: 2, name: "Jaguariúna Rodeo Festival", date: "15 a 18 Set", location: "Jaguariúna, SP" },
+    { id: 3, name: "Ribeirão Rodeo Music", date: "20 a 23 Abr", location: "Ribeirão Preto, SP" }
+  ];
+
+  // ======================
+  // FLUXO DE CADASTRO
+  // ======================
+  const handleRegEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRegEmail(e.target.value);
+    setIsAppUser(false); 
   };
 
   const checkEmailInDB = async () => {
-    if (!email || !email.includes('@')) return;
-    
+    if (!regEmail || !regEmail.includes('@')) return;
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('licencas')
         .select('email')
-        .ilike('email', email.trim())
+        .ilike('email', regEmail.trim())
         .maybeSingle();
 
       if (data && data.email) {
@@ -31,21 +51,92 @@ function App() {
     }
   };
 
-  // Mock de eventos da semana para preencher a tela inicial
-  const weeklyEvents = [
-    { id: 1, name: "Barretos International Rodeo", date: "24 a 28 Ago", location: "Barretos, SP" },
-    { id: 2, name: "Jaguariúna Rodeo Festival", date: "15 a 18 Set", location: "Jaguariúna, SP" },
-    { id: 3, name: "Ribeirão Rodeo Music", date: "20 a 23 Abr", location: "Ribeirão Preto, SP" }
-  ];
-
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isAppUser) {
       alert("Sincronização com o App concluída com sucesso! (Simulação)");
     } else {
-      alert("Cadastro simulado com sucesso! Em breve conectaremos ao Supabase.");
+      alert("Cadastro simulado com sucesso! Em breve conectaremos ao Supabase para gravar o perfil.");
     }
-    setIsModalOpen(false);
+    setIsRegisterModalOpen(false);
+  };
+
+
+  // ======================
+  // FLUXO DE LOGIN (2FA)
+  // ======================
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsLoading(true);
+
+    // Passo 1: Verificar credenciais. Como ainda não criamos a tabela de perfis de login real,
+    // vamos simular que a senha sempre está correta para avançarmos pro fluxo de 2FA
+    try {
+      // Gerar código de 6 dígitos aleatório
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Salvar na tabela otp_codes no Supabase
+      const { error: dbError } = await supabase
+        .from('otp_codes')
+        .insert([{ email: loginEmail.toLowerCase().trim(), code: code }]);
+
+      if (dbError) throw new Error("Erro ao gerar código no banco de dados.");
+
+      // Disparar o e-mail via Função da Vercel
+      // Nota: Em ambiente local (dev), a URL da API da vercel é local.
+      // Vamos tentar chamar o endpoint relativo, a Vercel cuidará do roteamento.
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail.toLowerCase().trim(), code })
+      });
+
+      const result = await response.json();
+      if (!result.success) throw new Error("Falha ao enviar e-mail pelo Resend.");
+
+      // Avança para a etapa de digitar o código
+      setLoginStep('otp');
+    } catch (err: any) {
+      console.error(err);
+      setLoginError(err.message || "Erro desconhecido ao tentar logar.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsLoading(true);
+
+    try {
+      // Verificar se o código existe na tabela
+      const { data, error } = await supabase
+        .from('otp_codes')
+        .select('*')
+        .eq('email', loginEmail.toLowerCase().trim())
+        .eq('code', otpCode.trim())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error || !data || data.length === 0) {
+        throw new Error("Código inválido ou expirado.");
+      }
+
+      // Sucesso!
+      alert(`Acesso Liberado! Bem vindo ao portal, ${loginEmail}`);
+      setIsLoginModalOpen(false);
+      setLoginStep('credentials');
+      setOtpCode('');
+      setLoginEmail('');
+      setLoginPassword('');
+    } catch (err: any) {
+      console.error(err);
+      setLoginError(err.message || "Erro ao verificar código.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -55,18 +146,18 @@ function App() {
         <header className="header">
           <div className="logo">RODEO<span className="text-primary">APP</span></div>
           <div className="header-buttons">
-            <button className="btn btn-outline">Entrar</button>
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>Cadastre-se</button>
+            <button className="btn btn-outline" onClick={() => setIsLoginModalOpen(true)}>Entrar</button>
+            <button className="btn btn-primary" onClick={() => setIsRegisterModalOpen(true)}>Cadastre-se</button>
           </div>
         </header>
 
         {/* Hero Section */}
         <section className="hero">
-          <h1 className="hero-title">O Portal Definitivo <br/><span className="text-accent">do Competidor</span></h1>
+          <h1 className="hero-title">O Portal Definitivo <br/><span className="text-primary">do Competidor</span></h1>
           <p className="hero-subtitle">
             Acompanhe seus eventos, verifique suas notas ao vivo e gerencie seu perfil profissional de rodeio em um único lugar.
           </p>
-          <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setIsModalOpen(true)}>
+          <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setIsRegisterModalOpen(true)}>
             Fazer meu Cadastro Gratuito
           </button>
         </section>
@@ -98,29 +189,30 @@ function App() {
         </section>
       </div>
 
-      {/* Registration Modal Overlay */}
-      <div className={`modal-overlay ${isModalOpen ? 'active' : ''}`}>
+      {/* ==================================== */}
+      {/* MODAL DE CADASTRO */}
+      {/* ==================================== */}
+      <div className={`modal-overlay ${isRegisterModalOpen ? 'active' : ''}`}>
         <div className="auth-modal">
-          <button className="close-btn" onClick={() => setIsModalOpen(false)}>×</button>
+          <button className="close-btn" onClick={() => setIsRegisterModalOpen(false)}>×</button>
           <h2 className="modal-title">Crie sua <span className="text-primary">Conta</span></h2>
           <p className="modal-subtitle">Preencha seus dados para acessar o portal do competidor.</p>
 
           <form onSubmit={handleRegisterSubmit}>
             <div className="form-grid">
-              
               <div className="form-group full">
                 <label className="form-label">Nome Completo</label>
                 <input type="text" className="form-input" placeholder="João da Silva" required />
               </div>
 
               <div className="form-group">
-                <label className="form-label">E-mail {isAppUser && <span className="text-accent" style={{marginLeft:'5px', fontSize:'0.65rem'}}>Usuário do App Detectado!</span>}</label>
+                <label className="form-label">E-mail {isAppUser && <span className="text-primary" style={{marginLeft:'5px', fontSize:'0.65rem'}}>Usuário do App Detectado!</span>}</label>
                 <input 
                   type="email" 
                   className="form-input" 
                   placeholder="joao@email.com" 
-                  value={email}
-                  onChange={handleEmailChange}
+                  value={regEmail}
+                  onChange={handleRegEmailChange}
                   onBlur={checkEmailInDB}
                   required 
                 />
@@ -132,8 +224,8 @@ function App() {
                   type="password" 
                   className="form-input" 
                   placeholder="Mínimo 6 caracteres" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
                   required 
                 />
               </div>
@@ -175,12 +267,86 @@ function App() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem', backgroundColor: isAppUser ? 'var(--accent)' : 'var(--primary)' }}>
+            <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem', backgroundColor: isAppUser ? '#fff' : 'var(--primary)', color: '#000' }}>
               {isAppUser ? 'Sincronizar Perfil com o RodeoApp' : 'Finalizar Cadastro'}
             </button>
           </form>
         </div>
       </div>
+
+      {/* ==================================== */}
+      {/* MODAL DE LOGIN (2FA) */}
+      {/* ==================================== */}
+      <div className={`modal-overlay ${isLoginModalOpen ? 'active' : ''}`}>
+        <div className="auth-modal" style={{ maxWidth: '400px' }}>
+          <button className="close-btn" onClick={() => {
+            setIsLoginModalOpen(false);
+            setLoginStep('credentials');
+            setLoginError('');
+          }}>×</button>
+          
+          <h2 className="modal-title">Acesse o <span className="text-primary">Portal</span></h2>
+          
+          {loginError && <div style={{ color: '#ff4444', marginBottom: '1rem', fontSize: '0.85rem' }}>{loginError}</div>}
+
+          {loginStep === 'credentials' ? (
+            <>
+              <p className="modal-subtitle">Insira suas credenciais para entrar.</p>
+              <form onSubmit={handleLoginSubmit}>
+                <div className="form-group">
+                  <label className="form-label">E-mail</label>
+                  <input 
+                    type="email" 
+                    className="form-input" 
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Senha</label>
+                  <input 
+                    type="password" 
+                    className="form-input" 
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required 
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem' }} disabled={isLoading}>
+                  {isLoading ? 'Aguarde...' : 'Acessar Conta'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p className="modal-subtitle">Um código de 6 dígitos foi enviado para o seu e-mail (<strong>{loginEmail}</strong>). Digite-o abaixo.</p>
+              <form onSubmit={handleVerifyOtp}>
+                <div className="form-group">
+                  <label className="form-label" style={{ textAlign: 'center' }}>Código de Segurança</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '8px' }}
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    required 
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem' }} disabled={isLoading}>
+                  {isLoading ? 'Verificando...' : 'Verificar e Entrar'}
+                </button>
+                <button type="button" className="btn btn-outline mt-2" style={{ width: '100%', padding: '1rem' }} onClick={() => setLoginStep('credentials')}>
+                  Voltar
+                </button>
+              </form>
+            </>
+          )}
+
+        </div>
+      </div>
+
     </>
   );
 }

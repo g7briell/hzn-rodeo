@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
   try {
     const data = await resend.emails.send({
-      from: 'RodeoApp <onboarding@resend.dev>', // O Resend permite usar esse email padrão para testes. Depois, troque para o seu domínio oficial.
+      from: 'RodeoApp <portal@rodeoapp.pro>', // Agora usando o domínio oficial!
       to: email,
       subject: 'Seu Código de Acesso - RodeoApp',
       html: `
