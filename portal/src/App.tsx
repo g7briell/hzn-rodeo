@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './index.css';
+import { supabase } from './supabaseClient';
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -7,14 +8,26 @@ function App() {
   const [password, setPassword] = useState('');
   const [isAppUser, setIsAppUser] = useState(false);
 
-  // Simulação: se o e-mail terminar com @rodeoapp.pro, fingimos que ele já tem o App no PC
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setEmail(val);
-    if (val.includes('@rodeoapp.pro')) {
-      setIsAppUser(true);
-    } else {
-      setIsAppUser(false);
+    setEmail(e.target.value);
+    setIsAppUser(false); // Reseta a verificação enquanto digita
+  };
+
+  const checkEmailInDB = async () => {
+    if (!email || !email.includes('@')) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('licencas')
+        .select('email')
+        .ilike('email', email.trim())
+        .maybeSingle();
+
+      if (data && data.email) {
+        setIsAppUser(true);
+      }
+    } catch (err) {
+      console.error('Erro ao verificar email no Supabase:', err);
     }
   };
 
@@ -108,6 +121,7 @@ function App() {
                   placeholder="joao@email.com" 
                   value={email}
                   onChange={handleEmailChange}
+                  onBlur={checkEmailInDB}
                   required 
                 />
               </div>
