@@ -48,6 +48,17 @@ function App() {
   const [isPeaoProfileLoading, setIsPeaoProfileLoading] = useState(false);
   const [isBoiadasLoading, setIsBoiadasLoading] = useState(false);
 
+  // Inicializar roteamento
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname === '/') {
+        setSelectedPeaoProfile(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Tropeiro Boiada States
   const [tropeiroBoiada, setTropeiroBoiada] = useState<any>(null);
   const [isTropeiroBoiadaLoading, setIsTropeiroBoiadaLoading] = useState(false);
@@ -124,9 +135,48 @@ function App() {
         setUserFoto(savedFoto || '');
       }
     } catch (err) {
-      console.error('Erro ao buscar perfil:', err);
+      console.error('Error fetching global events:', err);
     }
   };
+
+  // Checar URL inicial aps carregar eventos
+  useEffect(() => {
+    if (eventosOficiais.length > 0) {
+      const path = window.location.pathname;
+      if (path.startsWith('/perfil/')) {
+        const slug = path.split('/perfil/')[1].replace(/-/g, '').toLowerCase();
+        
+        // Buscar perfil pelo slug do nome
+        supabase.from('perfis_portal').select('*').then(({ data }) => {
+          if (data) {
+            const matchedProfile = data.find((p: any) => p.nome && p.nome.replace(/\s+/g, '').toLowerCase() === slug);
+            if (matchedProfile) {
+              // Calcular historico
+              const historico: any[] = [];
+              const cleanCpf = matchedProfile.cpf ? matchedProfile.cpf.replace(/\D/g, '') : '';
+              
+              eventosOficiais.forEach(ev => {
+                const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
+                  const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+                  return rCpf === cleanCpf;
+                });
+                if (rankIndex !== undefined && rankIndex >= 0) {
+                  historico.push({
+                    eventoNome: ev.nome,
+                    cidade: ev.cidade,
+                    posicao: rankIndex + 1
+                  });
+                }
+              });
+              
+              setSelectedPeaoProfile({ ...matchedProfile, historico });
+              setCurrentTab('explore'); // ir para aba Eventos (antiga Explore)
+            }
+          }
+        });
+      }
+    }
+  }, [eventosOficiais]);
 
   const fetchBoiadas = async () => {
     setIsBoiadasLoading(true);
@@ -1407,7 +1457,10 @@ function App() {
               <div>
                 {selectedPeaoProfile ? (
                   <div className="peao-profile-view fade-in">
-                    <button className="back-btn" onClick={() => setSelectedPeaoProfile(null)} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <button className="back-btn" onClick={() => {
+                      setSelectedPeaoProfile(null);
+                      window.history.pushState({}, '', '/');
+                    }} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                       Voltar
                     </button>
@@ -1528,6 +1581,9 @@ function App() {
                                           }
                                         });
                                         setSelectedPeaoProfile({ ...profileData, historico });
+                                        // Update URL
+                                        const slug = peao.nome.trim().toLowerCase().replace(/\s+/g, '');
+                                        window.history.pushState({}, '', '/perfil/' + slug);
                                       }
                                     }}
                                   >
