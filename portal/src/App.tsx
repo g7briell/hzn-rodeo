@@ -7,9 +7,16 @@ function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   
   // Register States
+  const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regWhatsapp, setRegWhatsapp] = useState('');
+  const [regCpf, setRegCpf] = useState('');
+  const [regRg, setRegRg] = useState('');
+  const [regAddress, setRegAddress] = useState('');
+  const [regRole, setRegRole] = useState('');
   const [isAppUser, setIsAppUser] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Login States
   const [loginEmail, setLoginEmail] = useState('');
@@ -19,7 +26,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
-  // Mock de eventos da semana para preencher a tela inicial
+  // Mock de eventos da semana
   const weeklyEvents = [
     { id: 1, name: "Barretos International Rodeo", date: "24 a 28 Ago", location: "Barretos, SP" },
     { id: 2, name: "Jaguariúna Rodeo Festival", date: "15 a 18 Set", location: "Jaguariúna, SP" },
@@ -51,14 +58,45 @@ function App() {
     }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAppUser) {
-      alert("Sincronização com o App concluída com sucesso! (Simulação)");
-    } else {
-      alert("Cadastro simulado com sucesso! Em breve conectaremos ao Supabase para gravar o perfil.");
+    setIsRegistering(true);
+
+    try {
+      // 1. Criar usuário no Auth do Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: regEmail,
+        password: regPassword,
+      });
+
+      if (authError) throw new Error(authError.message);
+
+      // 2. Salvar na tabela perfis_portal (precisa existir no banco de dados!)
+      const { error: dbError } = await supabase.from('perfis_portal').insert([{
+        nome: regName,
+        email: regEmail,
+        whatsapp: regWhatsapp,
+        cpf: regCpf,
+        rg: regRg,
+        endereco: regAddress,
+        cargo: regRole,
+        // Caso a coluna não exista, isso pode dar erro. Recomende a criação ao usuário.
+        // veio_do_app_desktop: isAppUser 
+      }]);
+
+      if (dbError) throw new Error(dbError.message);
+
+      alert(isAppUser ? "Sincronização com o App concluída com sucesso!" : "Cadastro realizado com sucesso!");
+      setIsRegisterModalOpen(false);
+      
+      // Limpar form
+      setRegName(''); setRegEmail(''); setRegPassword(''); setRegWhatsapp('');
+      setRegCpf(''); setRegRg(''); setRegAddress(''); setRegRole('');
+    } catch (err: any) {
+      alert("Erro ao realizar cadastro: Verifique se a tabela 'perfis_portal' foi criada corretamente com todas as colunas. Detalhe: " + err.message);
+    } finally {
+      setIsRegistering(false);
     }
-    setIsRegisterModalOpen(false);
   };
 
 
@@ -70,22 +108,24 @@ function App() {
     setLoginError('');
     setIsLoading(true);
 
-    // Passo 1: Verificar credenciais. Como ainda não criamos a tabela de perfis de login real,
-    // vamos simular que a senha sempre está correta para avançarmos pro fluxo de 2FA
     try {
-      // Gerar código de 6 dígitos aleatório
+      // Validar senha real no Supabase
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+
+      if (signInError) throw new Error("E-mail ou senha incorretos.");
+
+      // Se passou, gera o código 2FA e envia por e-mail
       const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // Salvar na tabela otp_codes no Supabase
       const { error: dbError } = await supabase
         .from('otp_codes')
         .insert([{ email: loginEmail.toLowerCase().trim(), code: code }]);
 
-      if (dbError) throw new Error("Erro ao gerar código no banco de dados.");
+      if (dbError) throw new Error("Erro ao gerar código de segurança.");
 
-      // Disparar o e-mail via Função da Vercel
-      // Nota: Em ambiente local (dev), a URL da API da vercel é local.
-      // Vamos tentar chamar o endpoint relativo, a Vercel cuidará do roteamento.
       const response = await fetch('/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,9 +133,8 @@ function App() {
       });
 
       const result = await response.json();
-      if (!result.success) throw new Error("Falha ao enviar e-mail pelo Resend.");
+      if (!result.success) throw new Error("Falha ao enviar e-mail de verificação.");
 
-      // Avança para a etapa de digitar o código
       setLoginStep('otp');
     } catch (err: any) {
       console.error(err);
@@ -111,7 +150,6 @@ function App() {
     setIsLoading(true);
 
     try {
-      // Verificar se o código existe na tabela
       const { data, error } = await supabase
         .from('otp_codes')
         .select('*')
@@ -124,7 +162,6 @@ function App() {
         throw new Error("Código inválido ou expirado.");
       }
 
-      // Sucesso!
       alert(`Acesso Liberado! Bem vindo ao portal, ${loginEmail}`);
       setIsLoginModalOpen(false);
       setLoginStep('credentials');
@@ -202,7 +239,14 @@ function App() {
             <div className="form-grid">
               <div className="form-group full">
                 <label className="form-label">Nome Completo</label>
-                <input type="text" className="form-input" placeholder="João da Silva" required />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="João da Silva" 
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  required 
+                />
               </div>
 
               <div className="form-group">
@@ -232,27 +276,60 @@ function App() {
 
               <div className="form-group">
                 <label className="form-label">WhatsApp</label>
-                <input type="tel" className="form-input" placeholder="(00) 00000-0000" required />
+                <input 
+                  type="tel" 
+                  className="form-input" 
+                  placeholder="(00) 00000-0000" 
+                  value={regWhatsapp}
+                  onChange={(e) => setRegWhatsapp(e.target.value)}
+                  required 
+                />
               </div>
 
               <div className="form-group">
                 <label className="form-label">CPF</label>
-                <input type="text" className="form-input" placeholder="000.000.000-00" required />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="000.000.000-00" 
+                  value={regCpf}
+                  onChange={(e) => setRegCpf(e.target.value)}
+                  required 
+                />
               </div>
 
               <div className="form-group">
                 <label className="form-label">RG</label>
-                <input type="text" className="form-input" placeholder="00.000.000-0" required />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="00.000.000-0" 
+                  value={regRg}
+                  onChange={(e) => setRegRg(e.target.value)}
+                  required 
+                />
               </div>
 
               <div className="form-group full">
                 <label className="form-label">Endereço Completo</label>
-                <input type="text" className="form-input" placeholder="Rua, Número, Bairro, Cidade - UF" required />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Rua, Número, Bairro, Cidade - UF" 
+                  value={regAddress}
+                  onChange={(e) => setRegAddress(e.target.value)}
+                  required 
+                />
               </div>
 
               <div className="form-group full">
                 <label className="form-label">Qual o seu Cargo no Rodeio?</label>
-                <select className="form-select" required defaultValue="">
+                <select 
+                  className="form-select" 
+                  required 
+                  value={regRole}
+                  onChange={(e) => setRegRole(e.target.value)}
+                >
                   <option value="" disabled>Selecione um cargo...</option>
                   <option value="usuario_comum">Usuário Comum</option>
                   <option value="diretor">Diretor</option>
@@ -267,8 +344,8 @@ function App() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem', backgroundColor: isAppUser ? '#fff' : 'var(--primary)', color: '#000' }}>
-              {isAppUser ? 'Sincronizar Perfil com o RodeoApp' : 'Finalizar Cadastro'}
+            <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem', backgroundColor: isAppUser ? '#fff' : 'var(--primary)', color: '#000' }} disabled={isRegistering}>
+              {isRegistering ? 'Salvando...' : (isAppUser ? 'Sincronizar Perfil com o RodeoApp' : 'Finalizar Cadastro')}
             </button>
           </form>
         </div>
