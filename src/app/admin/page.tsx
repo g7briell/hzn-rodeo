@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile menu toggle
   const [licenses, setLicenses] = useState<any[]>([]);
   const [boiadas, setBoiadas] = useState<any[]>([]);
+  const [eventos, setEventos] = useState<any[]>([]);
   const [boiadaName, setBoiadaName] = useState("");
   const [tourosTexto, setTourosTexto] = useState("");
   const [loading, setLoading] = useState(false);
@@ -116,9 +117,11 @@ export default function AdminDashboard() {
     if (session) {
       fetchLicenses();
       fetchBoiadas();
+      fetchEventos();
       const interval = setInterval(() => {
         fetchLicenses();
         fetchBoiadas();
+        fetchEventos();
       }, 15000);
       return () => clearInterval(interval);
     }
@@ -182,6 +185,37 @@ export default function AdminDashboard() {
     if (data) setBoiadas(data);
   }
 
+  async function fetchEventos() {
+    const { data, error } = await supabase.from("eventos_oficiais").select("*").order("created_at", { ascending: false });
+    if (error) console.error("Erro ao carregar eventos:", error);
+    if (data) setEventos(data);
+  }
+
+  const handleApproveEvento = async (id: string) => {
+    if (!window.confirm("Aprovar este evento para aparecer no portal?")) return;
+    const { error } = await supabase
+      .from("eventos_oficiais")
+      .update({ status: 'aprovado' })
+      .eq("id", id);
+    if (!error) {
+      alert("Evento aprovado com sucesso!");
+      fetchEventos();
+    } else {
+      alert("Erro ao aprovar evento: " + error.message);
+    }
+  };
+
+  const handleRejectEvento = async (id: string) => {
+    if (!window.confirm("Rejeitar/Excluir este evento?")) return;
+    const { error } = await supabase.from("eventos_oficiais").delete().eq("id", id);
+    if (!error) {
+      alert("Evento removido!");
+      fetchEventos();
+    } else {
+      alert("Erro ao remover evento: " + error.message);
+    }
+  };
+
   const handleSaveBoiada = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!boiadaName.trim()) return alert("Digite o nome da CIA");
@@ -219,6 +253,35 @@ export default function AdminDashboard() {
       } else {
         alert("Erro ao excluir: " + error.message);
       }
+    }
+  };
+
+  const handleApproveBoiada = async (id: string, currentLados: any) => {
+    if (!window.confirm("Aprovar esta boiada para o banco oficial?")) return;
+    const updatedLados = { ...currentLados };
+    if (updatedLados.__meta) {
+      updatedLados.__meta.status = 'aprovado';
+    }
+    const { error } = await supabase
+      .from("boiadas_oficiais")
+      .update({ lados: updatedLados })
+      .eq("id", id);
+    if (!error) {
+      alert("Boiada aprovada com sucesso e liberada para todos!");
+      fetchBoiadas();
+    } else {
+      alert("Erro ao aprovar boiada: " + error.message);
+    }
+  };
+
+  const handleRejectBoiada = async (id: string) => {
+    if (!window.confirm("Rejeitar e excluir esta solicitação de boiada?")) return;
+    const { error } = await supabase.from("boiadas_oficiais").delete().eq("id", id);
+    if (!error) {
+      alert("Solicitação rejeitada e boiada removida!");
+      fetchBoiadas();
+    } else {
+      alert("Erro ao rejeitar boiada: " + error.message);
     }
   };
 
@@ -463,6 +526,7 @@ export default function AdminDashboard() {
           <SidebarLink icon={<UserPlus className="w-5 h-5" />} label="NOVO CLIENTE" active={activeTab === "new"} onClick={() => { setActiveTab("new"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<Key className="w-5 h-5" />} label="GERENCIAR CHAVES" active={activeTab === "keys"} onClick={() => { setActiveTab("keys"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<Database className="w-5 h-5" />} label="BOIADAS (NUVEM)" active={activeTab === "boiadas"} onClick={() => { setActiveTab("boiadas"); setIsSidebarOpen(false); }} />
+          <SidebarLink icon={<Database className="w-5 h-5" />} label="EVENTOS" active={activeTab === "eventos"} onClick={() => { setActiveTab("eventos"); setIsSidebarOpen(false); }} />
           <SidebarLink icon={<Download className="w-5 h-5" />} label="LINK PARA DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} />
         </nav>
 
@@ -651,14 +715,63 @@ export default function AdminDashboard() {
                 </form>
               </div>
 
-              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm flex flex-col max-h-[600px]">
-                <h3 className="font-black italic uppercase text-white mb-6">Boiadas Salvas ({boiadas.length})</h3>
-                <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
-                  {boiadas.length === 0 ? (
-                     <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhuma boiada cadastrada</div>
+              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm flex flex-col max-h-[600px] overflow-hidden">
+                <h3 className="font-black italic uppercase text-white mb-6">Solicitações de Boiadas</h3>
+                <div className="flex-1 overflow-y-auto pr-4 mb-6 space-y-4 custom-scrollbar" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.5rem' }}>
+                  {boiadas.filter(b => b.lados?.__meta && b.lados.__meta.status === 'pendente').length === 0 ? (
+                    <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhuma solicitação pendente</div>
                   ) : (
-                    boiadas.map(b => {
-                      const totalTouros = Object.keys(b.lados || {}).length;
+                    boiadas.filter(b => b.lados?.__meta && b.lados.__meta.status === 'pendente').map(b => {
+                      const totalTouros = Object.keys(b.lados || {}).filter(k => k !== '__meta').length;
+                      return (
+                        <div key={b.id} className="bg-black border border-white/10 p-5 rounded-2xl space-y-4 group hover:border-yellow-500/50 transition-all">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-black uppercase text-sm mb-1">{b.nome}</div>
+                              <div className="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">Tropeiro: {b.lados.__meta.tropeiro_email}</div>
+                              <div className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">{totalTouros} TOUROS</div>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => handleApproveBoiada(b.id, b.lados)} 
+                                className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 text-[10px] font-black uppercase tracking-wider"
+                              >
+                                Aprovar
+                              </button>
+                              <button 
+                                onClick={() => handleRejectBoiada(b.id)} 
+                                className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 text-[10px] font-black uppercase tracking-wider"
+                              >
+                                Recusar
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1 text-white/40 text-[10px] font-mono max-h-[100px] overflow-y-auto pr-2 custom-scrollbar">
+                            {Object.keys(b.lados || {}).filter(k => k !== '__meta').map(t => {
+                              const details = b.lados.__meta.touros_info?.[t] || {};
+                              return (
+                                <div key={t} className="flex justify-between border-b border-white/5 py-1">
+                                  <span>{t}</span>
+                                  <span>Giro: {details.lado || b.lados[t]} {details.video_url ? '🎥' : ''} {details.foto ? '🖼️' : ''}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+
+                <h3 className="font-black italic uppercase text-white mb-6">Banco Oficial</h3>
+                <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
+                  {boiadas.filter(b => !b.lados?.__meta || b.lados.__meta.status !== 'pendente').length === 0 ? (
+                    <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhuma boiada cadastrada</div>
+                  ) : (
+                    boiadas.filter(b => !b.lados?.__meta || b.lados.__meta.status !== 'pendente').map(b => {
+                      const totalTouros = Object.keys(b.lados || {}).filter(k => k !== '__meta').length;
                       return (
                         <div key={b.id} className="bg-black border border-white/10 p-5 rounded-2xl flex justify-between items-center group hover:border-yellow-500/50 transition-all">
                           <div>
@@ -674,6 +787,72 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "eventos" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-10">Eventos Oficiais</h2>
+            <div className="grid md:grid-cols-2 gap-8">
+              
+              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm flex flex-col max-h-[600px] overflow-hidden">
+                <h3 className="font-black italic uppercase text-white mb-6">Solicitações de Eventos</h3>
+                <div className="flex-1 overflow-y-auto pr-4 mb-6 space-y-4 custom-scrollbar" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.5rem' }}>
+                  {eventos.filter(e => e.status === 'pendente').length === 0 ? (
+                    <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhuma solicitação pendente</div>
+                  ) : (
+                    eventos.filter(e => e.status === 'pendente').map(e => (
+                      <div key={e.id} className="bg-black border border-white/10 p-5 rounded-2xl space-y-4 group hover:border-yellow-500/50 transition-all">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-black uppercase text-sm mb-1">{e.nome}</div>
+                            <div className="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">Organizador: {e.organizador_email}</div>
+                            <div className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">{e.local} | {e.data_inicio} - {e.data_fim}</div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleApproveEvento(e.id)} 
+                              className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 text-[10px] font-black uppercase tracking-wider"
+                            >
+                              Aprovar
+                            </button>
+                            <button 
+                              onClick={() => handleRejectEvento(e.id)} 
+                              className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 text-[10px] font-black uppercase tracking-wider"
+                            >
+                              Recusar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm flex flex-col max-h-[600px] overflow-hidden">
+                <h3 className="font-black italic uppercase text-white mb-6">Eventos Aprovados</h3>
+                <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
+                  {eventos.filter(e => e.status === 'aprovado').length === 0 ? (
+                    <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhum evento aprovado</div>
+                  ) : (
+                    eventos.filter(e => e.status === 'aprovado').map(e => (
+                      <div key={e.id} className="bg-black border border-white/10 p-5 rounded-2xl flex justify-between items-center group hover:border-yellow-500/50 transition-all">
+                        <div>
+                          <div className="font-black uppercase text-sm mb-1">{e.nome}</div>
+                          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{e.local} | {e.data_inicio}</div>
+                        </div>
+                        <button onClick={() => handleRejectEvento(e.id)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all" title="Excluir">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         )}

@@ -36,13 +36,30 @@ function App() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [userBio, setUserBio] = useState('');
   const [userFoto, setUserFoto] = useState('');
-  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada'>('home');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [boiadas, setBoiadas] = useState<any[]>([]);
+  const [eventosOficiais, setEventosOficiais] = useState<any[]>([]);
   const [selectedBoiada, setSelectedBoiada] = useState<any>(null);
   const [isBoiadasLoading, setIsBoiadasLoading] = useState(false);
+
+  // Tropeiro Boiada States
+  const [tropeiroBoiada, setTropeiroBoiada] = useState<any>(null);
+  const [isTropeiroBoiadaLoading, setIsTropeiroBoiadaLoading] = useState(false);
+  const [isEditBullModalOpen, setIsEditBullModalOpen] = useState(false);
+  const [editingBullName, setEditingBullName] = useState<string | null>(null);
+  const [bullForm, setBullForm] = useState({
+    nome: '',
+    lado: 'Esquerdo',
+    foto: '',
+    video_url: ''
+  });
+  const [activeYoutubeVideoId, setActiveYoutubeVideoId] = useState<string | null>(null);
+  const [isCreatingBoiada, setIsCreatingBoiada] = useState(false);
+  const [bulkBullsText, setBulkBullsText] = useState('');
+  const [newBoiadaCiaName, setNewBoiadaCiaName] = useState('');
 
   // Public Profile States
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(null);
@@ -50,6 +67,19 @@ function App() {
   const [publicProfileBio, setPublicProfileBio] = useState('');
   const [publicProfileFoto, setPublicProfileFoto] = useState('');
   const [isPublicProfileLoading, setIsPublicProfileLoading] = useState(false);
+
+  // Public Boiada States
+  const [publicBoiadaSlug, setPublicBoiadaSlug] = useState<string | null>(null);
+  const [publicBoiada, setPublicBoiada] = useState<any>(null);
+  const [isPublicBoiadaLoading, setIsPublicBoiadaLoading] = useState(false);
+
+  const slugify = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]/g, '');
+  };
 
   const navigateTo = (path: string) => {
     window.history.pushState({}, '', path);
@@ -176,6 +206,177 @@ function App() {
     }
   };
 
+  const fetchEventosOficiais = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('eventos_oficiais')
+        .select('*')
+        .eq('status', 'aprovado')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) {
+        setEventosOficiais(data);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar eventos oficiais:', err);
+    }
+  };
+
+  const fetchTropeiroBoiada = async (email: string) => {
+    setIsTropeiroBoiadaLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('boiadas_oficiais')
+        .select('*');
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const mine = data.find(b => b.lados?.__meta?.tropeiro_email?.toLowerCase().trim() === email.toLowerCase().trim());
+        setTropeiroBoiada(mine || null);
+      } else {
+        setTropeiroBoiada(null);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar boiada do tropeiro:', err);
+    } finally {
+      setIsTropeiroBoiadaLoading(false);
+    }
+  };
+
+  const handleCreateTropeiroBoiada = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.email) return;
+    if (!newBoiadaCiaName.trim()) return alert("Digite o nome da boiada (CIA).");
+    
+    setIsCreatingBoiada(true);
+    try {
+      const tourosList = bulkBullsText
+        .split('\n')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+      
+      const newLados: any = {
+        "__meta": {
+          "status": "pendente",
+          "tropeiro_email": user.email,
+          "touros_info": {}
+        }
+      };
+      
+      tourosList.forEach(t => {
+        newLados[t] = "Esquerdo";
+        newLados.__meta.touros_info[t] = {
+          lado: "Esquerdo",
+          foto: "",
+          video_url: ""
+        };
+      });
+      
+      const { error } = await supabase
+        .from('boiadas_oficiais')
+        .insert([{
+          nome: newBoiadaCiaName.trim().toUpperCase(),
+          lados: newLados
+        }]);
+      
+      if (error) throw error;
+      
+      alert("Boiada criada com sucesso e enviada para aprovação do Administrador!");
+      setNewBoiadaCiaName('');
+      setBulkBullsText('');
+      await fetchTropeiroBoiada(user.email);
+    } catch (err: any) {
+      alert("Erro ao criar boiada: " + err.message);
+    } finally {
+      setIsCreatingBoiada(false);
+    }
+  };
+
+  const handleSaveBull = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.email || !tropeiroBoiada) return;
+    if (!bullForm.nome.trim()) return alert("Digite o nome do touro.");
+    
+    try {
+      const updatedLados = { ...tropeiroBoiada.lados };
+      if (!updatedLados.__meta) {
+         updatedLados.__meta = {
+           status: "pendente",
+           tropeiro_email: user.email,
+           touros_info: {}
+         };
+      }
+      if (!updatedLados.__meta.touros_info) {
+         updatedLados.__meta.touros_info = {};
+      }
+      
+      const cleanName = bullForm.nome.trim();
+      
+      if (editingBullName && editingBullName !== cleanName) {
+        delete updatedLados[editingBullName];
+        if (updatedLados.__meta.touros_info[editingBullName]) {
+          delete updatedLados.__meta.touros_info[editingBullName];
+        }
+      }
+      
+      updatedLados[cleanName] = bullForm.lado;
+      updatedLados.__meta.touros_info[cleanName] = {
+        lado: bullForm.lado,
+        foto: bullForm.foto,
+        video_url: bullForm.video_url.trim()
+      };
+      
+      const { error } = await supabase
+        .from('boiadas_oficiais')
+        .update({ lados: updatedLados })
+        .eq('id', tropeiroBoiada.id);
+      
+      if (error) throw error;
+      
+      alert("Touro salvo com sucesso!");
+      setIsEditBullModalOpen(false);
+      setEditingBullName(null);
+      setBullForm({ nome: '', lado: 'Esquerdo', foto: '', video_url: '' });
+      await fetchTropeiroBoiada(user.email);
+    } catch (err: any) {
+      alert("Erro ao salvar touro: " + err.message);
+    }
+  };
+
+  const handleDeleteBull = async (bullName: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o touro "${bullName}"?`)) return;
+    if (!user?.email || !tropeiroBoiada) return;
+    
+    try {
+      const updatedLados = { ...tropeiroBoiada.lados };
+      if (updatedLados[bullName]) delete updatedLados[bullName];
+      if (updatedLados.__meta?.touros_info?.[bullName]) {
+        delete updatedLados.__meta.touros_info[bullName];
+      }
+      
+      const { error } = await supabase
+        .from('boiadas_oficiais')
+        .update({ lados: updatedLados })
+        .eq('id', tropeiroBoiada.id);
+      
+      if (error) throw error;
+      
+      alert("Touro removido com sucesso!");
+      await fetchTropeiroBoiada(user.email);
+    } catch (err: any) {
+      alert("Erro ao remover touro: " + err.message);
+    }
+  };
+
+  const getYoutubeId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
   useEffect(() => {
     const checkSession = async () => {
       const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
@@ -193,6 +394,8 @@ function App() {
         if (session.user.email) {
           fetchUserProfile(session.user.email);
           fetchBoiadas();
+          fetchEventosOficiais();
+          fetchTropeiroBoiada(session.user.email);
           setCurrentTab('explore');
         }
       }
@@ -211,6 +414,8 @@ function App() {
           if (session?.user?.email) {
             fetchUserProfile(session.user.email);
             fetchBoiadas();
+          fetchEventosOficiais();
+            fetchTropeiroBoiada(session.user.email);
             setCurrentTab('explore');
           }
           return;
@@ -222,6 +427,8 @@ function App() {
         if (session.user.email) {
           fetchUserProfile(session.user.email);
           fetchBoiadas();
+          fetchEventosOficiais();
+          fetchTropeiroBoiada(session.user.email);
           setCurrentTab(prev => prev === 'home' ? 'explore' : prev);
         }
       } else if (!session) {
@@ -290,14 +497,6 @@ function App() {
   const handleCopyShareLink = () => {
     if (!userProfile?.nome) return;
     
-    const slugify = (text: string) => {
-      return text
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '');
-    };
-
     const slug = slugify(userProfile.nome);
     const shareUrl = `${window.location.origin}/perfil/${slug}`;
     
@@ -308,13 +507,26 @@ function App() {
     });
   };
 
+  const handleCopyBoiadaLink = () => {
+    if (!tropeiroBoiada?.nome) return;
+    const slug = slugify(tropeiroBoiada.nome);
+    const shareUrl = `${window.location.origin}/boiada/${slug}`;
+    
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert("Link da boiada copiado com sucesso!");
+    }).catch(() => {
+      alert(`Copie o link: ${shareUrl}`);
+    });
+  };
+
   useEffect(() => {
     const handleRouting = async () => {
       const path = window.location.pathname;
       if (path.startsWith('/perfil/')) {
-        const slug = path.replace('/perfil/', '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const slug = path.replace('/perfil/', '').toLowerCase().replace(/[^a-z0-9-]/g, '');
         if (slug) {
           setPublicProfileSlug(slug);
+          setPublicBoiadaSlug(null);
           setIsPublicProfileLoading(true);
           try {
             const queryPattern = '%' + slug.split('').join('%') + '%';
@@ -323,14 +535,6 @@ function App() {
               .select('*')
               .ilike('nome', queryPattern)
               .order('created_at', { ascending: false });
-
-            const slugify = (text: string) => {
-              return text
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]/g, '');
-            };
 
             const match = data?.find(p => slugify(p.nome) === slug);
             if (match) {
@@ -363,9 +567,30 @@ function App() {
             setIsPublicProfileLoading(false);
           }
         }
+      } else if (path.startsWith('/boiada/')) {
+        const slug = path.replace('/boiada/', '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+        if (slug) {
+          setPublicBoiadaSlug(slug);
+          setPublicProfileSlug(null);
+          setIsPublicBoiadaLoading(true);
+          try {
+            const { data } = await supabase
+              .from('boiadas_oficiais')
+              .select('*');
+            
+            const match = data?.find(b => slugify(b.nome) === slug && (!b.lados?.__meta || b.lados.__meta.status !== 'pendente'));
+            setPublicBoiada(match || null);
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setIsPublicBoiadaLoading(false);
+          }
+        }
       } else {
         setPublicProfileSlug(null);
         setPublicProfile(null);
+        setPublicBoiadaSlug(null);
+        setPublicBoiada(null);
       }
     };
 
@@ -374,12 +599,7 @@ function App() {
     return () => window.removeEventListener('popstate', handleRouting);
   }, []);
 
-  // Mock de eventos da semana
-  const weeklyEvents = [
-    { id: 1, name: "Barretos International Rodeo", date: "24 a 28 Ago", location: "Barretos, SP" },
-    { id: 2, name: "Jaguariúna Rodeo Festival", date: "15 a 18 Set", location: "Jaguariúna, SP" },
-    { id: 3, name: "Ribeirão Rodeo Music", date: "20 a 23 Abr", location: "Ribeirão Preto, SP" }
-  ];
+  // Eventos Oficiais vêm do banco agora
 
   // ======================
   // FLUXO DE CADASTRO
@@ -544,6 +764,7 @@ function App() {
         if (session.user.email) {
           await fetchUserProfile(session.user.email);
           fetchBoiadas();
+          fetchEventosOficiais();
         }
       }
 
@@ -649,6 +870,109 @@ function App() {
     );
   }
 
+  if (publicBoiadaSlug) {
+    return (
+      <div className="container">
+        <header className="header">
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}>RODEO<span className="text-primary">APP</span></div>
+          <div className="header-buttons">
+            <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
+          </div>
+        </header>
+
+        <div className="profile-container" style={{ minHeight: '70vh', padding: '2rem 0' }}>
+          {isPublicBoiadaLoading ? (
+            <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center', marginTop: '4rem' }}>Carregando Boiada...</div>
+          ) : publicBoiada ? (
+            <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+              <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <h1 style={{ fontSize: '3rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>{publicBoiada.nome}</h1>
+                <div style={{ display: 'inline-block', marginTop: '1rem' }}>
+                  <span className="badge badge-rodeoapp" style={{ fontSize: '1rem', padding: '0.5rem 1.5rem' }}>Boiada Oficial</span>
+                </div>
+              </div>
+
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid var(--primary)', paddingLeft: '1rem' }}>
+                Touros do Plantel ({Object.keys(publicBoiada.lados || {}).filter(k => k !== '__meta').length})
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {Object.keys(publicBoiada.lados || {}).filter(k => k !== '__meta').map(bullName => {
+                  const side = publicBoiada.lados[bullName];
+                  const details = publicBoiada.lados?.__meta?.touros_info?.[bullName] || {};
+                  const hasVideo = !!details.video_url && getYoutubeId(details.video_url);
+                  
+                  return (
+                    <div key={bullName} style={{ position: 'relative', height: '350px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: '2px solid rgba(255,255,255,0.1)' }}>
+                      <img 
+                        src={details.foto || "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=500&h=700&q=80"} 
+                        alt="Foto do Touro" 
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+                      />
+                      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.9) 100%)', zIndex: 1 }} />
+                      
+                      <div style={{ position: 'relative', zIndex: 2, padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+                          <h4 style={{ margin: 0, fontSize: '2rem', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                            {bullName}
+                          </h4>
+                          <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+                            Lado {side}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '1.1rem', textTransform: 'uppercase', fontStyle: 'italic', color: '#ddd', fontWeight: 300 }}>
+                          {publicBoiada.nome}
+                        </p>
+                      </div>
+                      
+                      {hasVideo && (
+                        <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 2 }}>
+                          <button 
+                            style={{ background: 'rgba(255,0,0,0.8)', border: 'none', color: '#fff', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' }}
+                            onClick={() => {
+                              const vid = getYoutubeId(details.video_url);
+                              if (vid) setActiveYoutubeVideoId(vid);
+                            }}
+                          >
+                            ▶ Ver Pulo
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', marginTop: '4rem' }}>
+              <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#ff4444' }}>Boiada Não Encontrada</h2>
+              <p className="text-muted" style={{ marginBottom: '2rem' }}>A boiada solicitada não existe ou ainda não foi aprovada pelo sistema.</p>
+              <button className="btn btn-primary" onClick={() => navigateTo('/')}>Voltar ao Início</button>
+            </div>
+          )}
+        </div>
+        
+        {activeYoutubeVideoId && (
+          <div className="modal-overlay active" onClick={() => setActiveYoutubeVideoId(null)}>
+            <div className="auth-modal" style={{ maxWidth: '640px', padding: '1rem', background: '#000', border: '1px solid var(--border-light)' }} onClick={(e) => e.stopPropagation()}>
+              <button className="close-btn" style={{ top: '10px', right: '10px', zIndex: 10 }} onClick={() => setActiveYoutubeVideoId(null)}>×</button>
+              <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px' }}>
+                <iframe 
+                  src={`https://www.youtube.com/embed/${activeYoutubeVideoId}?autoplay=1`} 
+                  title="YouTube video player" 
+                  frameBorder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <>
@@ -683,19 +1007,56 @@ function App() {
             </div>
             
             <div className="events-grid">
-              {weeklyEvents.map(ev => (
-                <div key={ev.id} className="event-card">
-                  <div className="event-date">{ev.date}</div>
-                  <h3 className="event-name">{ev.name}</h3>
-                  <div className="event-location">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    {ev.location}
-                  </div>
+              {eventosOficiais.length === 0 ? (
+                <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                  Nenhum evento oficial disponível no momento.
                 </div>
-              ))}
+              ) : (
+                eventosOficiais.map(ev => (
+                  <div key={ev.id} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div className="event-date" style={{ background: 'var(--primary)', color: 'var(--bg-dark)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        {ev.data_inicio} {ev.data_fim ? `a ${ev.data_fim}` : ''}
+                      </div>
+                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,215,0,0.1)', color: 'var(--primary)', borderRadius: '12px', border: '1px solid var(--primary)' }}>
+                        OFICIAL
+                      </span>
+                    </div>
+                    <h3 className="event-name" style={{ margin: 0, fontSize: '1.5rem', fontStyle: 'italic', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-light)' }}>{ev.nome}</h3>
+                    <div className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      {ev.local}
+                    </div>
+                    
+                    {/* Renderização do Ranking/Detalhes se existir */}
+                    {ev.detalhes?.ranking && ev.detalhes.ranking.length > 0 && (
+                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-light)' }}>
+                        <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Top 3 - Ranking</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {ev.detalhes.ranking.slice(0, 3).map((competidor: any, idx: number) => (
+                            <div 
+                              key={idx} 
+                              style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}
+                              onClick={() => {
+                                // Redirecionar para o perfil se houver slug no payload, senão gerar fallback
+                                const slug = competidor.slug || slugify(competidor.nome);
+                                navigateTo(`/perfil/${slug}`);
+                              }}
+                              className="hover:bg-white/5 transition-colors"
+                            >
+                              <span style={{ fontWeight: 'bold', color: 'var(--text-light)', fontSize: '0.9rem' }}>{idx + 1}º {competidor.nome}</span>
+                              <span style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.9rem' }}>{competidor.pontuacao} pts</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </section>
         </div>
@@ -924,10 +1285,12 @@ function App() {
     post.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredBoiadas = boiadas.filter(b => 
-    b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (b.lados && Object.keys(b.lados).some(bull => bull.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
+  const filteredBoiadas = boiadas.filter(b => {
+    const isPending = b.lados?.__meta?.status === 'pendente';
+    if (isPending) return false;
+    return b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (b.lados && Object.keys(b.lados).some(bull => bull !== '__meta' && bull.toLowerCase().includes(searchTerm.toLowerCase())));
+  });
 
   // Authenticated Dashboard Layout
   return (
@@ -969,6 +1332,18 @@ function App() {
               </svg>
               Boiadas
             </button>
+            
+            {userProfile?.cargo === 'tropeiro' && (
+              <button 
+                className={`menu-item ${currentTab === 'minha-boiada' ? 'active' : ''}`} 
+                onClick={() => { setCurrentTab('minha-boiada'); setSearchTerm(''); }}
+              >
+                <svg viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Minha Boiada
+              </button>
+            )}
             
             <button 
               className={`menu-item ${currentTab === 'profile' ? 'active' : ''}`} 
@@ -1122,6 +1497,184 @@ function App() {
               </div>
             )}
 
+            {/* MINHA BOIADA TAB (Tropeiro Only) */}
+            {currentTab === 'minha-boiada' && userProfile?.cargo === 'tropeiro' && (
+              <div>
+                <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Minha Boiada</h2>
+                <p className="text-muted" style={{ marginBottom: '2.5rem' }}>Cadastre e gerencie a lista oficial de touros da sua companhia.</p>
+                
+                {isTropeiroBoiadaLoading ? (
+                  <div style={{ color: 'var(--primary)', fontWeight: 600, textAlign: 'center', padding: '3rem' }}>Carregando dados da boiada...</div>
+                ) : !tropeiroBoiada ? (
+                  /* Create Boiada flow */
+                  <div style={{ maxWidth: '600px', margin: '0 auto', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '24px', padding: '2.5rem' }}>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--primary)' }}>Registrar Companhia (CIA)</h3>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '2rem' }}>Insira o nome da sua CIA e a lista de touros inicial. O cadastro será enviado para aprovação do administrador do app.</p>
+                    
+                    <form onSubmit={handleCreateTropeiroBoiada} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">Nome da Companhia / CIA</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="Ex: CIA DE RODEIO RANCHO DE PRATA" 
+                          value={newBoiadaCiaName} 
+                          onChange={(e) => setNewBoiadaCiaName(e.target.value)} 
+                          required 
+                        />
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="form-label">Lista de Touros (Um por linha)</label>
+                        <textarea 
+                          className="form-input" 
+                          style={{ minHeight: '150px', resize: 'vertical', fontFamily: 'monospace', fontSize: '0.9rem' }}
+                          placeholder="Touro 1&#10;Touro 2&#10;Touro 3" 
+                          value={bulkBullsText} 
+                          onChange={(e) => setBulkBullsText(e.target.value)} 
+                          required 
+                        />
+                      </div>
+                      
+                      <button type="submit" className="btn btn-primary" style={{ padding: '1rem', marginTop: '1rem' }} disabled={isCreatingBoiada}>
+                        {isCreatingBoiada ? 'Registrando...' : 'Registrar e Enviar para Aprovação'}
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  /* Manage Boiada flow */
+                  <div>
+                    {/* Header Info & Status */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '20px', padding: '2rem', marginBottom: '2rem' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.75rem', margin: 0, textTransform: 'uppercase' }}>{tropeiroBoiada.nome}</h3>
+                        <p className="text-muted" style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>
+                          Proponente: <strong>{tropeiroBoiada.lados?.__meta?.tropeiro_email}</strong>
+                        </p>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {tropeiroBoiada.lados?.__meta?.status === 'pendente' ? (
+                          <span className="badge badge-rodeoapp" style={{ animation: 'badgeGlow 1.5s infinite alternate', background: 'rgba(255, 215, 0, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '0.5rem 1rem', fontSize: '0.8rem' }}>
+                            Aguardando Aprovação
+                          </span>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span className="badge" style={{ background: 'rgba(46, 204, 113, 0.15)', border: '1px solid #2ecc71', color: '#2ecc71', padding: '0.5rem 1rem', fontSize: '0.8rem' }}>
+                              Aprovada & Oficial
+                            </span>
+                            <button 
+                              className="btn btn-outline" 
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              onClick={handleCopyBoiadaLink}
+                              title="Copiar link público da boiada"
+                            >
+                              🔗 Link Público
+                            </button>
+                          </div>
+                        )}
+                        
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ margin: 0, padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}
+                          onClick={() => {
+                            setEditingBullName(null);
+                            setBullForm({ nome: '', lado: 'Esquerdo', foto: '', video_url: '' });
+                            setIsEditBullModalOpen(true);
+                          }}
+                        >
+                          + Adicionar Touro
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Bulls list */}
+                    <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem' }}>
+                      Touros Cadastrados ({Object.keys(tropeiroBoiada.lados || {}).filter(k => k !== '__meta').length})
+                    </h3>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                      {Object.keys(tropeiroBoiada.lados || {}).filter(k => k !== '__meta').map(bullName => {
+                        const side = tropeiroBoiada.lados[bullName];
+                        const details = tropeiroBoiada.lados?.__meta?.touros_info?.[bullName] || {};
+                        const hasVideo = !!details.video_url && getYoutubeId(details.video_url);
+                        
+                        return (
+                          <div key={bullName} style={{ position: 'relative', height: '300px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: '2px solid rgba(255,255,255,0.1)' }}>
+                            <img 
+                              src={details.foto || "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=500&h=700&q=80"} 
+                              alt="Foto do Touro" 
+                              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+                            />
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.9) 100%)', zIndex: 1 }} />
+                            
+                            <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 2, display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                              <button 
+                                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backdropFilter: 'blur(4px)' }}
+                                onClick={() => {
+                                  setEditingBullName(bullName);
+                                  setBullForm({
+                                    nome: bullName,
+                                    lado: side,
+                                    foto: details.foto || '',
+                                    video_url: details.video_url || ''
+                                  });
+                                  setIsEditBullModalOpen(true);
+                                }}
+                                title="Editar Touro"
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', backdropFilter: 'blur(4px)' }}
+                                onClick={() => handleDeleteBull(bullName)}
+                                title="Excluir Touro"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+
+                            <div style={{ position: 'relative', zIndex: 2, padding: '1.5rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+                                <h4 style={{ margin: 0, fontSize: '1.5rem', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                                  {bullName}
+                                </h4>
+                                <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+                                  Lado {side}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <p style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', fontStyle: 'italic', color: '#ddd', fontWeight: 300 }}>
+                                  {tropeiroBoiada.nome}
+                                </p>
+                                {hasVideo && (
+                                  <button 
+                                    style={{ background: 'rgba(255,0,0,0.8)', border: 'none', color: '#fff', padding: '0.3rem 0.8rem', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' }}
+                                    onClick={() => {
+                                      const vid = getYoutubeId(details.video_url);
+                                      if (vid) setActiveYoutubeVideoId(vid);
+                                    }}
+                                  >
+                                    ▶ Pulo
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {Object.keys(tropeiroBoiada.lados || {}).filter(k => k !== '__meta').length === 0 && (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                          Nenhum touro cadastrado nesta boiada. Clique no botão "+ Adicionar Touro" para começar.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* MY PROFILE TAB */}
             {currentTab === 'profile' && (
               <div className="profile-container" style={{ padding: 0, maxWidth: '100%' }}>
@@ -1260,6 +1813,121 @@ function App() {
                   Nenhum touro cadastrado nesta boiada.
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================== */}
+      {/* MODAL DE EDIÇÃO/CADASTRO DE TOURO */}
+      {/* ==================================== */}
+      {isEditBullModalOpen && (
+        <div className="modal-overlay active">
+          <div className="auth-modal" style={{ maxWidth: '500px' }}>
+            <button className="close-btn" onClick={() => { setIsEditBullModalOpen(false); setEditingBullName(null); }}>×</button>
+            <h2 className="modal-title">{editingBullName ? 'Editar Touro' : 'Adicionar Touro'}</h2>
+            <p className="modal-subtitle">Insira as informações do touro da sua companhia.</p>
+            
+            <form onSubmit={handleSaveBull} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Nome do Touro</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Ex: Corte Seco" 
+                  value={bullForm.nome} 
+                  onChange={(e) => setBullForm({ ...bullForm, nome: e.target.value })} 
+                  required 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Direção de Giro (Lado)</label>
+                <select 
+                  className="form-select" 
+                  value={bullForm.lado} 
+                  onChange={(e) => setBullForm({ ...bullForm, lado: e.target.value })}
+                  required
+                >
+                  <option value="Esquerdo">Esquerdo</option>
+                  <option value="Direito">Direito</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Foto do Touro (Upload)</label>
+                {bullForm.foto && (
+                  <div style={{ marginBottom: '0.75rem', position: 'relative', width: '100px', height: '100px' }}>
+                    <img 
+                      src={bullForm.foto} 
+                      alt="Preview" 
+                      style={{ width: '100%', height: '100%', borderRadius: '12px', objectFit: 'cover' }} 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setBullForm({ ...bullForm, foto: '' })}
+                      style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4444', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                <label className="photo-upload-btn" style={{ display: 'inline-block', margin: 0, textAlign: 'center' }}>
+                  Selecionar Foto
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setBullForm({ ...bullForm, foto: reader.result as string });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }} 
+                    style={{ display: 'none' }} 
+                  />
+                </label>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Link do Vídeo no YouTube</label>
+                <input 
+                  type="url" 
+                  className="form-input" 
+                  placeholder="https://www.youtube.com/watch?v=..." 
+                  value={bullForm.video_url} 
+                  onChange={(e) => setBullForm({ ...bullForm, video_url: e.target.value })} 
+                />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => { setIsEditBullModalOpen(false); setEditingBullName(null); }}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Salvar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================== */}
+      {/* MODAL DE PLAYER DE VÍDEO DO YOUTUBE */}
+      {/* ==================================== */}
+      {activeYoutubeVideoId && (
+        <div className="modal-overlay active" onClick={() => setActiveYoutubeVideoId(null)}>
+          <div className="auth-modal" style={{ maxWidth: '640px', padding: '1rem', background: '#000', border: '1px solid var(--border-light)' }} onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" style={{ top: '10px', right: '10px', zIndex: 10 }} onClick={() => setActiveYoutubeVideoId(null)}>×</button>
+            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px' }}>
+              <iframe 
+                src={`https://www.youtube.com/embed/${activeYoutubeVideoId}?autoplay=1`} 
+                title="YouTube video player" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowFullScreen
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+              />
             </div>
           </div>
         </div>
