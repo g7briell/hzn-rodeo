@@ -64,7 +64,7 @@ function App() {
 
     try {
       // 1. Criar usuário no Auth do Supabase
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { error: authError } = await supabase.auth.signUp({
         email: regEmail,
         password: regPassword,
       });
@@ -110,7 +110,7 @@ function App() {
 
     try {
       // Validar senha real no Supabase
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       });
