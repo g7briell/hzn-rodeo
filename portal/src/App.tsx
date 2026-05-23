@@ -3,6 +3,20 @@ import './index.css';
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isAppUser, setIsAppUser] = useState(false);
+
+  // Simulação: se o e-mail terminar com @rodeoapp.pro, fingimos que ele já tem o App no PC
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEmail(val);
+    if (val.includes('@rodeoapp.pro')) {
+      setIsAppUser(true);
+    } else {
+      setIsAppUser(false);
+    }
+  };
 
   // Mock de eventos da semana para preencher a tela inicial
   const weeklyEvents = [
@@ -13,7 +27,11 @@ function App() {
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Cadastro simulado com sucesso! Em breve conectaremos ao Supabase.");
+    if (isAppUser) {
+      alert("Sincronização com o App concluída com sucesso! (Simulação)");
+    } else {
+      alert("Cadastro simulado com sucesso! Em breve conectaremos ao Supabase.");
+    }
     setIsModalOpen(false);
   };
 
@@ -83,8 +101,27 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">E-mail</label>
-                <input type="email" className="form-input" placeholder="joao@email.com" required />
+                <label className="form-label">E-mail {isAppUser && <span className="text-accent" style={{marginLeft:'5px', fontSize:'0.65rem'}}>Usuário do App Detectado!</span>}</label>
+                <input 
+                  type="email" 
+                  className="form-input" 
+                  placeholder="joao@email.com" 
+                  value={email}
+                  onChange={handleEmailChange}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Crie uma Senha</label>
+                <input 
+                  type="password" 
+                  className="form-input" 
+                  placeholder="Mínimo 6 caracteres" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required 
+                />
               </div>
 
               <div className="form-group">
@@ -124,8 +161,8 @@ function App() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem' }}>
-              Finalizar Cadastro
+            <button type="submit" className="btn btn-primary mt-2" style={{ width: '100%', padding: '1rem', backgroundColor: isAppUser ? 'var(--accent)' : 'var(--primary)' }}>
+              {isAppUser ? 'Sincronizar Perfil com o RodeoApp' : 'Finalizar Cadastro'}
             </button>
           </form>
         </div>
