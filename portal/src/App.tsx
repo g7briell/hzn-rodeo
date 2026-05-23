@@ -128,11 +128,9 @@ function App() {
         }
 
         setUserProfile(profile);
-        // Load bio and foto from localStorage
-        const savedBio = localStorage.getItem(`bio_${email.toLowerCase().trim()}`);
-        const savedFoto = localStorage.getItem(`foto_${email.toLowerCase().trim()}`);
-        setUserBio(savedBio || '');
-        setUserFoto(savedFoto || '');
+        // Load bio and foto from Supabase
+        setUserBio(profile.bio || '');
+        setUserFoto(profile.foto || '');
       }
     } catch (err) {
       console.error('Error fetching global events:', err);
@@ -503,9 +501,6 @@ function App() {
       reader.onloadend = () => {
         const base64String = reader.result as string;
         setUserFoto(base64String);
-        if (user?.email) {
-          localStorage.setItem(`foto_${user.email.toLowerCase().trim()}`, base64String);
-        }
       };
       reader.readAsDataURL(file);
     }
@@ -513,11 +508,6 @@ function App() {
 
   const handleSaveProfile = async () => {
     if (!user?.email) return;
-
-    localStorage.setItem(`bio_${user.email.toLowerCase().trim()}`, userBio);
-    if (userFoto) {
-      localStorage.setItem(`foto_${user.email.toLowerCase().trim()}`, userFoto);
-    }
 
     setIsSavingProfile(true);
     try {
