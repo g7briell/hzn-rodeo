@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './index.css';
 import { supabase } from './supabaseClient';
 
@@ -30,6 +30,141 @@ function App() {
   const [otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+
+  // Auth and Profile States
+  const [user, setUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userBio, setUserBio] = useState('');
+  const [userFoto, setUserFoto] = useState('');
+  const [currentTab, setCurrentTab] = useState<'home' | 'profile'>('home');
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const fetchUserProfile = async (email: string) => {
+    try {
+      const { data } = await supabase
+        .from('perfis_portal')
+        .select('*')
+        .ilike('email', email.trim())
+        .maybeSingle();
+      
+      if (data) {
+        setUserProfile(data);
+        // Load bio and foto from localStorage
+        const savedBio = localStorage.getItem(`bio_${email.toLowerCase().trim()}`);
+        const savedFoto = localStorage.getItem(`foto_${email.toLowerCase().trim()}`);
+        setUserBio(savedBio || '');
+        setUserFoto(savedFoto || '');
+      }
+    } catch (err) {
+      console.error('Erro ao buscar perfil:', err);
+    }
+  };
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
+      if (!isAuth) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.auth.signOut();
+        }
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        if (session.user.email) {
+          fetchUserProfile(session.user.email);
+        }
+      }
+    };
+
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
+      
+      if (event === 'SIGNED_IN' && !isAuth) {
+        const isSignupFlow = registerStep === 'otp' || isRegisterModalOpen;
+        if (isSignupFlow) {
+          localStorage.setItem('hzn_portal_authenticated', 'true');
+          setUser(session?.user ?? null);
+          if (session?.user?.email) {
+            fetchUserProfile(session.user.email);
+          }
+          return;
+        }
+      }
+
+      if (session?.user && localStorage.getItem('hzn_portal_authenticated') === 'true') {
+        setUser(session.user);
+        if (session.user.email) {
+          fetchUserProfile(session.user.email);
+        }
+      } else if (!session) {
+        setUser(null);
+        setUserProfile(null);
+        setUserBio('');
+        setUserFoto('');
+        setCurrentTab('home');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [registerStep, isRegisterModalOpen]);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setUserFoto(base64String);
+        if (user?.email) {
+          localStorage.setItem(`foto_${user.email.toLowerCase().trim()}`, base64String);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user?.email) return;
+
+    localStorage.setItem(`bio_${user.email.toLowerCase().trim()}`, userBio);
+    if (userFoto) {
+      localStorage.setItem(`foto_${user.email.toLowerCase().trim()}`, userFoto);
+    }
+
+    setIsSavingProfile(true);
+    try {
+      await supabase
+        .from('perfis_portal')
+        .update({
+          bio: userBio,
+          foto: userFoto
+        } as any)
+        .ilike('email', user.email.trim());
+    } catch (err) {
+      console.log("Salvo apenas localmente (colunas 'bio'/'foto' não encontradas no BD).");
+    } finally {
+      setIsSavingProfile(false);
+      alert("Perfil atualizado com sucesso!");
+    }
+  };
+
+  const handleLogout = async () => {
+    localStorage.removeItem('hzn_portal_authenticated');
+    await supabase.auth.signOut();
+    setUser(null);
+    setUserProfile(null);
+    setUserBio('');
+    setUserFoto('');
+    setIsLogoutConfirmOpen(false);
+    setCurrentTab('home');
+  };
 
   // Mock de eventos da semana
   const weeklyEvents = [
@@ -192,6 +327,17 @@ function App() {
         throw new Error("Código inválido ou expirado.");
       }
 
+      // 2FA code is correct! Authenticate them
+      localStorage.setItem('hzn_portal_authenticated', 'true');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        if (session.user.email) {
+          await fetchUserProfile(session.user.email);
+        }
+      }
+
       alert(`Acesso Liberado! Bem vindo ao portal, ${loginEmail}`);
       setIsLoginModalOpen(false);
       setLoginStep('credentials');
@@ -211,49 +357,160 @@ function App() {
       <div className="container">
         {/* Header */}
         <header className="header">
-          <div className="logo">RODEO<span className="text-primary">APP</span></div>
-          <div className="header-buttons">
-            <button className="btn btn-outline" onClick={() => setIsLoginModalOpen(true)}>Entrar</button>
-            <button className="btn btn-primary" onClick={() => setIsRegisterModalOpen(true)}>Cadastre-se</button>
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => setCurrentTab('home')}>RODEO<span className="text-primary">APP</span></div>
+          <div className="header-buttons" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            {user ? (
+              <>
+                <span 
+                  className="user-name-link" 
+                  style={{ 
+                    cursor: 'pointer', 
+                    fontWeight: 600, 
+                    color: 'var(--primary)',
+                    textDecoration: 'underline',
+                    fontSize: '0.95rem'
+                  }}
+                  onClick={() => setCurrentTab('profile')}
+                >
+                  {userProfile?.nome || user.email}
+                </span>
+                <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => setIsLogoutConfirmOpen(true)}>Sair</button>
+              </>
+            ) : (
+              <>
+                <button className="btn btn-outline" onClick={() => setIsLoginModalOpen(true)}>Entrar</button>
+                <button className="btn btn-primary" onClick={() => setIsRegisterModalOpen(true)}>Cadastre-se</button>
+              </>
+            )}
           </div>
         </header>
 
-        {/* Hero Section */}
-        <section className="hero">
-          <h1 className="hero-title">O Portal Definitivo <br/><span className="text-primary">do Competidor</span></h1>
-          <p className="hero-subtitle">
-            Acompanhe seus eventos, verifique suas notas ao vivo e gerencie seu perfil profissional de rodeio em um único lugar.
-          </p>
-          <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setIsRegisterModalOpen(true)}>
-            Fazer meu Cadastro Gratuito
-          </button>
-        </section>
+        {currentTab === 'home' ? (
+          <>
+            {/* Hero Section */}
+            <section className="hero">
+              <h1 className="hero-title">O Portal Definitivo <br/><span className="text-primary">do Competidor</span></h1>
+              <p className="hero-subtitle">
+                Acompanhe seus eventos, verifique suas notas ao vivo e gerencie seu perfil profissional de rodeio em um único lugar.
+              </p>
+              {!user && (
+                <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setIsRegisterModalOpen(true)}>
+                  Fazer meu Cadastro Gratuito
+                </button>
+              )}
+            </section>
 
-        {/* Weekly Events Section */}
-        <section className="events-section">
-          <div className="section-header">
-            <div>
-              <h2 style={{ fontSize: '2rem' }}>Eventos da <span className="text-primary">Semana</span></h2>
-              <p className="text-muted">Acompanhe as etapas que estão rolando agora</p>
-            </div>
-          </div>
-          
-          <div className="events-grid">
-            {weeklyEvents.map(ev => (
-              <div key={ev.id} className="event-card">
-                <div className="event-date">{ev.date}</div>
-                <h3 className="event-name">{ev.name}</h3>
-                <div className="event-location">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                  </svg>
-                  {ev.location}
+            {/* Weekly Events Section */}
+            <section className="events-section">
+              <div className="section-header">
+                <div>
+                  <h2 style={{ fontSize: '2rem' }}>Eventos da <span className="text-primary">Semana</span></h2>
+                  <p className="text-muted">Acompanhe as etapas que estão rolando agora</p>
                 </div>
               </div>
-            ))}
+              
+              <div className="events-grid">
+                {weeklyEvents.map(ev => (
+                  <div key={ev.id} className="event-card">
+                    <div className="event-date">{ev.date}</div>
+                    <h3 className="event-name">{ev.name}</h3>
+                    <div className="event-location">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      {ev.location}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : (
+          <div className="profile-container">
+            <div className="profile-card">
+              
+              {/* Left Column: Avatar & Role */}
+              <div className="profile-sidebar">
+                <div className="profile-avatar-wrapper">
+                  <img 
+                    src={userFoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80"} 
+                    alt="Foto de Perfil" 
+                    className={`profile-avatar ${userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
+                  />
+                </div>
+                <label className="photo-upload-btn">
+                  Alterar Foto
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handlePhotoChange} 
+                    style={{ display: 'none' }} 
+                  />
+                </label>
+                
+                <div style={{ marginTop: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>{userProfile?.nome}</h3>
+                  <p className="text-muted" style={{ fontSize: '0.85rem' }}>{user?.email}</p>
+                </div>
+
+                <span className="badge badge-role" style={{ marginTop: '1rem' }}>
+                  {userProfile?.cargo ? userProfile.cargo.replace('_', ' ') : 'Membro'}
+                </span>
+
+                {userProfile?.veio_do_app_desktop && (
+                  <span className="badge badge-rodeoapp" style={{ marginTop: '0.5rem' }}>
+                    Sincronizado RodeoApp
+                  </span>
+                )}
+              </div>
+
+              {/* Right Column: Bio & Details */}
+              <div className="profile-details">
+                <div>
+                  <h4 className="profile-section-title">Sobre Mim (Biografia)</h4>
+                  <textarea 
+                    className="profile-bio-textarea" 
+                    placeholder="Escreva um pouco sobre a sua carreira no rodeio, conquistas, etc..."
+                    value={userBio}
+                    onChange={(e) => setUserBio(e.target.value)}
+                  />
+                  <button 
+                    className="btn btn-primary mt-2" 
+                    style={{ padding: '0.75rem 2rem' }}
+                    onClick={handleSaveProfile}
+                    disabled={isSavingProfile}
+                  >
+                    {isSavingProfile ? 'Salvando...' : 'Salvar Alterações'}
+                  </button>
+                </div>
+
+                <div>
+                  <h4 className="profile-section-title">Informações Pessoais</h4>
+                  <div className="profile-info-grid">
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">WhatsApp</span>
+                      <span className="profile-info-value">{userProfile?.whatsapp || '-'}</span>
+                    </div>
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">CPF</span>
+                      <span className="profile-info-value">{userProfile?.cpf || '-'}</span>
+                    </div>
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">RG</span>
+                      <span className="profile-info-value">{userProfile?.rg || '-'}</span>
+                    </div>
+                    <div className="profile-info-item">
+                      <span className="profile-info-label">Endereço</span>
+                      <span className="profile-info-value">{userProfile?.endereco || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
-        </section>
+        )}
       </div>
 
       {/* ==================================== */}
@@ -424,6 +681,20 @@ function App() {
             </>
           )}
 
+        </div>
+      </div>
+
+      {/* ==================================== */}
+      {/* MODAL DE CONFIRMAÇÃO DE LOGOUT */}
+      {/* ==================================== */}
+      <div className={`modal-overlay ${isLogoutConfirmOpen ? 'active' : ''}`}>
+        <div className="auth-modal" style={{ maxWidth: '400px', textAlign: 'center' }}>
+          <h2 className="modal-title" style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Sair da Conta</h2>
+          <p className="modal-subtitle" style={{ marginBottom: '2rem' }}>Tem certeza que deseja sair do portal do competidor?</p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setIsLogoutConfirmOpen(false)}>Cancelar</button>
+            <button className="btn btn-primary" style={{ flex: 1, backgroundColor: '#ff4444', color: '#fff' }} onClick={handleLogout}>Sim, Sair</button>
+          </div>
         </div>
       </div>
 

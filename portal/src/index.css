@@ -324,3 +324,193 @@ h1, h2, h3 {
   .hero-title { font-size: 2.5rem; }
   .form-grid { grid-template-columns: 1fr; }
 }
+
+/* --- User Profile & Dashboard --- */
+.user-name-link {
+  transition: color 0.3s ease;
+}
+.user-name-link:hover {
+  color: var(--primary-hover) !important;
+}
+
+.profile-container {
+  padding: 4rem 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.profile-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  padding: 3rem;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 3rem;
+}
+
+@media (max-width: 768px) {
+  .profile-card {
+    grid-template-columns: 1fr;
+    padding: 2rem;
+    gap: 2rem;
+  }
+}
+
+.profile-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.profile-avatar-wrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin-bottom: 1.5rem;
+}
+
+.profile-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--border-light);
+  background: var(--bg-input);
+}
+
+.rodeo-pulsing-avatar {
+  border: 3px solid var(--primary);
+  box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+  animation: avatarPulse 2s infinite;
+}
+
+@keyframes avatarPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(255, 215, 0, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+    transform: scale(1);
+  }
+}
+
+.photo-upload-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.photo-upload-btn:hover {
+  background: var(--border-light);
+  border-color: var(--primary);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 0.5rem;
+}
+
+.badge-role {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+.badge-rodeoapp {
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--primary);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  animation: badgeGlow 2s infinite alternate;
+}
+
+@keyframes badgeGlow {
+  from {
+    box-shadow: 0 0 4px rgba(255, 215, 0, 0.2);
+  }
+  to {
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+  }
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.profile-section-title {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--primary);
+  padding-left: 0.75rem;
+}
+
+.profile-bio-textarea {
+  width: 100%;
+  min-height: 120px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  color: var(--text-main);
+  padding: 1rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.profile-bio-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.profile-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 576px) {
+  .profile-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.profile-info-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.profile-info-value {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
