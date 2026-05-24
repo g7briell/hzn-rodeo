@@ -1249,10 +1249,6 @@ function App() {
                                 <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{hist.eventoNome} <span style={{ color: '#E11D48', fontSize: '0.9rem', padding: '0.2rem 0.6rem', background: 'rgba(225, 29, 72, 0.1)', borderRadius: '6px' }}>{hist.posicao}º Lugar</span></h4>
                                 <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{hist.cidade}</span>
                               </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <span style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase' }}>Posição</span>
-                                <strong style={{ color: '#E11D48', fontSize: '1.5rem' }}>{hist.posicao}º</strong>
-                              </div>
                             </div>
                           ))
                         ) : (
@@ -1957,9 +1953,7 @@ if (publicProfileSlug) {
                                 <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{hist.eventoNome} <span style={{ color: '#E11D48', fontSize: '0.9rem', padding: '0.2rem 0.6rem', background: 'rgba(225, 29, 72, 0.1)', borderRadius: '6px' }}>{hist.posicao}º Lugar</span></h4>
                                 <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{hist.cidade}</span>
                               </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontWeight: '900', color: '#E11D48', fontSize: '1.2rem' }}>{hist.posicao}º Lugar</div>
-                              </div>
+                              
                             </div>
                           ))
                         ) : (
