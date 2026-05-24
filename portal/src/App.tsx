@@ -85,6 +85,7 @@ function App() {
 
   // Public Boiada States
   const [publicBoiadaSlug, setPublicBoiadaSlug] = useState<string | null>(null);
+  const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
   const [publicBoiada, setPublicBoiada] = useState<any>(null);
   const [isPublicBoiadaLoading, setIsPublicBoiadaLoading] = useState(false);
 
@@ -142,7 +143,15 @@ function App() {
   useEffect(() => {
     if (eventosOficiais.length > 0) {
       const path = window.location.pathname;
-      if (path.startsWith('/perfil/')) {
+        if (path.startsWith('/evento/')) {
+          const slug = path.split('/evento/')[1].replace(/[^a-z0-9-]/g, '');
+          const match = eventosOficiais.find(ev => (ev.nome && ev.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') === slug) || (ev.nome && ev.nome.replace(/\s+/g, '').toLowerCase() === slug));
+          if (match) {
+            setPublicEventSlug(slug);
+            setSelectedEvent(match);
+            setCurrentTab('explore');
+          }
+        } else if (path.startsWith('/perfil/')) {
         const slug = path.split('/perfil/')[1].replace(/-/g, '').toLowerCase();
         
         // Buscar perfil pelo slug do nome
@@ -566,11 +575,20 @@ function App() {
   useEffect(() => {
     const handleRouting = async () => {
       const path = window.location.pathname;
-      if (path.startsWith('/perfil/')) {
+        if (path.startsWith('/evento/')) {
+          const slug = path.split('/evento/')[1].replace(/[^a-z0-9-]/g, '');
+          const match = eventosOficiais.find(ev => (ev.nome && ev.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]/g, '') === slug) || (ev.nome && ev.nome.replace(/\s+/g, '').toLowerCase() === slug));
+          if (match) {
+            setPublicEventSlug(slug);
+            setSelectedEvent(match);
+            setCurrentTab('explore');
+          }
+        } else if (path.startsWith('/perfil/')) {
         const slug = path.replace('/perfil/', '').toLowerCase().replace(/[^a-z0-9-]/g, '');
         if (slug) {
           setPublicProfileSlug(slug);
           setPublicBoiadaSlug(null);
+            setPublicEventSlug(null);
           setIsPublicProfileLoading(true);
           try {
             const queryPattern = '%' + slug.split('').join('%') + '%';
@@ -635,6 +653,7 @@ function App() {
         setPublicProfile(null);
         setPublicBoiadaSlug(null);
         setPublicBoiada(null);
+          setPublicEventSlug(null);
       }
     };
 
@@ -830,7 +849,8 @@ function App() {
     return (
       <div className="container">
         {/* Header */}
-        <header className="header">
+        {!publicEventSlug ? (
+          <header className="header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}>RODEO<span className="text-primary">APP</span></div>
           <div className="header-buttons">
             <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
@@ -1524,7 +1544,7 @@ function App() {
                   </div>
                 ) : selectedEvent ? (
                   <div className="event-detail-view fade-in">
-                    <button className="back-btn" onClick={() => { window.history.pushState({}, '', '/'); setSelectedEvent(null); setSelectedRankingDay('Geral'); }} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <button className="back-btn" onClick={() => { window.history.pushState({}, '', '/'); setSelectedEvent(null); setSelectedRankingDay('Geral'); setPublicEventSlug(null); }} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                       Voltar para Eventos
                     </button>
