@@ -86,6 +86,7 @@ function App() {
   const [publicBoiadaSlug, setPublicBoiadaSlug] = useState<string | null>(null);
   const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
   const [selectedRankingDay, setSelectedRankingDay] = useState<string>('Geral');
+  const [verifiedCpfs, setVerifiedCpfs] = useState<Set<string>>(new Set());
   const [eventTab, setEventTab] = useState<'ranking'|'competidores'|'boiadas'|'noticias'|'midia'>('ranking');
   const [publicBoiada, setPublicBoiada] = useState<any>(null);
   const [isPublicBoiadaLoading, setIsPublicBoiadaLoading] = useState(false);
@@ -566,6 +567,21 @@ function App() {
   };
 
   useEffect(() => {
+    if (selectedEvent?.detalhes?.ranking) {
+       const cpfs = selectedEvent.detalhes.ranking.map((p: any) => p.cpf ? p.cpf.replace(/\D/g, '') : null).filter(Boolean);
+       if (cpfs.length > 0) {
+          supabase.from('perfis_portal').select('cpf').in('cpf', cpfs).then(({data}) => {
+             if (data) {
+                setVerifiedCpfs(new Set(data.map(d => d.cpf)));
+             }
+          });
+       }
+    } else {
+       setVerifiedCpfs(new Set());
+    }
+  }, [selectedEvent]);
+
+  useEffect(() => {
     const handleRouting = async () => {
       const path = window.location.pathname;
       if (path.startsWith('/perfil/')) {
@@ -965,6 +981,12 @@ function App() {
                               }}
                             >
                               {peao.nome}
+                            {peao.cpf && verifiedCpfs.has(peao.cpf.replace(/\D/g, '')) && (
+  <svg aria-label="Competidor Verificado" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginLeft: '6px', verticalAlign: 'text-bottom', display: 'inline-block' }}>
+    <path d="M11.517 1.408a.633.633 0 0 1 .966 0l1.79 2.148c.204.245.534.343.844.25l2.705-.81a.633.633 0 0 1 .803.582l.235 2.81c.026.319.23.593.524.704l2.639.998a.633.633 0 0 1 .386.915l-1.346 2.457a.89.89 0 0 0 0 .874l1.346 2.457a.633.633 0 0 1-.386.915l-2.639.998a.89.89 0 0 0-.524.704l-.235 2.81a.633.633 0 0 1-.803.582l-2.705-.81a.89.89 0 0 0-.844.25l-1.79 2.148a.633.633 0 0 1-.966 0l-1.79-2.148a.89.89 0 0 0-.844-.25l-2.705.81a.633.633 0 0 1-.803-.582l-.235-2.81a.89.89 0 0 0-.524-.704l-2.639-.998a.633.633 0 0 1-.386-.915L3.13 12.437a.89.89 0 0 0 0-.874L1.784 9.106a.633.633 0 0 1 .386-.915l2.639-.998a.89.89 0 0 0 .524-.704l.235-2.81a.633.633 0 0 1 .803-.582l2.705.81a.89.89 0 0 0 .844-.25l1.79-2.148z" fill="#3b82f6"/>
+    <path d="M10.233 15.656a.8.8 0 0 1-.566-.234l-3.3-3.3a.8.8 0 0 1 1.132-1.132l2.734 2.734 5.734-5.734a.8.8 0 0 1 1.132 1.132l-6.3 6.3a.8.8 0 0 1-.566.234z" fill="#ffffff"/>
+  </svg>
+)}
                             </span>
                           </div>
                           <span style={{ color: '#E11D48', fontWeight: '900', fontSize: '1.2rem' }}>
@@ -1014,7 +1036,12 @@ function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
                 {(selectedEvent.detalhes?.ranking || []).map((peao: any, idx: number) => (
                   <div key={idx} style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <h4 style={{ fontSize: '1.2rem', margin: 0 }}>{peao.nome}</h4>
+                    <h4 style={{ fontSize: '1.2rem', margin: 0 }}>{peao.nome} {peao.cpf && verifiedCpfs.has(peao.cpf.replace(/\D/g, '')) && (
+  <svg aria-label="Competidor Verificado" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginLeft: '6px', verticalAlign: 'text-bottom', display: 'inline-block' }}>
+    <path d="M11.517 1.408a.633.633 0 0 1 .966 0l1.79 2.148c.204.245.534.343.844.25l2.705-.81a.633.633 0 0 1 .803.582l.235 2.81c.026.319.23.593.524.704l2.639.998a.633.633 0 0 1 .386.915l-1.346 2.457a.89.89 0 0 0 0 .874l1.346 2.457a.633.633 0 0 1-.386.915l-2.639.998a.89.89 0 0 0-.524.704l-.235 2.81a.633.633 0 0 1-.803.582l-2.705-.81a.89.89 0 0 0-.844.25l-1.79 2.148a.633.633 0 0 1-.966 0l-1.79-2.148a.89.89 0 0 0-.844-.25l-2.705.81a.633.633 0 0 1-.803-.582l-.235-2.81a.89.89 0 0 0-.524-.704l-2.639-.998a.633.633 0 0 1-.386-.915L3.13 12.437a.89.89 0 0 0 0-.874L1.784 9.106a.633.633 0 0 1 .386-.915l2.639-.998a.89.89 0 0 0 .524-.704l.235-2.81a.633.633 0 0 1 .803-.582l2.705.81a.89.89 0 0 0 .844-.25l1.79-2.148z" fill="#3b82f6"/>
+    <path d="M10.233 15.656a.8.8 0 0 1-.566-.234l-3.3-3.3a.8.8 0 0 1 1.132-1.132l2.734 2.734 5.734-5.734a.8.8 0 0 1 1.132 1.132l-6.3 6.3a.8.8 0 0 1-.566.234z" fill="#ffffff"/>
+  </svg>
+)}</h4>
                     <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{peao.cidade}</span>
                     <button 
                       className="btn btn-outline" 
