@@ -1699,13 +1699,33 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
             detalhes: {
                 ranking: ev.peoes || [],
                 boiadas: ev.boiadas || [],
+                notas: ev.notas || [],
+                sorteios: ev.sorteios || [],
                 logo: ev.logo || null,
                 diretor: diretorNome
             }
         };
 
-        const { data, error } = await supabase.from('eventos_oficiais').insert([payload]);
-        if (error) throw error;
+        // Verifica se evento já existe
+        const { data: existingEvent } = await supabase.from('eventos_oficiais')
+            .select('id, status')
+            .eq('organizador_email', email)
+            .eq('nome', ev.name)
+            .single();
+
+        if (existingEvent) {
+            // Mantém status aprovado se já estiver
+            if (existingEvent.status === 'aprovado') {
+                payload.status = 'aprovado';
+            }
+            const { error } = await supabase.from('eventos_oficiais')
+                .update(payload)
+                .eq('id', existingEvent.id);
+            if (error) throw error;
+        } else {
+            const { error } = await supabase.from('eventos_oficiais').insert([payload]);
+            if (error) throw error;
+        }
         
         return { success: true };
     } catch (e) {
