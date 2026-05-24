@@ -915,7 +915,13 @@ function App() {
                    {(() => {
                       const days = new Set<string>();
                       (selectedEvent.detalhes?.notas || []).forEach((n: any) => { if (n.dia) days.add(n.dia); });
-                      const dayList = ['Geral', ...Array.from(days).sort()];
+                      const customSort = (a: string, b: string) => {
+                          const wA = a.toUpperCase().includes('FINAL') && !a.toUpperCase().includes('SEMI') ? 100 : a.toUpperCase().includes('SEMI') ? 90 : 0;
+                          const wB = b.toUpperCase().includes('FINAL') && !b.toUpperCase().includes('SEMI') ? 100 : b.toUpperCase().includes('SEMI') ? 90 : 0;
+                          if (wA !== wB) return wA - wB;
+                          return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                      };
+                      const dayList = ['Geral', ...Array.from(days).sort(customSort)];
                       return dayList.map(d => (
                          <button key={d} onClick={() => setSelectedRankingDay(d)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', background: selectedRankingDay === d ? '#E11D48' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer' }}>{d}</button>
                       ));
