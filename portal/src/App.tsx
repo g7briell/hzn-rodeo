@@ -942,6 +942,7 @@ function App() {
                       </div>
                       <div style={{ display: 'flex', gap: '1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
                         <span>{peao.cidade}</span>
+                        <span style={{ color: '#E11D48', fontWeight: 'bold' }}>{peao.score !== undefined ? peao.score : (peao.total !== undefined ? peao.total : 0)} pts</span>
                       </div>
                     </div>
                   ))
@@ -1780,8 +1781,9 @@ function App() {
                                   </span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
-                                  <span>{peao.cidade}</span>
-                                </div>
+                        <span>{peao.cidade}</span>
+                        <span style={{ color: '#E11D48', fontWeight: 'bold' }}>{peao.score !== undefined ? peao.score : (peao.total !== undefined ? peao.total : 0)} pts</span>
+                      </div>
                               </div>
                             ))
                           ) : (
