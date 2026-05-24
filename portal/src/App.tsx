@@ -1183,13 +1183,13 @@ function App() {
                   
                   {/* Historico */}
                   <div className="profile-history-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico em Eventos (HZN)</h3>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico de Eventos</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {selectedPeaoProfile.historico && selectedPeaoProfile.historico.length > 0 ? (
                           selectedPeaoProfile.historico.map((hist: any, idx: number) => (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
                               <div>
-                                <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff' }}>{hist.eventoNome}</h4>
+                                <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{hist.eventoNome} <span style={{ color: '#E11D48', fontSize: '0.9rem', padding: '0.2rem 0.6rem', background: 'rgba(225, 29, 72, 0.1)', borderRadius: '6px' }}>{hist.posicao}º Lugar</span></h4>
                                 <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{hist.cidade}</span>
                               </div>
                               <div style={{ textAlign: 'right' }}>
@@ -1891,13 +1891,13 @@ if (publicProfileSlug) {
                     </div>
 
                     <div className="profile-history-section" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico em Eventos (HZN)</h3>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico de Eventos</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {selectedPeaoProfile.historico && selectedPeaoProfile.historico.length > 0 ? (
                           selectedPeaoProfile.historico.map((hist: any, idx: number) => (
                             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
                               <div>
-                                <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem' }}>{hist.eventoNome}</h4>
+                                <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{hist.eventoNome} <span style={{ color: '#E11D48', fontSize: '0.9rem', padding: '0.2rem 0.6rem', background: 'rgba(225, 29, 72, 0.1)', borderRadius: '6px' }}>{hist.posicao}º Lugar</span></h4>
                                 <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{hist.cidade}</span>
                               </div>
                               <div style={{ textAlign: 'right' }}>
