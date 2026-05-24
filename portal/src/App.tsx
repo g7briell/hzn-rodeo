@@ -975,9 +975,25 @@ function App() {
                                 const cleanCpf = peao.cpf.replace(/\D/g, '');
                                 const { data } = await supabase.from('perfis_portal').select('*').eq('cpf', cleanCpf).limit(1);
                                 setIsPeaoProfileLoading(false);
-                                if (!data || data.length === 0) return alert("Perfil não criado.");
+                                if (!data || data.length === 0) return alert("Perfil não encontrado.");
                                 
-                                setSelectedPeaoProfile(data[0]);
+                                const historico: any[] = [];
+                                const cleanCpfData = data[0].cpf ? data[0].cpf.replace(/\D/g, '') : '';
+                                eventosOficiais.forEach(ev => {
+                                  const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
+                                    const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+                                    return rCpf === cleanCpfData;
+                                  });
+                                  if (rankIndex !== undefined && rankIndex >= 0) {
+                                    historico.push({
+                                      eventoNome: ev.nome,
+                                      cidade: ev.cidade,
+                                      posicao: rankIndex + 1
+                                    });
+                                  }
+                                });
+                                
+                                setSelectedPeaoProfile({...data[0], historico});
                                 setIsProfileModalOpen(true);
                               }}
                             >
@@ -1053,7 +1069,24 @@ function App() {
                         const { data } = await supabase.from('perfis_portal').select('*').eq('cpf', peao.cpf.replace(/\D/g, '')).limit(1);
                         setIsPeaoProfileLoading(false);
                         if (!data || data.length === 0) return alert("Perfil não encontrado.");
-                        setSelectedPeaoProfile(data[0]);
+                        
+                        const historico: any[] = [];
+                        const cleanCpf = data[0].cpf ? data[0].cpf.replace(/\D/g, '') : '';
+                        eventosOficiais.forEach(ev => {
+                          const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
+                            const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+                            return rCpf === cleanCpf;
+                          });
+                          if (rankIndex !== undefined && rankIndex >= 0) {
+                            historico.push({
+                              eventoNome: ev.nome,
+                              cidade: ev.cidade,
+                              posicao: rankIndex + 1
+                            });
+                          }
+                        });
+                        
+                        setSelectedPeaoProfile({...data[0], historico});
                         setIsProfileModalOpen(true);
                       }}
                     >
