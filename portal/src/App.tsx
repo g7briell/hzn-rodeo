@@ -1223,7 +1223,7 @@ function App() {
                   <div className="profile-details" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="form-group">
                       <label style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Cidade / Estado</label>
-                      <div className="read-only-field" style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', color: '#fff' }}>{selectedPeaoProfile.cidade || selectedPeaoProfile.endereco || 'Não informado'}</div>
+                      <div className="read-only-field" style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', color: '#fff' }}>{selectedPeaoProfile.cidade || (selectedPeaoProfile.endereco ? selectedPeaoProfile.endereco.split(',').pop()?.trim() : 'Não informado')}</div>
                     </div>
                     <div className="form-group">
                       <label style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Data de Nasc.</label>
@@ -1931,7 +1931,7 @@ if (publicProfileSlug) {
                       <div className="profile-details">
                         <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                           <label>Cidade / Estado</label>
-                          <div className="read-only-field">{selectedPeaoProfile.cidade || selectedPeaoProfile.endereco || 'Não informado'}</div>
+                          <div className="read-only-field">{selectedPeaoProfile.cidade || (selectedPeaoProfile.endereco ? selectedPeaoProfile.endereco.split(',').pop()?.trim() : 'Não informado')}</div>
                         </div>
 
                         <div className="form-group">
