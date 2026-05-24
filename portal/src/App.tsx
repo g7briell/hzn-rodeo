@@ -977,6 +977,9 @@ function App() {
                                 if (!data || data.length === 0) return alert("Perfil não criado.");
                                 
                                 setSelectedPeaoProfile(data[0]);
+                                setPublicEventSlug(null);
+                                setPublicBoiadaSlug(null);
+                                setPublicProfileSlug(peao.nome.trim().toLowerCase().replace(/\s+/g, ''));
                                 window.history.pushState({}, '', '/perfil/' + peao.nome.trim().toLowerCase().replace(/\s+/g, ''));
                               }}
                             >
@@ -1053,6 +1056,9 @@ function App() {
                         setIsPeaoProfileLoading(false);
                         if (!data || data.length === 0) return alert("Perfil não encontrado.");
                         setSelectedPeaoProfile(data[0]);
+                        setPublicEventSlug(null);
+                        setPublicBoiadaSlug(null);
+                        setPublicProfileSlug(peao.nome.trim().toLowerCase().replace(/\s+/g, ''));
                         window.history.pushState({}, '', '/perfil/' + peao.nome.trim().toLowerCase().replace(/\s+/g, ''));
                       }}
                     >
