@@ -1761,20 +1761,26 @@ if (publicProfileSlug) {
   // Filters based on search
   const filteredEvents = eventosOficiais.filter(ev => {
     if (ev.status !== 'aprovado') return false;
-    return ev.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-           ev.cidade.toLowerCase().includes(searchTerm.toLowerCase());
+    const nome = ev.nome || '';
+    const cidade = ev.cidade || '';
+    return nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           cidade.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const filteredNews = newsFeed.filter(post => 
-    post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    post.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    post.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredNews = newsFeed.filter(post => {
+    const title = post.title || '';
+    const description = post.description || '';
+    const category = post.category || '';
+    return title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           category.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const filteredBoiadas = boiadas.filter(b => {
     const isPending = b.lados?.__meta?.status === 'pendente';
     if (isPending) return false;
-    return b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const nome = b.nome || '';
+    return nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (b.lados && Object.keys(b.lados).some(bull => bull !== '__meta' && bull.toLowerCase().includes(searchTerm.toLowerCase())));
   });
 

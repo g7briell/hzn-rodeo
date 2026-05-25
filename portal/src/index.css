@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap');
 
 :root {
-  --bg-dark: #07090E;
+  --bg-dark: #000000;
   --bg-card: #121822;
   --bg-input: #1A212D;
   --primary: #FFD700; /* Yellow */
