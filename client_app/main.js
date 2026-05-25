@@ -518,7 +518,7 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
                 4: r.acumulado,
                 5: bull.nome.toUpperCase(),
                 6: bull.cia.toUpperCase(),
-                7: bull.lado || ''
+                7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(bull.lado)
             };
             applyTemplate(currentRow, compTpl, overrides);
             currentRow++;
@@ -535,7 +535,7 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
                     1: '', 2: '', 3: '', 4: '',
                     5: b.nome.toUpperCase(),
                     6: b.cia.toUpperCase(),
-                    7: b.lado || ''
+                    7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado)
                 };
                 applyTemplate(currentRow, resDataTpl, overrides);
                 currentRow++;
@@ -634,7 +634,7 @@ ipcMain.handle('export-boiadas-excel', async (event, { sorteioData }) => {
                 1: idx + 1,
                 2: b.nome.toUpperCase(),
                 3: b.cia.toUpperCase(),
-                4: b.lado || ''
+                4: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado)
             };
             applyTemplate(currentRow, normalBullTpl, overrides);
             currentRow++;
@@ -651,7 +651,7 @@ ipcMain.handle('export-boiadas-excel', async (event, { sorteioData }) => {
                     1: `R${idx + 1}`,
                     2: b.nome.toUpperCase(),
                     3: b.cia.toUpperCase(),
-                    4: b.lado || ''
+                    4: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado)
                 };
                 applyTemplate(currentRow, rerideDataTpl, overrides);
                 currentRow++;
@@ -759,7 +759,7 @@ ipcMain.handle('export-juizes-excel', async (event, { sorteioData, eventName, da
                 4: r.acumulado || '0,00',
                 5: b.nome.toUpperCase(),
                 6: b.cia.toUpperCase(),
-                7: b.lado || '',
+                7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado),
                 8: '',
                 9: '',
                 10: '',
@@ -780,7 +780,7 @@ ipcMain.handle('export-juizes-excel', async (event, { sorteioData, eventName, da
                     1: '', 2: '', 3: '', 4: '',
                     5: b.nome.toUpperCase(),
                     6: b.cia.toUpperCase(),
-                    7: b.lado || '',
+                    7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado),
                     8: '',
                     9: '',
                     10: '',
@@ -876,7 +876,7 @@ ipcMain.handle('export-ordem-excel', async (event, { eventName, day, data, auth 
                 r.nome.toUpperCase(), // B
                 b.nome.toUpperCase(), // C
                 b.cia.toUpperCase(), // D
-                b.lado ? b.lado.toUpperCase() : '' // E
+                (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado) // E
             ];
 
             colData.forEach((val, cIdx) => {

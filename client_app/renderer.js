@@ -786,7 +786,7 @@ window.exportBullsToExcel = () => {
                     <tr>
                         <td style="padding: 5px;">${cia.nome.toUpperCase()}</td>
                         <td style="padding: 5px; font-weight: bold;">${touroNome.toUpperCase()}</td>
-                        <td style="padding: 5px; text-align: center;">${lado === 'C' ? 'CERTO' : (lado === 'E' ? 'ERRADO' : lado)}</td>
+                        <td style="padding: 5px; text-align: center;">${lado === 'D' || lado === 'Direito' || lado === 'C' || lado === 'CERTO' ? 'CERTO (C)' : (lado === 'E' || lado === 'Esquerdo' || lado === 'ERRADO' ? 'ERRADO (E)' : lado)}</td>
                     </tr>
                 `;
             });
