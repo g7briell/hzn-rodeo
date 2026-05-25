@@ -851,7 +851,7 @@ function App() {
     return (
       <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
         <header className="header" style={{ position: 'sticky', top: 0, zIndex: 100, width: '100%', left: 0 }}>
-          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "36px", objectFit: "contain" }} /></div>
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
             <button className="btn btn-primary" onClick={() => { navigateTo('/'); setPublicEventSlug(null); setSelectedEvent(null); setEventTab('ranking'); }}>Ir para o Portal</button>
           </div>
@@ -1276,7 +1276,7 @@ if (publicProfileSlug) {
       <div className="container">
         {/* Header */}
         <header className="header">
-          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "36px", objectFit: "contain" }} /></div>
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
             <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
           </div>
@@ -1363,7 +1363,7 @@ if (publicProfileSlug) {
     return (
       <div className="container">
         <header className="header">
-          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "36px", objectFit: "contain" }} /></div>
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
             <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
           </div>
@@ -1468,7 +1468,7 @@ if (publicProfileSlug) {
         <div className="container">
           {/* Header */}
           <header className="header">
-            <div className="logo" style={{ cursor: 'pointer' }} onClick={() => { setCurrentTab('home'); navigateTo('/'); }}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "36px", objectFit: "contain" }} /></div>
+            <div className="logo" style={{ cursor: 'pointer' }} onClick={() => { setCurrentTab('home'); navigateTo('/'); }}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
             <div className="header-buttons" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               <button className="btn btn-outline" onClick={() => setIsLoginModalOpen(true)}>Entrar</button>
               <button className="btn btn-primary" onClick={() => setIsRegisterModalOpen(true)}>Cadastre-se</button>
@@ -1791,7 +1791,7 @@ if (publicProfileSlug) {
         {/* Left Sidebar */}
         <aside className="dashboard-sidebar">
           <div className="sidebar-logo">
-            <img src="/header_logo.png" alt="RodeoApp" style={{ height: "36px", objectFit: "contain" }} />
+            <img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} />
           </div>
           
           <nav className="sidebar-menu">
