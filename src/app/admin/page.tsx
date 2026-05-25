@@ -43,6 +43,15 @@ import {
   Database
 } from "lucide-react";
 
+const formatSide = (s: any) => {
+  if (!s) return s;
+  if (typeof s !== 'string') return s;
+  const l = s.toLowerCase();
+  if (l === 'direito' || l === 'd') return 'Certo (C)';
+  if (l === 'esquerdo' || l === 'e') return 'Errado (E)';
+  return s;
+};
+
 export default function AdminDashboard() {
   const [session, setSession] = useState<any>(null);
   const [authStep, setAuthStep] = useState<"email" | "code">("email");
@@ -765,7 +774,7 @@ export default function AdminDashboard() {
                               return (
                                 <div key={t} className="flex justify-between border-b border-white/5 py-1">
                                   <span>{t}</span>
-                                  <span>Giro: {details.lado || b.lados[t]} {details.video_url ? '🎥' : ''} {details.foto ? '🖼️' : ''}</span>
+                                  <span>Giro: {formatSide(details.lado || b.lados[t])} {details.video_url ? '🎥' : ''} {details.foto ? '🖼️' : ''}</span>
                                 </div>
                               );
                             })}

@@ -1167,7 +1167,7 @@ function renderStep3() {
                             </label>
                             <label class="flex-1 flex items-center justify-center gap-1 bg-black/50 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-all">
                                 <input type="radio" name="lado-main-${b.nome}-${t}" value="D" class="accent-red-500 w-3 h-3" onchange="this.closest('.bull-card-wrapper').querySelector('input[type=checkbox]').checked = true; updateSorteioCounters();">
-                                <span class="text-[10px] font-black text-red-500">D</span>
+                                <span class="text-[10px] font-black text-red-500">C</span>
                             </label>
                         </div>
                     </div>`;
@@ -1231,7 +1231,7 @@ function renderStepReRide() {
                                 </label>
                                 <label class="flex-1 flex items-center justify-center gap-1 bg-black/50 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-all">
                                     <input type="radio" name="lado-reride-${b.nome}-${t}" value="D" class="accent-red-500 w-3 h-3" onchange="this.closest('.bull-card-wrapper').querySelector('input[type=checkbox]').checked = true;">
-                                    <span class="text-[10px] font-black text-red-500">D</span>
+                                    <span class="text-[10px] font-black text-red-500">C</span>
                                 </label>
                             </div>
                         </div>`;

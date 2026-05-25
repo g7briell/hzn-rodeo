@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import './index.css';
 import { supabase } from './supabaseClient';
 
+const formatSide = (s: any) => {
+  if (!s) return s;
+  if (typeof s !== 'string') return s;
+  const l = s.toLowerCase();
+  if (l === 'direito' || l === 'd') return 'Certo (C)';
+  if (l === 'esquerdo' || l === 'e') return 'Errado (E)';
+  return s;
+};
+
 function App() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -995,7 +1004,7 @@ function App() {
                               <>
                                 <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent)' }}>{bull.nome}</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Cia {bull.cia} <span style={{ background: bull.lado === 'E' ? 'rgba(0, 191, 255, 0.2)' : 'rgba(255, 69, 0, 0.2)', color: bull.lado === 'E' ? '#00BFFF' : '#FF4500', padding: '0.1rem 0.4rem', borderRadius: '4px', marginLeft: '0.5rem', fontWeight: 'bold' }}>{bull.lado}</span>
+                                  Cia {bull.cia} <span style={{ background: bull.lado === 'E' ? 'rgba(0, 191, 255, 0.2)' : 'rgba(255, 69, 0, 0.2)', color: bull.lado === 'E' ? '#00BFFF' : '#FF4500', padding: '0.1rem 0.4rem', borderRadius: '4px', marginLeft: '0.5rem', fontWeight: 'bold' }}>{formatSide(bull.lado)}</span>
                                 </div>
                               </>
                             ) : (
@@ -1508,7 +1517,7 @@ if (publicProfileSlug) {
                             {bullName}
                           </h4>
                           <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-                            Lado {side}
+                            Lado {formatSide(side)}
                           </span>
                         </div>
                         <p style={{ margin: 0, fontSize: '1.1rem', textTransform: 'uppercase', fontStyle: 'italic', color: '#ddd', fontWeight: 300 }}>
@@ -2325,7 +2334,7 @@ if (publicProfileSlug) {
                                   {bullName}
                                 </h4>
                                 <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-                                  Lado {side}
+                                  Lado {formatSide(side)}
                                 </span>
                               </div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2509,7 +2518,7 @@ if (publicProfileSlug) {
                 <div key={bullName} className="bull-item">
                   <span className="bull-name">{bullName}</span>
                   <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`}>
-                    Lado {side}
+                    Lado {formatSide(side)}
                   </span>
                 </div>
               ))}
@@ -2554,8 +2563,8 @@ if (publicProfileSlug) {
                   onChange={(e) => setBullForm({ ...bullForm, lado: e.target.value })}
                   required
                 >
-                  <option value="Esquerdo">Esquerdo</option>
-                  <option value="Direito">Direito</option>
+                  <option value="Esquerdo">Errado (E)</option>
+                  <option value="Direito">Certo (C)</option>
                 </select>
               </div>
               
