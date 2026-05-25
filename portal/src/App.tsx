@@ -1879,6 +1879,11 @@ if (publicProfileSlug) {
   // Filters based on search
   const filteredEvents = eventosOficiais.filter(ev => {
     if (ev.status !== 'aprovado') return false;
+    const config = (typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes) : (ev.detalhes || {})).portalConfig || {};
+    
+    // Se não estiver buscando, oculta os que tem ocultarDaHome marcado
+    if (!searchTerm.trim() && config.ocultarDaHome) return false;
+
     const nome = ev.nome || '';
     const cidade = ev.cidade || '';
     return nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
