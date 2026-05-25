@@ -524,52 +524,62 @@ export default function AdminDashboard() {
 
   // VIEW: DASHBOARD
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-yellow-500 selection:text-black flex flex-col md:flex-row overflow-hidden">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-yellow-500 selection:text-black flex flex-col overflow-hidden relative">
       
-      {/* Mobile Header (Hambúrguer) */}
-      <div className="md:hidden flex items-center justify-between p-6 border-b border-white/10 bg-black/90 backdrop-blur-md z-40">
-        <img src="/header_logo.png" alt="RODEOAPP Logo" className="h-8 object-contain" />
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-yellow-500 p-2 bg-yellow-500/10 rounded-xl">
-          {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+      {/* Fundo Dinâmico de Vidro (Mesh Gradient) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-yellow-500/10 rounded-full blur-[120px] mix-blend-screen animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Sidebar */}
-      <aside className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-y-0 left-0 w-72 md:w-80 bg-black/95 md:bg-white/5 border-r border-white/10 flex flex-col p-8 backdrop-blur-xl transition-transform duration-300 z-50`}>
-        <div className="hidden md:flex flex-col items-start gap-3 mb-16">
-           <img src="/header_logo.png" alt="RODEOAPP Logo" className="h-10 object-contain" />
-           <p className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.4em] ml-1">Admin Pro</p>
+      {/* Floating Top Nav Bar (Liquidglass) */}
+      <nav className="relative z-50 flex flex-wrap md:flex-nowrap items-center justify-between p-4 md:px-8 md:py-4 bg-white/5 backdrop-blur-3xl border border-white/10 m-4 md:m-6 rounded-[2rem] shadow-2xl">
+        <div className="flex items-center gap-3">
+           <img src="/header_logo.png" alt="RODEOAPP Logo" className="h-8 md:h-10 object-contain" />
+           <p className="hidden md:block text-[10px] font-black text-yellow-500 uppercase tracking-[0.4em] ml-1">Admin Pro</p>
         </div>
 
-        <nav className="flex-1 space-y-3 mt-10 md:mt-0">
-          <SidebarLink icon={<LayoutDashboard className="w-5 h-5" />} label="DASHBOARD" active={activeTab === "dashboard"} onClick={() => { setActiveTab("dashboard"); setIsSidebarOpen(false); }} />
-          <SidebarLink icon={<UserPlus className="w-5 h-5" />} label="NOVO CLIENTE" active={activeTab === "new"} onClick={() => { setActiveTab("new"); setIsSidebarOpen(false); }} />
-          <SidebarLink icon={<Key className="w-5 h-5" />} label="GERENCIAR CHAVES" active={activeTab === "keys"} onClick={() => { setActiveTab("keys"); setIsSidebarOpen(false); }} />
-          <SidebarLink icon={<Database className="w-5 h-5" />} label="BOIADAS (NUVEM)" active={activeTab === "boiadas"} onClick={() => { setActiveTab("boiadas"); setIsSidebarOpen(false); }} />
-          <SidebarLink icon={<Database className="w-5 h-5" />} label="EVENTOS" active={activeTab === "eventos"} onClick={() => { setActiveTab("eventos"); setIsSidebarOpen(false); }} />
-          <SidebarLink icon={<Download className="w-5 h-5" />} label="LINK PARA DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} />
-        </nav>
+        {/* Desktop Menu */}
+        <div className="hidden lg:flex items-center gap-2">
+          <TopNavBtn icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} />
+          <TopNavBtn icon={<UserPlus className="w-4 h-4" />} label="Novo Cliente" active={activeTab === "new"} onClick={() => setActiveTab("new")} />
+          <TopNavBtn icon={<Key className="w-4 h-4" />} label="Chaves" active={activeTab === "keys"} onClick={() => setActiveTab("keys")} />
+          <TopNavBtn icon={<Database className="w-4 h-4" />} label="Boiadas" active={activeTab === "boiadas"} onClick={() => setActiveTab("boiadas")} />
+          <TopNavBtn icon={<Database className="w-4 h-4" />} label="Eventos" active={activeTab === "eventos"} onClick={() => setActiveTab("eventos")} />
+          <TopNavBtn icon={<Download className="w-4 h-4" />} label="Download" active={activeTab === "download"} onClick={() => setActiveTab("download")} />
+        </div>
 
-        <div className="mt-auto pt-8 border-t border-white/10 space-y-4">
-          <div className="bg-black/50 rounded-2xl p-4 border border-white/10 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-500 to-yellow-700 border border-white/20" />
-            <div className="overflow-hidden">
-              <div className="text-[10px] font-black text-white/30 uppercase truncate w-32">{session.user.email}</div>
-              <div className="text-[11px] text-yellow-500 font-black uppercase tracking-widest">MASTER OWNER</div>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3 bg-black/30 rounded-2xl p-2 px-4 border border-white/5">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-yellow-500 to-yellow-700 border border-white/20" />
+            <div className="text-[9px] font-black text-white/50 uppercase tracking-widest truncate max-w-[100px]">{session.user.email}</div>
           </div>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center md:justify-start gap-3 px-6 py-4 rounded-xl font-black text-[10px] text-white/30 hover:text-red-500 hover:bg-red-500/10 transition-all uppercase tracking-[0.2em]">
-            <LogOut className="w-4 h-4" /> Sair
+          <button onClick={handleLogout} className="p-2 md:px-4 md:py-2 rounded-xl font-black text-[10px] text-white/50 hover:text-red-500 hover:bg-red-500/10 transition-all uppercase tracking-[0.2em] flex items-center gap-2 bg-white/5 border border-white/5">
+            <LogOut className="w-4 h-4" /> <span className="hidden md:inline">Sair</span>
+          </button>
+          
+          {/* Mobile Menu Toggle */}
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden text-yellow-500 p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all">
+            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
-      </aside>
+      </nav>
+
+      {/* Mobile Menu Dropdown (Liquidglass) */}
+      <div className={`lg:hidden absolute top-24 left-4 right-4 z-40 bg-white/10 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-4 shadow-2xl transition-all duration-300 origin-top ${isSidebarOpen ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0 pointer-events-none'}`}>
+        <div className="flex flex-col gap-2">
+          <TopNavBtn icon={<LayoutDashboard className="w-5 h-5" />} label="DASHBOARD" active={activeTab === "dashboard"} onClick={() => { setActiveTab("dashboard"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<UserPlus className="w-5 h-5" />} label="NOVO CLIENTE" active={activeTab === "new"} onClick={() => { setActiveTab("new"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<Key className="w-5 h-5" />} label="GERENCIAR CHAVES" active={activeTab === "keys"} onClick={() => { setActiveTab("keys"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<Database className="w-5 h-5" />} label="BOIADAS" active={activeTab === "boiadas"} onClick={() => { setActiveTab("boiadas"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<Database className="w-5 h-5" />} label="EVENTOS" active={activeTab === "eventos"} onClick={() => { setActiveTab("eventos"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<Download className="w-5 h-5" />} label="DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} fullWidth />
+        </div>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar relative z-0">
+      <main className="flex-1 overflow-y-auto px-4 md:px-12 pb-12 custom-scrollbar relative z-10 w-full max-w-[1600px] mx-auto">
         
-        {/* Overlay do Mobile */}
-        {isSidebarOpen && <div className="md:hidden fixed inset-0 bg-black/60 z-30" onClick={() => setIsSidebarOpen(false)} />}
-
         {activeTab === "dashboard" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header className="mb-8 md:mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
@@ -1069,11 +1079,11 @@ export default function AdminDashboard() {
   );
 }
 
-function SidebarLink({ icon, label, active, onClick }: any) {
+function TopNavBtn({ icon, label, active, onClick, fullWidth = false }: any) {
   return (
     <button 
       onClick={onClick}
-      className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${active ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+      className={`${fullWidth ? 'w-full' : ''} flex items-center gap-2 md:gap-3 px-4 py-3 md:px-6 md:py-3 rounded-[1.25rem] font-black text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.2em] transition-all duration-300 active:scale-95 ${active ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20 scale-105' : 'text-white/60 hover:bg-white/10 hover:text-white backdrop-blur-md bg-white/5 border border-white/5'}`}
     >
       {icon} {label}
     </button>
@@ -1082,19 +1092,21 @@ function SidebarLink({ icon, label, active, onClick }: any) {
 
 function DashboardCard({ title, icon, items, emptyMsg }: any) {
   return (
-    <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2rem] backdrop-blur-sm">
+    <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2rem] backdrop-blur-3xl shadow-2xl transition-all duration-300 hover:bg-white/10 hover:border-white/20">
       <div className="flex items-center gap-3 mb-6">
-        {icon}
+        <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 shadow-inner">
+          {icon}
+        </div>
         <h3 className="font-black italic uppercase tracking-tighter text-lg md:text-xl text-yellow-500">{title}</h3>
       </div>
       <div className="space-y-4">
         {items.length === 0 ? (
-          <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">{emptyMsg}</div>
+          <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center bg-black/20 rounded-2xl border border-white/5">{emptyMsg}</div>
         ) : (
           items.map((item: any, i: number) => (
-            <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-black/50 rounded-xl border border-white/5 gap-2">
-              <span className="font-bold text-xs uppercase tracking-wider truncate max-w-[150px] md:max-w-[200px]">{item.nome}</span>
-              <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">{item.key_code}</span>
+            <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 gap-2 hover:bg-black/60 transition-all">
+              <span className="font-bold text-xs uppercase tracking-wider truncate max-w-[150px] md:max-w-[200px] text-white/90">{item.nome}</span>
+              <span className="text-[9px] font-black bg-yellow-500/10 text-yellow-500 px-3 py-1.5 rounded-xl uppercase tracking-widest border border-yellow-500/20">{item.key_code}</span>
             </div>
           ))
         )}
@@ -1106,13 +1118,13 @@ function DashboardCard({ title, icon, items, emptyMsg }: any) {
 function InputGroup({ label, placeholder, value, onChange, type = "text" }: any) {
   return (
     <div className="space-y-2">
-      <label className="text-[9px] md:text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1 block mb-3">{label}</label>
+      <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">{label}</label>
       <input 
         type={type} 
         placeholder={placeholder} 
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-black border border-white/10 rounded-xl md:rounded-2xl px-4 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm placeholder:text-white/20"
+        className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm placeholder:text-white/20 text-white shadow-inner hover:bg-black/60 focus:bg-black/80"
         required
       />
     </div>
