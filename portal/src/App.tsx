@@ -1580,6 +1580,21 @@ if (publicProfileSlug) {
     );
   }
 
+  const homeEvents = eventosOficiais.filter(ev => {
+    const config = (typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes) : (ev.detalhes || {})).portalConfig || {};
+    return !config.ocultarDaHome;
+  });
+
+  const filteredEvents = eventosOficiais.filter(ev => {
+    if (ev.status !== 'aprovado') return false;
+    const config = (typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes) : (ev.detalhes || {})).portalConfig || {};
+    if (!searchTerm.trim() && config.ocultarDaHome) return false;
+    const nome = ev.nome || '';
+    const cidade = ev.cidade || '';
+    return nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           cidade.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
   if (!user) {
     return (
       <>
@@ -1877,19 +1892,6 @@ if (publicProfileSlug) {
   ];
 
   // Filters based on search
-  const filteredEvents = eventosOficiais.filter(ev => {
-    if (ev.status !== 'aprovado') return false;
-    const config = (typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes) : (ev.detalhes || {})).portalConfig || {};
-    
-    // Se não estiver buscando, oculta os que tem ocultarDaHome marcado
-    if (!searchTerm.trim() && config.ocultarDaHome) return false;
-
-    const nome = ev.nome || '';
-    const cidade = ev.cidade || '';
-    return nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-           cidade.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
   const filteredNews = newsFeed.filter(post => {
     const title = post.title || '';
     const description = post.description || '';
@@ -1905,11 +1907,6 @@ if (publicProfileSlug) {
     const nome = b.nome || '';
     return nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (b.lados && Object.keys(b.lados).some(bull => bull !== '__meta' && bull.toLowerCase().includes(searchTerm.toLowerCase())));
-  });
-
-  const homeEvents = eventosOficiais.filter(ev => {
-    const config = (typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes) : (ev.detalhes || {})).portalConfig || {};
-    return !config.ocultarDaHome;
   });
 
   // Authenticated Dashboard Layout
