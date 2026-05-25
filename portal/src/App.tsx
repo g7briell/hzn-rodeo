@@ -46,7 +46,6 @@ function App() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedPeaoProfile, setSelectedPeaoProfile] = useState<any>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isPeaoProfileLoading, setIsPeaoProfileLoading] = useState(false);
   const [isBoiadasLoading, setIsBoiadasLoading] = useState(false);
 
   // Inicializar roteamento
@@ -977,10 +976,10 @@ function App() {
                               className="hover:text-primary transition-colors" 
                               onClick={async () => {
                                 if (!peao.cpf) return alert("CPF não vinculado.");
-                                setIsPeaoProfileLoading(true);
+                                
                                 const cleanCpf = peao.cpf.replace(/\D/g, '');
                                 const { data } = await supabase.from('perfis_portal').select('*').eq('cpf', cleanCpf).limit(1);
-                                setIsPeaoProfileLoading(false);
+                                
                                 if (!data || data.length === 0) return alert("Perfil não encontrado.");
                                 
                                 const historico: any[] = [];
@@ -1083,9 +1082,9 @@ function App() {
                       style={{ marginTop: '1rem', width: '100%' }}
                       onClick={async () => {
                         if (!peao.cpf) return alert("CPF não vinculado.");
-                        setIsPeaoProfileLoading(true);
+                        
                         const { data } = await supabase.from('perfis_portal').select('*').eq('cpf', peao.cpf.replace(/\D/g, '')).limit(1);
-                        setIsPeaoProfileLoading(false);
+                        
                         if (!data || data.length === 0) return alert("Perfil não encontrado.");
                         
                         const historico: any[] = [];
@@ -1965,117 +1964,6 @@ if (publicProfileSlug) {
                         ) : (
                           <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum histórico encontrado para este competidor.</p>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                ) : selectedEvent ? (
-                  <div className="event-detail-view fade-in">
-                    <button className="back-btn" onClick={() => setSelectedEvent(null)} style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                      Voltar para Eventos
-                    </button>
-
-                    <div className="event-header-banner" style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem' }}>
-                      {selectedEvent.detalhes?.logo ? (
-                        <img src={selectedEvent.detalhes.logo} alt={selectedEvent.nome} style={{ width: '120px', height: '120px', objectFit: 'contain', borderRadius: '24px', background: 'rgba(0,0,0,0.4)', padding: '12px', border: '1px solid rgba(255,255,255,0.1)' }} />
-                      ) : (
-                        <div style={{ width: '120px', height: '120px', borderRadius: '24px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900', border: '1px solid rgba(255,255,255,0.1)' }}>LOGO</div>
-                      )}
-                      <div>
-                        <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.8rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>{selectedEvent.tipo || 'RODEIO'}</span>
-                        <h2 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0', lineHeight: 1, fontWeight: '900', textTransform: 'uppercase' }}>{selectedEvent.nome}</h2>
-                        
-                        <div style={{ display: 'flex', gap: '1.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                            {selectedEvent.cidade}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            Diretor: <strong style={{ color: '#fff' }}>{selectedEvent.detalhes?.diretor || 'N/A'}</strong>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="event-details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                      <div className="ranking-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Ranking (Peões)</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {selectedEvent.detalhes?.ranking && selectedEvent.detalhes.ranking.length > 0 ? (
-                            selectedEvent.detalhes.ranking.map((peao: any, idx: number) => (
-                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                  <span style={{ fontWeight: '900', color: '#E11D48', width: '20px' }}>{idx + 1}º</span>
-                                  <span 
-                                    style={{ fontWeight: 'bold', cursor: 'pointer' }} 
-                                    className="hover:text-primary transition-colors" 
-                                    title="Ver Perfil do Competidor"
-                                    onClick={async () => {
-                                      if (!peao.cpf) {
-                                        alert("Este competidor não possui um CPF vinculado pelo diretor do evento.");
-                                        return;
-                                      }
-                                      setIsPeaoProfileLoading(true);
-                                      const cleanCpf = peao.cpf.replace(/\D/g, '');
-                                      const { data, error } = await supabase.from('perfis_portal').select('*').eq('cpf', cleanCpf).limit(1);
-                                      setIsPeaoProfileLoading(false);
-                                      
-                                      const profileData = data && data.length > 0 ? data[0] : null;
-
-                                      if (error || !profileData) {
-                                        alert("Este competidor ainda não criou o cadastro no Portal RodeoApp.");
-                                      } else {
-                                        // Calcular historico
-                                        const historico: any[] = [];
-                                        eventosOficiais.forEach(ev => {
-                                          const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
-                                            const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
-                                            return rCpf === cleanCpf;
-                                          });
-                                          if (rankIndex !== undefined && rankIndex >= 0) {
-                                            historico.push({
-                                              eventoNome: ev.nome,
-                                              cidade: ev.cidade,
-                                              posicao: rankIndex + 1
-                                            });
-                                          }
-                                        });
-                                        setSelectedPeaoProfile({ ...profileData, historico });
-                                        // Update URL
-                                        const slug = peao.nome.trim().toLowerCase().replace(/\s+/g, '');
-                                        window.history.pushState({}, '', '/perfil/' + slug);
-                                      }
-                                    }}
-                                  >
-                                    {peao.nome} {isPeaoProfileLoading ? '...' : ''}
-                                  </span>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
-                        <span>{peao.cidade}</span>
-                        <span style={{ color: '#E11D48', fontWeight: 'bold' }}>{peao.score !== undefined ? peao.score : (peao.total !== undefined ? peao.total : 0)} pts</span>
-                      </div>
-                              </div>
-                            ))
-                          ) : (
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum competidor registrado ainda.</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="boiadas-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Boiadas Registradas</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {selectedEvent.detalhes?.boiadas && selectedEvent.detalhes.boiadas.length > 0 ? (
-                            selectedEvent.detalhes.boiadas.map((b: any, idx: number) => (
-                              <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', fontWeight: 'bold' }}>
-                                {b.nome}
-                              </div>
-                            ))
-                          ) : (
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhuma boiada registrada ainda.</p>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </div>
