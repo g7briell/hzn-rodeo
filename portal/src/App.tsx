@@ -910,7 +910,7 @@ function App() {
             
             {eventTab === 'ranking' && (
               <div className="ranking-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                <div className="tabs-container" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                    {(() => {
                       const days = new Set<string>();
                       (selectedEvent.detalhes?.notas || []).forEach((n: any) => { if (n.dia) days.add(n.dia); });
@@ -2350,6 +2350,26 @@ if (publicProfileSlug) {
 
           </div>
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="mobile-bottom-nav">
+          <button className={`mobile-nav-item ${currentTab === 'explore' ? 'active' : ''}`} onClick={() => { setCurrentTab('explore'); setSearchTerm(''); }}>
+            <svg viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            Eventos
+          </button>
+          <button className={`mobile-nav-item ${currentTab === 'feed' ? 'active' : ''}`} onClick={() => { setCurrentTab('feed'); setSearchTerm(''); }}>
+            <svg viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+            Feed
+          </button>
+          <button className={`mobile-nav-item ${currentTab === 'boiadas' ? 'active' : ''}`} onClick={() => { setCurrentTab('boiadas'); setSearchTerm(''); }}>
+            <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            Boiadas
+          </button>
+          <button className={`mobile-nav-item ${currentTab === 'profile' ? 'active' : ''}`} onClick={() => { setCurrentTab('profile'); setSearchTerm(''); }}>
+            <svg viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            Perfil
+          </button>
+        </nav>
       </div>
 
       {/* ==================================== */}
