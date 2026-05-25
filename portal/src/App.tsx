@@ -87,7 +87,8 @@ function App() {
   const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
   const [selectedRankingDay, setSelectedRankingDay] = useState<string>('Geral');
   const [verifiedCpfs, setVerifiedCpfs] = useState<Set<string>>(new Set());
-  const [eventTab, setEventTab] = useState<'home'|'ranking'|'competidores'|'boiadas'|'noticias'|'midia'>('home');
+  const [eventTab, setEventTab] = useState<'home'|'ranking'|'sorteios'|'competidores'|'boiadas'|'noticias'|'midia'>('home');
+  const [selectedSorteioDay, setSelectedSorteioDay] = useState<string>('');
   const [publicBoiada, setPublicBoiada] = useState<any>(null);
   const [isPublicBoiadaLoading, setIsPublicBoiadaLoading] = useState(false);
 
@@ -886,6 +887,7 @@ function App() {
             {[
               { id: 'home', label: 'Início' },
               { id: 'ranking', label: 'Ranking' },
+              { id: 'sorteios', label: 'Sorteio' },
               { id: 'competidores', label: 'Competidores' },
               { id: 'boiadas', label: 'Boiadas' },
               { id: 'noticias', label: 'Notícias' },
@@ -911,6 +913,10 @@ function App() {
             
             {eventTab === 'home' && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem' }}>
+                <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('sorteios')}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Sorteio</h3>
+                </div>
                 <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('ranking')}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
                   <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Ranking</h3>
@@ -926,6 +932,80 @@ function App() {
                 <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('noticias')}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>
                   <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Notícias</h3>
+                </div>
+              </div>
+            )}
+
+            
+            {eventTab === 'sorteios' && (
+              <div className="ranking-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="tabs-container" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                   {(() => {
+                      if (!selectedEvent.detalhes?.sorteios || selectedEvent.detalhes.sorteios.length === 0) return null;
+                      const days = selectedEvent.detalhes.sorteios.map((s: any) => s.day);
+                      if (!selectedSorteioDay && days.length > 0) setTimeout(() => setSelectedSorteioDay(days[0]), 0);
+                      
+                      return days.map((dia: string) => (
+                        <button 
+                          key={dia}
+                          onClick={() => setSelectedSorteioDay(dia)}
+                          style={{
+                            background: selectedSorteioDay === dia ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                            color: selectedSorteioDay === dia ? '#000' : 'var(--text-muted)',
+                            border: 'none',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '20px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          {dia.toUpperCase().replace(/DIA /g, 'ROUND ')}
+                        </button>
+                      ));
+                   })()}
+                </div>
+
+                <div className="ranking-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {(() => {
+                    if (!selectedEvent.detalhes?.sorteios) return <p style={{ color: 'var(--text-muted)' }}>Nenhum sorteio disponível.</p>;
+                    const sorteio = selectedEvent.detalhes.sorteios.find((s: any) => s.day === selectedSorteioDay);
+                    if (!sorteio) return null;
+
+                    return sorteio.riders.map((rider: any, index: number) => {
+                      const bullIndex = sorteio.assignments[index.toString()];
+                      const bull = bullIndex !== undefined ? sorteio.bulls[bullIndex] : null;
+
+                      return (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', background: 'rgba(30, 30, 30, 0.4)', borderRadius: '16px', padding: '1rem 1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)', width: '40px' }}>
+                            {index + 1}º
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>{rider.nome}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{rider.cidade}</div>
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '1.2rem' }}>
+                             X 
+                          </div>
+
+                          <div style={{ flex: 1, textAlign: 'right' }}>
+                            {bull ? (
+                              <>
+                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent)' }}>{bull.nome}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  Cia {bull.cia} <span style={{ background: bull.lado === 'E' ? 'rgba(0, 191, 255, 0.2)' : 'rgba(255, 69, 0, 0.2)', color: bull.lado === 'E' ? '#00BFFF' : '#FF4500', padding: '0.1rem 0.4rem', borderRadius: '4px', marginLeft: '0.5rem', fontWeight: 'bold' }}>{bull.lado}</span>
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Touro não definido</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}
