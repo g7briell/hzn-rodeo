@@ -1068,7 +1068,7 @@ function renderStep1() {
     const daysList = getEventDaysList();
     let html = '';
     daysList.forEach(day => {
-        html += `<button onclick="selectSorteioDay('${day}')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500 hover:bg-yellow-500/10 transition-all text-center"><h4 class="font-black text-3xl text-white italic">${day}</h4></button>`;
+        html += `<button onclick="selectSorteioDay('${day}')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500 hover:bg-yellow-500/10 transition-all text-center"><h4 class="font-black text-3xl text-white italic">${day.replace(/DIA/gi, "ROUND")}</h4></button>`;
     });
     if (container) container.innerHTML = html;
 }
@@ -1374,7 +1374,7 @@ window.openExportFlow = () => {
     const daysList = getEventDaysList();
     daysList.forEach(day => {
         daysContainer.innerHTML += `
-            <button onclick="selectExportDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-yellow-500 hover:text-yellow-500 transition-all">${day}</button>
+            <button onclick="selectExportDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-yellow-500 hover:text-yellow-500 transition-all">${day.replace(/DIA/gi, "ROUND")}</button>
         `;
     });
 
@@ -2597,7 +2597,7 @@ window.openRankingView = () => {
         let html = `<button onclick="renderRanking('geral')" class="rank-filter-btn active px-6 py-2 rounded-xl text-xs font-black uppercase transition-all">Geral</button>`;
         const daysList = getEventDaysList();
         daysList.forEach(day => {
-            html += `<button onclick="renderRanking('${day}')" class="rank-filter-btn px-6 py-2 rounded-xl text-xs font-black uppercase transition-all">${day}</button>`;
+            html += `<button onclick="renderRanking('${day}')" class="rank-filter-btn px-6 py-2 rounded-xl text-xs font-black uppercase transition-all">${day.replace(/DIA/gi, "ROUND")}</button>`;
         });
         filters.innerHTML = html;
         document.querySelectorAll('.rank-filter-btn').forEach(btn => {
@@ -2673,7 +2673,7 @@ window.openOrdemDaySelection = (type = 'manual') => {
     const daysList = getEventDaysList();
     let html = '';
     daysList.forEach(day => {
-        html += `<button onclick="selectOrdemDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-emerald-500 hover:text-emerald-500 transition-all">${day}</button>`;
+        html += `<button onclick="selectOrdemDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-emerald-500 hover:text-emerald-500 transition-all">${day.replace(/DIA/gi, "ROUND")}</button>`;
     });
     
     container.innerHTML = html;
@@ -3283,7 +3283,7 @@ window.openNotasDays = () => {
     
     const dias = [...new Set(currentEvent.sorteios.map(s => s.day))];
     dias.forEach(day => {
-        grid.innerHTML += `<button onclick="openNotasListView('${day}')" class="bg-black border border-slate-800 p-8 rounded-3xl hover:border-blue-500 hover:bg-blue-500/10 transition-all font-black text-white text-xl uppercase tracking-tighter text-center">${day}</button>`;
+        grid.innerHTML += `<button onclick="openNotasListView('${day}')" class="bg-black border border-slate-800 p-8 rounded-3xl hover:border-blue-500 hover:bg-blue-500/10 transition-all font-black text-white text-xl uppercase tracking-tighter text-center">${day.replace(/DIA/gi, "ROUND")}</button>`;
     });
 
     document.getElementById('modal-notas-days').classList.remove('hidden');
@@ -3999,7 +3999,7 @@ window.openRankingAnimaisView = () => {
         let html = `<button onclick="renderRankingAnimais('${currentRankingAnimaisType}', 'geral')" class="rank-animal-filter-btn active px-6 py-2 rounded-xl text-xs font-black uppercase transition-all bg-emerald-500 text-black">Geral</button>`;
         const daysList = getEventDaysList();
         daysList.forEach(day => {
-            html += `<button onclick="renderRankingAnimais('${currentRankingAnimaisType}', '${day}')" class="rank-animal-filter-btn px-6 py-2 rounded-xl text-xs font-black uppercase transition-all hover:text-white text-slate-500">${day}</button>`;
+            html += `<button onclick="renderRankingAnimais('${currentRankingAnimaisType}', '${day}')" class="rank-animal-filter-btn px-6 py-2 rounded-xl text-xs font-black uppercase transition-all hover:text-white text-slate-500">${day.replace(/DIA/gi, "ROUND")}</button>`;
         });
         filters.innerHTML = html;
         document.querySelectorAll('.rank-animal-filter-btn').forEach(btn => {

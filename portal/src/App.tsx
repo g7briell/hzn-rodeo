@@ -923,7 +923,7 @@ function App() {
                       };
                       const dayList = ['Geral', ...Array.from(days).sort(customSort)];
                       return dayList.map(d => (
-                         <button key={d} onClick={() => setSelectedRankingDay(d)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', background: selectedRankingDay === d ? '#E11D48' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer' }}>{d}</button>
+                         <button key={d} onClick={() => setSelectedRankingDay(d)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', background: selectedRankingDay === d ? '#E11D48' : 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer' }}>{d.replace(/DIA/i, 'ROUND')}</button>
                       ));
                    })()}
                 </div>
@@ -1051,7 +1051,7 @@ function App() {
                           <div style={{ marginLeft: '2.5rem', marginTop: '0.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                             {Object.entries(peao.parciais).map(([dia, pont]: [string, any]) => (
                                <div key={dia} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem' }}>
-                                 <span style={{ color: '#94a3b8', marginRight: '0.5rem' }}>{dia}:</span>
+                                 <span style={{ color: '#94a3b8', marginRight: '0.5rem' }}>{dia.replace(/DIA/i, 'ROUND')}:</span>
                                  <strong style={{ color: typeof pont === 'string' ? '#ef4444' : '#10b981' }}>{pont}</strong>
                                </div>
                             ))}
