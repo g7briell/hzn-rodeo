@@ -87,7 +87,7 @@ function App() {
   const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
   const [selectedRankingDay, setSelectedRankingDay] = useState<string>('Geral');
   const [verifiedCpfs, setVerifiedCpfs] = useState<Set<string>>(new Set());
-  const [eventTab, setEventTab] = useState<'ranking'|'competidores'|'boiadas'|'noticias'|'midia'>('ranking');
+  const [eventTab, setEventTab] = useState<'home'|'ranking'|'competidores'|'boiadas'|'noticias'|'midia'>('home');
   const [publicBoiada, setPublicBoiada] = useState<any>(null);
   const [isPublicBoiadaLoading, setIsPublicBoiadaLoading] = useState(false);
 
@@ -853,7 +853,7 @@ function App() {
         <header className="header" style={{ position: 'sticky', top: 0, zIndex: 100, width: '100%', left: 0 }}>
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
-            <button className="btn btn-primary" onClick={() => { navigateTo('/'); setPublicEventSlug(null); setSelectedEvent(null); setEventTab('ranking'); }}>Ir para o Portal</button>
+            <button className="btn btn-primary" onClick={() => { navigateTo('/'); setPublicEventSlug(null); setSelectedEvent(null); setEventTab('home'); }}>Ir para o Portal</button>
           </div>
         </header>
 
@@ -884,6 +884,7 @@ function App() {
           {/* Abas de Navegação do Evento */}
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', overflowX: 'auto' }}>
             {[
+              { id: 'home', label: 'Início' },
               { id: 'ranking', label: 'Ranking' },
               { id: 'competidores', label: 'Competidores' },
               { id: 'boiadas', label: 'Boiadas' },
@@ -908,6 +909,27 @@ function App() {
           {/* Conteúdo Dinâmico */}
           <div className="event-tab-content">
             
+            {eventTab === 'home' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem' }}>
+                <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('ranking')}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+                  <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Ranking</h3>
+                </div>
+                <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('competidores')}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Competidores</h3>
+                </div>
+                <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('boiadas')}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                  <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Boiadas</h3>
+                </div>
+                <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('noticias')}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>
+                  <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Notícias</h3>
+                </div>
+              </div>
+            )}
+
             {eventTab === 'ranking' && (
               <div className="ranking-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div className="tabs-container" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
@@ -1985,7 +2007,7 @@ if (publicProfileSlug) {
                     ) : (
                       <div className="events-grid">
                         {filteredEvents.map(ev => (
-                          <div key={ev.id} onClick={() => { window.history.pushState({}, '', '/evento/' + slugify(ev.nome)); setPublicEventSlug(slugify(ev.nome)); setSelectedEvent(ev); setSelectedRankingDay('Geral'); }} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                          <div key={ev.id} onClick={() => { window.history.pushState({}, '', '/evento/' + slugify(ev.nome)); setPublicEventSlug(slugify(ev.nome)); setSelectedEvent(ev); setSelectedRankingDay('Geral'); setEventTab('home'); }} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem' }}>
                               {ev.detalhes?.logo ? (
                                 <img src={ev.detalhes.logo} alt={ev.nome} style={{ width: '64px', height: '64px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', padding: '6px', border: '1px solid rgba(255,255,255,0.1)' }} />
