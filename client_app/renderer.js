@@ -1,3 +1,11 @@
+window.formatSide = function(s) {
+  if (!s) return s;
+  if (typeof s !== 'string') return s;
+  const l = s.toLowerCase();
+  if (l === 'direito' || l === 'd') return 'Certo (C)';
+  if (l === 'esquerdo' || l === 'e') return 'Errado (E)';
+  return s.toUpperCase();
+};
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     document.body.innerHTML += '<div style="position:fixed;top:0;left:0;background:red;color:white;z-index:999999;padding:20px;font-size:20px;font-weight:bold;">ERROR: ' + msg + '<br>Line: ' + lineNo + '</div>';
     return false;
@@ -1565,7 +1573,7 @@ window.exportJuizesPDF = async () => {
             <td class="center bold" style="font-size: 11px;">${acum}</td>
             <td style="font-size: 13px; font-weight: bold;">${b.nome.toUpperCase()}</td>
             <td style="font-size: 10px;">${b.cia.toUpperCase()}</td>
-            <td class="center bold" style="font-size: 12px;">${lado}</td>
+            <td class="center bold" style="font-size: 12px;">${window.formatSide(lado)}</td>
             <td></td>
             <td></td>
             <td></td>
@@ -1592,7 +1600,7 @@ window.exportJuizesPDF = async () => {
                 <td></td>
                 <td style="font-size: 13px; font-weight: bold;">${b.nome.toUpperCase()}</td>
                 <td style="font-size: 10px;">${b.cia.toUpperCase()}</td>
-                <td class="center bold" style="font-size: 12px;">${lado}</td>
+                <td class="center bold" style="font-size: 12px;">${window.formatSide(lado)}</td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -1703,7 +1711,7 @@ window.exportConfrontosPDF = async () => {
             <td class="center bold" style="font-size: 14px;">${acum}</td>
             <td style="font-size: 14px; font-weight: bold;">${bull.nome.toUpperCase()}</td>
             <td style="font-size: 11px;">${bull.cia.toUpperCase()}</td>
-            <td class="center bold" style="font-size: 16px;">${lado}</td>
+            <td class="center bold" style="font-size: 16px;">${window.formatSide(lado)}</td>
         </tr>`;
     });
 
@@ -1725,7 +1733,7 @@ window.exportConfrontosPDF = async () => {
                 <td></td><td></td><td></td><td></td>
                 <td style="font-size: 14px; font-weight: bold;">${b.nome.toUpperCase()}</td>
                 <td style="font-size: 11px;">${b.cia.toUpperCase()}</td>
-                <td class="center bold" style="font-size: 16px;">${lado}</td>
+                <td class="center bold" style="font-size: 16px;">${window.formatSide(lado)}</td>
             </tr>`;
         });
     }
@@ -1822,7 +1830,7 @@ window.exportBoiadasPDF = async () => {
             <td class="center bold" style="font-size: 16px;">${idx + 1}</td>
             <td style="font-size: 15px; font-weight: bold;">${b.nome.toUpperCase()}</td>
             <td style="font-size: 14px;">${b.cia.toUpperCase()}</td>
-            <td class="center bold" style="font-size: 16px;">${lado}</td>
+            <td class="center bold" style="font-size: 16px;">${window.formatSide(lado)}</td>
         </tr>`;
     });
 
@@ -1842,7 +1850,7 @@ window.exportBoiadasPDF = async () => {
                 <td class="center bold" style="font-size: 16px; color: #d32f2f;">R${idx + 1}</td>
                 <td style="font-size: 15px; font-weight: bold;">${b.nome.toUpperCase()}</td>
                 <td style="font-size: 14px;">${b.cia.toUpperCase()}</td>
-                <td class="center bold" style="font-size: 16px;">${lado}</td>
+                <td class="center bold" style="font-size: 16px;">${window.formatSide(lado)}</td>
             </tr>`;
         });
     }
@@ -2715,7 +2723,7 @@ function renderManualOrdem() {
                 <div class="text-xs font-bold text-slate-500 uppercase">${r.cidade}</div>
             </div>
             <div class="flex-1 text-right">
-                <div class="font-black text-yellow-500 text-lg uppercase">${bull.nome} ${lado ? `(${lado})` : ''}</div>
+                <div class="font-black text-yellow-500 text-lg uppercase">${bull.nome} ${lado ? `(${window.formatSide(lado)})` : ``}</div>
                 <div class="text-xs font-bold text-slate-500 uppercase">${bull.cia}</div>
             </div>
         </div>
@@ -3042,7 +3050,7 @@ window.exportOrdemPDF = async () => {
             <td style="font-size: 16px; font-weight: bold;">${r.nome.toUpperCase()}</td>
             <td style="font-size: 16px; font-weight: bold;">${b.nome.toUpperCase()}</td>
             <td style="font-size: 12px;">${b.cia.toUpperCase()}</td>
-            <td class="center bold" style="font-size: 16px;">${lado}</td>
+            <td class="center bold" style="font-size: 16px;">${window.formatSide(lado)}</td>
         </tr>`;
     });
 
