@@ -1542,7 +1542,7 @@ window.exportJuizesPDF = async () => {
                 <tr>
                     <td colspan="11" style="padding: 0; border: none;">
                         <div class="footer-container">
-                            RODEOAPP (18) 98122-6665 - GESTÁƒO DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
+                            RODEOAPP (18) 98122-6665 - GEST&Atilde;O DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
                         </div>
                     </td>
                 </tr>
@@ -1670,7 +1670,7 @@ window.exportConfrontosPDF = async () => {
                     </td>
                 </tr>
                 <tr>
-                    <th class="col-header" style="width:5%;">NÂº</th>
+                    <th class="col-header" style="width:5%;">N&ordm;</th>
                     <th class="col-header" style="width:30%; text-align: left;">COMPETIDOR</th>
                     <th class="col-header" style="width:20%; text-align: left;">CIDADE</th>
                     <th class="col-header" style="width:10%;">ACUM.</th>
@@ -1683,7 +1683,7 @@ window.exportConfrontosPDF = async () => {
                 <tr>
                     <td colspan="7" style="padding: 0; border: none;">
                         <div class="footer-container">
-                            RODEOAPP (18) 98122-6665 - GESTÁƒO DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
+                            RODEOAPP (18) 98122-6665 - GEST&Atilde;O DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
                         </div>
                     </td>
                 </tr>
@@ -1798,7 +1798,7 @@ window.exportBoiadasPDF = async () => {
                     </td>
                 </tr>
                 <tr>
-                    <th class="col-header" style="width:10%;">NÂº</th>
+                    <th class="col-header" style="width:10%;">N&ordm;</th>
                     <th class="col-header" style="width:45%; text-align: left;">TOURO</th>
                     <th class="col-header" style="width:35%; text-align: left;">COMPANHIA</th>
                     <th class="col-header" style="width:10%;">LADO</th>
@@ -1808,7 +1808,7 @@ window.exportBoiadasPDF = async () => {
                 <tr>
                     <td colspan="4" style="padding: 0; border: none;">
                         <div class="footer-container">
-                            RODEOAPP (18) 98122-6665 - GESTÁƒO DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
+                            RODEOAPP (18) 98122-6665 - GEST&Atilde;O DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
                         </div>
                     </td>
                 </tr>
@@ -3018,7 +3018,7 @@ window.exportOrdemPDF = async () => {
                     </td>
                 </tr>
                 <tr>
-                    <th class="col-header" style="width:10%;">NÂº</th>
+                    <th class="col-header" style="width:10%;">N&ordm;</th>
                     <th class="col-header" style="width:35%; text-align: left;">COMPETIDOR</th>
                     <th class="col-header" style="width:25%; text-align: left;">TOURO</th>
                     <th class="col-header" style="width:20%; text-align: left;">COMPANHIA</th>
@@ -3029,7 +3029,7 @@ window.exportOrdemPDF = async () => {
                 <tr>
                     <td colspan="5" style="padding: 0; border: none;">
                         <div class="footer-container">
-                            RODEOAPP (18) 98122-6665 - GESTÁƒO DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
+                            RODEOAPP (18) 98122-6665 - GEST&Atilde;O DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
                         </div>
                     </td>
                 </tr>
@@ -3251,7 +3251,7 @@ window.exportRankingPDF = async () => {
     html += '<tfoot>';
     html += '<tr><td colspan="' + numCols + '" style="border:none;height:10px;"></td></tr>';
     html += '<tr><td colspan="' + numCols + '" style="padding:0;border:none;">';
-    html += '<div class="footer-container">Acesse rodeoapp.pro um novo conceito em gestão de provas! - Licenciado para: ' + clienteNome + '</div>';
+    html += '<div class="footer-container">Acesse rodeoapp.pro um novo conceito em gest&atilde;o de provas! - Licenciado para: ' + clienteNome + '</div>';
     html += '</td></tr></tfoot>';
     html += '</table></body></html>';
 
