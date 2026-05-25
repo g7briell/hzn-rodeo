@@ -281,7 +281,14 @@ function App() {
 
       if (error) throw error;
       if (data) {
-        setEventosOficiais(data);
+        const sortedData = [...data].sort((a, b) => {
+          const confA = (typeof a.detalhes === 'string' ? JSON.parse(a.detalhes) : (a.detalhes || {})).portalConfig || {};
+          const confB = (typeof b.detalhes === 'string' ? JSON.parse(b.detalhes) : (b.detalhes || {})).portalConfig || {};
+          const orderA = typeof confA.ordem === 'number' ? confA.ordem : 999;
+          const orderB = typeof confB.ordem === 'number' ? confB.ordem : 999;
+          return orderA - orderB;
+        });
+        setEventosOficiais(sortedData);
       }
     } catch (err) {
       console.error('Erro ao buscar eventos oficiais:', err);
@@ -1607,12 +1614,12 @@ if (publicProfileSlug) {
             </div>
             
             <div className="events-grid">
-              {eventosOficiais.length === 0 ? (
+              {homeEvents.length === 0 ? (
                 <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
                   Nenhum evento oficial disponível no momento.
                 </div>
               ) : (
-                eventosOficiais.map(ev => (
+                homeEvents.map(ev => (
                   <div key={ev.id} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div className="event-date" style={{ background: 'var(--primary)', color: 'var(--bg-dark)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' }}>
@@ -1893,6 +1900,11 @@ if (publicProfileSlug) {
     const nome = b.nome || '';
     return nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (b.lados && Object.keys(b.lados).some(bull => bull !== '__meta' && bull.toLowerCase().includes(searchTerm.toLowerCase())));
+  });
+
+  const homeEvents = eventosOficiais.filter(ev => {
+    const config = (typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes) : (ev.detalhes || {})).portalConfig || {};
+    return !config.ocultarDaHome;
   });
 
   // Authenticated Dashboard Layout

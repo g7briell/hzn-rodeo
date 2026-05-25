@@ -40,7 +40,9 @@ import {
   Fingerprint,
   Menu,
   ChevronRight,
-  Database
+  Database,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 const formatSide = (s: any) => {
@@ -233,6 +235,21 @@ export default function AdminDashboard() {
       }
     } catch (e: any) {
       alert("Erro ao conectar com a API: " + e.message);
+    }
+  };
+
+  const handleUpdateEventConfig = async (eventoId: string, currentDetalhes: any, field: string, value: any) => {
+    try {
+      const parsedDetalhes = typeof currentDetalhes === 'string' ? JSON.parse(currentDetalhes) : (currentDetalhes || {});
+      const portalConfig = parsedDetalhes.portalConfig || { ordem: 999, ocultarDaHome: false };
+      portalConfig[field] = value;
+      parsedDetalhes.portalConfig = portalConfig;
+
+      const { error } = await supabase.from('eventos_oficiais').update({ detalhes: parsedDetalhes }).eq('id', eventoId);
+      if (error) throw error;
+      fetchEventos();
+    } catch(e: any) {
+      alert("Erro ao atualizar configuração: " + e.message);
     }
   };
 
@@ -868,17 +885,38 @@ export default function AdminDashboard() {
                   {eventos.filter(e => e.status === 'aprovado').length === 0 ? (
                     <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhum evento aprovado</div>
                   ) : (
-                    eventos.filter(e => e.status === 'aprovado').map(e => (
+                    eventos.filter(e => e.status === 'aprovado').map(e => {
+                      const portalConfig = (typeof e.detalhes === 'string' ? JSON.parse(e.detalhes) : (e.detalhes || {})).portalConfig || { ordem: '', ocultarDaHome: false };
+                      return (
                       <div key={e.id} className="bg-black border border-white/10 p-5 rounded-2xl flex justify-between items-center group hover:border-yellow-500/50 transition-all">
-                        <div>
+                        <div className="flex-1">
                           <div className="font-black uppercase text-sm mb-1">{e.nome}</div>
                           <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{e.local} | {e.data_inicio}</div>
                         </div>
-                        <button onClick={() => handleRejectEvento(e.id)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all" title="Excluir">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center bg-white/5 border border-white/10 rounded-xl px-3 py-1">
+                            <span className="text-[9px] font-black uppercase text-white/40 mr-2">Ordem</span>
+                            <input 
+                              type="number" 
+                              className="w-12 bg-transparent text-white text-xs font-bold outline-none text-center" 
+                              placeholder="999"
+                              defaultValue={portalConfig.ordem !== 999 ? portalConfig.ordem : ''}
+                              onBlur={(ev) => handleUpdateEventConfig(e.id, e.detalhes, 'ordem', ev.target.value ? parseInt(ev.target.value) : 999)}
+                            />
+                          </div>
+                          <button 
+                            onClick={() => handleUpdateEventConfig(e.id, e.detalhes, 'ocultarDaHome', !portalConfig.ocultarDaHome)} 
+                            className={`p-3 rounded-xl transition-all border ${portalConfig.ocultarDaHome ? 'text-red-500 bg-red-500/10 border-red-500/20 hover:bg-red-500/20' : 'text-green-500 bg-green-500/10 border-green-500/20 hover:bg-green-500/20'}`} 
+                            title={portalConfig.ocultarDaHome ? "Oculto no Portal (Clique para Mostrar)" : "Visível no Portal (Clique para Ocultar)"}
+                          >
+                            {portalConfig.ocultarDaHome ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                          <button onClick={() => handleRejectEvento(e.id)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all" title="Excluir">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
-                    ))
+                    )})
                   )}
                 </div>
               </div>
