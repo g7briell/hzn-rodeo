@@ -1707,11 +1707,14 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
         };
 
         // Verifica se evento já existe
-        const { data: existingEvent } = await supabase.from('eventos_oficiais')
+        const { data: existingEvents } = await supabase.from('eventos_oficiais')
             .select('id, status')
             .eq('organizador_email', email)
             .eq('nome', ev.name)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+        const existingEvent = existingEvents && existingEvents.length > 0 ? existingEvents[0] : null;
 
         if (existingEvent) {
             // Mantém status aprovado se já estiver
