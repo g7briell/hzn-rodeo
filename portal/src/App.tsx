@@ -1491,7 +1491,7 @@ if (publicProfileSlug) {
           {isPublicBoiadaLoading ? (
             <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center', marginTop: '4rem' }}>Carregando Boiada...</div>
           ) : publicBoiada ? (
-            <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', padding: '0 1rem' }}>
               <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
                 <h1 style={{ fontSize: '3rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>{publicBoiada.nome}</h1>
                 <div style={{ display: 'inline-block', marginTop: '1rem' }}>
@@ -1503,7 +1503,7 @@ if (publicProfileSlug) {
                 Touros do Plantel ({Object.keys(publicBoiada.lados || {}).filter(k => k !== '__meta').length})
               </h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
                 {Object.keys(publicBoiada.lados || {}).filter(k => k !== '__meta').map(bullName => {
                   const side = publicBoiada.lados[bullName];
                   const details = publicBoiada.lados?.__meta?.touros_info?.[bullName] || {};
