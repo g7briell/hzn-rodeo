@@ -175,7 +175,7 @@ export default function AdminDashboard() {
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => setEditingUser(u)}>Editar</button>
-                      <button className="btn" style={{ padding: '0.5rem 1rem', background: 'var(--accent)', color: 'white', border: 'none' }} onClick={() => handleDeleteUser(u.id, u.nome)}>Excluir</button>
+                      <button className="btn" style={{ padding: '0.5rem 1rem', background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)' }} onClick={() => handleDeleteUser(u.id, u.nome)}>Excluir</button>
                     </div>
                   </td>
                 </tr>
