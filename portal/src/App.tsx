@@ -1391,7 +1391,7 @@ function App() {
 
 if (publicProfileSlug) {
     return (
-      <div className="container">
+      <div className="public-container">
         {/* Header */}
         <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
@@ -1479,7 +1479,7 @@ if (publicProfileSlug) {
 
   if (publicBoiadaSlug) {
     return (
-      <div className="container">
+      <div className="public-container">
         <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
@@ -1598,7 +1598,7 @@ if (publicProfileSlug) {
   if (!user) {
     return (
       <>
-        <div className="container">
+        <div className="public-container">
           {/* Header */}
           <header className="public-header">
             <div className="logo" style={{ cursor: 'pointer' }} onClick={() => { setCurrentTab('home'); navigateTo('/'); }}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>

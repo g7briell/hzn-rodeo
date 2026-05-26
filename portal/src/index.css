@@ -83,6 +83,12 @@ h1, h2, h3 {
   padding: 0 2rem;
 }
 
+.public-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
 /* --- Header --- */
 .header {
   display: flex;
