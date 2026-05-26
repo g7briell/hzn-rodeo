@@ -654,10 +654,8 @@ function App() {
               }
 
               setPublicProfile(match);
-              const savedBio = localStorage.getItem(`bio_${match.email.toLowerCase().trim()}`);
-              const savedFoto = localStorage.getItem(`foto_${match.email.toLowerCase().trim()}`);
-              setPublicProfileBio(savedBio || match.bio || '');
-              setPublicProfileFoto(savedFoto || match.foto || '');
+              setPublicProfileBio(match.bio || '');
+              setPublicProfileFoto(match.foto || '');
             } else {
               setPublicProfile(null);
             }
