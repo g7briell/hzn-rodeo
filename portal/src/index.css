@@ -477,6 +477,27 @@ h1, h2, h3 {
   }
 }
 
+.admin-pulsing-avatar {
+  border: 3px solid #00ff00;
+  box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7);
+  animation: adminAvatarPulse 2s infinite;
+}
+
+@keyframes adminAvatarPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(0, 255, 0, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 0, 0);
+    transform: scale(1);
+  }
+}
+
 .photo-upload-btn {
   background: var(--bg-input);
   border: 1px solid var(--border-light);
@@ -774,6 +795,24 @@ h1, h2, h3 {
   }
   100% {
     box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+  }
+}
+
+.admin-pulsing-avatar-small {
+  border: 2px solid #00ff00;
+  box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.4);
+  animation: adminAvatarPulseSmall 2s infinite;
+}
+
+@keyframes adminAvatarPulseSmall {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(0, 255, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 0, 0);
   }
 }
 

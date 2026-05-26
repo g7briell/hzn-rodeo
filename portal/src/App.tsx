@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './index.css';
 import { supabase } from './supabaseClient';
+import AdminDashboard from './AdminDashboard';
 
 const formatSide = (s: any) => {
   if (!s) return s;
@@ -43,9 +44,10 @@ function App() {
   // Auth and Profile States
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const isAdmin = user?.email === 'g7briellrms@gmail.com';
   const [userBio, setUserBio] = useState('');
   const [userFoto, setUserFoto] = useState('');
-  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada' | 'dashboard'>('home');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1920,6 +1922,18 @@ if (publicProfileSlug) {
           </div>
           
           <nav className="sidebar-menu">
+            {isAdmin && (
+              <button 
+                className={`menu-item ${currentTab === 'dashboard' ? 'active' : ''}`} 
+                onClick={() => { setCurrentTab('dashboard'); setSearchTerm(''); }}
+                style={{ color: '#00ff00' }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Dashboard
+              </button>
+            )}
             <button 
               className={`menu-item ${currentTab === 'explore' ? 'active' : ''}`} 
               onClick={() => { setCurrentTab('explore'); setSearchTerm(''); }}
@@ -1950,7 +1964,7 @@ if (publicProfileSlug) {
               Boiadas
             </button>
             
-            {userProfile?.cargo === 'tropeiro' && (
+            {(isAdmin || userProfile?.cargo === 'tropeiro') && (
               <button 
                 className={`menu-item ${currentTab === 'minha-boiada' ? 'active' : ''}`} 
                 onClick={() => { setCurrentTab('minha-boiada'); setSearchTerm(''); }}
@@ -2012,7 +2026,7 @@ if (publicProfileSlug) {
               <img 
                 src={userFoto || "/novacontasfoto.jpg"} 
                 alt="Foto de Perfil" 
-                className={`header-avatar ${userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar-small' : ''}`}
+                className={`header-avatar ${isAdmin ? 'admin-pulsing-avatar-small' : userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar-small' : ''}`}
                 onClick={() => setCurrentTab('profile')}
               />
             </div>
@@ -2020,6 +2034,11 @@ if (publicProfileSlug) {
 
           {/* Dynamic Tabs Content */}
           <div className="dashboard-content">
+            
+            {/* ADMIN DASHBOARD TAB */}
+            {currentTab === 'dashboard' && isAdmin && (
+              <AdminDashboard />
+            )}
             
             {/* EVENTOS TAB (formerly Explore) */}
             {currentTab === 'explore' && (
@@ -2209,7 +2228,7 @@ if (publicProfileSlug) {
             )}
 
             {/* MINHA BOIADA TAB (Tropeiro Only) */}
-            {currentTab === 'minha-boiada' && userProfile?.cargo === 'tropeiro' && (
+            {currentTab === 'minha-boiada' && (isAdmin || userProfile?.cargo === 'tropeiro') && (
               <div>
                 <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Minha Boiada</h2>
                 <p className="text-muted" style={{ marginBottom: '2.5rem' }}>Cadastre e gerencie a lista oficial de touros da sua companhia.</p>
@@ -2399,7 +2418,7 @@ if (publicProfileSlug) {
                       <img 
                         src={userFoto || "/novacontasfoto.jpg"} 
                         alt="Foto de Perfil" 
-                        className={`profile-avatar ${userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
+                        className={`profile-avatar ${isAdmin ? 'admin-pulsing-avatar' : userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
                       />
                     </div>
                     <label className="photo-upload-btn">
@@ -2417,8 +2436,8 @@ if (publicProfileSlug) {
                       <p className="text-muted" style={{ fontSize: '0.85rem' }}>{user?.email}</p>
                     </div>
 
-                    <span className="badge badge-role" style={{ marginTop: '1rem' }}>
-                      {userProfile?.cargo ? userProfile.cargo.replace('_', ' ') : 'Membro'}
+                    <span className={`badge ${isAdmin ? 'badge-primary' : ''}`} style={isAdmin ? { background: '#00ff00', color: '#000', fontWeight: 'bold' } : {}}>
+                      {isAdmin ? 'Admin' : userProfile?.cargo ? userProfile.cargo.replace('_', ' ') : 'Membro'}
                     </span>
 
                     {userProfile?.veio_do_app_desktop && (
@@ -2487,6 +2506,12 @@ if (publicProfileSlug) {
 
         {/* Mobile Bottom Navigation */}
         <nav className="mobile-bottom-nav">
+          {isAdmin && (
+            <button className={`mobile-nav-item ${currentTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentTab('dashboard'); setSearchTerm(''); }} style={{ color: currentTab === 'dashboard' ? '#00ff00' : 'var(--text-muted)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Admin
+            </button>
+          )}
           <button className={`mobile-nav-item ${currentTab === 'explore' ? 'active' : ''}`} onClick={() => { setCurrentTab('explore'); setSearchTerm(''); }}>
             <svg viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             Eventos
