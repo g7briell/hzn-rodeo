@@ -61,8 +61,8 @@ export default function AdminDashboard() {
     try {
       await supabase.from('eventos_oficiais').update({
         nome: editingEvent.nome,
-        cidade: editingEvent.cidade,
-        data: editingEvent.data,
+        local: editingEvent.local,
+        data_inicio: editingEvent.data_inicio,
         detalhes: editingEvent.detalhes
       }).eq('id', editingEvent.id);
       setEditingEvent(null);
@@ -200,8 +200,8 @@ export default function AdminDashboard() {
               {events.map(ev => (
                 <tr key={ev.id}>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.nome}</td>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.cidade}</td>
-                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.data}</td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.local}</td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.data_inicio}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
                     <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => openEventModal(ev)}>Editar</button>
                   </td>
@@ -226,11 +226,11 @@ export default function AdminDashboard() {
                 </div>
                 <div style={{ flex: 2 }}>
                   <label className="form-label">Cidade</label>
-                  <input className="form-input" value={editingEvent.cidade || ''} onChange={e => setEditingEvent({...editingEvent, cidade: e.target.value})} />
+                  <input className="form-input" value={editingEvent.local || ''} onChange={e => setEditingEvent({...editingEvent, local: e.target.value})} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label className="form-label">Data</label>
-                  <input className="form-input" value={editingEvent.data || ''} onChange={e => setEditingEvent({...editingEvent, data: e.target.value})} />
+                  <input className="form-input" value={editingEvent.data_inicio || ''} onChange={e => setEditingEvent({...editingEvent, data_inicio: e.target.value})} />
                 </div>
               </div>
               
