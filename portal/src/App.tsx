@@ -1533,21 +1533,22 @@ if (publicProfileSlug) {
                         <p style={{ margin: 0, fontSize: '1.1rem', textTransform: 'uppercase', fontStyle: 'italic', color: '#ddd', fontWeight: 300 }}>
                           {publicBoiada.nome}
                         </p>
+                        
+                        {hasVideo && (
+                          <div style={{ marginTop: '0.75rem' }}>
+                            <button 
+                              style={{ background: 'rgba(255,0,0,0.8)', border: 'none', color: '#fff', padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const vid = getYoutubeId(details.video_url);
+                                if (vid) setActiveYoutubeVideoId(vid);
+                              }}
+                            >
+                              ▶ Ver Pulo
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      
-                      {hasVideo && (
-                        <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 2 }}>
-                          <button 
-                            style={{ background: 'rgba(255,0,0,0.8)', border: 'none', color: '#fff', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' }}
-                            onClick={() => {
-                              const vid = getYoutubeId(details.video_url);
-                              if (vid) setActiveYoutubeVideoId(vid);
-                            }}
-                          >
-                            ▶ Ver Pulo
-                          </button>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
