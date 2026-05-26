@@ -71,6 +71,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteUser = async (id: number, nome: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir o usuário "${nome}"? Esta ação removerá o perfil público dele permanentemente.`)) {
+      try {
+        await supabase.from('perfis_portal').delete().eq('id', id);
+        fetchDashboardData();
+        alert('Usuário excluído com sucesso!');
+      } catch (err) {
+        alert('Erro ao excluir usuário.');
+      }
+    }
+  };
+
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -161,7 +173,10 @@ export default function AdminDashboard() {
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{u.cpf}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{u.cargo || 'Membro'}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
-                    <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => setEditingUser(u)}>Editar</button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => setEditingUser(u)}>Editar</button>
+                      <button className="btn" style={{ padding: '0.5rem 1rem', background: 'var(--accent)', color: 'white', border: 'none' }} onClick={() => handleDeleteUser(u.id, u.nome)}>Excluir</button>
+                    </div>
                   </td>
                 </tr>
               ))}
