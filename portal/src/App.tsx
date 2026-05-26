@@ -1520,14 +1520,15 @@ if (publicProfileSlug) {
                       />
                       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.9) 100%)', zIndex: 1 }} />
                       
+                      <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 3, fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', borderRadius: '4px' }}>
+                        Lado {formatSide(side)}
+                      </span>
+
                       <div style={{ position: 'relative', zIndex: 2, padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-                          <h4 style={{ margin: 0, fontSize: '1.8rem', lineHeight: '1', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)', flex: 1, minWidth: 0, wordBreak: 'break-word', paddingRight: '0.5rem' }}>
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.8rem', lineHeight: '1', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                             {bullName}
                           </h4>
-                          <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', flexShrink: 0 }}>
-                            Lado {formatSide(side)}
-                          </span>
                         </div>
                         <p style={{ margin: 0, fontSize: '1.1rem', textTransform: 'uppercase', fontStyle: 'italic', color: '#ddd', fontWeight: 300 }}>
                           {publicBoiada.nome}
@@ -2364,14 +2365,15 @@ if (publicProfileSlug) {
                               </button>
                             </div>
 
+                            <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 3, fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', borderRadius: '4px' }}>
+                              Lado {formatSide(side)}
+                            </span>
+
                             <div style={{ position: 'relative', zIndex: 2, padding: '1.5rem' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-                                <h4 style={{ margin: 0, fontSize: '1.5rem', lineHeight: '1', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)', flex: 1, minWidth: 0, wordBreak: 'break-word', paddingRight: '0.5rem' }}>
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <h4 style={{ margin: 0, fontSize: '1.5rem', lineHeight: '1', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                                   {bullName}
                                 </h4>
-                                <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', flexShrink: 0 }}>
-                                  Lado {formatSide(side)}
-                                </span>
                               </div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <p style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', fontStyle: 'italic', color: '#ddd', fontWeight: 300 }}>
