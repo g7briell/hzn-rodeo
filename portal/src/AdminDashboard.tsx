@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import BoiadaVisualEditor from './BoiadaVisualEditor';
-import EventosVisualEditor from './EventosVisualEditor';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas'>('overview');
@@ -234,10 +233,19 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <EventosVisualEditor 
-                initialDetalhes={editingEvent.detalhes} 
-                onChange={(newDetalhes) => setEditingEvent({ ...editingEvent, detalhes: newDetalhes })} 
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary)' }}>Mídia do Evento</h3>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <label className="form-label" style={{ fontSize: '0.85rem' }}>Link da Foto de Capa</label>
+                  <input 
+                    className="form-input" 
+                    placeholder="https://..." 
+                    value={editingEvent.detalhes?.foto_evento || ''} 
+                    onChange={e => setEditingEvent({...editingEvent, detalhes: { ...editingEvent.detalhes, foto_evento: e.target.value }})} 
+                  />
+                  <small style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Mais opções de mídia e notícias serão adicionadas no futuro.</small>
+                </div>
+              </div>
 
               <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>Salvar Alterações do Evento</button>
             </form>
