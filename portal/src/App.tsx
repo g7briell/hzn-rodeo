@@ -2719,7 +2719,7 @@ function App() {
             e.preventDefault();
             setIsSavingProfile(true);
             try {
-              await supabase.from('perfis_portal').update({
+              const { error } = await supabase.from('perfis_portal').update({
                 nome: editProfileForm.nome,
                 whatsapp: editProfileForm.whatsapp,
                 cpf: editProfileForm.cpf,
@@ -2732,11 +2732,18 @@ function App() {
                 link: editProfileForm.link,
                 capa: editProfileForm.capa
               }).eq('id', userProfile.id);
+
+              if (error) {
+                alert("Erro ao atualizar informações no banco de dados:\n" + error.message);
+                setIsSavingProfile(false);
+                return;
+              }
+
               setUserProfile({...userProfile, ...editProfileForm});
               setIsProfileEditModalOpen(false);
               alert("Informações atualizadas com sucesso!");
-            } catch (err) {
-              alert("Erro ao atualizar informações.");
+            } catch (err: any) {
+              alert("Erro de conexão ao atualizar informações: " + err?.message);
             } finally {
               setIsSavingProfile(false);
             }
