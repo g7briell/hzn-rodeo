@@ -11,8 +11,12 @@ export default function AdminDashboard() {
 
   // Edit Modals State
   const [editingUser, setEditingUser] = useState<any>(null);
+  
   const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [editingEventJson, setEditingEventJson] = useState<string>('');
+  
   const [editingBoiada, setEditingBoiada] = useState<any>(null);
+  const [editingBoiadaJson, setEditingBoiadaJson] = useState<string>('');
 
   useEffect(() => {
     fetchDashboardData();
@@ -56,11 +60,22 @@ export default function AdminDashboard() {
 
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    let parsedJson = editingEvent.detalhes || {};
+    if (editingEventJson) {
+      try {
+        parsedJson = JSON.parse(editingEventJson);
+      } catch (err) {
+        alert('Erro: O JSON do evento é inválido. Corrija a sintaxe antes de salvar.');
+        return;
+      }
+    }
+    
     try {
       await supabase.from('eventos_oficiais').update({
         nome: editingEvent.nome,
         cidade: editingEvent.cidade,
-        data: editingEvent.data
+        data: editingEvent.data,
+        detalhes: parsedJson
       }).eq('id', editingEvent.id);
       setEditingEvent(null);
       fetchDashboardData();
@@ -72,10 +87,21 @@ export default function AdminDashboard() {
 
   const handleSaveBoiada = async (e: React.FormEvent) => {
     e.preventDefault();
+    let parsedJson = editingBoiada.lados || {};
+    if (editingBoiadaJson) {
+      try {
+        parsedJson = JSON.parse(editingBoiadaJson);
+      } catch (err) {
+        alert('Erro: O JSON da boiada é inválido. Corrija a sintaxe antes de salvar.');
+        return;
+      }
+    }
+
     try {
       await supabase.from('boiadas_oficiais').update({
         nome: editingBoiada.nome,
-        status: editingBoiada.status
+        status: editingBoiada.status,
+        lados: parsedJson
       }).eq('id', editingBoiada.id);
       setEditingBoiada(null);
       fetchDashboardData();
@@ -83,6 +109,16 @@ export default function AdminDashboard() {
     } catch (err) {
       alert('Erro ao salvar.');
     }
+  };
+
+  const openEventModal = (ev: any) => {
+    setEditingEvent(ev);
+    setEditingEventJson(JSON.stringify(ev.detalhes || {}, null, 2));
+  };
+
+  const openBoiadaModal = (b: any) => {
+    setEditingBoiada(b);
+    setEditingBoiadaJson(JSON.stringify(b.lados || {}, null, 2));
   };
 
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center' }}>Carregando Painel Admin...</div>;
@@ -146,7 +182,7 @@ export default function AdminDashboard() {
       {/* Editing User Modal */}
       {editingUser && (
         <div className="modal-overlay active" style={{ display: 'flex' }}>
-          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%' }}>
+          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <button className="close-btn" onClick={() => setEditingUser(null)}>×</button>
             <h2 style={{ marginBottom: '1.5rem' }}>Editar Usuário</h2>
             <form onSubmit={handleSaveUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -191,7 +227,7 @@ export default function AdminDashboard() {
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.cidade}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.data}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
-                    <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => setEditingEvent(ev)}>Editar</button>
+                    <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => openEventModal(ev)}>Editar</button>
                   </td>
                 </tr>
               ))}
@@ -203,18 +239,37 @@ export default function AdminDashboard() {
       {/* Editing Event Modal */}
       {editingEvent && (
         <div className="modal-overlay active" style={{ display: 'flex' }}>
-          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%' }}>
+          <div className="auth-modal" style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <button className="close-btn" onClick={() => setEditingEvent(null)}>×</button>
             <h2 style={{ marginBottom: '1.5rem' }}>Editar Evento</h2>
             <form onSubmit={handleSaveEvent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label className="form-label">Nome</label>
-                <input className="form-input" value={editingEvent.nome || ''} onChange={e => setEditingEvent({...editingEvent, nome: e.target.value})} />
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Nome</label>
+                  <input className="form-input" value={editingEvent.nome || ''} onChange={e => setEditingEvent({...editingEvent, nome: e.target.value})} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Cidade</label>
+                  <input className="form-input" value={editingEvent.cidade || ''} onChange={e => setEditingEvent({...editingEvent, cidade: e.target.value})} />
+                </div>
               </div>
-              <div>
-                <label className="form-label">Cidade</label>
-                <input className="form-input" value={editingEvent.cidade || ''} onChange={e => setEditingEvent({...editingEvent, cidade: e.target.value})} />
+              
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--primary)' }}>
+                <label className="form-label" style={{ color: 'var(--primary)' }}>
+                  Editor Avançado de Detalhes (JSON)
+                  <br />
+                  <small style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>
+                    Edite as notas e detalhes do evento aqui. Cuidado com erros de sintaxe!
+                  </small>
+                </label>
+                <textarea 
+                  className="form-input" 
+                  style={{ fontFamily: 'monospace', minHeight: '300px', whiteSpace: 'pre', overflowX: 'auto' }}
+                  value={editingEventJson} 
+                  onChange={e => setEditingEventJson(e.target.value)} 
+                />
               </div>
+
               <button type="submit" className="btn btn-primary">Salvar Alterações</button>
             </form>
           </div>
@@ -241,7 +296,7 @@ export default function AdminDashboard() {
                     <span style={{ color: b.status === 'aprovado' ? '#00ff00' : 'orange' }}>{b.status}</span>
                   </td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
-                    <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => setEditingBoiada(b)}>Editar</button>
+                    <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => openBoiadaModal(b)}>Editar</button>
                   </td>
                 </tr>
               ))}
@@ -253,21 +308,40 @@ export default function AdminDashboard() {
       {/* Editing Boiada Modal */}
       {editingBoiada && (
         <div className="modal-overlay active" style={{ display: 'flex' }}>
-          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%' }}>
+          <div className="auth-modal" style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <button className="close-btn" onClick={() => setEditingBoiada(null)}>×</button>
             <h2 style={{ marginBottom: '1.5rem' }}>Editar Boiada</h2>
             <form onSubmit={handleSaveBoiada} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label className="form-label">Nome da CIA</label>
-                <input className="form-input" value={editingBoiada.nome || ''} onChange={e => setEditingBoiada({...editingBoiada, nome: e.target.value})} />
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Nome da CIA</label>
+                  <input className="form-input" value={editingBoiada.nome || ''} onChange={e => setEditingBoiada({...editingBoiada, nome: e.target.value})} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Status</label>
+                  <select className="form-input" value={editingBoiada.status || ''} onChange={e => setEditingBoiada({...editingBoiada, status: e.target.value})}>
+                    <option value="pendente">Pendente</option>
+                    <option value="aprovado">Aprovado</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="form-label">Status</label>
-                <select className="form-input" value={editingBoiada.status || ''} onChange={e => setEditingBoiada({...editingBoiada, status: e.target.value})}>
-                  <option value="pendente">Pendente</option>
-                  <option value="aprovado">Aprovado</option>
-                </select>
+
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--primary)' }}>
+                <label className="form-label" style={{ color: 'var(--primary)' }}>
+                  Editor Avançado de Touros (JSON)
+                  <br />
+                  <small style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>
+                    Edite os nomes dos bois, lados, fotos e vídeos aqui. Cuidado com erros de sintaxe!
+                  </small>
+                </label>
+                <textarea 
+                  className="form-input" 
+                  style={{ fontFamily: 'monospace', minHeight: '300px', whiteSpace: 'pre', overflowX: 'auto' }}
+                  value={editingBoiadaJson} 
+                  onChange={e => setEditingBoiadaJson(e.target.value)} 
+                />
               </div>
+
               <button type="submit" className="btn btn-primary">Salvar Alterações</button>
             </form>
           </div>
