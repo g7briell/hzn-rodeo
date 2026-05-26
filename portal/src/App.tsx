@@ -50,6 +50,8 @@ function App() {
   const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada' | 'dashboard'>('home');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
+  const [editProfileForm, setEditProfileForm] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [boiadas, setBoiadas] = useState<any[]>([]);
   const [eventosOficiais, setEventosOficiais] = useState<any[]>([]);
@@ -2497,7 +2499,15 @@ if (publicProfileSlug) {
                     </div>
 
                     <div>
-                      <h4 className="profile-section-title">Informações Pessoais</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h4 className="profile-section-title" style={{ margin: 0 }}>Informações Pessoais</h4>
+                        <button className="btn btn-outline" style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }} onClick={() => {
+                          setEditProfileForm({...userProfile});
+                          setIsProfileEditModalOpen(true);
+                        }}>
+                          Editar
+                        </button>
+                      </div>
                       <div className="profile-info-grid">
                         <div className="profile-info-item">
                           <span className="profile-info-label">WhatsApp</span>
@@ -2510,6 +2520,10 @@ if (publicProfileSlug) {
                         <div className="profile-info-item">
                           <span className="profile-info-label">RG</span>
                           <span className="profile-info-value">{userProfile?.rg || '-'}</span>
+                        </div>
+                        <div className="profile-info-item">
+                          <span className="profile-info-label">Data de Nascimento</span>
+                          <span className="profile-info-value">{userProfile?.nascimento ? new Date(userProfile.nascimento).toLocaleDateString('pt-BR') : '-'}</span>
                         </div>
                         <div className="profile-info-item">
                           <span className="profile-info-label">Endereço</span>
@@ -2550,6 +2564,74 @@ if (publicProfileSlug) {
             Perfil
           </button>
         </nav>
+      </div>
+
+      {/* ==================================== */}
+      {/* MODAL EDITAR PERFIL */}
+      {/* ==================================== */}
+      <div className={`modal-overlay ${isProfileEditModalOpen && editProfileForm ? 'active' : ''}`}>
+        <div className="auth-modal" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+          <button className="close-btn" onClick={() => setIsProfileEditModalOpen(false)}>×</button>
+          <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', textTransform: 'uppercase' }}>Editar Minhas Informações</h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            setIsSavingProfile(true);
+            try {
+              await supabase.from('perfis_portal').update({
+                nome: editProfileForm.nome,
+                whatsapp: editProfileForm.whatsapp,
+                cpf: editProfileForm.cpf,
+                rg: editProfileForm.rg,
+                nascimento: editProfileForm.nascimento,
+                endereco: editProfileForm.endereco
+              }).eq('id', userProfile.id);
+              setUserProfile({...userProfile, ...editProfileForm});
+              setIsProfileEditModalOpen(false);
+              alert("Informações atualizadas com sucesso!");
+            } catch (err) {
+              alert("Erro ao atualizar informações.");
+            } finally {
+              setIsSavingProfile(false);
+            }
+          }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            
+            <div>
+              <label className="form-label">Nome Completo</label>
+              <input className="form-input" value={editProfileForm?.nome || ''} onChange={e => setEditProfileForm({...editProfileForm, nome: e.target.value})} required />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">WhatsApp</label>
+                <input className="form-input" placeholder="(00) 00000-0000" value={editProfileForm?.whatsapp || ''} onChange={e => setEditProfileForm({...editProfileForm, whatsapp: e.target.value})} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">Data de Nascimento</label>
+                <input className="form-input" type="date" value={editProfileForm?.nascimento || ''} onChange={e => setEditProfileForm({...editProfileForm, nascimento: e.target.value})} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">CPF</label>
+                <input className="form-input" value={editProfileForm?.cpf || ''} onChange={e => setEditProfileForm({...editProfileForm, cpf: e.target.value})} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">RG</label>
+                <input className="form-input" value={editProfileForm?.rg || ''} onChange={e => setEditProfileForm({...editProfileForm, rg: e.target.value})} />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Endereço Completo</label>
+              <input className="form-input" placeholder="Rua, Número, Cidade, Estado" value={editProfileForm?.endereco || ''} onChange={e => setEditProfileForm({...editProfileForm, endereco: e.target.value})} />
+            </div>
+
+            <button type="submit" className="btn btn-primary mt-2" disabled={isSavingProfile}>
+              {isSavingProfile ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* ==================================== */}
