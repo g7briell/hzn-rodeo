@@ -868,8 +868,8 @@ function App() {
 
     if (publicEventSlug && selectedEvent) {
     return (
-      <div className="container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
-        <header className="header" style={{ position: 'sticky', top: 0, zIndex: 100, width: '100%', left: 0 }}>
+      <div className="public-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
+        <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
             <button className="btn btn-primary" onClick={() => { navigateTo('/'); setPublicEventSlug(null); setSelectedEvent(null); setEventTab('home'); }}>Ir para o Portal</button>
