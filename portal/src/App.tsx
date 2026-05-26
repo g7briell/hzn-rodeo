@@ -454,6 +454,8 @@ function App() {
   };
 
   useEffect(() => {
+    fetchEventosOficiais();
+    
     const checkSession = async () => {
       const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
       if (!isAuth) {
@@ -470,7 +472,6 @@ function App() {
         if (session.user.email) {
           fetchUserProfile(session.user.email);
           fetchBoiadas();
-          fetchEventosOficiais();
           fetchTropeiroBoiada(session.user.email);
           setCurrentTab('explore');
         }
@@ -490,7 +491,6 @@ function App() {
           if (session?.user?.email) {
             fetchUserProfile(session.user.email);
             fetchBoiadas();
-          fetchEventosOficiais();
             fetchTropeiroBoiada(session.user.email);
             setCurrentTab('explore');
           }
@@ -1773,12 +1773,15 @@ function App() {
           </header>
 
           {/* Hero Section */}
-          <section className="hero">
-            <h1 className="hero-title">O Portal Definitivo <br/><span className="text-primary">do Competidor</span></h1>
-            <p className="hero-subtitle">
+          <section className="hero-modern">
+            <h1 className="hero-modern-title">
+              O Portal Definitivo <br/>
+              <span className="text-primary">do Competidor</span>
+            </h1>
+            <p className="hero-modern-subtitle">
               Acompanhe seus eventos, verifique suas notas ao vivo e gerencie seu perfil profissional de rodeio em um único lugar.
             </p>
-            <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1rem' }} onClick={() => setIsRegisterModalOpen(true)}>
+            <button className="btn btn-primary btn-glow" style={{ padding: '1rem 3rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '50px' }} onClick={() => setIsRegisterModalOpen(true)}>
               Fazer meu Cadastro Gratuito
             </button>
           </section>
@@ -1787,30 +1790,32 @@ function App() {
           <section className="events-section">
             <div className="section-header">
               <div>
-                <h2 style={{ fontSize: '2rem' }}>Eventos da <span className="text-primary">Semana</span></h2>
-                <p className="text-muted">Acompanhe as etapas que estão rolando agora</p>
+                <h2>Eventos da <span className="text-primary">Semana</span></h2>
+                <p className="text-muted" style={{ fontSize: '1.1rem' }}>Acompanhe as etapas que estão rolando agora no circuito</p>
               </div>
             </div>
             
             <div className="events-grid">
               {homeEvents.length === 0 ? (
-                <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-                  Nenhum evento oficial disponível no momento.
+                <div style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)', padding: '4rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem', opacity: 0.5 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Nenhum evento oficial disponível no momento</h3>
+                  <p style={{ fontSize: '0.9rem' }}>Fique ligado! Em breve novos eventos serão adicionados.</p>
                 </div>
               ) : (
                 homeEvents.map(ev => (
-                  <div key={ev.id} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '16px' }}>
+                  <div key={ev.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div className="event-date" style={{ background: 'var(--primary)', color: 'var(--bg-dark)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      <div className="event-date" style={{ background: 'rgba(255, 215, 0, 0.15)', color: 'var(--primary)', padding: '0.4rem 0.8rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.5px' }}>
                         {ev.data_inicio} {ev.data_fim ? `a ${ev.data_fim}` : ''}
                       </div>
-                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(255,215,0,0.1)', color: 'var(--primary)', borderRadius: '12px', border: '1px solid var(--primary)' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', background: 'var(--bg-dark)', color: 'var(--primary)', borderRadius: '12px', border: '1px solid rgba(255,215,0,0.3)', fontWeight: 'bold' }}>
                         OFICIAL
                       </span>
                     </div>
-                    <h3 className="event-name" style={{ margin: 0, fontSize: '1.5rem', fontStyle: 'italic', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-light)' }}>{ev.nome}</h3>
-                    <div className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <h3 className="event-name" style={{ margin: '0.5rem 0 0 0', fontSize: '1.75rem', fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-light)', lineHeight: '1.2' }}>{ev.nome}</h3>
+                    <div className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#94a3b8', fontSize: '0.95rem' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                         <circle cx="12" cy="10" r="3"></circle>
                       </svg>
@@ -1819,19 +1824,21 @@ function App() {
                     
                     {/* Renderização do Ranking/Detalhes se existir */}
                     {ev.detalhes?.ranking && ev.detalhes.ranking.length > 0 && (
-                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-light)' }}>
-                        <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Top 3 - Ranking</h4>
+                      <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: '0.75rem', fontWeight: 'bold', letterSpacing: '1px' }}>Top 3 - Ranking Atual</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {ev.detalhes.ranking.slice(0, 3).map((competidor: any, idx: number) => (
                             <div 
                               key={idx} 
-                              style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}
+                              style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
                               onClick={() => {
                                 // Redirecionar para o perfil se houver slug no payload, senão gerar fallback
                                 const slug = competidor.slug || slugify(competidor.nome);
                                 navigateTo(`/perfil/${slug}`);
                               }}
-                              className="hover:bg-white/5 transition-colors"
+                              className="hover:border-primary/30"
+                              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'}
+                              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
                             >
                               <span style={{ fontWeight: 'bold', color: 'var(--text-light)', fontSize: '0.9rem' }}>{idx + 1}º {competidor.nome}</span>
                               <span style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.9rem' }}>{competidor.pontuacao} pts</span>
