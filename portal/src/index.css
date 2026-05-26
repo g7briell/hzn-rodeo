@@ -98,6 +98,24 @@ h1, h2, h3 {
   z-index: 100;
 }
 
+.public-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: rgba(10, 10, 10, 0.80);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: calc(50vw - 50% + 2rem);
+  padding-right: calc(50vw - 50% + 2rem);
+}
+
 .logo {
   font-size: 2rem;
   font-style: italic;

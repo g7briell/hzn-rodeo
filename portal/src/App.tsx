@@ -1393,7 +1393,7 @@ if (publicProfileSlug) {
     return (
       <div className="container">
         {/* Header */}
-        <header className="header">
+        <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
             <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
@@ -1480,7 +1480,7 @@ if (publicProfileSlug) {
   if (publicBoiadaSlug) {
     return (
       <div className="container">
-        <header className="header">
+        <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
             <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
@@ -1600,7 +1600,7 @@ if (publicProfileSlug) {
       <>
         <div className="container">
           {/* Header */}
-          <header className="header">
+          <header className="public-header">
             <div className="logo" style={{ cursor: 'pointer' }} onClick={() => { setCurrentTab('home'); navigateTo('/'); }}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
             <div className="header-buttons" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               <button className="btn btn-outline" onClick={() => setIsLoginModalOpen(true)}>Entrar</button>
