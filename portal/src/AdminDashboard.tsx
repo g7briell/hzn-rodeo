@@ -220,13 +220,17 @@ export default function AdminDashboard() {
             <h2 style={{ marginBottom: '1.5rem' }}>Editar Evento</h2>
             <form onSubmit={handleSaveEvent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 2 }}>
                   <label className="form-label">Nome</label>
                   <input className="form-input" value={editingEvent.nome || ''} onChange={e => setEditingEvent({...editingEvent, nome: e.target.value})} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 2 }}>
                   <label className="form-label">Cidade</label>
                   <input className="form-input" value={editingEvent.cidade || ''} onChange={e => setEditingEvent({...editingEvent, cidade: e.target.value})} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Data</label>
+                  <input className="form-input" value={editingEvent.data || ''} onChange={e => setEditingEvent({...editingEvent, data: e.target.value})} />
                 </div>
               </div>
               

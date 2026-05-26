@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 export default function EventosVisualEditor({ initialDetalhes, onChange }: { initialDetalhes: any, onChange: (newDetalhes: any) => void }) {
   const [notas, setNotas] = useState<any[]>([]);
   const [activeDia, setActiveDia] = useState<string>('Geral');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
     setNotas(initialDetalhes?.notas || []);
@@ -27,7 +28,10 @@ export default function EventosVisualEditor({ initialDetalhes, onChange }: { ini
     }
   }, [diasDisponiveis, activeDia]);
 
-  const notasFiltradas = activeDia === 'Geral' ? notas : notas.filter(n => n.dia === activeDia);
+  let notasFiltradas = activeDia === 'Geral' ? notas : notas.filter(n => n.dia === activeDia);
+  if (searchTerm.trim() !== '') {
+    notasFiltradas = notasFiltradas.filter(n => (n.peao || '').toLowerCase().includes(searchTerm.toLowerCase()));
+  }
 
   const handleChange = (indexGlobal: number, field: string, value: any) => {
     const newNotas = [...notas];
@@ -59,24 +63,34 @@ export default function EventosVisualEditor({ initialDetalhes, onChange }: { ini
         <button type="button" className="btn btn-primary" onClick={handleAdd} style={{ padding: '0.4rem 1rem', fontSize: '0.9rem' }}>+ Nova Nota</button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-        <button 
-          type="button"
-          onClick={() => setActiveDia('Geral')}
-          style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: activeDia === 'Geral' ? 'var(--primary)' : 'transparent', color: activeDia === 'Geral' ? '#000' : 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
-        >
-          Todas as Notas
-        </button>
-        {diasDisponiveis.map(dia => (
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input 
+          type="text" 
+          className="form-input" 
+          placeholder="Buscar peão..." 
+          value={searchTerm} 
+          onChange={e => setSearchTerm(e.target.value)} 
+          style={{ flex: 1, minWidth: '200px', padding: '0.5rem' }}
+        />
+        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', flex: 2 }}>
           <button 
-            key={dia}
             type="button"
-            onClick={() => setActiveDia(dia)}
-            style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: activeDia === dia ? 'var(--primary)' : 'transparent', color: activeDia === dia ? '#000' : 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            onClick={() => setActiveDia('Geral')}
+            style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: activeDia === 'Geral' ? 'var(--primary)' : 'transparent', color: activeDia === 'Geral' ? '#000' : 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
-            {dia}
+            Todas as Notas
           </button>
-        ))}
+          {diasDisponiveis.map(dia => (
+            <button 
+              key={dia}
+              type="button"
+              onClick={() => setActiveDia(dia)}
+              style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: activeDia === dia ? 'var(--primary)' : 'transparent', color: activeDia === dia ? '#000' : 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {dia}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
