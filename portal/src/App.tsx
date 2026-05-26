@@ -1520,10 +1520,10 @@ if (publicProfileSlug) {
                       
                       <div style={{ position: 'relative', zIndex: 2, padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-                          <h4 style={{ margin: 0, fontSize: '2rem', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.8rem', lineHeight: '1', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)', flex: 1, minWidth: 0, wordBreak: 'break-word', paddingRight: '0.5rem' }}>
                             {bullName}
                           </h4>
-                          <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+                          <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', flexShrink: 0 }}>
                             Lado {formatSide(side)}
                           </span>
                         </div>
@@ -2347,10 +2347,10 @@ if (publicProfileSlug) {
 
                             <div style={{ position: 'relative', zIndex: 2, padding: '1.5rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
-                                <h4 style={{ margin: 0, fontSize: '1.5rem', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                                <h4 style={{ margin: 0, fontSize: '1.5rem', lineHeight: '1', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#fff', textShadow: '2px 2px 4px rgba(0,0,0,0.8)', flex: 1, minWidth: 0, wordBreak: 'break-word', paddingRight: '0.5rem' }}>
                                   {bullName}
                                 </h4>
-                                <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+                                <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', flexShrink: 0 }}>
                                   Lado {formatSide(side)}
                                 </span>
                               </div>
