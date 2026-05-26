@@ -589,16 +589,16 @@ function App() {
 
   useEffect(() => {
     if (selectedEvent?.detalhes?.ranking) {
-       const cpfs = selectedEvent.detalhes.ranking.map((p: any) => p.cpf ? p.cpf.replace(/\D/g, '') : null).filter(Boolean);
-       if (cpfs.length > 0) {
-          supabase.from('perfis_portal').select('cpf').in('cpf', cpfs).then(({data}) => {
-             if (data) {
-                setVerifiedCpfs(new Set(data.map(d => d.cpf)));
-             }
-          });
-       }
-    } else {
-       setVerifiedCpfs(new Set());
+      const cpfs = selectedEvent.detalhes.ranking.map((p: any) => p.cpf ? p.cpf.replace(/\D/g, '') : null).filter(Boolean);
+      if (cpfs.length > 0) {
+        supabase.from('perfis_portal').select('cpf').in('cpf', cpfs).then(({data}) => {
+          if (data) {
+            setVerifiedCpfs(new Set(data.map(d => d.cpf)));
+          } else {
+            setVerifiedCpfs(new Set());
+          }
+        });
+      }
     }
   }, [selectedEvent]);
 
@@ -614,13 +614,29 @@ function App() {
           setIsPublicProfileLoading(true);
           try {
             const queryPattern = '%' + slug.split('').join('%') + '%';
-            const { data } = await supabase
+            
+            // Try fetching with the 'link' column (it may not exist if user didn't create it yet)
+            let match = null;
+            const { data, error } = await supabase
               .from('perfis_portal')
               .select('*')
-              .ilike('nome', queryPattern)
+              .or(`link.eq.${slug},nome.ilike.${queryPattern}`)
               .order('created_at', { ascending: false });
 
-            const match = data?.find(p => slugify(p.nome) === slug);
+            if (error) {
+              // Fallback for when the link column doesn't exist yet
+              const { data: fallbackData } = await supabase
+                .from('perfis_portal')
+                .select('*')
+                .ilike('nome', queryPattern)
+                .order('created_at', { ascending: false });
+              
+              match = fallbackData?.find(p => slugify(p.nome) === slug);
+            } else {
+              // If we got data, prioritize exact match on link, otherwise fallback to slugified name
+              match = data?.find(p => (p.link && p.link.toLowerCase() === slug) || (!p.link && slugify(p.nome) === slug));
+            }
+
             if (match) {
               // Dynamic check in licencas to override veio_do_app_desktop status
               try {
@@ -646,7 +662,8 @@ function App() {
               setPublicProfile(null);
             }
           } catch (err) {
-            console.error(err);
+            console.error('Error fetching public profile:', err);
+            setPublicProfile(null);
           } finally {
             setIsPublicProfileLoading(false);
           }
@@ -1471,7 +1488,8 @@ function App() {
             <div style={{ maxWidth: '1000px', width: '100%', padding: '0 1rem' }}>
               
               {/* Premium Banner & Avatar */}
-              <div style={{ position: 'relative', width: '100%', height: '200px', borderRadius: '24px 24px 0 0', background: 'linear-gradient(135deg, var(--primary) 0%, #1e1e1e 100%)', marginBottom: '80px' }}>
+              <div style={{ position: 'relative', width: '100%', height: '200px', borderRadius: '24px 24px 0 0', background: publicProfile.capa ? `url(${publicProfile.capa}) center/cover no-repeat` : 'linear-gradient(135deg, var(--primary) 0%, #1e1e1e 100%)', marginBottom: '80px' }}>
+                {publicProfile.capa && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', borderRadius: '24px 24px 0 0' }} />}
                 <div style={{ position: 'absolute', bottom: '-60px', left: '50%', transform: 'translateX(-50%)', borderRadius: '50%', padding: '5px', background: 'var(--bg-main)' }}>
                   <img 
                     src={publicProfileFoto || "/novacontasfoto.jpg"} 
@@ -2710,7 +2728,9 @@ function App() {
                 endereco: editProfileForm.endereco,
                 instagram: editProfileForm.instagram,
                 facebook: editProfileForm.facebook,
-                twitter: editProfileForm.twitter
+                twitter: editProfileForm.twitter,
+                link: editProfileForm.link,
+                capa: editProfileForm.capa
               }).eq('id', userProfile.id);
               setUserProfile({...userProfile, ...editProfileForm});
               setIsProfileEditModalOpen(false);
@@ -2723,8 +2743,35 @@ function App() {
           }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             
             <div>
-              <label className="form-label">Nome Completo</label>
-              <input className="form-input" value={editProfileForm?.nome || ''} onChange={e => setEditProfileForm({...editProfileForm, nome: e.target.value})} required />
+              <label className="form-label">Capa do Perfil</label>
+              {editProfileForm?.capa && (
+                <div style={{ position: 'relative', width: '100%', height: '100px', borderRadius: '12px', overflow: 'hidden', marginBottom: '0.5rem' }}>
+                  <img src={editProfileForm.capa} alt="Capa" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button type="button" onClick={() => setEditProfileForm({...editProfileForm, capa: ''})} style={{ position: 'absolute', top: 5, right: 5, background: 'rgba(255,0,0,0.8)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                </div>
+              )}
+              <label className="btn btn-outline" style={{ display: 'block', textAlign: 'center', cursor: 'pointer' }}>
+                {editProfileForm?.capa ? 'Trocar Capa' : 'Enviar Foto de Capa'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setEditProfileForm({...editProfileForm, capa: reader.result as string});
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">Nome Completo</label>
+                <input className="form-input" value={editProfileForm?.nome || ''} onChange={e => setEditProfileForm({...editProfileForm, nome: e.target.value})} required />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">Link Personalizado (@)</label>
+                <input className="form-input" placeholder="ex: joaosilva" value={editProfileForm?.link || ''} onChange={e => setEditProfileForm({...editProfileForm, link: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})} />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
