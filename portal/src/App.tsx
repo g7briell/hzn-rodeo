@@ -1411,10 +1411,52 @@ function App() {
     );
   }
 
-if (publicProfileSlug) {
+  if (publicProfileSlug) {
+    let tropeiroBulls: any[] = [];
+    let historico: any[] = [];
+    let diretorEvents: any[] = [];
+
+    const cargo = publicProfile?.cargo || '';
+    const isTropeiro = cargo === 'tropeiro';
+    const isDiretor = cargo.includes('diretor');
+    const isMidia = cargo.includes('midia');
+    const isCompetidor = !isTropeiro && !isDiretor && !isMidia;
+
+    if (publicProfile) {
+      if (isTropeiro) {
+        const tropeiroBoiada = boiadas.find(b => b.lados?.__meta?.tropeiro_email === publicProfile.email);
+        if (tropeiroBoiada) {
+          tropeiroBulls = Object.keys(tropeiroBoiada.lados).filter(k => k !== '__meta').map(bullName => ({
+            nome: bullName,
+            foto: tropeiroBoiada.lados.__meta?.touros_info?.[bullName]?.foto || '/tourosfoto.jpg'
+          }));
+        }
+      } else if (isDiretor && publicProfile.veio_do_app_desktop) {
+        diretorEvents = eventosOficiais.filter(ev => {
+           return slugify(ev.diretor || '').includes(slugify(publicProfile.nome)) || slugify(ev.nome).includes(slugify(publicProfile.nome));
+        });
+      } else if (isCompetidor) {
+        const cleanCpf = publicProfile.cpf ? publicProfile.cpf.replace(/\D/g, '') : '';
+        eventosOficiais.forEach(ev => {
+          const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
+            const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+            if (cleanCpf && rCpf) return rCpf === cleanCpf;
+            return slugify(r.nome) === slugify(publicProfile.nome);
+          });
+          if (rankIndex !== undefined && rankIndex >= 0) {
+            historico.push({
+              eventoNome: ev.nome,
+              cidade: ev.cidade || ev.local,
+              posicao: rankIndex + 1,
+              slug: slugify(ev.nome)
+            });
+          }
+        });
+      }
+    }
+
     return (
       <div style={{ width: '100vw', overflowX: 'hidden' }}>
-        {/* Header */}
         <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
@@ -1422,67 +1464,149 @@ if (publicProfileSlug) {
           </div>
         </header>
 
-        <div className="profile-container" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="profile-container" style={{ minHeight: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {isPublicProfileLoading ? (
-            <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600 }}>Carregando Perfil...</div>
+            <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600, marginTop: '4rem' }}>Carregando Perfil...</div>
           ) : publicProfile ? (
-            <div className="profile-card" style={{ width: '100%' }}>
+            <div style={{ maxWidth: '1000px', width: '100%', padding: '0 1rem' }}>
               
-              {/* Left Column: Avatar & Role */}
-              <div className="profile-sidebar">
-                <div className="profile-avatar-wrapper">
+              {/* Premium Banner & Avatar */}
+              <div style={{ position: 'relative', width: '100%', height: '200px', borderRadius: '24px 24px 0 0', background: 'linear-gradient(135deg, var(--primary) 0%, #1e1e1e 100%)', marginBottom: '80px' }}>
+                <div style={{ position: 'absolute', bottom: '-60px', left: '50%', transform: 'translateX(-50%)', borderRadius: '50%', padding: '5px', background: 'var(--bg-main)' }}>
                   <img 
                     src={publicProfileFoto || "/novacontasfoto.jpg"} 
                     alt="Foto de Perfil" 
-                    className={`profile-avatar ${publicProfile.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
+                    className={publicProfile.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}
+                    style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--bg-card)' }}
                   />
                 </div>
-                
-                <div style={{ marginTop: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{publicProfile.nome}</h3>
-                  <span className="badge badge-role" style={{ marginTop: '0.5rem' }}>
-                    {publicProfile.cargo ? publicProfile.cargo.replace('_', ' ') : 'Membro'}
-                  </span>
-                </div>
-
-                {publicProfile.veio_do_app_desktop && (
-                  <span className="badge badge-rodeoapp" style={{ marginTop: '0.5rem' }}>
-                    Sincronizado RodeoApp
-                  </span>
-                )}
               </div>
 
-              {/* Right Column: Bio & Details */}
-              <div className="profile-details">
-                <div>
-                  <h4 className="profile-section-title">Biografia</h4>
-                  <p style={{ 
-                    background: 'var(--bg-input)', 
-                    border: '1px solid var(--border-light)', 
-                    borderRadius: '12px', 
-                    padding: '1.5rem',
-                    color: 'var(--text-main)',
-                    fontSize: '1rem',
-                    lineHeight: '1.6',
-                    whiteSpace: 'pre-wrap',
-                    minHeight: '100px'
-                  }}>
-                    {publicProfileBio || "Este competidor ainda não adicionou uma biografia."}
+              {/* Nome & Cargo & Redes Sociais */}
+              <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <h1 style={{ fontSize: '2.5rem', margin: '0 0 0.5rem 0', textTransform: 'uppercase', letterSpacing: '1px' }}>{publicProfile.nome}</h1>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                  <span className="badge badge-role" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                    {cargo ? cargo.replace('_', ' ') : 'Competidor'}
+                  </span>
+                  {publicProfile.veio_do_app_desktop && (
+                    <span className="badge badge-rodeoapp" style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}>
+                      Sincronizado RodeoApp
+                    </span>
+                  )}
+                </div>
+
+                {/* Redes Sociais */}
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                  {publicProfile.whatsapp && (
+                    <a href={`https://wa.me/55${publicProfile.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '45px', height: '45px', borderRadius: '50%', background: '#25D366', color: '#fff', textDecoration: 'none', transition: 'transform 0.2s' }} className="social-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    </a>
+                  )}
+                  {publicProfile.instagram && (
+                    <a href={publicProfile.instagram.includes('http') ? publicProfile.instagram : `https://instagram.com/${publicProfile.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '45px', height: '45px', borderRadius: '50%', background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', color: '#fff', textDecoration: 'none', transition: 'transform 0.2s' }} className="social-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                    </a>
+                  )}
+                  {publicProfile.facebook && (
+                    <a href={publicProfile.facebook} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '45px', height: '45px', borderRadius: '50%', background: '#1877F2', color: '#fff', textDecoration: 'none', transition: 'transform 0.2s' }} className="social-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                    </a>
+                  )}
+                  {publicProfile.twitter && (
+                    <a href={publicProfile.twitter.includes('http') ? publicProfile.twitter : `https://twitter.com/${publicProfile.twitter.replace('@', '')}`} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '45px', height: '45px', borderRadius: '50%', background: '#000', color: '#fff', border: '1px solid #333', textDecoration: 'none', transition: 'transform 0.2s' }} className="social-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Grid 2 colunas para telas grandes */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
+                
+                {/* Coluna Esquerda: Bio */}
+                <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)', height: 'fit-content' }}>
+                  <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Biografia</h3>
+                  <p style={{ color: 'var(--text-main)', lineHeight: '1.6', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>
+                    {publicProfileBio || "Este usuário ainda não adicionou uma biografia."}
                   </p>
                 </div>
 
-                <div>
-                  <h4 className="profile-section-title">Contato e Localização</h4>
-                  <div className="profile-info-grid">
-                    <div className="profile-info-item">
-                      <span className="profile-info-label">WhatsApp</span>
-                      <span className="profile-info-value">{publicProfile.whatsapp || '-'}</span>
+                {/* Coluna Direita: Conteúdo por Cargo */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  
+                  {isCompetidor && (
+                    <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico de Eventos</h3>
+                      {historico.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          {historico.map((h, i) => (
+                            <div key={i} onClick={() => navigateTo(`/evento/${h.slug}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'background 0.2s' }} className="hover:bg-white/5">
+                              <div>
+                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>{h.eventoNome}</h4>
+                                <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{h.cidade}</span>
+                              </div>
+                              <div style={{ background: 'rgba(225, 29, 72, 0.1)', color: 'var(--primary)', padding: '0.5rem 1rem', borderRadius: '100px', fontWeight: 'bold' }}>
+                                {h.posicao}º Lugar
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum evento registrado no histórico.</p>
+                      )}
                     </div>
-                    <div className="profile-info-item">
-                      <span className="profile-info-label">Endereço</span>
-                      <span className="profile-info-value">{publicProfile.endereco || '-'}</span>
+                  )}
+
+                  {isTropeiro && (
+                    <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Galeria da Companhia</h3>
+                      {tropeiroBulls.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
+                          {tropeiroBulls.map((bull, i) => (
+                            <div key={i} style={{ position: 'relative', height: '200px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                              <img src={bull.foto} alt={bull.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', padding: '2rem 1rem 1rem 1rem' }}>
+                                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1rem', fontStyle: 'italic', textTransform: 'uppercase' }}>{bull.nome}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum touro registrado na companhia.</p>
+                      )}
                     </div>
-                  </div>
+                  )}
+
+                  {isDiretor && (
+                    <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Eventos Direcionados</h3>
+                      {diretorEvents.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          {diretorEvents.map((ev, i) => (
+                            <div key={i} onClick={() => navigateTo(`/evento/${slugify(ev.nome)}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'background 0.2s' }} className="hover:bg-white/5">
+                              <div>
+                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>{ev.nome}</h4>
+                                <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{ev.local || ev.cidade} • {ev.data_inicio}</span>
+                              </div>
+                              <span style={{ color: 'var(--primary)' }}>Ver Evento &rarr;</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum evento sincronizado encontrado.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {isMidia && (
+                    <div style={{ background: 'var(--bg-card)', padding: '4rem 2rem', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)', textAlign: 'center' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem', margin: '0 auto' }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#fff' }}>Portfólio de Mídia</h3>
+                      <p style={{ color: '#94a3b8', maxWidth: '400px', margin: '0 auto' }}>Em breve, fotos e vídeos de eventos cobertos estarão disponíveis aqui.</p>
+                    </div>
+                  )}
+
                 </div>
               </div>
 
@@ -1490,7 +1614,7 @@ if (publicProfileSlug) {
           ) : (
             <div style={{ textAlign: 'center' }}>
               <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#ff4444' }}>Perfil Não Encontrado</h2>
-              <p className="text-muted" style={{ marginBottom: '2rem' }}>O competidor solicitado não foi encontrado ou o link é inválido.</p>
+              <p className="text-muted" style={{ marginBottom: '2rem' }}>O perfil solicitado não foi encontrado ou o link é inválido.</p>
               <button className="btn btn-primary" onClick={() => navigateTo('/')}>Voltar ao Início</button>
             </div>
           )}
@@ -2583,7 +2707,10 @@ if (publicProfileSlug) {
                 cpf: editProfileForm.cpf,
                 rg: editProfileForm.rg,
                 nascimento: editProfileForm.nascimento,
-                endereco: editProfileForm.endereco
+                endereco: editProfileForm.endereco,
+                instagram: editProfileForm.instagram,
+                facebook: editProfileForm.facebook,
+                twitter: editProfileForm.twitter
               }).eq('id', userProfile.id);
               setUserProfile({...userProfile, ...editProfileForm});
               setIsProfileEditModalOpen(false);
@@ -2625,6 +2752,24 @@ if (publicProfileSlug) {
             <div>
               <label className="form-label">Endereço Completo</label>
               <input className="form-input" placeholder="Rua, Número, Cidade, Estado" value={editProfileForm?.endereco || ''} onChange={e => setEditProfileForm({...editProfileForm, endereco: e.target.value})} />
+            </div>
+
+            <h3 style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '1.2rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem' }}>Redes Sociais</h3>
+            
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">Instagram</label>
+                <input className="form-input" placeholder="@usuario ou Link" value={editProfileForm?.instagram || ''} onChange={e => setEditProfileForm({...editProfileForm, instagram: e.target.value})} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="form-label">Facebook</label>
+                <input className="form-input" placeholder="Link do Perfil" value={editProfileForm?.facebook || ''} onChange={e => setEditProfileForm({...editProfileForm, facebook: e.target.value})} />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Twitter / X</label>
+              <input className="form-input" placeholder="@usuario ou Link" value={editProfileForm?.twitter || ''} onChange={e => setEditProfileForm({...editProfileForm, twitter: e.target.value})} />
             </div>
 
             <button type="submit" className="btn btn-primary mt-2" disabled={isSavingProfile}>
