@@ -51,7 +51,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [boiadas, setBoiadas] = useState<any[]>([]);
   const [eventosOficiais, setEventosOficiais] = useState<any[]>([]);
-  const [selectedBoiada, setSelectedBoiada] = useState<any>(null);
+
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedPeaoProfile, setSelectedPeaoProfile] = useState<any>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -2184,7 +2184,10 @@ if (publicProfileSlug) {
                     {filteredBoiadas.map(b => {
                       const totalBulls = Object.keys(b.lados || {}).length;
                       return (
-                        <div key={b.id} className="boiada-card" onClick={() => setSelectedBoiada(b)}>
+                        <div key={b.id} className="boiada-card" onClick={() => {
+                          window.scrollTo(0, 0);
+                          navigateTo(`/boiada/${slugify(b.nome)}`);
+                        }}>
                           <h3 className="boiada-card-title">{b.nome}</h3>
                           <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.5px' }}>
                             {totalBulls} {totalBulls === 1 ? 'TOURO CADASTRADO' : 'TOUROS CADASTRADOS'}
@@ -2518,33 +2521,6 @@ if (publicProfileSlug) {
       </div>
 
       {/* ==================================== */}
-      {/* MODAL DE DETALHES DA BOIADA (TOUROS) */}
-      {/* ==================================== */}
-      {selectedBoiada && (
-        <div className="modal-overlay active">
-          <div className="auth-modal" style={{ maxWidth: '600px' }}>
-            <button className="close-btn" onClick={() => setSelectedBoiada(null)}>×</button>
-            <h2 className="modal-title">{selectedBoiada.nome}</h2>
-            <p className="modal-subtitle">Lista de touros oficiais desta companhia e suas direções de giro na arena.</p>
-            
-            <div className="bulls-list" style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-              {Object.entries(selectedBoiada.lados || {}).map(([bullName, side]: [string, any]) => (
-                <div key={bullName} className="bull-item">
-                  <span className="bull-name">{bullName}</span>
-                  <span className={`bull-side side-${side.toLowerCase().replace(/[^a-z]/g, '')}`}>
-                    Lado {formatSide(side)}
-                  </span>
-                </div>
-              ))}
-              {Object.keys(selectedBoiada.lados || {}).length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                  Nenhum touro cadastrado nesta boiada.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ==================================== */}
       {/* MODAL DE EDIÇÃO/CADASTRO DE TOURO */}
