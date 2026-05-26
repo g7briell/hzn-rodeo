@@ -15,6 +15,17 @@ export default function AdminDashboard() {
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [editingBoiada, setEditingBoiada] = useState<any>(null);
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        callback(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -45,7 +56,12 @@ export default function AdminDashboard() {
         bio: editingUser.bio,
         cargo: editingUser.cargo,
         instagram: editingUser.instagram,
-        youtube: editingUser.youtube
+        youtube: editingUser.youtube,
+        cpf: editingUser.cpf,
+        rg: editingUser.rg,
+        whatsapp: editingUser.whatsapp,
+        endereco: editingUser.endereco,
+        foto: editingUser.foto
       }).eq('id', editingUser.id);
       setEditingUser(null);
       fetchDashboardData();
@@ -157,14 +173,52 @@ export default function AdminDashboard() {
       {/* Editing User Modal */}
       {editingUser && (
         <div className="modal-overlay active" style={{ display: 'flex' }}>
-          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="auth-modal" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <button className="close-btn" onClick={() => setEditingUser(null)}>×</button>
             <h2 style={{ marginBottom: '1.5rem' }}>Editar Usuário</h2>
             <form onSubmit={handleSaveUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label className="form-label">Nome</label>
-                <input className="form-input" value={editingUser.nome || ''} onChange={e => setEditingUser({...editingUser, nome: e.target.value})} />
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px' }}>
+                <img 
+                  src={editingUser.foto || '/user_placeholder.png'} 
+                  alt="Foto do Usuário" 
+                  style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }}
+                />
+                <div>
+                  <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+                    Alterar Foto
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handlePhotoUpload(e, (b64) => setEditingUser({...editingUser, foto: b64}))} />
+                  </label>
+                </div>
               </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 2 }}>
+                  <label className="form-label">Nome</label>
+                  <input className="form-input" value={editingUser.nome || ''} onChange={e => setEditingUser({...editingUser, nome: e.target.value})} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">WhatsApp</label>
+                  <input className="form-input" value={editingUser.whatsapp || ''} onChange={e => setEditingUser({...editingUser, whatsapp: e.target.value})} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">CPF</label>
+                  <input className="form-input" value={editingUser.cpf || ''} onChange={e => setEditingUser({...editingUser, cpf: e.target.value})} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">RG</label>
+                  <input className="form-input" value={editingUser.rg || ''} onChange={e => setEditingUser({...editingUser, rg: e.target.value})} />
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label">Endereço Completo (Rua, Número, Cidade, Estado)</label>
+                <input className="form-input" value={editingUser.endereco || ''} onChange={e => setEditingUser({...editingUser, endereco: e.target.value})} />
+              </div>
+
               <div>
                 <label className="form-label">Cargo/Tag</label>
                 <select className="form-input" value={editingUser.cargo || ''} onChange={e => setEditingUser({...editingUser, cargo: e.target.value})}>
@@ -174,11 +228,13 @@ export default function AdminDashboard() {
                   <option value="treinador">Treinador</option>
                 </select>
               </div>
+
               <div>
                 <label className="form-label">Bio</label>
                 <textarea className="form-input" value={editingUser.bio || ''} onChange={e => setEditingUser({...editingUser, bio: e.target.value})} />
               </div>
-              <button type="submit" className="btn btn-primary">Salvar Alterações</button>
+              
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>Salvar Alterações</button>
             </form>
           </div>
         </div>
@@ -235,15 +291,23 @@ export default function AdminDashboard() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary)' }}>Mídia do Evento</h3>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <label className="form-label" style={{ fontSize: '0.85rem' }}>Link da Foto de Capa</label>
-                  <input 
-                    className="form-input" 
-                    placeholder="https://..." 
-                    value={editingEvent.detalhes?.foto_evento || ''} 
-                    onChange={e => setEditingEvent({...editingEvent, detalhes: { ...editingEvent.detalhes, foto_evento: e.target.value }})} 
-                  />
-                  <small style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Mais opções de mídia e notícias serão adicionadas no futuro.</small>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  {editingEvent.detalhes?.foto_evento && (
+                    <img src={editingEvent.detalhes.foto_evento} alt="Capa" style={{ width: '120px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-light)' }} />
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <label className="btn btn-outline" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '0.5rem' }}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                      Alterar Foto de Capa (PC)
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={e => handlePhotoUpload(e, (b64) => setEditingEvent({...editingEvent, detalhes: { ...editingEvent.detalhes, foto_evento: b64 }}))}
+                      />
+                    </label>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>Mais opções de mídia e notícias serão adicionadas no futuro.</div>
+                  </div>
                 </div>
               </div>
 

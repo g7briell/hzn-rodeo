@@ -84,10 +84,25 @@ export default function BoiadaVisualEditor({ initialLados, onChange }: { initial
               <button type="button" onClick={() => handleRemove(idx)} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', marginTop: '1.2rem', padding: '0.5rem' }} title="Remover Touro">✖</button>
             </div>
             
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Link da Foto</label>
-                <input className="form-input" style={{ padding: '0.4rem' }} placeholder="https://..." value={t.foto} onChange={e => handleChange(idx, 'foto', e.target.value)} />
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid var(--primary)', overflow: 'hidden', background: 'rgba(255,255,255,0.1)' }}>
+                  {t.foto ? <img src={t.foto} alt="Touro" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.7rem' }}>Sem foto</div>}
+                </div>
+                <label className="btn btn-outline" style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', cursor: 'pointer' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '0.3rem' }}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                  Alterar
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        handleChange(idx, 'foto', reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }} />
+                </label>
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Link do Vídeo (Youtube)</label>
