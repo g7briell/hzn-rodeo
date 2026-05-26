@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import BoiadaVisualEditor from './BoiadaVisualEditor';
+import EventosVisualEditor from './EventosVisualEditor';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas'>('overview');
@@ -11,12 +13,8 @@ export default function AdminDashboard() {
 
   // Edit Modals State
   const [editingUser, setEditingUser] = useState<any>(null);
-  
   const [editingEvent, setEditingEvent] = useState<any>(null);
-  const [editingEventJson, setEditingEventJson] = useState<string>('');
-  
   const [editingBoiada, setEditingBoiada] = useState<any>(null);
-  const [editingBoiadaJson, setEditingBoiadaJson] = useState<string>('');
 
   useEffect(() => {
     fetchDashboardData();
@@ -60,22 +58,12 @@ export default function AdminDashboard() {
 
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    let parsedJson = editingEvent.detalhes || {};
-    if (editingEventJson) {
-      try {
-        parsedJson = JSON.parse(editingEventJson);
-      } catch (err) {
-        alert('Erro: O JSON do evento é inválido. Corrija a sintaxe antes de salvar.');
-        return;
-      }
-    }
-    
     try {
       await supabase.from('eventos_oficiais').update({
         nome: editingEvent.nome,
         cidade: editingEvent.cidade,
         data: editingEvent.data,
-        detalhes: parsedJson
+        detalhes: editingEvent.detalhes
       }).eq('id', editingEvent.id);
       setEditingEvent(null);
       fetchDashboardData();
@@ -87,21 +75,11 @@ export default function AdminDashboard() {
 
   const handleSaveBoiada = async (e: React.FormEvent) => {
     e.preventDefault();
-    let parsedJson = editingBoiada.lados || {};
-    if (editingBoiadaJson) {
-      try {
-        parsedJson = JSON.parse(editingBoiadaJson);
-      } catch (err) {
-        alert('Erro: O JSON da boiada é inválido. Corrija a sintaxe antes de salvar.');
-        return;
-      }
-    }
-
     try {
       await supabase.from('boiadas_oficiais').update({
         nome: editingBoiada.nome,
         status: editingBoiada.status,
-        lados: parsedJson
+        lados: editingBoiada.lados
       }).eq('id', editingBoiada.id);
       setEditingBoiada(null);
       fetchDashboardData();
@@ -112,13 +90,11 @@ export default function AdminDashboard() {
   };
 
   const openEventModal = (ev: any) => {
-    setEditingEvent(ev);
-    setEditingEventJson(JSON.stringify(ev.detalhes || {}, null, 2));
+    setEditingEvent({ ...ev, detalhes: ev.detalhes || {} });
   };
 
   const openBoiadaModal = (b: any) => {
-    setEditingBoiada(b);
-    setEditingBoiadaJson(JSON.stringify(b.lados || {}, null, 2));
+    setEditingBoiada({ ...b, lados: b.lados || {} });
   };
 
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center' }}>Carregando Painel Admin...</div>;
@@ -254,23 +230,12 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--primary)' }}>
-                <label className="form-label" style={{ color: 'var(--primary)' }}>
-                  Editor Avançado de Detalhes (JSON)
-                  <br />
-                  <small style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>
-                    Edite as notas e detalhes do evento aqui. Cuidado com erros de sintaxe!
-                  </small>
-                </label>
-                <textarea 
-                  className="form-input" 
-                  style={{ fontFamily: 'monospace', minHeight: '300px', whiteSpace: 'pre', overflowX: 'auto' }}
-                  value={editingEventJson} 
-                  onChange={e => setEditingEventJson(e.target.value)} 
-                />
-              </div>
+              <EventosVisualEditor 
+                initialDetalhes={editingEvent.detalhes} 
+                onChange={(newDetalhes) => setEditingEvent({ ...editingEvent, detalhes: newDetalhes })} 
+              />
 
-              <button type="submit" className="btn btn-primary">Salvar Alterações</button>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>Salvar Alterações do Evento</button>
             </form>
           </div>
         </div>
@@ -326,23 +291,12 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--primary)' }}>
-                <label className="form-label" style={{ color: 'var(--primary)' }}>
-                  Editor Avançado de Touros (JSON)
-                  <br />
-                  <small style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>
-                    Edite os nomes dos bois, lados, fotos e vídeos aqui. Cuidado com erros de sintaxe!
-                  </small>
-                </label>
-                <textarea 
-                  className="form-input" 
-                  style={{ fontFamily: 'monospace', minHeight: '300px', whiteSpace: 'pre', overflowX: 'auto' }}
-                  value={editingBoiadaJson} 
-                  onChange={e => setEditingBoiadaJson(e.target.value)} 
-                />
-              </div>
+              <BoiadaVisualEditor 
+                initialLados={editingBoiada.lados} 
+                onChange={(newLados) => setEditingBoiada({ ...editingBoiada, lados: newLados })} 
+              />
 
-              <button type="submit" className="btn btn-primary">Salvar Alterações</button>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>Salvar Alterações da Boiada</button>
             </form>
           </div>
         </div>
