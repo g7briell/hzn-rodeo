@@ -868,7 +868,7 @@ function App() {
 
     if (publicEventSlug && selectedEvent) {
     return (
-      <div className="public-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto', width: '100vw', overflowX: 'hidden' }}>
         <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
@@ -1393,7 +1393,7 @@ function App() {
 
 if (publicProfileSlug) {
     return (
-      <div className="public-container">
+      <div style={{ width: '100vw', overflowX: 'hidden' }}>
         {/* Header */}
         <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
@@ -1481,7 +1481,7 @@ if (publicProfileSlug) {
 
   if (publicBoiadaSlug) {
     return (
-      <div className="public-container">
+      <div style={{ width: '100vw', overflowX: 'hidden' }}>
         <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
           <div className="header-buttons">
@@ -1602,7 +1602,7 @@ if (publicProfileSlug) {
   if (!user) {
     return (
       <>
-        <div className="public-container">
+        <div style={{ width: '100vw', overflowX: 'hidden' }}>
           {/* Header */}
           <header className="public-header">
             <div className="logo" style={{ cursor: 'pointer' }} onClick={() => { setCurrentTab('home'); navigateTo('/'); }}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
