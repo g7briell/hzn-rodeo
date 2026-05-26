@@ -1318,7 +1318,7 @@ function App() {
                 <div className="profile-sidebar" style={{ flex: '1', minWidth: '250px', background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '24px', textAlign: 'center' }}>
                   <div className="profile-avatar-wrapper" style={{ margin: '0 auto' }}>
                     <img 
-                      src={selectedPeaoProfile.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80"} 
+                      src={selectedPeaoProfile.foto || "/novacontasfoto.jpg"} 
                       alt="Foto de Perfil" 
                       className={`profile-avatar ${selectedPeaoProfile.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
                     />
@@ -1410,7 +1410,7 @@ if (publicProfileSlug) {
               <div className="profile-sidebar">
                 <div className="profile-avatar-wrapper">
                   <img 
-                    src={publicProfileFoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80"} 
+                    src={publicProfileFoto || "/novacontasfoto.jpg"} 
                     alt="Foto de Perfil" 
                     className={`profile-avatar ${publicProfile.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
                   />
@@ -2010,7 +2010,7 @@ if (publicProfileSlug) {
                 {userProfile?.nome || user?.email}
               </span>
               <img 
-                src={userFoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80"} 
+                src={userFoto || "/novacontasfoto.jpg"} 
                 alt="Foto de Perfil" 
                 className={`header-avatar ${userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar-small' : ''}`}
                 onClick={() => setCurrentTab('profile')}
@@ -2042,7 +2042,7 @@ if (publicProfileSlug) {
                       <div className="profile-sidebar">
                         <div className="profile-avatar-wrapper">
                           <img 
-                            src={selectedPeaoProfile.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80"} 
+                            src={selectedPeaoProfile.foto || "/novacontasfoto.jpg"} 
                             alt="Foto de Perfil" 
                             className={`profile-avatar ${selectedPeaoProfile.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
                           />
@@ -2394,7 +2394,7 @@ if (publicProfileSlug) {
                   <div className="profile-sidebar">
                     <div className="profile-avatar-wrapper">
                       <img 
-                        src={userFoto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80"} 
+                        src={userFoto || "/novacontasfoto.jpg"} 
                         alt="Foto de Perfil" 
                         className={`profile-avatar ${userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar' : ''}`}
                       />
