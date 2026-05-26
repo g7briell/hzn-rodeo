@@ -1875,7 +1875,9 @@ function App() {
                             <span style={{ color: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : '#CD7F32', fontSize: '1.25rem', fontWeight: '900' }}>{idx + 1}º</span>
                             {competidor.nome}
                           </span>
-                          <span style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.1rem' }}>{competidor.pontuacao} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span></span>
+                          <span style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.1rem' }}>
+                            {competidor.score > 0 ? competidor.score.toFixed(2) : competidor.tempoAcumulado ? competidor.tempoAcumulado.toFixed(2) + 's' : '0.00'} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span>
+                          </span>
                         </div>
                       ))}
                     </div>
