@@ -104,6 +104,7 @@ function App() {
   const [selectedSorteioDay, setSelectedSorteioDay] = useState<string>('');
   const [publicBoiada, setPublicBoiada] = useState<any>(null);
   const [isPublicBoiadaLoading, setIsPublicBoiadaLoading] = useState(false);
+  const [publicRankingModal, setPublicRankingModal] = useState<any>(null);
 
   const slugify = (text: string) => {
     return text
@@ -1772,86 +1773,121 @@ function App() {
             </div>
           </header>
 
-          {/* Hero Section */}
-          <section className="hero-modern">
-            <h1 className="hero-modern-title">
-              O Portal Definitivo <br/>
-              <span className="text-primary">do Competidor</span>
-            </h1>
-            <p className="hero-modern-subtitle">
-              Acompanhe seus eventos, verifique suas notas ao vivo e gerencie seu perfil profissional de rodeio em um único lugar.
-            </p>
-            <button className="btn btn-primary btn-glow" style={{ padding: '1rem 3rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '50px' }} onClick={() => setIsRegisterModalOpen(true)}>
-              Fazer meu Cadastro Gratuito
-            </button>
-          </section>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '0 2rem' }}>
+            {/* Hero Section */}
+            <section className="hero-modern">
+              <h1 className="hero-modern-title">
+                O Portal Definitivo <br/>
+                <span className="text-primary">do Competidor</span>
+              </h1>
+              <p className="hero-modern-subtitle">
+                Acompanhe seus eventos, verifique suas notas ao vivo e gerencie seu perfil profissional de rodeio em um único lugar.
+              </p>
+              <button className="btn btn-primary btn-glow" style={{ padding: '1rem 3rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '50px' }} onClick={() => setIsRegisterModalOpen(true)}>
+                Fazer meu Cadastro Gratuito
+              </button>
+            </section>
 
-          {/* Weekly Events Section */}
-          <section className="events-section">
-            <div className="section-header">
-              <div>
-                <h2>Eventos da <span className="text-primary">Semana</span></h2>
-                <p className="text-muted" style={{ fontSize: '1.1rem' }}>Acompanhe as etapas que estão rolando agora no circuito</p>
-              </div>
-            </div>
-            
-            <div className="events-grid">
-              {homeEvents.length === 0 ? (
-                <div style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)', padding: '4rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem', opacity: 0.5 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                  <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Nenhum evento oficial disponível no momento</h3>
-                  <p style={{ fontSize: '0.9rem' }}>Fique ligado! Em breve novos eventos serão adicionados.</p>
+            {/* Weekly Events Section */}
+            <section className="events-section">
+              <div className="section-header">
+                <div>
+                  <h2>Eventos da <span className="text-primary">Semana</span></h2>
+                  <p className="text-muted" style={{ fontSize: '1.1rem' }}>Acompanhe as etapas que estão rolando agora no circuito</p>
                 </div>
-              ) : (
-                homeEvents.map(ev => (
-                  <div key={ev.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div className="event-date" style={{ background: 'rgba(255, 215, 0, 0.15)', color: 'var(--primary)', padding: '0.4rem 0.8rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.5px' }}>
-                        {ev.data_inicio} {ev.data_fim ? `a ${ev.data_fim}` : ''}
-                      </div>
-                      <span style={{ fontSize: '0.7rem', padding: '0.3rem 0.6rem', background: 'var(--bg-dark)', color: 'var(--primary)', borderRadius: '12px', border: '1px solid rgba(255,215,0,0.3)', fontWeight: 'bold' }}>
-                        OFICIAL
-                      </span>
-                    </div>
-                    <h3 className="event-name" style={{ margin: '0.5rem 0 0 0', fontSize: '1.75rem', fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-light)', lineHeight: '1.2' }}>{ev.nome}</h3>
-                    <div className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#94a3b8', fontSize: '0.95rem' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                      {ev.local}
-                    </div>
-                    
-                    {/* Renderização do Ranking/Detalhes se existir */}
-                    {ev.detalhes?.ranking && ev.detalhes.ranking.length > 0 && (
-                      <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: '0.75rem', fontWeight: 'bold', letterSpacing: '1px' }}>Top 3 - Ranking Atual</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {ev.detalhes.ranking.slice(0, 3).map((competidor: any, idx: number) => (
-                            <div 
-                              key={idx} 
-                              style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
-                              onClick={() => {
-                                // Redirecionar para o perfil se houver slug no payload, senão gerar fallback
-                                const slug = competidor.slug || slugify(competidor.nome);
-                                navigateTo(`/perfil/${slug}`);
-                              }}
-                              className="hover:border-primary/30"
-                              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'}
-                              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
-                            >
-                              <span style={{ fontWeight: 'bold', color: 'var(--text-light)', fontSize: '0.9rem' }}>{idx + 1}º {competidor.nome}</span>
-                              <span style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.9rem' }}>{competidor.pontuacao} pts</span>
-                            </div>
-                          ))}
+              </div>
+              
+              <div className="events-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                {homeEvents.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)', padding: '4rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem', opacity: 0.5 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Nenhum evento oficial disponível no momento</h3>
+                    <p style={{ fontSize: '0.9rem' }}>Fique ligado! Em breve novos eventos serão adicionados.</p>
+                  </div>
+                ) : (
+                  homeEvents.map(ev => (
+                    <div 
+                      key={ev.id} 
+                      className="glass-card hover:bg-white/5" 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', padding: '2.5rem 1.5rem', cursor: 'pointer', textAlign: 'center' }}
+                      onClick={() => setPublicRankingModal(ev)}
+                    >
+                      {ev.detalhes?.logo ? (
+                        <img src={ev.detalhes.logo} alt={ev.nome} style={{ width: '140px', height: '140px', objectFit: 'contain', borderRadius: '20px', background: 'rgba(0,0,0,0.4)', padding: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }} />
+                      ) : (
+                        <div style={{ width: '140px', height: '140px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '900', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>LOGO</div>
+                      )}
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                        <h3 className="event-name" style={{ margin: 0, fontSize: '1.5rem', fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-light)', lineHeight: '1.2' }}>{ev.nome}</h3>
+                        <div className="event-date" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                          {ev.data_inicio} {ev.data_fim ? `a ${ev.data_fim}` : ''}
                         </div>
                       </div>
-                    )}
+
+                      <span style={{ fontSize: '0.75rem', padding: '0.4rem 1rem', background: 'var(--primary)', color: '#000', borderRadius: '20px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase', marginTop: 'auto', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(255,215,0,0.3)' }}>
+                        Ver Top 3
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* PUBLIC RANKING MODAL */}
+          {publicRankingModal && (
+            <div className="modal-overlay active" onClick={() => setPublicRankingModal(null)}>
+              <div className="auth-modal fade-in" style={{ maxWidth: '500px', width: '90%', padding: '2.5rem 2rem' }} onClick={(e) => e.stopPropagation()}>
+                <button className="close-btn" style={{ top: '15px', right: '15px' }} onClick={() => setPublicRankingModal(null)}>×</button>
+                
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                  {publicRankingModal.detalhes?.logo && (
+                    <img src={publicRankingModal.detalhes.logo} alt="Logo" style={{ width: '90px', height: '90px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', padding: '10px', margin: '0 auto 1.5rem', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  )}
+                  <h2 className="modal-title" style={{ margin: 0, fontSize: '1.85rem', fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', lineHeight: '1.2' }}>{publicRankingModal.nome}</h2>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.75rem' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    {publicRankingModal.local}
                   </div>
-                ))
-              )}
+                </div>
+
+                {publicRankingModal.detalhes?.ranking && publicRankingModal.detalhes.ranking.length > 0 ? (
+                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '20px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: '1.25rem', fontWeight: '900', letterSpacing: '1px', textAlign: 'center' }}>Top 3 - Ranking Atual</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {publicRankingModal.detalhes.ranking.slice(0, 3).map((competidor: any, idx: number) => (
+                        <div 
+                          key={idx} 
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem 1.25rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.1)' }}
+                          onClick={() => {
+                            const slug = competidor.slug || slugify(competidor.nome);
+                            navigateTo(`/perfil/${slug}`);
+                          }}
+                          className="hover:border-primary/50"
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                        >
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-light)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ color: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : '#CD7F32', fontSize: '1.25rem', fontWeight: '900' }}>{idx + 1}º</span>
+                            {competidor.nome}
+                          </span>
+                          <span style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.1rem' }}>{competidor.pontuacao} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    Ranking ainda não disponível para este evento.
+                  </div>
+                )}
+              </div>
             </div>
-          </section>
+          )}
         </div>
 
         {/* ==================================== */}
