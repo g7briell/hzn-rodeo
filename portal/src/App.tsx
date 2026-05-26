@@ -1487,7 +1487,7 @@ if (publicProfileSlug) {
           </div>
         </header>
 
-        <div className="profile-container" style={{ minHeight: '70vh', padding: '2rem 0' }}>
+        <div className="profile-container" style={{ minHeight: '70vh', padding: '2rem 0', maxWidth: '100%' }}>
           {isPublicBoiadaLoading ? (
             <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center', marginTop: '4rem' }}>Carregando Boiada...</div>
           ) : publicBoiada ? (
