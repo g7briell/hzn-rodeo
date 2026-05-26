@@ -1512,7 +1512,7 @@ if (publicProfileSlug) {
                   return (
                     <div key={bullName} style={{ position: 'relative', height: '350px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: '2px solid rgba(255,255,255,0.1)' }}>
                       <img 
-                        src={details.foto || "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=500&h=700&q=80"} 
+                        src={details.foto || "/tourosfoto.jpg"} 
                         alt="Foto do Touro" 
                         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
                       />
@@ -2310,7 +2310,7 @@ if (publicProfileSlug) {
                         return (
                           <div key={bullName} style={{ position: 'relative', height: '300px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: '2px solid rgba(255,255,255,0.1)' }}>
                             <img 
-                              src={details.foto || "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=500&h=700&q=80"} 
+                              src={details.foto || "/tourosfoto.jpg"} 
                               alt="Foto do Touro" 
                               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
                             />
