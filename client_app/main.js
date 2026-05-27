@@ -954,7 +954,7 @@ ipcMain.handle('export-ranking-excel', async (event, { eventName, day, data, aut
             const row = ws.getRow(currRow);
             row.height = height;
             
-            const pos = (r.totalPoints > 0 || r.tempoAcumulado > 0) ? `${idx + 1}º` : '---';
+            const pos = (r.totalPoints > 0 || r.tempoAcumulado > 0) ? `${idx + 1}\u00BA` : '---';
             
             row.getCell(1).value = pos;
             row.getCell(2).value = r.nome.toUpperCase();
@@ -1546,7 +1546,7 @@ ipcMain.handle('export-melhor-animal', async (event, { eventName, data, format }
             
             // Fill values in the first cell of the merged region
             const firstRow = newWs.getRow(blockStartRow);
-            firstRow.getCell(1).value = index + 1 + 'º';
+            firstRow.getCell(1).value = index + 1 + '\u00BA';
             firstRow.getCell(2).value = animal.nome.toUpperCase();
             firstRow.getCell(3).value = animal.cia.toUpperCase();
             
