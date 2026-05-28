@@ -1768,7 +1768,7 @@ function App() {
                 
                 {/* Coluna Esquerda: Bio & Competidor Stats */}
                 <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)', height: 'fit-content' }}>
-                  {isCompetidor && (
+                  {(isCompetidor || isDiretor || isMidia || peaoStats.runs.length > 0) && (
                     <>
                       {/* Stats Dashboard Grid */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem 0.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '2rem', width: '100%' }}>
@@ -1813,7 +1813,7 @@ function App() {
                 {/* Coluna Direita: Conteúdo por Cargo */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                   
-                  {isCompetidor && (
+                  {(isCompetidor || isDiretor || isMidia || peaoStats.runs.length > 0) && (
                     <>
                       <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
                         <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico de Eventos</h3>
