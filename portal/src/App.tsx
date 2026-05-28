@@ -189,16 +189,39 @@ function App() {
     setSelectedBullStats(stats);
   };
 
-  const getPeaoStats = (peaoName: string) => {
+  const getPeaoStats = (peaoName: string, peaoCpf?: string) => {
     let paradas = 0;
     let notas90Plus = 0;
     let totalOuts = 0;
     const runs: any[] = [];
+    const cleanCpf = peaoCpf ? peaoCpf.replace(/\D/g, '') : '';
+    
+    // Collect all names associated with this CPF in event rankings to handle name spelling variations
+    const associatedNames = new Set<string>([peaoName.toLowerCase().trim()]);
+    if (cleanCpf) {
+      eventosOficiais.forEach(ev => {
+        const ranking = ev.detalhes?.ranking || [];
+        ranking.forEach((r: any) => {
+          if (r.cpf && r.cpf.replace(/\D/g, '') === cleanCpf) {
+            if (r.nome) associatedNames.add(r.nome.toLowerCase().trim());
+          }
+        });
+        const notas = ev.detalhes?.notes || ev.detalhes?.notas || [];
+        notas.forEach((n: any) => {
+          if (n.cpf && n.cpf.replace(/\D/g, '') === cleanCpf) {
+            if (n.peao) associatedNames.add(n.peao.toLowerCase().trim());
+          }
+        });
+      });
+    }
 
     eventosOficiais.forEach(ev => {
       const notas = ev.detalhes?.notas || [];
       notas.forEach((n: any) => {
-        if (n.peao && n.peao.toLowerCase().trim() === peaoName.toLowerCase().trim()) {
+        const matchesName = n.peao && associatedNames.has(n.peao.toLowerCase().trim());
+        const matchesCpf = cleanCpf && n.cpf && (n.cpf.replace(/\D/g, '') === cleanCpf);
+        
+        if (matchesName || matchesCpf) {
           const runScore = (typeof n.totalPeao === 'number' ? n.totalPeao : 0) + (typeof n.totalTouro === 'number' ? n.totalTouro : 0);
           if (runScore > 0) {
             totalOuts++;
@@ -1476,7 +1499,7 @@ function App() {
         {/* ==================================== */}
         <div className={`modal-overlay ${isProfileModalOpen ? 'active' : ''}`} style={{ zIndex: 9999 }}>
           {isProfileModalOpen && selectedPeaoProfile && (() => {
-            const peaoStats = getPeaoStats(selectedPeaoProfile.nome);
+            const peaoStats = getPeaoStats(selectedPeaoProfile.nome, selectedPeaoProfile.cpf);
             return (
               <div className="auth-modal" style={{ maxWidth: '900px', width: '90%', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
                 <button className="close-btn" onClick={() => setIsProfileModalOpen(false)}>✕</button>
@@ -1661,7 +1684,7 @@ function App() {
     const isDiretor = cargo.includes('diretor');
     const isMidia = cargo.includes('midia');
     const isCompetidor = !isTropeiro && !isDiretor && !isMidia;
-    const peaoStats = publicProfile && isCompetidor ? getPeaoStats(publicProfile.nome) : { outs: 0, paradas: 0, notas90Plus: 0, runs: [] };
+    const peaoStats = publicProfile ? getPeaoStats(publicProfile.nome, publicProfile.cpf) : { outs: 0, paradas: 0, notas90Plus: 0, runs: [] };
 
     if (publicProfile) {
       if (isTropeiro) {
