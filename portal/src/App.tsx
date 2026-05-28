@@ -133,13 +133,15 @@ function App() {
       notas.forEach((n: any) => {
         if (n.touro && n.touro.toLowerCase().trim() === bullName.toLowerCase().trim()) {
           const score = typeof n.totalTouro === 'number' ? n.totalTouro : (typeof n.j1_touro === 'number' && typeof n.j2_touro === 'number' ? n.j1_touro + n.j2_touro : 0);
-          totalOuts++;
-          totalScore += score;
           
           const isFall = typeof n.tempo === 'number' && n.tempo < 8;
-          if (isFall) {
-            fallsCount++;
-            fallScoreSum += score;
+          if (score > 0) {
+            totalOuts++;
+            totalScore += score;
+            if (isFall) {
+              fallsCount++;
+              fallScoreSum += score;
+            }
           }
 
           runs.push({
