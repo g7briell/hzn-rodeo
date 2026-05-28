@@ -1687,6 +1687,24 @@ function App() {
     const peaoStats = publicProfile ? getPeaoStats(publicProfile.nome, publicProfile.cpf) : { outs: 0, paradas: 0, notas90Plus: 0, runs: [] };
 
     if (publicProfile) {
+      // Calculate event history for all profiles regardless of their cargo
+      const cleanCpf = publicProfile.cpf ? publicProfile.cpf.replace(/\D/g, '') : '';
+      eventosOficiais.forEach(ev => {
+        const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
+          const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+          if (cleanCpf && rCpf) return rCpf === cleanCpf;
+          return slugify(r.nome) === slugify(publicProfile.nome);
+        });
+        if (rankIndex !== undefined && rankIndex >= 0) {
+          historico.push({
+            eventoNome: ev.nome,
+            cidade: ev.local || ev.cidade,
+            posicao: rankIndex + 1,
+            slug: slugify(ev.nome)
+          });
+        }
+      });
+
       if (isTropeiro) {
         const tropeiroBoiada = boiadas.find(b => b.lados?.__meta?.tropeiro_email === publicProfile.email);
         if (tropeiroBoiada) {
@@ -1698,23 +1716,6 @@ function App() {
       } else if (isDiretor && publicProfile.veio_do_app_desktop) {
         diretorEvents = eventosOficiais.filter(ev => {
            return slugify(ev.diretor || '').includes(slugify(publicProfile.nome)) || slugify(ev.nome).includes(slugify(publicProfile.nome));
-        });
-      } else if (isCompetidor) {
-        const cleanCpf = publicProfile.cpf ? publicProfile.cpf.replace(/\D/g, '') : '';
-        eventosOficiais.forEach(ev => {
-          const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
-            const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
-            if (cleanCpf && rCpf) return rCpf === cleanCpf;
-            return slugify(r.nome) === slugify(publicProfile.nome);
-          });
-          if (rankIndex !== undefined && rankIndex >= 0) {
-            historico.push({
-              eventoNome: ev.nome,
-              cidade: ev.local || ev.cidade,
-              posicao: rankIndex + 1,
-              slug: slugify(ev.nome)
-            });
-          }
         });
       }
     }
