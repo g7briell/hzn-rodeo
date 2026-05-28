@@ -105,6 +105,8 @@ function App() {
   const [publicBoiada, setPublicBoiada] = useState<any>(null);
   const [isPublicBoiadaLoading, setIsPublicBoiadaLoading] = useState(false);
   const [publicRankingModal, setPublicRankingModal] = useState<any>(null);
+  const [selectedBullProfile, setSelectedBullProfile] = useState<any>(null);
+  const [selectedBullStats, setSelectedBullStats] = useState<any>(null);
 
   const slugify = (text: string) => {
     return text
@@ -117,6 +119,72 @@ function App() {
   const navigateTo = (path: string) => {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
+  const handleBullClick = (bullName: string, details: any, boiadaNome: string) => {
+    const runs: any[] = [];
+    let totalScore = 0;
+    let totalOuts = 0;
+    let fallsCount = 0;
+    let fallScoreSum = 0;
+
+    eventosOficiais.forEach(ev => {
+      const notas = ev.detalhes?.notas || [];
+      notas.forEach((n: any) => {
+        if (n.touro && n.touro.toLowerCase().trim() === bullName.toLowerCase().trim()) {
+          const score = typeof n.totalTouro === 'number' ? n.totalTouro : (typeof n.j1_touro === 'number' && typeof n.j2_touro === 'number' ? n.j1_touro + n.j2_touro : 0);
+          totalOuts++;
+          totalScore += score;
+          
+          const isFall = typeof n.tempo === 'number' && n.tempo < 8;
+          if (isFall) {
+            fallsCount++;
+            fallScoreSum += score;
+          }
+
+          runs.push({
+            eventoNome: ev.nome,
+            peao: n.peao,
+            tempo: n.tempo,
+            score: score,
+            dia: n.dia,
+            status: isFall ? 'Queda' : 'Parada'
+          });
+        }
+      });
+    });
+
+    let currentEvent = null;
+    for (const ev of eventosOficiais) {
+      const sorteios = ev.detalhes?.sorteios || [];
+      let foundInEvent = false;
+      for (const s of sorteios) {
+        const bullsInSorteio = s.bulls || [];
+        if (bullsInSorteio.some((b: any) => b.nome && b.nome.toLowerCase().trim() === bullName.toLowerCase().trim())) {
+          currentEvent = ev.nome;
+          foundInEvent = true;
+          break;
+        }
+      }
+      if (foundInEvent) break;
+    }
+
+    const stats = {
+      outs: totalOuts,
+      mediaGeral: totalOuts > 0 ? (totalScore / totalOuts).toFixed(2) : '0.00',
+      mediaQueda: fallsCount > 0 ? (fallScoreSum / fallsCount).toFixed(2) : '0.00',
+      taxaQueda: totalOuts > 0 ? ((fallsCount / totalOuts) * 100).toFixed(0) + '%' : '0%',
+      currentEvent: currentEvent || 'Nenhum evento agendado para esta semana',
+      runs: runs
+    };
+
+    setSelectedBullProfile({
+      nome: bullName,
+      cia: boiadaNome,
+      foto: details.foto || "/tourosfoto.jpg",
+      video_url: details.video_url || ""
+    });
+    setSelectedBullStats(stats);
   };
 
   const fetchUserProfile = async (email: string) => {
@@ -1673,7 +1741,7 @@ function App() {
                   const hasVideo = !!details.video_url && getYoutubeId(details.video_url);
                   
                   return (
-                    <div key={bullName} style={{ position: 'relative', height: '350px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: '2px solid rgba(255,255,255,0.1)' }}>
+                    <div key={bullName} onClick={() => handleBullClick(bullName, details, publicBoiada.nome)} style={{ position: 'relative', height: '350px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: '2px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
                       <img 
                         src={details.foto || "/tourosfoto.jpg"} 
                         alt="Foto do Touro" 
@@ -1737,6 +1805,76 @@ function App() {
                   allowFullScreen
                   style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedBullProfile && selectedBullStats && (
+          <div className="modal-overlay active" onClick={() => { setSelectedBullProfile(null); setSelectedBullStats(null); }}>
+            <div className="auth-modal" style={{ maxWidth: '680px', padding: '2rem', background: '#0c0a09', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', color: '#fff' }} onClick={(e) => e.stopPropagation()}>
+              <button className="close-btn" style={{ top: '15px', right: '15px', zIndex: 10, fontSize: '24px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => { setSelectedBullProfile(null); setSelectedBullStats(null); }}>×</button>
+              
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '2rem' }}>
+                <img 
+                  src={selectedBullProfile.foto} 
+                  alt={selectedBullProfile.nome} 
+                  style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.1)' }} 
+                />
+                <div>
+                  <span style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', display: 'block', marginBottom: '0.2rem' }}>TOURO DE RODEIO</span>
+                  <h2 style={{ fontSize: '2rem', margin: 0, textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, lineHeight: 1.1 }}>{selectedBullProfile.nome}</h2>
+                  <p style={{ margin: '0.25rem 0 0 0', color: '#94a3b8', fontSize: '0.95rem', textTransform: 'uppercase' }}>CIA {selectedBullProfile.cia}</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Média Geral</span>
+                  <strong style={{ fontSize: '1.4rem', color: '#E11D48' }}>{selectedBullStats.mediaGeral}</strong>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Saídas</span>
+                  <strong style={{ fontSize: '1.4rem', color: '#fff' }}>{selectedBullStats.outs}</strong>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Média Queda</span>
+                  <strong style={{ fontSize: '1.4rem', color: '#fff' }}>{selectedBullStats.mediaQueda}</strong>
+                </div>
+                <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Taxa de Queda</span>
+                  <strong style={{ fontSize: '1.4rem', color: '#fff' }}>{selectedBullStats.taxaQueda}</strong>
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(225, 29, 72, 0.05)', border: '1px solid rgba(225, 29, 72, 0.2)', padding: '0.75rem 1rem', borderRadius: '12px', fontSize: '0.85rem', color: '#f43f5e', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', fontWeight: 600 }}>
+                📍 {selectedBullStats.currentEvent === 'Nenhum evento agendado para esta semana' ? 'Sem escala ativa para esta semana' : `Escalado no Evento: ${selectedBullStats.currentEvent}`}
+              </div>
+
+              <h3 style={{ fontSize: '1rem', textTransform: 'uppercase', marginBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', color: '#94a3b8' }}>Últimas Apresentações</h3>
+              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '4px' }} className="custom-scrollbar">
+                {selectedBullStats.runs.length > 0 ? (
+                  selectedBullStats.runs.map((run: any, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', alignItems: 'center', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '0.9rem', color: '#fff' }}>vs {run.peao}</strong>
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{run.eventoNome} • {run.dia}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : '#ef4444' }}>
+                          {run.status} ({run.tempo.toFixed(2)}s)
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota Touro: {run.score.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: '#64748b', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>Nenhum histórico de montaria registrado para este touro.</p>
+                )}
+              </div>
+
+              <div style={{ marginTop: '1.5rem', fontSize: '0.7rem', color: '#64748b', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                * média de saída registrada no RodeoApp
               </div>
             </div>
           </div>
