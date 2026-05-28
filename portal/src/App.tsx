@@ -12,6 +12,18 @@ const formatSide = (s: any) => {
   return s;
 };
 
+const formatBirthDate = (dateStr: any) => {
+  if (!dateStr) return 'Não informado';
+  const cleanDate = dateStr.split('T')[0];
+  if (cleanDate.includes('-')) {
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+  return dateStr;
+};
+
 function App() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -1605,7 +1617,7 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Data de Nasc.</label>
-                        <div className="read-only-field" style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', color: '#fff' }}>{selectedPeaoProfile.nascimento || 'Não informado'}</div>
+                        <div className="read-only-field" style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', color: '#fff' }}>{formatBirthDate(selectedPeaoProfile.nascimento)}</div>
                       </div>
                     </div>
 
@@ -1821,7 +1833,7 @@ function App() {
                         <div>
                           <label style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>Data de Nasc.</label>
                           <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.75rem 1rem', borderRadius: '12px', color: '#fff', fontSize: '0.9rem' }}>
-                            {publicProfile.nascimento || 'Não informado'}
+                            {formatBirthDate(publicProfile.nascimento)}
                           </div>
                         </div>
                       </div>
@@ -3093,7 +3105,7 @@ function App() {
                         </div>
                         <div className="profile-info-item">
                           <span className="profile-info-label">Data de Nascimento</span>
-                          <span className="profile-info-value">{userProfile?.nascimento ? new Date(userProfile.nascimento).toLocaleDateString('pt-BR') : '-'}</span>
+                          <span className="profile-info-value">{userProfile?.nascimento ? formatBirthDate(userProfile.nascimento) : '-'}</span>
                         </div>
                         <div className="profile-info-item">
                           <span className="profile-info-label">Endereço</span>
