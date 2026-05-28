@@ -180,7 +180,7 @@ function App() {
                 if (rankIndex !== undefined && rankIndex >= 0) {
                   historico.push({
                     eventoNome: ev.nome,
-                    cidade: ev.cidade,
+                    cidade: ev.local || ev.cidade,
                     posicao: rankIndex + 1
                   });
                 }
@@ -908,7 +908,7 @@ function App() {
               <div style={{ display: 'flex', gap: '1.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                  {selectedEvent.cidade}
+                  {selectedEvent.local || selectedEvent.cidade}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -1141,7 +1141,7 @@ function App() {
                                       if (rankIndex !== -1) {
                                         historico.push({
                                           eventoNome: ev.nome,
-                                          cidade: ev.cidade,
+                                          cidade: ev.local || ev.cidade,
                                           posicao: rankIndex + 1
                                         });
                                       }
@@ -1264,7 +1264,7 @@ function App() {
                               if (rankIndex !== -1) {
                                 historico.push({
                                   eventoNome: ev.nome,
-                                  cidade: ev.cidade,
+                                  cidade: ev.local || ev.cidade,
                                   posicao: rankIndex + 1
                                 });
                               }
@@ -1462,7 +1462,7 @@ function App() {
           if (rankIndex !== undefined && rankIndex >= 0) {
             historico.push({
               eventoNome: ev.nome,
-              cidade: ev.cidade || ev.local,
+              cidade: ev.local || ev.cidade,
               posicao: rankIndex + 1,
               slug: slugify(ev.nome)
             });
@@ -1755,7 +1755,7 @@ function App() {
     const config = (typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes) : (ev.detalhes || {})).portalConfig || {};
     if (!searchTerm.trim() && config.ocultarDaHome) return false;
     const nome = ev.nome || '';
-    const cidade = ev.cidade || '';
+    const cidade = ev.local || ev.cidade || '';
     return nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
            cidade.toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -2355,7 +2355,7 @@ function App() {
                                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                                   <circle cx="12" cy="10" r="3"></circle>
                                 </svg>
-                                {ev.cidade}
+                                {ev.local || ev.cidade}
                               </div>
                               <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
