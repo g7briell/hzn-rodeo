@@ -1661,6 +1661,7 @@ function App() {
     const isDiretor = cargo.includes('diretor');
     const isMidia = cargo.includes('midia');
     const isCompetidor = !isTropeiro && !isDiretor && !isMidia;
+    const peaoStats = publicProfile && isCompetidor ? getPeaoStats(publicProfile.nome) : { outs: 0, paradas: 0, notas90Plus: 0, runs: [] };
 
     if (publicProfile) {
       if (isTropeiro) {
@@ -1765,8 +1766,44 @@ function App() {
               {/* Grid 2 colunas para telas grandes */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
                 
-                {/* Coluna Esquerda: Bio */}
+                {/* Coluna Esquerda: Bio & Competidor Stats */}
                 <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)', height: 'fit-content' }}>
+                  {isCompetidor && (
+                    <>
+                      {/* Stats Dashboard Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem 0.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '2rem', width: '100%' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Montarias</span>
+                          <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{peaoStats.outs}</strong>
+                        </div>
+                        <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                          <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Paradas</span>
+                          <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>{peaoStats.paradas}</strong>
+                        </div>
+                        <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                          <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Notas 90+</span>
+                          <strong style={{ fontSize: '1.2rem', color: '#E11D48' }}>{peaoStats.notas90Plus}</strong>
+                        </div>
+                      </div>
+
+                      {/* Cidade/Estado e Nascimento */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div>
+                          <label style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>Cidade / Estado</label>
+                          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.75rem 1rem', borderRadius: '12px', color: '#fff', fontSize: '0.9rem' }}>
+                            {publicProfile.cidade || (publicProfile.endereco ? publicProfile.endereco.split(',').pop()?.trim() : 'Não informado')}
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block' }}>Data de Nasc.</label>
+                          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.75rem 1rem', borderRadius: '12px', color: '#fff', fontSize: '0.9rem' }}>
+                            {publicProfile.nascimento || 'Não informado'}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Biografia</h3>
                   <p style={{ color: 'var(--text-main)', lineHeight: '1.6', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>
                     {publicProfileBio || "Este usuário ainda não adicionou uma biografia."}
@@ -1777,26 +1814,56 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                   
                   {isCompetidor && (
-                    <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
-                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico de Eventos</h3>
-                      {historico.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                          {historico.map((h, i) => (
-                            <div key={i} onClick={() => navigateTo(`/evento/${h.slug}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'background 0.2s' }} className="hover:bg-white/5">
-                              <div>
-                                <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>{h.eventoNome}</h4>
-                                <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{h.cidade}</span>
+                    <>
+                      <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+                        <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Histórico de Eventos</h3>
+                        {historico.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {historico.map((h, i) => (
+                              <div key={i} onClick={() => navigateTo(`/evento/${h.slug}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'background 0.2s' }} className="hover:bg-white/5">
+                                <div>
+                                  <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>{h.eventoNome}</h4>
+                                  <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{h.cidade}</span>
+                                </div>
+                                <div style={{ background: 'rgba(225, 29, 72, 0.1)', color: 'var(--primary)', padding: '0.5rem 1rem', borderRadius: '100px', fontWeight: 'bold' }}>
+                                  {h.posicao}º Lugar
+                                </div>
                               </div>
-                              <div style={{ background: 'rgba(225, 29, 72, 0.1)', color: 'var(--primary)', padding: '0.5rem 1rem', borderRadius: '100px', fontWeight: 'bold' }}>
-                                {h.posicao}º Lugar
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum evento registrado no histórico.</p>
+                        )}
+                      </div>
+
+                      {/* Ultimas Montarias (últimas 3 apenas) */}
+                      <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+                        <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Últimas Montarias</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {peaoStats.runs.length > 0 ? (
+                            [...peaoStats.runs].reverse().slice(0, 3).map((run: any, idx: number) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
+                                <div>
+                                  <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff' }}>vs {run.touro}</h4>
+                                  <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{run.eventoNome} • {run.dia}</span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : '#ef4444' }}>
+                                    {run.status} ({run.tempo.toFixed(2)}s)
+                                  </span>
+                                  {run.status === 'Parada' && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota: {run.score.toFixed(2)}</span>}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))
+                          ) : (
+                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhuma montaria registrada ainda.</p>
+                          )}
                         </div>
-                      ) : (
-                        <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum evento registrado no histórico.</p>
-                      )}
-                    </div>
+                        <div style={{ marginTop: '1.5rem', fontSize: '0.7rem', color: '#64748b', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                          * histórico de montarias registrado no RodeoApp
+                        </div>
+                      </div>
+                    </>
                   )}
 
                   {isTropeiro && (
