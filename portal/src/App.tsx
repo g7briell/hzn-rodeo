@@ -1468,7 +1468,7 @@ function App() {
                 
                 <div className="profile-card" style={{ width: '100%', marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
                   {/* Left Column: Avatar & Role */}
-                  <div className="profile-sidebar" style={{ flex: '1', minWidth: '250px', background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '24px', textAlign: 'center' }}>
+                  <div className="profile-sidebar" style={{ flex: '1', minWidth: '250px', background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div className="profile-avatar-wrapper" style={{ margin: '0 auto' }}>
                       <img 
                         src={selectedPeaoProfile.foto || "/novacontasfoto.jpg"} 
@@ -1492,6 +1492,22 @@ function App() {
                         </span>
                       </div>
                     )}
+
+                    {/* Stats Dashboard Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem 0.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '2rem', width: '100%' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Montarias</span>
+                        <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{peaoStats.outs}</strong>
+                      </div>
+                      <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Paradas</span>
+                        <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>{peaoStats.paradas}</strong>
+                      </div>
+                      <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Notas 90+</span>
+                        <strong style={{ fontSize: '1.2rem', color: '#E11D48' }}>{peaoStats.notas90Plus}</strong>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Right Column: Info */}
@@ -1514,69 +1530,51 @@ function App() {
                       </div>
                     </div>
 
-                    {/* Stats Dashboard Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Montarias</span>
-                        <strong style={{ fontSize: '1.4rem', color: '#fff' }}>{peaoStats.outs}</strong>
-                      </div>
-                      <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Paradas</span>
-                        <strong style={{ fontSize: '1.4rem', color: '#10b981' }}>{peaoStats.paradas}</strong>
-                      </div>
-                      <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Notas 90+</span>
-                        <strong style={{ fontSize: '1.4rem', color: '#E11D48' }}>{peaoStats.notas90Plus}</strong>
+                    {/* Historico de Eventos */}
+                    <div className="profile-history-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', width: '100%' }}>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', color: '#94a3b8' }}>Histórico de Eventos</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto' }} className="custom-scrollbar">
+                        {selectedPeaoProfile.historico && selectedPeaoProfile.historico.length > 0 ? (
+                          selectedPeaoProfile.historico.map((hist: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
+                              <div>
+                                <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{hist.eventoNome} <span style={{ color: '#E11D48', fontSize: '0.9rem', padding: '0.2rem 0.6rem', background: 'rgba(225, 29, 72, 0.1)', borderRadius: '6px' }}>{hist.posicao}º Lugar</span></h4>
+                                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{hist.cidade}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum evento registrado ainda.</p>
+                        )}
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', flexWrap: 'wrap' }}>
-                      {/* Historico */}
-                      <div className="profile-history-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', color: '#94a3b8' }}>Histórico de Eventos</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto' }} className="custom-scrollbar">
-                          {selectedPeaoProfile.historico && selectedPeaoProfile.historico.length > 0 ? (
-                            selectedPeaoProfile.historico.map((hist: any, idx: number) => (
-                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
-                                <div>
-                                  <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{hist.eventoNome} <span style={{ color: '#E11D48', fontSize: '0.9rem', padding: '0.2rem 0.6rem', background: 'rgba(225, 29, 72, 0.1)', borderRadius: '6px' }}>{hist.posicao}º Lugar</span></h4>
-                                  <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{hist.cidade}</span>
-                                </div>
+                    {/* Ultimas Montarias (últimas 3 apenas) */}
+                    <div className="profile-history-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', width: '100%' }}>
+                      <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', color: '#94a3b8' }}>Últimas Montarias</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {peaoStats.runs.length > 0 ? (
+                          [...peaoStats.runs].reverse().slice(0, 3).map((run: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
+                              <div>
+                                <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff' }}>vs {run.touro}</h4>
+                                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{run.eventoNome} • {run.dia}</span>
                               </div>
-                            ))
-                          ) : (
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhum evento registrado ainda.</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Ultimas Montarias */}
-                      <div className="profile-history-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', color: '#94a3b8' }}>Últimas Montarias</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto' }} className="custom-scrollbar">
-                          {peaoStats.runs.length > 0 ? (
-                            peaoStats.runs.map((run: any, idx: number) => (
-                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', alignItems: 'center' }}>
-                                <div>
-                                  <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#fff' }}>vs {run.touro}</h4>
-                                  <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{run.eventoNome} • {run.dia}</span>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : '#ef4444' }}>
-                                    {run.status} ({run.tempo.toFixed(2)}s)
-                                  </span>
-                                  {run.status === 'Parada' && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota: {run.score.toFixed(2)}</span>}
-                                </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : '#ef4444' }}>
+                                  {run.status} ({run.tempo.toFixed(2)}s)
+                                </span>
+                                {run.status === 'Parada' && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota: {run.score.toFixed(2)}</span>}
                               </div>
-                            ))
-                          ) : (
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhuma montaria registrada ainda.</p>
-                          )}
-                        </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Nenhuma montaria registrada ainda.</p>
+                        )}
                       </div>
                     </div>
 
-                    <div style={{ marginTop: '1rem', fontSize: '0.7rem', color: '#64748b', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: '#64748b', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
                       * histórico de montarias registrado no RodeoApp
                     </div>
                   </div>
