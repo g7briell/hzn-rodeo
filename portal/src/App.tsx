@@ -1226,29 +1226,44 @@ function App() {
                               style={{ fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }} 
                               className="hover:text-primary transition-colors" 
                               onClick={async () => {
-                                if (!peao.cpf) return alert("CPF não vinculado.");
+                                let profileData = null;
                                 
-                                const cleanCpf = peao.cpf.replace(/\D/g, '');
-                                const { data } = await supabase.from('perfis_portal').select('*').eq('cpf', cleanCpf).limit(1);
+                                if (peao.cpf) {
+                                  const cleanCpf = peao.cpf.replace(/\D/g, '');
+                                  const { data } = await supabase.from('perfis_portal').select('*').eq('cpf', cleanCpf).limit(1);
+                                  if (data && data.length > 0) {
+                                    profileData = data[0];
+                                  }
+                                }
                                 
-                                if (!data || data.length === 0) return alert("Perfil não encontrado.");
+                                if (!profileData) {
+                                  profileData = {
+                                    nome: peao.nome,
+                                    cidade: peao.cidade || '',
+                                    bio: 'Usuário não cadastrado',
+                                    foto: '/novacontasfoto.jpg',
+                                    veio_do_app_desktop: false,
+                                    cpf: peao.cpf || ''
+                                  };
+                                }
                                 
                                 const historico: any[] = [];
-                                const cleanCpfData = data[0].cpf ? data[0].cpf.replace(/\D/g, '') : '';
+                                const cleanCpfData = profileData.cpf ? profileData.cpf.replace(/\D/g, '') : '';
                                 eventosOficiais.forEach(ev => {
                                   if (ev.detalhes?.ranking) {
-                                      const rankingSorted = ev.detalhes.ranking.map((peao: any) => {
-                                          const peaoNotas = (ev.detalhes.notas || []).filter((n: any) => n.peao === peao.nome && (n.status === 'ativa' || n.status === 'nota_baixa'));
+                                      const rankingSorted = ev.detalhes.ranking.map((p: any) => {
+                                          const peaoNotas = (ev.detalhes.notas || []).filter((n: any) => n.peao === p.nome && (n.status === 'ativa' || n.status === 'nota_baixa'));
                                           let total = 0;
                                           peaoNotas.forEach((n: any) => {
                                               if (n.totalPeao > 0 && n.tempo >= 8) total += (n.totalPeao + n.totalTouro);
                                           });
-                                          return { ...peao, score: total };
+                                          return { ...p, score: total };
                                       }).sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
                                       
                                       const rankIndex = rankingSorted.findIndex((r: any) => {
                                         const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
-                                        return rCpf === cleanCpfData;
+                                        if (cleanCpfData && rCpf) return rCpf === cleanCpfData;
+                                        return r.nome === profileData.nome;
                                       });
                                       
                                       if (rankIndex !== -1) {
@@ -1261,7 +1276,7 @@ function App() {
                                   }
                                 });
                                 
-                                setSelectedPeaoProfile({...data[0], historico});
+                                setSelectedPeaoProfile({...profileData, historico});
                                 setIsProfileModalOpen(true);
                               }}
                             >
