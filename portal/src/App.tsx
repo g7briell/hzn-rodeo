@@ -1417,10 +1417,10 @@ function App() {
                     <div key={idx} 
                          onClick={async () => {
                             setIsPublicProfileLoading(true);
-                            const { data } = await supabase.from('boiadas_oficiais').select('*').eq('status', 'aprovado');
+                            const { data } = await supabase.from('boiadas_oficiais').select('*');
                             setIsPublicProfileLoading(false);
                             if (data) {
-                                let match = data.find(db => slugify(db.nome) === slugify(b.nome));
+                                let match = data.find(db => slugify(db.nome) === slugify(b.nome) && (!db.lados?.__meta || db.lados.__meta.status !== 'pendente'));
                                 if (!match && b.touros && b.touros.length > 0) {
                                     match = data.find(db => {
                                         if (!db.touros) return false;
