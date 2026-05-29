@@ -387,8 +387,25 @@ async function showIntro(htmlText, days, nome, expiry) {
         const response = await fetch(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
         if (response.ok) {
             appSponsors = await response.json();
+            try {
+                localStorage.setItem('rodeo_offline_sponsors', JSON.stringify(appSponsors));
+            } catch (err) {
+                console.error('Erro ao salvar cache de patrocinadores', err);
+            }
+        } else {
+            throw new Error('Falha na resposta HTTP: ' + response.status);
         }
-    } catch (e) { console.error('Erro ao buscar patrocinios', e); }
+    } catch (e) { 
+        console.warn('Erro ao buscar patrocinios da rede, carregando do cache offline...', e);
+        try {
+            const cached = localStorage.getItem('rodeo_offline_sponsors');
+            if (cached) {
+                appSponsors = JSON.parse(cached);
+            }
+        } catch (err) {
+            console.error('Erro ao ler cache de patrocinadores', err);
+        }
+    }
 
     setTimeout(() => {
         if (appSponsors.length > 0) {
