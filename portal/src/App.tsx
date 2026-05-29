@@ -3,7 +3,6 @@ import './index.css';
 import { supabase } from './supabaseClient';
 import AdminDashboard from './AdminDashboard';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('hzn_gemini_api_key') || '';
 
 const formatSide = (s: any) => {
   if (!s) return s;
@@ -457,6 +456,15 @@ function App() {
 
   const handleGenerateNews = async () => {
     if (!newsRound) return alert("Selecione o Round / Dia.");
+    
+    let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('hzn_gemini_api_key');
+    if (!apiKey) {
+      const inputKey = prompt("Chave de API do Gemini não encontrada no ambiente. Por favor, cole a sua chave API do Google AI Studio para prosseguir:");
+      if (!inputKey) return;
+      localStorage.setItem('hzn_gemini_api_key', inputKey.trim());
+      apiKey = inputKey.trim();
+    }
+
     setIsGeneratingNews(true);
     try {
       const notas = selectedEvent.detalhes?.notas || [];
@@ -526,7 +534,7 @@ Instruções importantes:
 - Cite também as outras melhores notas e a melhor boiada da noite.
 - Responda apenas em formato JSON com os campos 'titulo' e 'conteudo'. Não adicione markdown \`\`\`json ou outra formatação antes/depois do JSON.`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
