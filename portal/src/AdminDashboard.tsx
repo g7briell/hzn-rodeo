@@ -948,6 +948,7 @@ export default function AdminDashboard() {
             </form>
           </div>
         </div>
+      )}
       {/* Novo Patrocínio Modal */}
       {isSponsorModalOpen && (
         <div className="modal-overlay active" style={{ display: 'flex' }}>
