@@ -381,22 +381,54 @@ async function showIntro(htmlText, days, nome, expiry) {
 
     // Fetch patrocinios for the app
     let appSponsors = [];
-    try {
-        const url = 'https://scivakieachwewdhnuhv.supabase.co/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
-        const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjaXZha2llYWNod2V3ZGhudWh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTc3NzksImV4cCI6MjA5NDEzMzc3OX0.nwCC0FYPBsMGhuj7xJju9ubFD2GjKmlTLOptz0UFWfk';
-        const response = await fetch(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
-        if (response.ok) {
-            appSponsors = await response.json();
-            try {
-                localStorage.setItem('rodeo_offline_sponsors', JSON.stringify(appSponsors));
-            } catch (err) {
-                console.error('Erro ao salvar cache de patrocinadores', err);
+    let fetchSuccess = false;
+
+    // Try fetching from public portal APIs first to bypass Supabase RLS limits
+    const portalUrls = [
+        'https://portal.rodeoapp.pro/api/sponsors',
+        'https://rodeoapp.pro/api/sponsors',
+        'http://localhost:3000/api/sponsors'
+    ];
+
+    for (const portalUrl of portalUrls) {
+        try {
+            const response = await fetch(portalUrl);
+            if (response.ok) {
+                appSponsors = await response.json();
+                fetchSuccess = true;
+                break;
             }
-        } else {
-            throw new Error('Falha na resposta HTTP: ' + response.status);
+        } catch (e) {
+            console.warn(`Erro ao buscar patrocinadores da URL ${portalUrl}:`, e);
         }
-    } catch (e) { 
-        console.warn('Erro ao buscar patrocinios da rede, carregando do cache offline...', e);
+    }
+
+    // Fallback to Supabase direct API if portal endpoints failed
+    if (!fetchSuccess) {
+        try {
+            const url = 'https://scivakieachwewdhnuhv.supabase.co/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
+            const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjaXZha2llYWNod2V3ZGhudWh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTc3NzksImV4cCI6MjA5NDEzMzc3OX0.nwCC0FYPBsMGhuj7xJju9ubFD2GjKmlTLOptz0UFWfk';
+            const response = await fetch(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
+            if (response.ok) {
+                appSponsors = await response.json();
+                fetchSuccess = true;
+            } else {
+                throw new Error('Falha na resposta HTTP: ' + response.status);
+            }
+        } catch (e) {
+            console.warn('Erro ao buscar patrocinios diretamente do Supabase:', e);
+        }
+    }
+
+    // Cache results offline or fallback to cache if completely offline
+    if (fetchSuccess) {
+        try {
+            localStorage.setItem('rodeo_offline_sponsors', JSON.stringify(appSponsors));
+        } catch (err) {
+            console.error('Erro ao salvar cache de patrocinadores', err);
+        }
+    } else {
+        console.warn('Carregando patrocinadores do cache offline...');
         try {
             const cached = localStorage.getItem('rodeo_offline_sponsors');
             if (cached) {
