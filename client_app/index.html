@@ -37,12 +37,17 @@
         .border-accent { border-color: var(--event-accent); }
         
         .fade-in-out {
-            animation: fadeInOut 1.5s ease-in-out forwards;
+            animation: splashLogoIn 0.6s ease-out forwards;
         }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: scale(0.95); }
-            30% { opacity: 1; transform: scale(1); }
-            75% { opacity: 1; transform: scale(1); }
+        @keyframes splashLogoIn {
+            0% { opacity: 0; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .splash-logo-out {
+            animation: splashLogoOut 0.4s ease-in forwards;
+        }
+        @keyframes splashLogoOut {
+            0% { opacity: 1; transform: scale(1); }
             100% { opacity: 0; transform: scale(1.05); }
         }
 

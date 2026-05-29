@@ -459,18 +459,21 @@ async function showIntro(htmlText, days, nome, expiry) {
     }
     
     if (splashLogo) {
-        splashLogo.classList.remove('hidden');
+        splashLogo.classList.remove('hidden', 'splash-logo-out');
         splashLogo.classList.add('fade-in-out');
     }
     if (splashSponsors) splashSponsors.classList.add('hidden');
     
     if (introScreen) { introScreen.classList.remove('hidden'); if (introText) introText.innerHTML = htmlText; }
 
-    // Fetch patrocinios for the app
+    // === PARALLEL: Start fetch AND minimum logo display at the same time ===
+    const MIN_LOGO_DISPLAY_MS = 1500;
+    const logoStartTime = Date.now();
+
+    // Fetch sponsors (runs in parallel with logo display)
     let appSponsors = [];
     let fetchSuccess = false;
 
-    // Try fetching from public portal APIs first to bypass Supabase RLS limits
     const portalUrls = [
         'https://portal.rodeoapp.pro/api/sponsors',
         'https://rodeoapp.pro/api/sponsors',
@@ -494,7 +497,6 @@ async function showIntro(htmlText, days, nome, expiry) {
 
     if (activeIntroRunId !== currentRunId) return;
 
-    // Fallback to Supabase direct API if portal endpoints failed
     if (!fetchSuccess) {
         try {
             const url = 'https://scivakieachwewdhnuhv.supabase.co/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
@@ -535,50 +537,65 @@ async function showIntro(htmlText, days, nome, expiry) {
 
     if (activeIntroRunId !== currentRunId) return;
 
+    // === Wait only the remaining time of the minimum logo display ===
+    const elapsed = Date.now() - logoStartTime;
+    const remainingWait = Math.max(0, MIN_LOGO_DISPLAY_MS - elapsed);
+
     const tIntro = setTimeout(() => {
         if (activeIntroRunId !== currentRunId) return;
-        if (appSponsors.length > 0) {
+
+        // Fade out the logo
+        if (splashLogo) {
+            splashLogo.classList.remove('fade-in-out');
+            splashLogo.classList.add('splash-logo-out');
+        }
+
+        // After logo fade-out (400ms), show sponsors immediately
+        const tAfterLogoOut = setTimeout(() => {
+            if (activeIntroRunId !== currentRunId) return;
             if (splashLogo) splashLogo.classList.add('hidden');
-            if (splashSponsors) {
-                splashSponsors.classList.remove('hidden');
-                const selectedSponsors = appSponsors.sort(() => 0.5 - Math.random()).slice(0, 5);
-                
-                animateSponsorsByGroups(selectedSponsors, sponsorsContainer, currentRunId, () => {
-                    if (activeIntroRunId !== currentRunId) return;
-                    // General fade out of intro screen
-                    if (introScreen) {
-                        introScreen.style.opacity = '0';
-                    }
-                    const tFade = setTimeout(() => {
+
+            if (appSponsors.length > 0) {
+                if (splashSponsors) {
+                    splashSponsors.classList.remove('hidden');
+                    const selectedSponsors = appSponsors.sort(() => 0.5 - Math.random()).slice(0, 5);
+                    
+                    animateSponsorsByGroups(selectedSponsors, sponsorsContainer, currentRunId, () => {
                         if (activeIntroRunId !== currentRunId) return;
                         if (introScreen) {
-                            introScreen.classList.add('hidden');
-                            introScreen.style.opacity = '1';
+                            introScreen.style.opacity = '0';
                         }
-                        showSportSelection();
-                        startSecurityChecks(null, null, expiry);
-                    }, 800);
-                    activeIntroTimeouts.push(tFade);
-                });
-            }
-        } else {
-            if (activeIntroRunId !== currentRunId) return;
-            // General fade out of intro screen if no sponsors
-            if (introScreen) {
-                introScreen.style.opacity = '0';
-            }
-            const tFade = setTimeout(() => {
-                if (activeIntroRunId !== currentRunId) return;
-                if (introScreen) {
-                    introScreen.classList.add('hidden');
-                    introScreen.style.opacity = '1';
+                        const tFade = setTimeout(() => {
+                            if (activeIntroRunId !== currentRunId) return;
+                            if (introScreen) {
+                                introScreen.classList.add('hidden');
+                                introScreen.style.opacity = '1';
+                            }
+                            showSportSelection();
+                            startSecurityChecks(null, null, expiry);
+                        }, 800);
+                        activeIntroTimeouts.push(tFade);
+                    });
                 }
-                showSportSelection();
-                startSecurityChecks(null, null, expiry);
-            }, 800);
-            activeIntroTimeouts.push(tFade);
-        }
-    }, 1500);
+            } else {
+                // No sponsors - just fade out intro
+                if (introScreen) {
+                    introScreen.style.opacity = '0';
+                }
+                const tFade = setTimeout(() => {
+                    if (activeIntroRunId !== currentRunId) return;
+                    if (introScreen) {
+                        introScreen.classList.add('hidden');
+                        introScreen.style.opacity = '1';
+                    }
+                    showSportSelection();
+                    startSecurityChecks(null, null, expiry);
+                }, 800);
+                activeIntroTimeouts.push(tFade);
+            }
+        }, 400);
+        activeIntroTimeouts.push(tAfterLogoOut);
+    }, remainingWait);
     activeIntroTimeouts.push(tIntro);
 }
 
