@@ -141,7 +141,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <PlanCard title="SEMANAL" price="R$ 79,90" period="POR SEMANA" color="bg-white/5" />
             <PlanCard title="MENSAL" price="R$ 269,90" period="POR MÊS" color="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black" highlighted />
-            <PlanCard title="ANUAL" price="R$ 719,90" period="POR ANO" color="bg-white/5" />
+            <PlanCard title="ANUAL" price="R$ 179,90" period="POR ANO" color="bg-white/5" />
           </div>
         </div>
       </section>
