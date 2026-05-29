@@ -361,6 +361,13 @@ async function handleActivation() {
     } finally { btnActivate.disabled = false; }
 }
 
+let activeIntroTimeouts = [];
+
+function clearIntroAnimations() {
+    activeIntroTimeouts.forEach(t => clearTimeout(t));
+    activeIntroTimeouts = [];
+}
+
 function getAnimationGroups(n) {
     if (n === 5) return [[2], [1, 3], [0, 4]];
     if (n === 4) return [[1, 2], [0, 3]];
@@ -375,12 +382,12 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
         return;
     }
 
-    // Render all sponsors side-by-side with opacity-0
+    // Render all sponsors side-by-side with inline style fallback for absolute safety
     container.innerHTML = sponsors.map((s, idx) => `
         <img id="splash-sponsor-logo-${idx}" 
              src="${s.logo_url}" 
-             class="h-28 md:h-36 w-auto object-contain max-w-[150px] md:max-w-[200px] opacity-0 transition-opacity duration-800 ease-in-out" 
-             style="filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));" />
+             class="h-28 md:h-36 w-auto object-contain max-w-[150px] md:max-w-[200px]" 
+             style="opacity: 0; transition: opacity 800ms ease-in-out; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));" />
     `).join('');
 
     const groups = getAnimationGroups(sponsors.length);
@@ -389,7 +396,8 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
     function animateGroup(groupIndex) {
         if (groupIndex >= groups.length) {
             // All groups are now visible. Wait 2 seconds (2000ms), then perform the general fade out.
-            setTimeout(onComplete, 2000);
+            const t = setTimeout(onComplete, 2000);
+            activeIntroTimeouts.push(t);
             return;
         }
 
@@ -400,18 +408,21 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
         });
 
         // Delay between showing next group (e.g. 800ms)
-        setTimeout(() => {
+        const t = setTimeout(() => {
             animateGroup(groupIndex + 1);
         }, 800);
+        activeIntroTimeouts.push(t);
     }
 
     // Start animating groups after a tiny delay to allow DOM insertion
-    setTimeout(() => {
+    const t = setTimeout(() => {
         animateGroup(0);
     }, 100);
+    activeIntroTimeouts.push(t);
 }
 
 async function showIntro(htmlText, days, nome, expiry) {
+    clearIntroAnimations();
     if (loginScreen) loginScreen.classList.add('hidden'); 
     if (homeScreen) homeScreen.classList.add('hidden');
     if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
@@ -494,7 +505,7 @@ async function showIntro(htmlText, days, nome, expiry) {
         }
     }
 
-    setTimeout(() => {
+    const tIntro = setTimeout(() => {
         if (appSponsors.length > 0) {
             if (splashLogo) splashLogo.classList.add('hidden');
             if (splashSponsors) {
@@ -507,7 +518,7 @@ async function showIntro(htmlText, days, nome, expiry) {
                         introScreen.style.transition = 'opacity 800ms ease-in-out';
                         introScreen.style.opacity = '0';
                     }
-                    setTimeout(() => {
+                    const tFade = setTimeout(() => {
                         if (introScreen) {
                             introScreen.classList.add('hidden');
                             introScreen.style.opacity = '1';
@@ -515,6 +526,7 @@ async function showIntro(htmlText, days, nome, expiry) {
                         showSportSelection();
                         startSecurityChecks(null, null, expiry);
                     }, 800);
+                    activeIntroTimeouts.push(tFade);
                 });
             }
         } else {
@@ -523,7 +535,7 @@ async function showIntro(htmlText, days, nome, expiry) {
                 introScreen.style.transition = 'opacity 800ms ease-in-out';
                 introScreen.style.opacity = '0';
             }
-            setTimeout(() => {
+            const tFade = setTimeout(() => {
                 if (introScreen) {
                     introScreen.classList.add('hidden');
                     introScreen.style.opacity = '1';
@@ -531,8 +543,10 @@ async function showIntro(htmlText, days, nome, expiry) {
                 showSportSelection();
                 startSecurityChecks(null, null, expiry);
             }, 800);
+            activeIntroTimeouts.push(tFade);
         }
     }, 2500);
+    activeIntroTimeouts.push(tIntro);
 }
 
 function showLogin() { 
