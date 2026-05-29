@@ -455,6 +455,7 @@ function App() {
   };
 
   const handleGenerateNews = async () => {
+    if (!isAdmin) return alert("Apenas o Administrador do portal pode gerar notícias com IA.");
     if (!newsRound) return alert("Selecione o Round / Dia.");
     
     let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('hzn_gemini_api_key');
@@ -1656,38 +1657,31 @@ Instruções importantes:
               </div>
             )}
 
-            {eventTab === 'noticias' && (() => {
-              const isEventDirectorOrAdmin = isAdmin || (userProfile && (
-                slugify(selectedEvent.diretor || '').includes(slugify(userProfile.nome)) || 
-                slugify(selectedEvent.nome).includes(slugify(userProfile.nome))
-              ));
-              
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                  {isEventDirectorOrAdmin && (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                      <div>
-                        <h4 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Painel do Diretor - Notícias por IA</h4>
-                        <p style={{ margin: '0.25rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>Gere notícias automáticas com inteligência artificial para os rounds deste evento (serão publicadas no Feed global após aprovação).</p>
-                      </div>
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={() => setShowNewsModal(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                      >
-                        ✨ Gerar Notícia do Round com IA
-                      </button>
+            {eventTab === 'noticias' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                {isAdmin && (
+                  <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <h4 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Painel Admin - Notícias por IA</h4>
+                      <p style={{ margin: '0.25rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>Gere notícias automáticas com inteligência artificial para os rounds deste evento (serão publicadas no Feed global após aprovação).</p>
                     </div>
-                  )}
-
-                  <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>
-                    <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#fff' }}>Comunicados do Evento</h3>
-                    <p style={{ color: '#94a3b8', maxWidth: '450px', margin: '0 auto', fontSize: '0.9rem' }}>Nenhum comunicado importante (como horários de início e avisos oficiais) foi publicado para este evento ainda.</p>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => setShowNewsModal(true)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      ✨ Gerar Notícia do Round com IA
+                    </button>
                   </div>
+                )}
+
+                <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#fff' }}>Comunicados do Evento</h3>
+                  <p style={{ color: '#94a3b8', maxWidth: '450px', margin: '0 auto', fontSize: '0.9rem' }}>Nenhum comunicado importante (como horários de início e avisos oficiais) foi publicado para este evento ainda.</p>
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             {eventTab === 'midia' && (
               <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
