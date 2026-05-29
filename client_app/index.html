@@ -96,7 +96,14 @@
     <!-- Tela de Introdução (Splash) -->
     <div id="intro-screen" class="fixed inset-0 z-[200] bg-[#000000] flex items-center justify-center hidden text-center">
         <div class="relative flex flex-col items-center">
-            <img src="assets/splash_logo.png" class="w-72 h-auto object-contain mb-6 fade-in-out">
+            <img src="assets/splash_logo.png" id="splash-logo" class="w-72 h-auto object-contain mb-6 fade-in-out">
+            <!-- New Sponsors Container -->
+            <div id="splash-sponsors" class="hidden flex-col items-center animate-reveal">
+                <p class="text-slate-500 font-bold text-xs uppercase tracking-[0.4em] mb-8">Oferecimento</p>
+                <div id="splash-sponsors-logos" class="flex flex-wrap justify-center items-center gap-8">
+                    <!-- logos injected here -->
+                </div>
+            </div>
         </div>
     </div>
 

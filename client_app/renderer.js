@@ -361,15 +361,58 @@ async function handleActivation() {
     } finally { btnActivate.disabled = false; }
 }
 
-function showIntro(htmlText, days, nome, expiry) {
+async function showIntro(htmlText, days, nome, expiry) {
     if (loginScreen) loginScreen.classList.add('hidden'); 
     if (homeScreen) homeScreen.classList.add('hidden');
     if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
+    
+    // Reset splash state
+    const splashLogo = document.getElementById('splash-logo');
+    const splashSponsors = document.getElementById('splash-sponsors');
+    const sponsorsContainer = document.getElementById('splash-sponsors-logos');
+    
+    if (splashLogo) {
+        splashLogo.classList.remove('hidden');
+        splashLogo.classList.add('fade-in-out');
+    }
+    if (splashSponsors) splashSponsors.classList.add('hidden');
+    
     if (introScreen) { introScreen.classList.remove('hidden'); if (introText) introText.innerHTML = htmlText; }
+
+    // Fetch patrocinios for the app
+    let appSponsors = [];
+    try {
+        const url = 'https://scivakieachwewdhnuhv.supabase.co/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
+        const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjaXZha2llYWNod2V3ZGhudWh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTc3NzksImV4cCI6MjA5NDEzMzc3OX0.nwCC0FYPBsMGhuj7xJju9ubFD2GjKmlTLOptz0UFWfk';
+        const response = await fetch(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
+        if (response.ok) {
+            appSponsors = await response.json();
+        }
+    } catch (e) { console.error('Erro ao buscar patrocinios', e); }
+
     setTimeout(() => {
-        if (introScreen) introScreen.classList.add('hidden'); 
-        showSportSelection();
-        startSecurityChecks(null, null, expiry);
+        if (appSponsors.length > 0) {
+            if (splashLogo) splashLogo.classList.add('hidden');
+            if (splashSponsors) {
+                const selectedSponsors = appSponsors.sort(() => 0.5 - Math.random()).slice(0, 5);
+                if (sponsorsContainer) {
+                    sponsorsContainer.innerHTML = selectedSponsors.map(s => 
+                        `<img src="${s.logo_url}" class="h-20 w-auto object-contain max-w-[120px]" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); background: rgba(255,255,255,0.1); border-radius: 8px; padding: 4px;" />`
+                    ).join('');
+                }
+                splashSponsors.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    if (introScreen) introScreen.classList.add('hidden'); 
+                    showSportSelection();
+                    startSecurityChecks(null, null, expiry);
+                }, 3500);
+            }
+        } else {
+            if (introScreen) introScreen.classList.add('hidden'); 
+            showSportSelection();
+            startSecurityChecks(null, null, expiry);
+        }
     }, 2500);
 }
 

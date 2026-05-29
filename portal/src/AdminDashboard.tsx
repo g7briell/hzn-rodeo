@@ -3,22 +3,37 @@ import { supabase } from './supabaseClient';
 import BoiadaVisualEditor from './BoiadaVisualEditor';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias' | 'publicidades'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias' | 'patrocinios'>('overview');
   
   const [users, setUsers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [boiadas, setBoiadas] = useState<any[]>([]);
+  const [patrocinios, setPatrocinios] = useState<any[]>([]);
+  const [despesas, setDespesas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Edit Modals State
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [editingBoiada, setEditingBoiada] = useState<any>(null);
+  const [editingNews, setEditingNews] = useState<any>(null);
 
-  // Advertising States
-  const [newAdImage, setNewAdImage] = useState('');
-  const [newAdClickUrl, setNewAdClickUrl] = useState('');
-  const [isSavingAd, setIsSavingAd] = useState(false);
+  // New Sponsor Form States
+  const [isSponsorModalOpen, setIsSponsorModalOpen] = useState(false);
+  const [sponsorEmpresa, setSponsorEmpresa] = useState('');
+  const [sponsorValor, setSponsorValor] = useState('');
+  const [sponsorTempo, setSponsorTempo] = useState('1'); // months
+  const [sponsorTipo, setSponsorTipo] = useState<'portal' | 'app'>('portal');
+  const [sponsorLogo, setSponsorLogo] = useState('');
+  const [sponsorClickUrl, setSponsorClickUrl] = useState('');
+  const [isSavingSponsor, setIsSavingSponsor] = useState(false);
+
+  // New Expense Form States
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseDesc, setExpenseDesc] = useState('');
+  const [expenseValor, setExpenseValor] = useState('');
+  const [expenseData, setExpenseData] = useState(new Date().toISOString().split('T')[0]);
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
     const file = e.target.files?.[0];
@@ -38,15 +53,19 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [usersRes, eventsRes, boiadasRes] = await Promise.all([
+      const [usersRes, eventsRes, boiadasRes, patrociniosRes, despesasRes] = await Promise.all([
         supabase.from('perfis_portal').select('*'),
         supabase.from('eventos_oficiais').select('*'),
-        supabase.from('boiadas_oficiais').select('*')
+        supabase.from('boiadas_oficiais').select('*'),
+        supabase.from('patrocinios').select('*').order('created_at', { ascending: false }),
+        supabase.from('despesas').select('*').order('data', { ascending: false })
       ]);
 
       if (usersRes.data) setUsers(usersRes.data);
       if (eventsRes.data) setEvents(eventsRes.data);
       if (boiadasRes.data) setBoiadas(boiadasRes.data);
+      if (patrociniosRes.data) setPatrocinios(patrociniosRes.data);
+      if (despesasRes.data) setDespesas(despesasRes.data);
     } catch (err) {
       console.error('Error fetching admin data', err);
     }
@@ -164,83 +183,155 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAddAd = async (e: React.FormEvent) => {
+  const handleSaveNews = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAdImage) return alert('Por favor, faça o upload de uma imagem ou GIF.');
-    
-    setIsSavingAd(true);
+    if (!editingNews) return;
     try {
-      const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
-      const currentAds = adsRow?.lados || [];
-      const newAd = {
-        id: Date.now().toString(),
-        image_url: newAdImage,
-        click_url: newAdClickUrl || '#'
-      };
-      const updatedAds = [...currentAds, newAd];
-
-      if (adsRow) {
-        const { error } = await supabase
-          .from('boiadas_oficiais')
-          .update({ lados: updatedAds })
-          .eq('id', adsRow.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('boiadas_oficiais')
-          .insert({
-            nome: '__PUBLICIDADES__',
-            lados: updatedAds
-          });
-        if (error) throw error;
-      }
-
-      setNewAdImage('');
-      setNewAdClickUrl('');
+      const event = events.find(ev => ev.id === editingNews.eventId);
+      if (!event) return;
+      const noticias = event.detalhes?.noticias || [];
+      const updatedNoticias = noticias.map((n: any) => 
+        n.id === editingNews.id 
+          ? { ...n, titulo: editingNews.titulo, conteudo: editingNews.conteudo } 
+          : n
+      );
+      const updatedDetalhes = { ...event.detalhes, noticias: updatedNoticias };
+      
+      const { error } = await supabase
+        .from('eventos_oficiais')
+        .update({ detalhes: updatedDetalhes })
+        .eq('id', editingNews.eventId);
+        
+      if (error) throw error;
+      setEditingNews(null);
       fetchDashboardData();
-      alert('Publicidade adicionada com sucesso!');
+      alert('Notícia salva com sucesso!');
     } catch (err: any) {
-      alert('Erro ao salvar publicidade: ' + err.message);
-    } finally {
-      setIsSavingAd(false);
+      alert('Erro ao salvar notícia: ' + err.message);
     }
   };
 
-  const handleDeleteAd = async (adId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta publicidade?')) return;
-    
-    try {
-      const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
-      if (!adsRow) return;
-      const currentAds = adsRow.lados || [];
-      const updatedAds = currentAds.filter((ad: any) => ad.id !== adId);
+  const handleSaveSponsorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sponsorEmpresa) return alert('Por favor, informe o nome da empresa.');
+    if (!sponsorLogo) return alert('Por favor, envie o logotipo do patrocinador.');
 
+    setIsSavingSponsor(true);
+    try {
       const { error } = await supabase
-        .from('boiadas_oficiais')
-        .update({ lados: updatedAds })
-        .eq('id', adsRow.id);
+        .from('patrocinios')
+        .insert({
+          empresa: sponsorEmpresa,
+          valor_contrato: parseFloat(sponsorValor) || 0,
+          tempo_contrato: parseInt(sponsorTempo) || 1,
+          tipo: sponsorTipo,
+          logo_url: sponsorLogo,
+          click_url: sponsorClickUrl || '#',
+          status: 'ativo'
+        });
+
       if (error) throw error;
 
+      setSponsorEmpresa('');
+      setSponsorValor('');
+      setSponsorTempo('1');
+      setSponsorLogo('');
+      setSponsorClickUrl('');
+      setIsSponsorModalOpen(false);
       fetchDashboardData();
-      alert('Publicidade excluída com sucesso!');
+      alert('Patrocinador adicionado com sucesso!');
     } catch (err: any) {
-      alert('Erro ao excluir publicidade: ' + err.message);
+      alert('Erro ao salvar patrocinador: ' + err.message);
+    } finally {
+      setIsSavingSponsor(false);
     }
   };
 
+  const handleDeleteSponsor = async (id: number) => {
+    if (!window.confirm('Deseja excluir este patrocinador permanentemente?')) return;
+    try {
+      const { error } = await supabase.from('patrocinios').delete().eq('id', id);
+      if (error) throw error;
+      fetchDashboardData();
+      alert('Patrocinador removido!');
+    } catch (err: any) {
+      alert('Erro ao remover: ' + err.message);
+    }
+  };
+
+  const handleToggleSponsorStatus = async (id: number, currentStatus: string) => {
+    const nextStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
+    try {
+      const { error } = await supabase.from('patrocinios').update({ status: nextStatus }).eq('id', id);
+      if (error) throw error;
+      fetchDashboardData();
+    } catch (err: any) {
+      alert('Erro ao alterar status: ' + err.message);
+    }
+  };
+
+  const handleSaveExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseDesc) return alert('Por favor, informe a descrição da despesa.');
+
+    setIsSavingExpense(true);
+    try {
+      const { error } = await supabase
+        .from('despesas')
+        .insert({
+          descricao: expenseDesc,
+          valor: parseFloat(expenseValor) || 0,
+          data: expenseData
+        });
+
+      if (error) throw error;
+
+      setExpenseDesc('');
+      setExpenseValor('');
+      setExpenseData(new Date().toISOString().split('T')[0]);
+      setIsExpenseModalOpen(false);
+      fetchDashboardData();
+      alert('Despesa registrada com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao salvar despesa: ' + err.message);
+    } finally {
+      setIsSavingExpense(false);
+    }
+  };
+
+  const handleDeleteExpense = async (id: number) => {
+    if (!window.confirm('Deseja excluir esta despesa permanentemente?')) return;
+    try {
+      const { error } = await supabase.from('despesas').delete().eq('id', id);
+      if (error) throw error;
+      fetchDashboardData();
+      alert('Despesa removida!');
+    } catch (err: any) {
+      alert('Erro ao remover: ' + err.message);
+    }
+  };
+
+
+
   const pendingNews: any[] = [];
+  const approvedNews: any[] = [];
   events.forEach(ev => {
     const noticias = ev.detalhes?.noticias || [];
     noticias.forEach((n: any) => {
+      const newsItem = {
+        ...n,
+        eventId: ev.id,
+        eventNome: ev.nome
+      };
       if (n.status === 'pendente') {
-        pendingNews.push({
-          ...n,
-          eventId: ev.id,
-          eventNome: ev.nome
-        });
+        pendingNews.push(newsItem);
+      } else if (n.status === 'aprovado') {
+        approvedNews.push(newsItem);
       }
     });
   });
+
+  const visibleBoiadas = boiadas.filter(b => b.nome !== '__PUBLICIDADES__');
 
   const openEventModal = (ev: any) => {
     setEditingEvent({ ...ev, detalhes: ev.detalhes || {} });
@@ -249,6 +340,20 @@ export default function AdminDashboard() {
   const openBoiadaModal = (b: any) => {
     setEditingBoiada({ ...b, lados: b.lados || {} });
   };
+
+  // Finance and Sponsorship calculations
+  const totalEntradas = patrocinios.reduce((acc, p) => acc + (Number(p.valor_contrato) || 0), 0);
+  const totalSaidas = despesas.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
+  const saldoLiquido = totalEntradas - totalSaidas;
+  
+  // Calculate forecast monthly income: only from active sponsorships
+  const previsaoMensal = patrocinios
+    .filter(p => p.status === 'ativo')
+    .reduce((acc, p) => {
+      const valor = Number(p.valor_contrato) || 0;
+      const meses = Number(p.tempo_contrato) || 1;
+      return acc + (valor / meses);
+    }, 0);
 
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center' }}>Carregando Painel Admin...</div>;
 
@@ -261,28 +366,63 @@ export default function AdminDashboard() {
         <button className={`btn ${activeTab === 'overview' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('overview')}>Visão Geral</button>
         <button className={`btn ${activeTab === 'users' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('users')}>Usuários ({users.length})</button>
         <button className={`btn ${activeTab === 'events' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('events')}>Eventos ({events.length})</button>
-        <button className={`btn ${activeTab === 'boiadas' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('boiadas')}>Boiadas ({boiadas.length})</button>
+        <button className={`btn ${activeTab === 'boiadas' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('boiadas')}>Boiadas ({visibleBoiadas.length})</button>
         <button className={`btn ${activeTab === 'noticias' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('noticias')} style={pendingNews.length > 0 ? { border: '1px solid #eab308' } : {}}>
-          Notícias Pendentes ({pendingNews.length})
+          Notícias ({pendingNews.length + approvedNews.length})
         </button>
-        <button className={`btn ${activeTab === 'publicidades' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('publicidades')}>
-          Publicidades
+        <button className={`btn ${activeTab === 'patrocinios' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('patrocinios')}>
+          Patrocínios & Finanças
         </button>
       </div>
 
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-          <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--primary)' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>Total de Usuários</h3>
-            <p style={{ fontSize: '3rem', margin: 0, fontWeight: 'bold', color: 'var(--primary)' }}>{users.length}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Main counts */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Total de Usuários</h3>
+              <p style={{ fontSize: '2.5rem', margin: 0, fontWeight: 'bold', color: 'var(--accent)' }}>{users.length}</p>
+            </div>
+            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Eventos Oficiais</h3>
+              <p style={{ fontSize: '2.5rem', margin: 0, fontWeight: 'bold', color: 'var(--accent)' }}>{events.length}</p>
+            </div>
+            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Boiadas Cadastradas</h3>
+              <p style={{ fontSize: '2.5rem', margin: 0, fontWeight: 'bold', color: 'var(--accent)' }}>{visibleBoiadas.length}</p>
+            </div>
+            <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Patrocínios Ativos</h3>
+              <p style={{ fontSize: '2.5rem', margin: 0, fontWeight: 'bold', color: 'var(--accent)' }}>{patrocinios.filter(p => p.status === 'ativo').length}</p>
+            </div>
           </div>
-          <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--primary)' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>Eventos Oficiais</h3>
-            <p style={{ fontSize: '3rem', margin: 0, fontWeight: 'bold', color: 'var(--primary)' }}>{events.length}</p>
-          </div>
-          <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--primary)' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>Boiadas Cadastradas</h3>
-            <p style={{ fontSize: '3rem', margin: 0, fontWeight: 'bold', color: 'var(--primary)' }}>{boiadas.length}</p>
+
+          {/* Finance card panel */}
+          <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--primary)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+            <div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Dinheiro Entrou (Total)</span>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: '#10b981' }}>
+                R$ {totalEntradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Dinheiro Saiu (Despesas)</span>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: '#ef4444' }}>
+                R$ {totalSaidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Saldo Líquido</span>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: saldoLiquido >= 0 ? '#10b981' : '#ef4444' }}>
+                R$ {saldoLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Faturamento Mensal (Previsão)</span>
+              <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: 'var(--primary)' }}>
+                R$ {previsaoMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -476,7 +616,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {boiadas.map(b => (
+              {visibleBoiadas.map(b => (
                 <tr key={b.id}>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{b.nome}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{b.lados?.__meta?.tropeiro_email || 'Desconhecido'}</td>
@@ -493,136 +633,257 @@ export default function AdminDashboard() {
         </div>
       )}
       {activeTab === 'noticias' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {pendingNews.length > 0 ? (
-            pendingNews.map((news: any) => (
-              <div 
-                key={news.id} 
-                style={{ 
-                  background: 'var(--bg-card)', 
-                  padding: '2rem', 
-                  borderRadius: '24px', 
-                  border: '1px solid var(--border-light)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div>
-                    <span style={{ background: 'rgba(234,179,8,0.1)', color: '#eab308', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '0.5rem' }}>
-                      PENDENTE
-                    </span>
-                    <span style={{ color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                      {news.eventNome}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button 
-                      className="btn btn-primary" 
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: '#10b981', borderColor: '#10b981', color: '#fff' }}
-                      onClick={() => handleApproveNews(news.eventId, news.id)}
-                    >
-                      Aprovar & Publicar
-                    </button>
-                    <button 
-                      className="btn" 
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)' }}
-                      onClick={() => handleDeleteNews(news.eventId, news.id)}
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+          
+          {/* Notícias Pendentes */}
+          <div>
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', textTransform: 'uppercase', color: '#eab308', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ⚠️ Notícias Pendentes ({pendingNews.length})
+            </h3>
+            {pendingNews.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {pendingNews.map((news: any) => (
+                  <div 
+                    key={news.id} 
+                    style={{ 
+                      background: 'var(--bg-card)', 
+                      padding: '2rem', 
+                      borderRadius: '24px', 
+                      border: '1px solid var(--border-light)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <span style={{ background: 'rgba(234,179,8,0.1)', color: '#eab308', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '0.5rem' }}>
+                          PENDENTE
+                        </span>
+                        <span style={{ color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                          {news.eventNome}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: '#10b981', borderColor: '#10b981', color: '#fff' }}
+                          onClick={() => handleApproveNews(news.eventId, news.id)}
+                        >
+                          Aprovar & Publicar
+                        </button>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                          onClick={() => setEditingNews(news)}
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          className="btn" 
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)' }}
+                          onClick={() => handleDeleteNews(news.eventId, news.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
 
-                <div>
-                  <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.3rem', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' }}>
-                    {news.titulo}
-                  </h4>
-                  <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                    {news.conteudo}
-                  </p>
-                </div>
+                    <div>
+                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.3rem', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' }}>
+                        {news.titulo}
+                      </h4>
+                      <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                        {news.conteudo}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))
-          ) : (
-            <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--bg-card)', borderRadius: '24px', border: '1px dashed var(--border-light)' }}>
-              <p style={{ color: '#94a3b8', margin: 0 }}>Nenhuma notícia aguardando aprovação no momento.</p>
-            </div>
-          )}
+            ) : (
+              <div style={{ padding: '3rem 2rem', textAlign: 'center', background: 'var(--bg-card)', borderRadius: '24px', border: '1px dashed var(--border-light)' }}>
+                <p style={{ color: '#94a3b8', margin: 0 }}>Nenhuma notícia aguardando aprovação no momento.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Notícias Publicadas */}
+          <div>
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', textTransform: 'uppercase', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ✅ Notícias Publicadas / No Ar ({approvedNews.length})
+            </h3>
+            {approvedNews.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {approvedNews.map((news: any) => (
+                  <div 
+                    key={news.id} 
+                    style={{ 
+                      background: 'var(--bg-card)', 
+                      padding: '2rem', 
+                      borderRadius: '24px', 
+                      border: '1px solid var(--border-light)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '0.5rem' }}>
+                          NO AR
+                        </span>
+                        <span style={{ color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                          {news.eventNome}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                          onClick={() => setEditingNews(news)}
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          className="btn" 
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)' }}
+                          onClick={() => handleDeleteNews(news.eventId, news.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.3rem', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' }}>
+                        {news.titulo}
+                      </h4>
+                      <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                        {news.conteudo}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '3rem 2rem', textAlign: 'center', background: 'var(--bg-card)', borderRadius: '24px', border: '1px dashed var(--border-light)' }}>
+                <p style={{ color: '#94a3b8', margin: 0 }}>Nenhuma notícia publicada até o momento.</p>
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 
-      {activeTab === 'publicidades' && (() => {
-        const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
-        const adsList = adsRow?.lados || [];
+      {activeTab === 'patrocinios' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-primary" onClick={() => setIsSponsorModalOpen(true)}>
+              + Novo Patrocínio
+            </button>
+            <button className="btn btn-outline" style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }} onClick={() => setIsExpenseModalOpen(true)}>
+              + Nova Despesa
+            </button>
+          </div>
 
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
-              <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', textTransform: 'uppercase' }}>Adicionar Nova Publicidade (GIF/Imagem)</h3>
-              <form onSubmit={handleAddAd} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Banner (Imagem ou GIF)</label>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="form-input" 
-                      onChange={(e) => handlePhotoUpload(e, (base64) => setNewAdImage(base64))}
-                    />
-                    {newAdImage && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.5rem' }}>Pré-visualização:</span>
-                        <img src={newAdImage} alt="Preview" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '8px' }} />
+          {/* Patrocinadores list */}
+          <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textTransform: 'uppercase' }}>Patrocinadores Ativos ({patrocinios.length})</h3>
+            
+            {patrocinios.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                {patrocinios.map((pat: any) => (
+                  <div key={pat.id} style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <img src={pat.logo_url} alt="Logo" style={{ width: '60px', height: '60px', objectFit: 'contain', background: '#fff', borderRadius: '8px', padding: '0.25rem' }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <h4 style={{ margin: 0, color: '#fff', textTransform: 'none', fontSize: '1.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {pat.empresa}
+                        </h4>
+                        <span style={{ fontSize: '0.8rem', color: pat.tipo === 'app' ? '#38bdf8' : '#fb7185', fontWeight: 'bold' }}>
+                          {pat.tipo === 'app' ? '📱 Splash App' : '📰 Portal Notícias'}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Link de Redirecionamento (Click URL)</label>
-                    <input 
-                      type="url" 
-                      placeholder="https://sua-marca.com.br" 
-                      className="form-input" 
-                      value={newAdClickUrl} 
-                      onChange={(e) => setNewAdClickUrl(e.target.value)} 
-                    />
-                  </div>
-                </div>
-                <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }} disabled={isSavingAd}>
-                  {isSavingAd ? 'Salvando...' : 'Adicionar Publicidade'}
-                </button>
-              </form>
-            </div>
+                    </div>
 
-            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
-              <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textTransform: 'uppercase' }}>Publicidades Ativas ({adsList.length})</h3>
-              {adsList.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                  {adsList.map((ad: any) => (
-                    <div key={ad.id} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <img src={ad.image_url} alt="Banner" style={{ width: '100%', height: '120px', objectFit: 'contain', background: '#000', borderRadius: '8px' }} />
-                      <div style={{ fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#94a3b8' }}>
-                        <strong>Link:</strong> <a href={ad.click_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>{ad.click_url}</a>
-                      </div>
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <div><strong>Valor:</strong> R$ {Number(pat.valor_contrato).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                      <div><strong>Tempo:</strong> {pat.tempo_contrato} {pat.tempo_contrato === 1 ? 'mês' : 'meses'}</div>
+                      <div><strong>Link:</strong> <a href={pat.click_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Acessar Link</a></div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                       <button 
-                        type="button" 
-                        className="btn" 
-                        style={{ background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)', padding: '0.5rem', fontSize: '0.8rem' }}
-                        onClick={() => handleDeleteAd(ad.id)}
+                        className={`btn ${pat.status === 'ativo' ? 'btn-primary' : 'btn-outline'}`} 
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', height: 'auto', textTransform: 'uppercase' }}
+                        onClick={() => handleToggleSponsorStatus(pat.id, pat.status)}
                       >
-                        Excluir Banner
+                        {pat.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                      </button>
+                      <button 
+                        className="btn" 
+                        style={{ background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)', padding: '0.4rem 0.8rem', fontSize: '0.75rem', height: 'auto' }}
+                        onClick={() => handleDeleteSponsor(pat.id)}
+                      >
+                        Excluir
                       </button>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '2rem 0' }}>Nenhuma publicidade cadastrada no momento.</p>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '2rem 0' }}>Nenhum patrocinador cadastrado.</p>
+            )}
           </div>
-        );
-      })()}
+
+          {/* Despesas list */}
+          <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textTransform: 'uppercase' }}>Histórico de Despesas ({despesas.length})</h3>
+            
+            {despesas.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Descrição</th>
+                      <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Valor</th>
+                      <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Data</th>
+                      <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {despesas.map((exp: any) => (
+                      <tr key={exp.id}>
+                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{exp.descricao}</td>
+                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)', color: '#ef4444', fontWeight: 'bold' }}>
+                          R$ {Number(exp.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
+                          {new Date(exp.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </td>
+                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
+                          <button 
+                            className="btn" 
+                            style={{ background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)', padding: '0.4rem 0.8rem', fontSize: '0.75rem', height: 'auto' }}
+                            onClick={() => handleDeleteExpense(exp.id)}
+                          >
+                            Excluir
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '2rem 0' }}>Nenhuma despesa registrada.</p>
+            )}
+          </div>
+
+        </div>
+      )}
 
       {/* Editing Boiada Modal */}
       {editingBoiada && (
@@ -651,6 +912,182 @@ export default function AdminDashboard() {
               />
 
               <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>Salvar Alterações da Boiada</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Editing News Modal */}
+      {editingNews && (
+        <div className="modal-overlay active" style={{ display: 'flex' }}>
+          <div className="auth-modal" style={{ maxWidth: '700px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button className="close-btn" onClick={() => setEditingNews(null)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', textTransform: 'uppercase' }}>Editar Notícia</h2>
+            <form onSubmit={handleSaveNews} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Título da Matéria</label>
+                <input 
+                  className="form-input" 
+                  value={editingNews.titulo || ''} 
+                  onChange={e => setEditingNews({...editingNews, titulo: e.target.value})} 
+                  required
+                />
+              </div>
+              <div>
+                <label className="form-label">Corpo do Texto</label>
+                <textarea 
+                  className="form-input" 
+                  rows={10}
+                  style={{ minHeight: '250px', resize: 'vertical', lineHeight: '1.6' }}
+                  value={editingNews.conteudo || ''} 
+                  onChange={e => setEditingNews({...editingNews, conteudo: e.target.value})} 
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>Salvar Alterações da Notícia</button>
+            </form>
+          </div>
+        </div>
+      {/* Novo Patrocínio Modal */}
+      {isSponsorModalOpen && (
+        <div className="modal-overlay active" style={{ display: 'flex' }}>
+          <div className="auth-modal" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button className="close-btn" onClick={() => setIsSponsorModalOpen(false)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', textTransform: 'uppercase' }}>Novo Patrocinador</h2>
+            <form onSubmit={handleSaveSponsorSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Nome da Empresa</label>
+                <input 
+                  className="form-input" 
+                  value={sponsorEmpresa} 
+                  onChange={e => setSponsorEmpresa(e.target.value)} 
+                  placeholder="Ex: Cerveja Império"
+                  required 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Valor do Contrato (R$)</label>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    className="form-input" 
+                    value={sponsorValor} 
+                    onChange={e => setSponsorValor(e.target.value)} 
+                    placeholder="Ex: 5000.00"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Tempo de Contrato (meses)</label>
+                  <input 
+                    type="number"
+                    className="form-input" 
+                    value={sponsorTempo} 
+                    onChange={e => setSponsorTempo(e.target.value)} 
+                    placeholder="Ex: 12"
+                    min="1"
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Tipo de Veiculação</label>
+                  <select 
+                    className="form-input" 
+                    value={sponsorTipo} 
+                    onChange={e => setSponsorTipo(e.target.value as any)}
+                  >
+                    <option value="portal">Notícias Portal</option>
+                    <option value="app">Patrocínio App (Splash)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Link de Redirecionamento (Click URL)</label>
+                  <input 
+                    type="url"
+                    className="form-input" 
+                    value={sponsorClickUrl} 
+                    onChange={e => setSponsorClickUrl(e.target.value)} 
+                    placeholder="Ex: https://imperio.com.br"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label">Logotipo (Imagem/GIF)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="form-input" 
+                  onChange={e => handlePhotoUpload(e, (b64) => setSponsorLogo(b64))} 
+                  required
+                />
+                {sponsorLogo && (
+                  <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.5rem' }}>Pré-visualização da Logo:</span>
+                    <img src={sponsorLogo} alt="Logo Preview" style={{ maxWidth: '100%', maxHeight: '100px', objectFit: 'contain', background: '#fff', padding: '0.5rem', borderRadius: '8px' }} />
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }} disabled={isSavingSponsor}>
+                {isSavingSponsor ? 'Salvando...' : 'Confirmar Patrocínio'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Nova Despesa Modal */}
+      {isExpenseModalOpen && (
+        <div className="modal-overlay active" style={{ display: 'flex' }}>
+          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%' }}>
+            <button className="close-btn" onClick={() => setIsExpenseModalOpen(false)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', textTransform: 'uppercase' }}>Registrar Despesa</h2>
+            <form onSubmit={handleSaveExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Descrição / Finalidade</label>
+                <input 
+                  className="form-input" 
+                  value={expenseDesc} 
+                  onChange={e => setExpenseDesc(e.target.value)} 
+                  placeholder="Ex: Aluguel de geradores para etapa"
+                  required 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Valor (R$)</label>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    className="form-input" 
+                    value={expenseValor} 
+                    onChange={e => setExpenseValor(e.target.value)} 
+                    placeholder="Ex: 1500.00"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Data de Lançamento</label>
+                  <input 
+                    type="date"
+                    className="form-input" 
+                    value={expenseData} 
+                    onChange={e => setExpenseData(e.target.value)} 
+                    required 
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }} disabled={isSavingExpense}>
+                {isSavingExpense ? 'Salvando...' : 'Confirmar Despesa'}
+              </button>
             </form>
           </div>
         </div>

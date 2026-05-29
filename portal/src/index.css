@@ -1160,3 +1160,17 @@ h1, h2, h3 {
   }
 }
 
+/* Light Theme for News Viewer */
+body.light-theme-news {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+body.light-theme-news::before,
+body.light-theme-news::after {
+  display: none !important;
+  content: none !important;
+}
+
+

@@ -68,6 +68,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [boiadas, setBoiadas] = useState<any[]>([]);
   const [eventosOficiais, setEventosOficiais] = useState<any[]>([]);
+  const [patrocinios, setPatrocinios] = useState<any[]>([]);
 
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedPeaoProfile, setSelectedPeaoProfile] = useState<any>(null);
@@ -432,6 +433,20 @@ function App() {
     }
   };
 
+  const fetchPatrocinios = async () => {
+    try {
+      const { data } = await supabase
+        .from('patrocinios')
+        .select('*')
+        .eq('status', 'ativo');
+      if (data) {
+        setPatrocinios(data);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar patrocinios:', err);
+    }
+  };
+
   const fetchEventosOficiais = async () => {
     try {
       const { data, error } = await supabase
@@ -534,11 +549,15 @@ Melhor Companhia (CIA) de Boiada da noite: ${bestCiaName} (baseado na média de 
 Instruções importantes:
 - Escreva em português do Brasil com tom jornalístico de esportes de rodeio profissional e entusiasmado.
 - O título deve ser exatamente no formato: "[Vencedor] fez a maior nota do [Rodada] na cidade de [Cidade]!". Exemplo: "Gabriel Ramos fez a maior nota do Round 1 na cidade de Barretos!".
-- O corpo do texto deve começar citando o vencedor, o touro, a CIA de boiada, a pontuação obtida e que isso aconteceu na noite correspondente na cidade de ${selectedEvent.local}.
-- Cite também as outras melhores notas e a melhor boiada da noite.
+- O corpo do texto ('conteudo') deve ser longo, aprofundado e altamente detalhado (mínimo de 400 a 600 palavras), dividido em 4 a 5 parágrafos extensos. Não escreva textos curtos ou resumos.
+- IMPORTANTE: Separe obrigatoriamente cada um dos parágrafos inserindo quebras de linha dupla (adicione duas quebras de linha '\\n\\n' no meio do texto do campo 'conteudo' no JSON para separar os blocos). Exemplo de formato: "Texto do parágrafo 1.\\n\\nTexto do parágrafo 2."
+- No primeiro parágrafo, apresente com emoção o vencedor da noite, o touro, a CIA de boiada, a pontuação obtida e situe o leitor sobre a atmosfera eletrizante da arena na cidade de ${selectedEvent.local}.
+- Nos parágrafos seguintes, descreva com detalhes a técnica da montaria, o nível de dificuldade do touro que exigiu o máximo do atleta, a reação vibrante do público presente e mencione o desempenho individual de cada uma das outras melhores notas citadas (mostrando a competitividade acirrada da rodada).
+- Dedique um parágrafo completo para destacar o prestígio e a constância da CIA eleita como a melhor boiada da noite (${bestCiaName}), comentando sobre a qualidade genética dos touros apresentados por essa companhia.
+- Conclua projetando os próximos rounds do evento e a expectativa para as finais.
 - Responda apenas em formato JSON com os campos 'titulo' e 'conteudo'. Não adicione markdown \`\`\`json ou outra formatação antes/depois do JSON.`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const fetchPayload = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -555,7 +574,14 @@ Instruções importantes:
             }
           }
         })
-      });
+      };
+
+      let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, fetchPayload);
+
+      if (!response.ok) {
+        console.warn(`Gemini 2.5 Flash falhou com status ${response.status}. Tentando fallback para Gemini 1.5 Flash...`);
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, fetchPayload);
+      }
 
       if (!response.ok) {
         let errorMsg = response.statusText || '';
@@ -775,6 +801,7 @@ Instruções importantes:
 
   useEffect(() => {
     fetchEventosOficiais();
+    fetchPatrocinios();
     
     const checkSession = async () => {
       const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
@@ -1048,6 +1075,20 @@ Instruções importantes:
     window.addEventListener('popstate', handleRouting);
     return () => window.removeEventListener('popstate', handleRouting);
   }, []);
+
+  useEffect(() => {
+    if (publicNewsId && publicNews) {
+      document.body.style.backgroundColor = '#ffffff';
+      document.body.classList.add('light-theme-news');
+      return () => {
+        document.body.style.backgroundColor = '#0a0a0a';
+        document.body.classList.remove('light-theme-news');
+      };
+    } else {
+      document.body.style.backgroundColor = '#0a0a0a';
+      document.body.classList.remove('light-theme-news');
+    }
+  }, [publicNewsId, publicNews]);
 
   // Eventos Oficiais vêm do banco agora
 
@@ -2763,10 +2804,9 @@ Instruções importantes:
     const article = publicNews.article;
     const event = publicNews.event;
     
-    // Find ads from __PUBLICIDADES__ boiada
-    const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
-    const adsList = adsRow?.lados || [];
-    const randomAd = adsList.length > 0 ? adsList[Math.floor(Math.random() * adsList.length)] : null;
+    // Find active news portal sponsorships (tipo = 'portal')
+    const activePortalAds = patrocinios.filter(p => p.tipo === 'portal' && p.status === 'ativo');
+    const randomAd = activePortalAds.length > 0 ? activePortalAds[Math.floor(Math.random() * activePortalAds.length)] : null;
 
     // Process article content into paragraphs
     const paragraphs = (article.conteudo || '')
@@ -2791,7 +2831,7 @@ Instruções importantes:
         </header>
 
         {/* Article Container */}
-        <main style={{ maxWidth: '800px', margin: '3rem auto 5rem auto', padding: '0 2rem' }}>
+        <main style={{ maxWidth: '800px', margin: '3rem auto 0 auto', padding: '0 2rem 6rem 2rem' }}>
           {/* Metadata */}
           <div style={{ marginBottom: '1.5rem' }}>
             <span style={{ color: '#E11D48', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>
@@ -2803,13 +2843,6 @@ Instruções importantes:
           <h1 style={{ fontSize: '3rem', fontWeight: 900, lineHeight: '1.15', color: '#0f172a', marginBottom: '1.5rem', textTransform: 'none', fontStyle: 'normal', letterSpacing: '-1px' }}>
             {article.titulo}
           </h1>
-
-          {/* Subtitle / Description */}
-          {paragraphs.length > 0 && (
-            <p style={{ fontSize: '1.25rem', color: '#475569', lineHeight: '1.5', marginBottom: '2rem', fontWeight: 'normal' }}>
-              {paragraphs[0]}
-            </p>
-          )}
 
           {/* Byline / Date */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.5rem', marginBottom: '2rem', color: '#64748b', fontSize: '0.85rem' }}>
@@ -2824,8 +2857,8 @@ Instruções importantes:
 
           {/* Content */}
           <div style={{ fontSize: '1.15rem', lineHeight: '1.8', color: '#334155', fontFamily: '"Inter", sans-serif' }}>
-            {/* Render First Half of paragraphs (starting from index 1 since index 0 is subtitle) */}
-            {firstHalf.slice(1).map((p: string, idx: number) => {
+            {/* Render First Half of paragraphs */}
+            {firstHalf.map((p: string, idx: number) => {
               const isQuote = p.startsWith('"') || p.endsWith('"');
               if (isQuote) {
                 return (
@@ -2853,7 +2886,7 @@ Instruções importantes:
                 </span>
                 <a href={randomAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', maxWidth: '100%' }}>
                   <img 
-                    src={randomAd.image_url} 
+                    src={randomAd.logo_url} 
                     alt="Publicidade" 
                     style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
                   />
@@ -2882,6 +2915,13 @@ Instruções importantes:
               );
             })}
           </div>
+
+          {/* Footer note */}
+          <div style={{ marginTop: '5rem', borderTop: '1px solid #e2e8f0', paddingTop: '2.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', lineHeight: '1.6', fontFamily: '"Outfit", sans-serif' }}>
+            <p style={{ margin: 0, fontWeight: 'bold' }}>
+              ⚠️ Notícias geradas por IA podem conter erros. Contate o administrador se acaso quiser remover a matéria!
+            </p>
+          </div>
         </main>
       </div>
     );
@@ -2889,36 +2929,7 @@ Instruções importantes:
 
   // Explore and feed lists
 
-  const newsFeed = [
-    {
-      id: 1,
-      title: "Gabriel Ramos assume a liderança do ranking nacional de Rodeio",
-      description: "Após uma montaria espetacular na etapa de Barretos, o competidor paulista Gabriel Ramos conquistou a nota 91.50 pontos a bordo do touro 'Corte Seco', assumindo o topo da tabela do campeonato nacional. A disputa segue acirrada para a próxima etapa.",
-      category: "Competições",
-      time: "Há 2 horas"
-    },
-    {
-      id: 2,
-      title: "Nova boiada da CIA Rancho de Prata promete agitar a arena em Americana",
-      description: "A Cia de Rodeio Rancho de Prata anunciou a estreia de 4 novos touros de alto rendimento para a Festa do Peão de Americana. Conhecidos por seus giros rápidos e mudanças abruptas de direção, os animais devem dificultar a vida dos competidores.",
-      category: "Boiadas",
-      time: "Ontem"
-    },
-    {
-      id: 3,
-      title: "Inscrições abertas para a grande etapa do Jaguariúna Rodeo Festival",
-      description: "A organização do evento abriu oficialmente o credenciamento de atletas para as montarias em touros e cavalos. Com premiações recordes este ano, o evento promete atrair os melhores competidores e as principais companhias do Brasil.",
-      category: "Eventos",
-      time: "Há 3 dias"
-    },
-    {
-      id: 4,
-      title: "Supabase anuncia integração com sistema de notas ao vivo do RodeoApp",
-      description: "A nova versão do portal do competidor agora está totalmente integrada com a nuvem do Supabase, permitindo que juízes lancem notas direto da arena e os atletas consultem seus resultados em tempo real através do celular.",
-      category: "Tecnologia",
-      time: "Há 1 semana"
-    }
-  ];
+  const newsFeed: any[] = [];
 
   // Collect dynamic news articles from events
   const dynamicNews: any[] = [];
