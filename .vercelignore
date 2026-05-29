@@ -1,6 +1,4 @@
 node_modules/
-portal/
-client_app/
 .next/
 .gemini/
 *.log
