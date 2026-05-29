@@ -578,7 +578,7 @@ async function showIntro(htmlText, days, nome, expiry) {
             }, 800);
             activeIntroTimeouts.push(tFade);
         }
-    }, 2500);
+    }, 2000);
     activeIntroTimeouts.push(tIntro);
 }
 
