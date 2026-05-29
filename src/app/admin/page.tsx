@@ -108,6 +108,17 @@ export default function AdminDashboard() {
   const [sponsorClickUrl, setSponsorClickUrl] = useState('');
   const [isSavingSponsor, setIsSavingSponsor] = useState(false);
 
+  // Edit Sponsor Config States
+  const [selectedSponsorForConfig, setSelectedSponsorForConfig] = useState<any>(null);
+  const [editSponsorEmpresa, setEditSponsorEmpresa] = useState('');
+  const [editSponsorValor, setEditSponsorValor] = useState('');
+  const [editSponsorTempo, setEditSponsorTempo] = useState('1');
+  const [editSponsorPortal, setEditSponsorPortal] = useState(false);
+  const [editSponsorApp, setEditSponsorApp] = useState(false);
+  const [editSponsorLogo, setEditSponsorLogo] = useState('');
+  const [editSponsorClickUrl, setEditSponsorClickUrl] = useState('');
+  const [isSavingSponsorEdit, setIsSavingSponsorEdit] = useState(false);
+
   // New Expense Form States
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [expenseDesc, setExpenseDesc] = useState('');
@@ -396,11 +407,13 @@ export default function AdminDashboard() {
         });
       }
 
-      const { error } = await supabase
-        .from('patrocinios')
-        .insert(inserts);
-
-      if (error) throw error;
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "insert-sponsor", data: inserts })
+      });
+      const resJson = await res.json();
+      if (!resJson.success) throw new Error(resJson.error);
 
       setSponsorEmpresa('');
       setSponsorValor('');
@@ -419,11 +432,69 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleOpenSponsorConfig = (pat: any) => {
+    setSelectedSponsorForConfig(pat);
+    setEditSponsorEmpresa(pat.empresa || '');
+    setEditSponsorValor(String(pat.valor_contrato || ''));
+    setEditSponsorTempo(String(pat.tempo_contrato || '1'));
+    setEditSponsorPortal(pat.tipo === 'portal');
+    setEditSponsorApp(pat.tipo === 'app');
+    setEditSponsorLogo(pat.logo_url || '');
+    setEditSponsorClickUrl(pat.click_url || '');
+  };
+
+  const handleSaveSponsorEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSponsorForConfig) return;
+    if (!editSponsorEmpresa) return alert('Por favor, informe o nome da empresa.');
+    if (!editSponsorLogo) return alert('Por favor, envie o logotipo do patrocinador.');
+    if (!editSponsorPortal && !editSponsorApp) return alert('Por favor, selecione ao menos um tipo de veiculação.');
+
+    setIsSavingSponsorEdit(true);
+    try {
+      const updates = {
+        empresa: editSponsorEmpresa,
+        valor_contrato: parseFloat(editSponsorValor) || 0,
+        tempo_contrato: parseInt(editSponsorTempo) || 1,
+        tipo: editSponsorPortal ? 'portal' : 'app',
+        logo_url: editSponsorLogo,
+        click_url: editSponsorClickUrl || '#',
+      };
+
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update-sponsor",
+          data: {
+            id: selectedSponsorForConfig.id,
+            updates
+          }
+        })
+      });
+      const resJson = await res.json();
+      if (!resJson.success) throw new Error(resJson.error);
+
+      setSelectedSponsorForConfig(null);
+      fetchPatrocinios();
+      alert('Configuração do patrocinador salva com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao salvar configurações: ' + err.message);
+    } finally {
+      setIsSavingSponsorEdit(false);
+    }
+  };
+
   const handleDeleteSponsor = async (id: number) => {
     if (!window.confirm('Deseja excluir este patrocinador permanentemente?')) return;
     try {
-      const { error } = await supabase.from('patrocinios').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-sponsor", data: { id } })
+      });
+      const resJson = await res.json();
+      if (!resJson.success) throw new Error(resJson.error);
       fetchPatrocinios();
       alert('Patrocinador removido!');
     } catch (err: any) {
@@ -434,8 +505,13 @@ export default function AdminDashboard() {
   const handleToggleSponsorStatus = async (id: number, currentStatus: string) => {
     const nextStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
     try {
-      const { error } = await supabase.from('patrocinios').update({ status: nextStatus }).eq('id', id);
-      if (error) throw error;
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggle-sponsor-status", data: { id, status: nextStatus } })
+      });
+      const resJson = await res.json();
+      if (!resJson.success) throw new Error(resJson.error);
       fetchPatrocinios();
     } catch (err: any) {
       alert('Erro ao alterar status: ' + err.message);
@@ -448,15 +524,20 @@ export default function AdminDashboard() {
 
     setIsSavingExpense(true);
     try {
-      const { error } = await supabase
-        .from('despesas')
-        .insert({
-          descricao: expenseDesc,
-          valor: parseFloat(expenseValor) || 0,
-          data: expenseData
-        });
-
-      if (error) throw error;
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "insert-expense",
+          data: {
+            descricao: expenseDesc,
+            valor: parseFloat(expenseValor) || 0,
+            data: expenseData
+          }
+        })
+      });
+      const resJson = await res.json();
+      if (!resJson.success) throw new Error(resJson.error);
 
       setExpenseDesc('');
       setExpenseValor('');
@@ -474,8 +555,13 @@ export default function AdminDashboard() {
   const handleDeleteExpense = async (id: number) => {
     if (!window.confirm('Deseja excluir esta despesa permanentemente?')) return;
     try {
-      const { error } = await supabase.from('despesas').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-expense", data: { id } })
+      });
+      const resJson = await res.json();
+      if (!resJson.success) throw new Error(resJson.error);
       fetchDespesas();
       alert('Despesa removida!');
     } catch (err: any) {
@@ -750,7 +836,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<Database className="w-4 h-4" />} label="Boiadas" active={activeTab === "boiadas"} onClick={() => setActiveTab("boiadas")} />
           <TopNavBtn icon={<Database className="w-4 h-4" />} label="Eventos" active={activeTab === "eventos"} onClick={() => setActiveTab("eventos")} />
           <TopNavBtn icon={<Download className="w-4 h-4" />} label="Download" active={activeTab === "download"} onClick={() => setActiveTab("download")} />
-          <TopNavBtn icon={<DollarSign className="w-4 h-4" />} label="Patrocínios" active={activeTab === "patrocinios"} onClick={() => setActiveTab("patrocinios")} />
+          <TopNavBtn icon={<DollarSign className="w-4 h-4" />} label="Patrocinadores" active={activeTab === "patrocinios"} onClick={() => setActiveTab("patrocinios")} />
         </div>
 
         <div className="flex items-center gap-4">
@@ -778,7 +864,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<Database className="w-5 h-5" />} label="BOIADAS" active={activeTab === "boiadas"} onClick={() => { setActiveTab("boiadas"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<Database className="w-5 h-5" />} label="EVENTOS" active={activeTab === "eventos"} onClick={() => { setActiveTab("eventos"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<Download className="w-5 h-5" />} label="DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} fullWidth />
-          <TopNavBtn icon={<DollarSign className="w-5 h-5" />} label="PATROCÍNIOS & FINANÇAS" active={activeTab === "patrocinios"} onClick={() => { setActiveTab("patrocinios"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<DollarSign className="w-5 h-5" />} label="PATROCINADORES" active={activeTab === "patrocinios"} onClick={() => { setActiveTab("patrocinios"); setIsSidebarOpen(false); }} fullWidth />
         </div>
       </div>
 
@@ -1284,9 +1370,97 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === "patrocinios" && (
+        {activeTab === "patrocinios" && selectedSponsorForConfig ? (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8 max-w-3xl">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-yellow-500 font-black text-[10px] md:text-xs uppercase tracking-[0.5em] mb-2">Configurações</p>
+                <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter uppercase text-white">Editar Patrocinador</h2>
+              </div>
+              <button 
+                onClick={() => setSelectedSponsorForConfig(null)}
+                className="bg-white/5 hover:bg-white/10 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 border border-white/10"
+              >
+                Voltar à Lista
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSponsorEditSubmit} className="bg-white/5 border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] space-y-6 backdrop-blur-xl">
+              <InputGroup label="Nome da Empresa" value={editSponsorEmpresa} onChange={setEditSponsorEmpresa} placeholder="Ex: Cerveja Império" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <InputGroup label="Valor do Contrato (R$)" type="number" value={editSponsorValor} onChange={setEditSponsorValor} placeholder="Ex: 5000.00" />
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tempo de Contrato (meses)</label>
+                  <input 
+                    type="number"
+                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                    value={editSponsorTempo} 
+                    onChange={e => setEditSponsorTempo(e.target.value)} 
+                    placeholder="Ex: 12"
+                    min="1"
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tipo de Veiculação</label>
+                  <div className="flex gap-6 items-center h-14 bg-black/40 border border-white/10 rounded-2xl px-6">
+                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={editSponsorPortal} 
+                        onChange={(e) => {
+                          setEditSponsorPortal(e.target.checked);
+                          if (e.target.checked) setEditSponsorApp(false);
+                        }}
+                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                      />
+                      Portal Notícias
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={editSponsorApp} 
+                        onChange={(e) => {
+                          setEditSponsorApp(e.target.checked);
+                          if (e.target.checked) setEditSponsorPortal(false);
+                        }}
+                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                      />
+                      Splash App
+                    </label>
+                  </div>
+                </div>
+                <InputGroup label="Link de Redirecionamento" type="url" value={editSponsorClickUrl} onChange={setEditSponsorClickUrl} placeholder="Ex: https://imperio.com.br" />
+              </div>
+
+              <div>
+                <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Logotipo / Banner / Arts / GIFs (Imagem/GIF)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                  onChange={e => handlePhotoUpload(e, (b64) => setEditSponsorLogo(b64))} 
+                />
+                {editSponsorLogo && (
+                  <div className="mt-4 text-center bg-black/40 border border-white/5 p-4 rounded-xl">
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-wider block mb-2">Visualização da Arte Atual:</span>
+                    <img src={editSponsorLogo} alt="Sponsor Art Preview" className="mx-auto max-h-[150px] object-contain bg-white p-2 rounded-lg" />
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50" disabled={isSavingSponsorEdit}>
+                {isSavingSponsorEdit ? 'Salvando Alterações...' : 'Salvar Alterações'}
+              </button>
+            </form>
+          </div>
+        ) : activeTab === "patrocinios" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-6">Patrocínios & Finanças</h2>
+            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-6">Patrocinadores</h2>
             
             {/* Action buttons */}
             <div className="flex gap-4">
@@ -1345,6 +1519,12 @@ export default function AdminDashboard() {
                           onClick={() => handleToggleSponsorStatus(pat.id, pat.status)}
                         >
                           {pat.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                        </button>
+                        <button 
+                          className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-all"
+                          onClick={() => handleOpenSponsorConfig(pat)}
+                        >
+                          Configurar
                         </button>
                         <button 
                           className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
