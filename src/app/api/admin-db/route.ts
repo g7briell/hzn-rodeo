@@ -51,6 +51,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (action === "select-sponsors") {
+      const { data, error } = await supabase.from("patrocinios").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return NextResponse.json({ success: true, data });
+    }
+
+    if (action === "select-expenses") {
+      const { data, error } = await supabase.from("despesas").select("*").order("data", { ascending: false });
+      if (error) throw error;
+      return NextResponse.json({ success: true, data });
+    }
+
     return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
   } catch (err: any) {
     console.error("Admin DB API Error:", err);

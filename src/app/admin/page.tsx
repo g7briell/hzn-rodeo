@@ -244,15 +244,39 @@ export default function AdminDashboard() {
   }
 
   async function fetchPatrocinios() {
-    const { data, error } = await supabase.from("patrocinios").select("*").order("created_at", { ascending: false });
-    if (error) console.error("Erro ao carregar patrocínios:", error);
-    if (data) setPatrocinios(data);
+    try {
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "select-sponsors" })
+      });
+      const resJson = await res.json();
+      if (resJson.success && resJson.data) {
+        setPatrocinios(resJson.data);
+      } else {
+        console.error("Erro ao carregar patrocínios:", resJson.error);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar patrocínios:", err);
+    }
   }
 
   async function fetchDespesas() {
-    const { data, error } = await supabase.from("despesas").select("*").order("data", { ascending: false });
-    if (error) console.error("Erro ao carregar despesas:", error);
-    if (data) setDespesas(data);
+    try {
+      const res = await fetch("/api/admin-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "select-expenses" })
+      });
+      const resJson = await res.json();
+      if (resJson.success && resJson.data) {
+        setDespesas(resJson.data);
+      } else {
+        console.error("Erro ao carregar despesas:", resJson.error);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar despesas:", err);
+    }
   }
 
   const handleApproveEvento = async (id: string) => {
@@ -955,12 +979,6 @@ export default function AdminDashboard() {
               >
                 <Plus className="w-4 h-4" /> Novo Patrocínio
               </button>
-              <button 
-                onClick={() => setIsExpenseModalOpen(true)}
-                className="bg-white/5 hover:bg-white/10 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 border border-white/10"
-              >
-                <Plus className="w-4 h-4" /> Nova Despesa
-              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1469,12 +1487,6 @@ export default function AdminDashboard() {
                 className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-yellow-500/10"
               >
                 <Plus className="w-4 h-4" /> Novo Patrocínio
-              </button>
-              <button 
-                onClick={() => setIsExpenseModalOpen(true)}
-                className="bg-white/5 hover:bg-white/10 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 border border-white/10"
-              >
-                <Plus className="w-4 h-4" /> Nova Despesa
               </button>
             </div>
 
