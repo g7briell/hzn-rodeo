@@ -361,6 +361,39 @@ async function handleActivation() {
     } finally { btnActivate.disabled = false; }
 }
 
+async function showSponsorsSequentially(sponsors, index, container, onComplete) {
+    if (index >= sponsors.length) {
+        onComplete();
+        return;
+    }
+
+    const s = sponsors[index];
+    if (container) {
+        container.innerHTML = `
+            <img src="${s.logo_url}" 
+                 class="h-32 w-auto object-contain max-w-[280px] opacity-0 transition-opacity duration-700 ease-in-out" 
+                 style="filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6));" />
+        `;
+        
+        // Trigger reflow and set opacity to 1 (fade in)
+        const img = container.querySelector('img');
+        setTimeout(() => {
+            if (img) img.style.opacity = '1';
+        }, 50);
+
+        // Keep it visible, then fade it out
+        setTimeout(() => {
+            if (img) img.style.opacity = '0';
+            // Wait for fade out to complete before showing the next sponsor
+            setTimeout(() => {
+                showSponsorsSequentially(sponsors, index + 1, container, onComplete);
+            }, 700); // match duration-700 transition
+        }, 2200); // visible duration
+    } else {
+        showSponsorsSequentially(sponsors, index + 1, container, onComplete);
+    }
+}
+
 async function showIntro(htmlText, days, nome, expiry) {
     if (loginScreen) loginScreen.classList.add('hidden'); 
     if (homeScreen) homeScreen.classList.add('hidden');
@@ -370,6 +403,11 @@ async function showIntro(htmlText, days, nome, expiry) {
     const splashLogo = document.getElementById('splash-logo');
     const splashSponsors = document.getElementById('splash-sponsors');
     const sponsorsContainer = document.getElementById('splash-sponsors-logos');
+    
+    if (introScreen) {
+        introScreen.style.opacity = '1';
+        introScreen.style.transition = '';
+    }
     
     if (splashLogo) {
         splashLogo.classList.remove('hidden');
@@ -443,24 +481,39 @@ async function showIntro(htmlText, days, nome, expiry) {
         if (appSponsors.length > 0) {
             if (splashLogo) splashLogo.classList.add('hidden');
             if (splashSponsors) {
-                const selectedSponsors = appSponsors.sort(() => 0.5 - Math.random()).slice(0, 5);
-                if (sponsorsContainer) {
-                    sponsorsContainer.innerHTML = selectedSponsors.map(s => 
-                        `<img src="${s.logo_url}" class="h-20 w-auto object-contain max-w-[120px]" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); background: rgba(255,255,255,0.1); border-radius: 8px; padding: 4px;" />`
-                    ).join('');
-                }
                 splashSponsors.classList.remove('hidden');
+                const selectedSponsors = appSponsors.sort(() => 0.5 - Math.random()).slice(0, 5);
                 
-                setTimeout(() => {
-                    if (introScreen) introScreen.classList.add('hidden'); 
-                    showSportSelection();
-                    startSecurityChecks(null, null, expiry);
-                }, 3500);
+                showSponsorsSequentially(selectedSponsors, 0, sponsorsContainer, () => {
+                    // General fade out of intro screen
+                    if (introScreen) {
+                        introScreen.style.transition = 'opacity 800ms ease-in-out';
+                        introScreen.style.opacity = '0';
+                    }
+                    setTimeout(() => {
+                        if (introScreen) {
+                            introScreen.classList.add('hidden');
+                            introScreen.style.opacity = '1';
+                        }
+                        showSportSelection();
+                        startSecurityChecks(null, null, expiry);
+                    }, 800);
+                });
             }
         } else {
-            if (introScreen) introScreen.classList.add('hidden'); 
-            showSportSelection();
-            startSecurityChecks(null, null, expiry);
+            // General fade out of intro screen if no sponsors
+            if (introScreen) {
+                introScreen.style.transition = 'opacity 800ms ease-in-out';
+                introScreen.style.opacity = '0';
+            }
+            setTimeout(() => {
+                if (introScreen) {
+                    introScreen.classList.add('hidden');
+                    introScreen.style.opacity = '1';
+                }
+                showSportSelection();
+                startSecurityChecks(null, null, expiry);
+            }, 800);
         }
     }, 2500);
 }
