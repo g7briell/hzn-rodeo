@@ -546,7 +546,21 @@ Instruções importantes:
       });
 
       if (!response.ok) {
-        throw new Error(`Erro na API do Gemini: ${response.statusText}`);
+        let errorMsg = response.statusText || '';
+        try {
+          const errBody = await response.json();
+          if (errBody?.error?.message) {
+            errorMsg = errBody.error.message;
+          } else {
+            errorMsg = JSON.stringify(errBody);
+          }
+        } catch (_) {
+          try {
+            const errText = await response.text();
+            if (errText) errorMsg = errText;
+          } catch (__) {}
+        }
+        throw new Error(`Erro na API do Gemini (${response.status}): ${errorMsg}`);
       }
 
       const resJson = await response.json();
