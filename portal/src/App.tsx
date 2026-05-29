@@ -1898,6 +1898,82 @@ Instruções importantes:
           })()}
         </div>
         </div>
+
+        {showNewsModal && selectedEvent && (
+          <div className="modal-overlay active" onClick={() => !isGeneratingNews && setShowNewsModal(false)}>
+            <div className="auth-modal" style={{ maxWidth: '450px', width: '90%', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+              <button className="close-btn" onClick={() => !isGeneratingNews && setShowNewsModal(false)}>×</button>
+              <h2 className="modal-title" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Gerar Notícia</h2>
+              <p className="modal-subtitle" style={{ marginBottom: '1.5rem' }}>Selecione qual round você deseja usar para que a IA crie a notícia automaticamente.</p>
+              
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Selecione o Round / Dia</label>
+                <select 
+                  className="form-select" 
+                  value={newsRound} 
+                  onChange={(e) => setNewsRound(e.target.value)}
+                  disabled={isGeneratingNews}
+                >
+                  <option value="">Selecione um round...</option>
+                  {(() => {
+                    const days = new Set<string>();
+                    (selectedEvent.detalhes?.notas || []).forEach((n: any) => { if (n.dia) days.add(String(n.dia)); });
+                    const customSort = (a: string, b: string) => {
+                        const strA = String(a || '');
+                        const strB = String(b || '');
+                        const wA = strA.toUpperCase().includes('FINAL') && !strA.toUpperCase().includes('SEMI') ? 100 : strA.toUpperCase().includes('SEMI') ? 90 : 0;
+                        const wB = strB.toUpperCase().includes('FINAL') && !strB.toUpperCase().includes('SEMI') ? 100 : strB.toUpperCase().includes('SEMI') ? 90 : 0;
+                        if (wA !== wB) return wA - wB;
+                        return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+                    };
+                    return Array.from(days).sort(customSort).map(d => (
+                      <option key={d} value={d}>{d.replace(/DIA/i, 'ROUND ')}</option>
+                    ));
+                  })()}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  style={{ flex: 1 }} 
+                  onClick={() => setShowNewsModal(false)}
+                  disabled={isGeneratingNews}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  style={{ flex: 1 }} 
+                  onClick={handleGenerateNews}
+                  disabled={isGeneratingNews || !newsRound}
+                >
+                  {isGeneratingNews ? 'Gerando...' : 'Gerar com IA'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeYoutubeVideoId && (
+          <div className="modal-overlay active" onClick={() => setActiveYoutubeVideoId(null)}>
+            <div className="auth-modal" style={{ maxWidth: '640px', padding: '1rem', background: '#000', border: '1px solid var(--border-light)' }} onClick={(e) => e.stopPropagation()}>
+              <button className="close-btn" style={{ top: '10px', right: '10px', zIndex: 10 }} onClick={() => setActiveYoutubeVideoId(null)}>×</button>
+              <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px' }}>
+                <iframe 
+                  src={`https://www.youtube.com/embed/${activeYoutubeVideoId}?autoplay=1`} 
+                  title="YouTube video player" 
+                  frameBorder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -3666,12 +3742,14 @@ Instruções importantes:
                 <option value="">Selecione um round...</option>
                 {(() => {
                   const days = new Set<string>();
-                  (selectedEvent.detalhes?.notas || []).forEach((n: any) => { if (n.dia) days.add(n.dia); });
+                  (selectedEvent.detalhes?.notas || []).forEach((n: any) => { if (n.dia) days.add(String(n.dia)); });
                   const customSort = (a: string, b: string) => {
-                      const wA = a.toUpperCase().includes('FINAL') && !a.toUpperCase().includes('SEMI') ? 100 : a.toUpperCase().includes('SEMI') ? 90 : 0;
-                      const wB = b.toUpperCase().includes('FINAL') && !b.toUpperCase().includes('SEMI') ? 100 : b.toUpperCase().includes('SEMI') ? 90 : 0;
+                      const strA = String(a || '');
+                      const strB = String(b || '');
+                      const wA = strA.toUpperCase().includes('FINAL') && !strA.toUpperCase().includes('SEMI') ? 100 : strA.toUpperCase().includes('SEMI') ? 90 : 0;
+                      const wB = strB.toUpperCase().includes('FINAL') && !strB.toUpperCase().includes('SEMI') ? 100 : strB.toUpperCase().includes('SEMI') ? 90 : 0;
                       if (wA !== wB) return wA - wB;
-                      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                      return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
                   };
                   return Array.from(days).sort(customSort).map(d => (
                     <option key={d} value={d}>{d.replace(/DIA/i, 'ROUND ')}</option>
