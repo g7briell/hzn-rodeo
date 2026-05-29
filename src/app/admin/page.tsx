@@ -42,7 +42,11 @@ import {
   ChevronRight,
   Database,
   Eye,
-  EyeOff
+  EyeOff,
+  DollarSign,
+  TrendingUp,
+  PiggyBank,
+  Percent
 } from "lucide-react";
 
 const formatSide = (s: any) => {
@@ -89,6 +93,27 @@ export default function AdminDashboard() {
   const [selectedSportsRegister, setSelectedSportsRegister] = useState<string[]>(["rodeio"]);
   const [tempSports, setTempSports] = useState<string[]>([]);
 
+  // Financial & Sponsorship States
+  const [patrocinios, setPatrocinios] = useState<any[]>([]);
+  const [despesas, setDespesas] = useState<any[]>([]);
+
+  // New Sponsor Form States
+  const [isSponsorModalOpen, setIsSponsorModalOpen] = useState(false);
+  const [sponsorEmpresa, setSponsorEmpresa] = useState('');
+  const [sponsorValor, setSponsorValor] = useState('');
+  const [sponsorTempo, setSponsorTempo] = useState('1'); // months
+  const [sponsorTipo, setSponsorTipo] = useState<'portal' | 'app'>('portal');
+  const [sponsorLogo, setSponsorLogo] = useState('');
+  const [sponsorClickUrl, setSponsorClickUrl] = useState('');
+  const [isSavingSponsor, setIsSavingSponsor] = useState(false);
+
+  // New Expense Form States
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseDesc, setExpenseDesc] = useState('');
+  const [expenseValor, setExpenseValor] = useState('');
+  const [expenseData, setExpenseData] = useState(new Date().toISOString().split('T')[0]);
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
+
   useEffect(() => {
     if (selectedLicense) {
       setTempDays(selectedLicense.dias_validos || 0);
@@ -129,10 +154,14 @@ export default function AdminDashboard() {
       fetchLicenses();
       fetchBoiadas();
       fetchEventos();
+      fetchPatrocinios();
+      fetchDespesas();
       const interval = setInterval(() => {
         fetchLicenses();
         fetchBoiadas();
         fetchEventos();
+        fetchPatrocinios();
+        fetchDespesas();
       }, 15000);
       return () => clearInterval(interval);
     }
@@ -200,6 +229,18 @@ export default function AdminDashboard() {
     const { data, error } = await supabase.from("eventos_oficiais").select("*").order("created_at", { ascending: false });
     if (error) console.error("Erro ao carregar eventos:", error);
     if (data) setEventos(data);
+  }
+
+  async function fetchPatrocinios() {
+    const { data, error } = await supabase.from("patrocinios").select("*").order("created_at", { ascending: false });
+    if (error) console.error("Erro ao carregar patrocínios:", error);
+    if (data) setPatrocinios(data);
+  }
+
+  async function fetchDespesas() {
+    const { data, error } = await supabase.from("despesas").select("*").order("data", { ascending: false });
+    if (error) console.error("Erro ao carregar despesas:", error);
+    if (data) setDespesas(data);
   }
 
   const handleApproveEvento = async (id: string) => {
@@ -319,6 +360,117 @@ export default function AdminDashboard() {
       fetchBoiadas();
     } else {
       alert("Erro ao rejeitar boiada: " + error.message);
+    }
+  };
+
+  const handleSaveSponsorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sponsorEmpresa) return alert('Por favor, informe o nome da empresa.');
+    if (!sponsorLogo) return alert('Por favor, envie o logotipo do patrocinador.');
+
+    setIsSavingSponsor(true);
+    try {
+      const { error } = await supabase
+        .from('patrocinios')
+        .insert({
+          empresa: sponsorEmpresa,
+          valor_contrato: parseFloat(sponsorValor) || 0,
+          tempo_contrato: parseInt(sponsorTempo) || 1,
+          tipo: sponsorTipo,
+          logo_url: sponsorLogo,
+          click_url: sponsorClickUrl || '#',
+          status: 'ativo'
+        });
+
+      if (error) throw error;
+
+      setSponsorEmpresa('');
+      setSponsorValor('');
+      setSponsorTempo('1');
+      setSponsorLogo('');
+      setSponsorClickUrl('');
+      setIsSponsorModalOpen(false);
+      fetchPatrocinios();
+      alert('Patrocinador adicionado com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao salvar patrocinador: ' + err.message);
+    } finally {
+      setIsSavingSponsor(false);
+    }
+  };
+
+  const handleDeleteSponsor = async (id: number) => {
+    if (!window.confirm('Deseja excluir este patrocinador permanentemente?')) return;
+    try {
+      const { error } = await supabase.from('patrocinios').delete().eq('id', id);
+      if (error) throw error;
+      fetchPatrocinios();
+      alert('Patrocinador removido!');
+    } catch (err: any) {
+      alert('Erro ao remover: ' + err.message);
+    }
+  };
+
+  const handleToggleSponsorStatus = async (id: number, currentStatus: string) => {
+    const nextStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
+    try {
+      const { error } = await supabase.from('patrocinios').update({ status: nextStatus }).eq('id', id);
+      if (error) throw error;
+      fetchPatrocinios();
+    } catch (err: any) {
+      alert('Erro ao alterar status: ' + err.message);
+    }
+  };
+
+  const handleSaveExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseDesc) return alert('Por favor, informe a descrição da despesa.');
+
+    setIsSavingExpense(true);
+    try {
+      const { error } = await supabase
+        .from('despesas')
+        .insert({
+          descricao: expenseDesc,
+          valor: parseFloat(expenseValor) || 0,
+          data: expenseData
+        });
+
+      if (error) throw error;
+
+      setExpenseDesc('');
+      setExpenseValor('');
+      setExpenseData(new Date().toISOString().split('T')[0]);
+      setIsExpenseModalOpen(false);
+      fetchDespesas();
+      alert('Despesa registrada com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao salvar despesa: ' + err.message);
+    } finally {
+      setIsSavingExpense(false);
+    }
+  };
+
+  const handleDeleteExpense = async (id: number) => {
+    if (!window.confirm('Deseja excluir esta despesa permanentemente?')) return;
+    try {
+      const { error } = await supabase.from('despesas').delete().eq('id', id);
+      if (error) throw error;
+      fetchDespesas();
+      alert('Despesa removida!');
+    } catch (err: any) {
+      alert('Erro ao remover: ' + err.message);
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        callback(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -452,6 +604,20 @@ export default function AdminDashboard() {
     }
   };
 
+  // Finance and Sponsorship calculations
+  const totalEntradas = patrocinios.reduce((acc, p) => acc + (Number(p.valor_contrato) || 0), 0);
+  const totalSaidas = despesas.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
+  const saldoLiquido = totalEntradas - totalSaidas;
+  
+  // Calculate forecast monthly income: only from active sponsorships
+  const previsaoMensal = patrocinios
+    .filter(p => p.status === 'ativo')
+    .reduce((acc, p) => {
+      const valor = Number(p.valor_contrato) || 0;
+      const meses = Number(p.tempo_contrato) || 1;
+      return acc + (valor / meses);
+    }, 0);
+
   const filteredLicenses = licenses.filter(l => 
     l.nome?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     l.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -564,6 +730,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<Database className="w-4 h-4" />} label="Boiadas" active={activeTab === "boiadas"} onClick={() => setActiveTab("boiadas")} />
           <TopNavBtn icon={<Database className="w-4 h-4" />} label="Eventos" active={activeTab === "eventos"} onClick={() => setActiveTab("eventos")} />
           <TopNavBtn icon={<Download className="w-4 h-4" />} label="Download" active={activeTab === "download"} onClick={() => setActiveTab("download")} />
+          <TopNavBtn icon={<DollarSign className="w-4 h-4" />} label="Patrocínios" active={activeTab === "patrocinios"} onClick={() => setActiveTab("patrocinios")} />
         </div>
 
         <div className="flex items-center gap-4">
@@ -591,6 +758,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<Database className="w-5 h-5" />} label="BOIADAS" active={activeTab === "boiadas"} onClick={() => { setActiveTab("boiadas"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<Database className="w-5 h-5" />} label="EVENTOS" active={activeTab === "eventos"} onClick={() => { setActiveTab("eventos"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<Download className="w-5 h-5" />} label="DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<DollarSign className="w-5 h-5" />} label="PATROCÍNIOS & FINANÇAS" active={activeTab === "patrocinios"} onClick={() => { setActiveTab("patrocinios"); setIsSidebarOpen(false); }} fullWidth />
         </div>
       </div>
 
@@ -609,6 +777,85 @@ export default function AdminDashboard() {
                 <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Total de Licenças</div>
               </div>
             </header>
+
+            {/* Financial Overview Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-6 backdrop-blur-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Faturamento Total</span>
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <h3 className="text-2xl font-black text-emerald-400">
+                    R$ {totalEntradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </h3>
+                </div>
+                <div className="text-[9px] text-white/20 uppercase tracking-wider mt-4">
+                  Soma de todos os contratos
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-6 backdrop-blur-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Despesas Registradas</span>
+                    <PiggyBank className="w-5 h-5 text-red-500" />
+                  </div>
+                  <h3 className="text-2xl font-black text-red-400">
+                    R$ {totalSaidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </h3>
+                </div>
+                <div className="text-[9px] text-white/20 uppercase tracking-wider mt-4">
+                  Total de saídas registradas
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-6 backdrop-blur-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Saldo Líquido</span>
+                    <DollarSign className={`w-5 h-5 ${saldoLiquido >= 0 ? 'text-emerald-500' : 'text-red-500'}`} />
+                  </div>
+                  <h3 className={`text-2xl font-black ${saldoLiquido >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    R$ {saldoLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </h3>
+                </div>
+                <div className="text-[9px] text-white/20 uppercase tracking-wider mt-4">
+                  Entradas menos saídas
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-6 backdrop-blur-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Previsão Mensal</span>
+                    <Percent className="w-5 h-5 text-yellow-500" />
+                  </div>
+                  <h3 className="text-2xl font-black text-yellow-500">
+                    R$ {previsaoMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span className="text-xs font-normal text-white/50">/mês</span>
+                  </h3>
+                </div>
+                <div className="text-[9px] text-white/20 uppercase tracking-wider mt-4">
+                  Apenas contratos ativos
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions Panel */}
+            <div className="flex gap-4 mb-8">
+              <button 
+                onClick={() => setIsSponsorModalOpen(true)}
+                className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-yellow-500/10"
+              >
+                <Plus className="w-4 h-4" /> Novo Patrocínio
+              </button>
+              <button 
+                onClick={() => setIsExpenseModalOpen(true)}
+                className="bg-white/5 hover:bg-white/10 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 border border-white/10"
+              >
+                <Plus className="w-4 h-4" /> Nova Despesa
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <DashboardCard 
@@ -1016,6 +1263,128 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {activeTab === "patrocinios" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-6">Patrocínios & Finanças</h2>
+            
+            {/* Action buttons */}
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setIsSponsorModalOpen(true)}
+                className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-yellow-500/10"
+              >
+                <Plus className="w-4 h-4" /> Novo Patrocínio
+              </button>
+              <button 
+                onClick={() => setIsExpenseModalOpen(true)}
+                className="bg-white/5 hover:bg-white/10 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 border border-white/10"
+              >
+                <Plus className="w-4 h-4" /> Nova Despesa
+              </button>
+            </div>
+
+            {/* Patrocinadores list */}
+            <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2rem] backdrop-blur-xl">
+              <h3 className="text-lg font-black uppercase tracking-wider text-yellow-500 mb-6">Patrocinadores Ativos ({patrocinios.length})</h3>
+              
+              {patrocinios.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {patrocinios.map((pat: any) => (
+                    <div key={pat.id} className="bg-black/40 border border-white/10 p-5 rounded-2xl flex flex-col justify-between gap-4 hover:border-yellow-500/30 transition-all">
+                      <div>
+                        <div className="flex items-center gap-4 mb-4">
+                          {pat.logo_url ? (
+                            <img src={pat.logo_url} alt="Logo" className="w-14 h-14 object-contain bg-white rounded-lg p-1 shrink-0" />
+                          ) : (
+                            <div className="w-14 h-14 bg-white/5 rounded-lg flex items-center justify-center shrink-0 border border-white/10">S</div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-bold text-sm text-white truncate">{pat.empresa}</h4>
+                            <span className={`text-[9px] font-black uppercase tracking-wider ${pat.tipo === 'app' ? 'text-blue-400' : 'text-rose-400'}`}>
+                              {pat.tipo === 'app' ? '📱 Splash App' : '📰 Portal Notícias'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-[10px] text-white/50 space-y-1.5 uppercase font-bold tracking-wider">
+                          <div><span className="text-white/30">Valor:</span> <span className="text-white">R$ {Number(pat.valor_contrato).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
+                          <div><span className="text-white/30">Tempo:</span> <span className="text-white">{pat.tempo_contrato} {pat.tempo_contrato === 1 ? 'mês' : 'meses'}</span></div>
+                          <div>
+                            <span className="text-white/30">Link:</span>{' '}
+                            <a href={pat.click_url} target="_blank" rel="noopener noreferrer" className="text-yellow-500 hover:underline break-all">
+                              Ir para o site
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center mt-2 pt-3 border-t border-white/5">
+                        <button 
+                          className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${pat.status === 'ativo' ? 'bg-yellow-500 text-black hover:bg-yellow-400' : 'bg-white/5 text-white/50 hover:bg-white/10'}`} 
+                          onClick={() => handleToggleSponsorStatus(pat.id, pat.status)}
+                        >
+                          {pat.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                        </button>
+                        <button 
+                          className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
+                          onClick={() => handleDeleteSponsor(pat.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-white/30 text-xs font-bold uppercase tracking-widest text-center py-12 bg-black/20 rounded-2xl border border-white/5">Nenhum patrocinador cadastrado.</p>
+              )}
+            </div>
+
+            {/* Despesas list */}
+            <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2rem] backdrop-blur-xl">
+              <h3 className="text-lg font-black uppercase tracking-wider text-white mb-6">Histórico de Despesas ({despesas.length})</h3>
+              
+              {despesas.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/10 text-[9px] font-black text-white/30 uppercase tracking-widest">
+                        <th className="pb-4 font-black">Descrição</th>
+                        <th className="pb-4 font-black">Valor</th>
+                        <th className="pb-4 font-black">Data</th>
+                        <th className="pb-4 font-black text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-xs text-white/80 font-bold">
+                      {despesas.map((exp: any) => (
+                        <tr key={exp.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-4">{exp.descricao}</td>
+                          <td className="py-4 text-red-400 font-bold">
+                            R$ {Number(exp.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-4 text-white/50">
+                            {new Date(exp.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                          </td>
+                          <td className="py-4 text-right">
+                            <button 
+                              onClick={() => handleDeleteExpense(exp.id)}
+                              className="px-2.5 py-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 text-[9px] font-black uppercase tracking-wider transition-all"
+                            >
+                              Excluir
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-white/30 text-xs font-bold uppercase tracking-widest text-center py-12 bg-black/20 rounded-2xl border border-white/5">Nenhuma despesa registrada.</p>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* MODAL DE CONTROLE MASTER */}
@@ -1110,6 +1479,102 @@ export default function AdminDashboard() {
                 {selectedLicense.is_active ? <><Pause className="w-4 h-4 fill-current" /> Pausar Acesso</> : <><Play className="w-4 h-4 fill-current" /> Retomar Acesso</>}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Novo Patrocínio Modal */}
+      {isSponsorModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-2xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsSponsorModalOpen(false)}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Novo Patrocinador</h2>
+            <form onSubmit={handleSaveSponsorSubmit} className="space-y-6">
+              <InputGroup label="Nome da Empresa" value={sponsorEmpresa} onChange={setSponsorEmpresa} placeholder="Ex: Cerveja Império" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <InputGroup label="Valor do Contrato (R$)" type="number" value={sponsorValor} onChange={setSponsorValor} placeholder="Ex: 5000.00" />
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tempo de Contrato (meses)</label>
+                  <input 
+                    type="number"
+                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                    value={sponsorTempo} 
+                    onChange={e => setSponsorTempo(e.target.value)} 
+                    placeholder="Ex: 12"
+                    min="1"
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tipo de Veiculação</label>
+                  <select 
+                    className="w-full bg-black border border-white/10 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all appearance-none cursor-pointer font-black text-xs text-yellow-500 uppercase tracking-widest"
+                    value={sponsorTipo} 
+                    onChange={e => setSponsorTipo(e.target.value as any)}
+                  >
+                    <option value="portal">Notícias Portal</option>
+                    <option value="app">Patrocínio App (Splash)</option>
+                  </select>
+                </div>
+                <InputGroup label="Link de Redirecionamento" type="url" value={sponsorClickUrl} onChange={setSponsorClickUrl} placeholder="Ex: https://imperio.com.br" />
+              </div>
+
+              <div>
+                <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Logotipo (Imagem/GIF)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                  onChange={e => handlePhotoUpload(e, (b64) => setSponsorLogo(b64))} 
+                  required
+                />
+                {sponsorLogo && (
+                  <div className="mt-4 text-center bg-black/40 border border-white/5 p-4 rounded-xl">
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-wider block mb-2">Pré-visualização da Logo:</span>
+                    <img src={sponsorLogo} alt="Logo Preview" className="mx-auto max-h-[80px] object-contain bg-white p-2 rounded-lg" />
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50" disabled={isSavingSponsor}>
+                {isSavingSponsor ? 'Salvando...' : 'Confirmar Patrocínio'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Nova Despesa Modal */}
+      {isExpenseModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-lg w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsExpenseModalOpen(false)}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Registrar Despesa</h2>
+            <form onSubmit={handleSaveExpenseSubmit} className="space-y-6">
+              <InputGroup label="Descrição / Finalidade" value={expenseDesc} onChange={setExpenseDesc} placeholder="Ex: Aluguel de geradores para etapa" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <InputGroup label="Valor (R$)" type="number" value={expenseValor} onChange={setExpenseValor} placeholder="Ex: 1500.00" />
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Data de Lançamento</label>
+                  <input 
+                    type="date"
+                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                    value={expenseData} 
+                    onChange={e => setExpenseData(e.target.value)} 
+                    required 
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50" disabled={isSavingExpense}>
+                {isSavingExpense ? 'Salvando...' : 'Confirmar Despesa'}
+              </button>
+            </form>
           </div>
         </div>
       )}
