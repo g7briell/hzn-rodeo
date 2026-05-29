@@ -578,7 +578,7 @@ async function showIntro(htmlText, days, nome, expiry) {
             }, 800);
             activeIntroTimeouts.push(tFade);
         }
-    }, 2000);
+    }, 1500);
     activeIntroTimeouts.push(tIntro);
 }
 
@@ -594,7 +594,15 @@ function showSportSelection() {
     if (loginScreen) loginScreen.classList.add('hidden');
     if (homeScreen) homeScreen.classList.add('hidden');
     if (introScreen) introScreen.classList.add('hidden');
-    if (sportSelectScreen) sportSelectScreen.classList.remove('hidden');
+    if (sportSelectScreen) {
+        // Reset animation classes before showing
+        sportSelectScreen.classList.remove('sport-anim-active');
+        sportSelectScreen.classList.remove('hidden');
+        // Trigger entrance animations after a tiny delay for DOM update
+        requestAnimationFrame(() => {
+            sportSelectScreen.classList.add('sport-anim-active');
+        });
+    }
     toggleSupportBtn(true);
 
     const auth = window.electronAPI.getAuth();

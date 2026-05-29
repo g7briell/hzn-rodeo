@@ -37,12 +37,12 @@
         .border-accent { border-color: var(--event-accent); }
         
         .fade-in-out {
-            animation: fadeInOut 2.0s ease-in-out forwards;
+            animation: fadeInOut 1.5s ease-in-out forwards;
         }
         @keyframes fadeInOut {
             0% { opacity: 0; transform: scale(0.95); }
             30% { opacity: 1; transform: scale(1); }
-            80% { opacity: 1; transform: scale(1); }
+            75% { opacity: 1; transform: scale(1); }
             100% { opacity: 0; transform: scale(1.05); }
         }
 
@@ -77,6 +77,40 @@
         @keyframes logoFadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
+        }
+
+        /* Sport Selection Screen Entrance Animations */
+        .sport-anim-item {
+            opacity: 0;
+            transform: translateY(25px);
+        }
+        .sport-anim-logo {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.9);
+        }
+        .sport-anim-active .sport-anim-logo {
+            animation: sportLogoIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+        }
+        .sport-anim-active .sport-anim-title {
+            animation: sportSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+        }
+        .sport-anim-active .sport-anim-card-1 {
+            animation: sportSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+        }
+        .sport-anim-active .sport-anim-card-2 {
+            animation: sportSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.45s forwards;
+        }
+        .sport-anim-active .sport-anim-card-3 {
+            animation: sportSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.55s forwards;
+        }
+        .sport-anim-active .sport-anim-footer {
+            animation: sportSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.65s forwards;
+        }
+        @keyframes sportLogoIn {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes sportSlideUp {
+            to { opacity: 1; transform: translateY(0); }
         }
         #intro-screen {
             transition: opacity 800ms ease-in-out;
@@ -185,18 +219,20 @@
     </div>
 
     <!-- Tela de Seleção de Esporte -->
-    <div id="sport-select-screen" class="max-w-4xl w-full glass p-12 rounded-[3.5rem] shadow-2xl relative z-10 hidden text-center animate-in fade-in zoom-in-95 duration-500">
+    <div id="sport-select-screen" class="max-w-4xl w-full glass p-12 rounded-[3.5rem] shadow-2xl relative z-10 hidden text-center">
         <div class="mb-10">
-            <div class="w-48 h-auto mx-auto mb-6">
+            <div class="w-48 h-auto mx-auto mb-6 sport-anim-logo">
                 <img src="assets/splash_logo.png" class="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]">
             </div>
-            <h2 class="text-4xl font-black italic tracking-tighter text-white uppercase">Selecione o <span class="text-yellow-500">Esporte</span></h2>
-            <p class="text-slate-500 mt-2 font-bold text-xs uppercase tracking-[0.2em]">Escolha a modalidade para gerenciar</p>
+            <div class="sport-anim-item sport-anim-title">
+                <h2 class="text-4xl font-black italic tracking-tighter text-white uppercase">Selecione o <span class="text-yellow-500">Esporte</span></h2>
+                <p class="text-slate-500 mt-2 font-bold text-xs uppercase tracking-[0.2em]">Escolha a modalidade para gerenciar</p>
+            </div>
         </div>
 
         <div class="grid grid-cols-3 gap-8">
             <!-- Botão Rodeio -->
-            <button id="btn-sport-rodeio" onclick="selectSport('rodeio')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+            <button id="btn-sport-rodeio" onclick="selectSport('rodeio')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] sport-anim-item sport-anim-card-1">
                 <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
                     <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
@@ -208,7 +244,7 @@
             </button>
 
             <!-- Botão 3 Tambores -->
-            <button id="btn-sport-3tambores" onclick="selectSport('3tambores')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+            <button id="btn-sport-3tambores" onclick="selectSport('3tambores')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] sport-anim-item sport-anim-card-2">
                 <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
                     <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
@@ -220,7 +256,7 @@
             </button>
 
             <!-- Botão Em Criação -->
-            <button id="btn-sport-criacao" disabled class="glass p-8 rounded-[2.5rem] border-white/5 opacity-40 text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] cursor-not-allowed">
+            <button id="btn-sport-criacao" disabled class="glass p-8 rounded-[2.5rem] border-white/5 opacity-40 text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] cursor-not-allowed sport-anim-item sport-anim-card-3">
                 <div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700">
                     <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
                 </div>
@@ -232,7 +268,7 @@
             </button>
         </div>
 
-        <div class="mt-12 flex justify-center gap-4">
+        <div class="mt-12 flex justify-center gap-4 sport-anim-item sport-anim-footer">
             <button onclick="confirmLogout()" class="bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/20 px-6 py-3 rounded-2xl text-xs font-black text-red-500 uppercase tracking-widest transition-all active:scale-95">Sair da Licença</button>
         </div>
     </div>
