@@ -399,7 +399,7 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
         <img id="splash-sponsor-logo-${idx}" 
              src="${s.logo_url}" 
              class="h-28 md:h-36 w-auto object-contain max-w-[150px] md:max-w-[200px]" 
-             style="opacity: 0; transition: opacity 800ms ease-in-out; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));" />
+             style="opacity: 0; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));" />
     `).join('');
 
     const groups = getAnimationGroups(sponsors.length);
@@ -416,7 +416,7 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
         const indices = groups[groupIndex];
         indices.forEach(idx => {
             const img = document.getElementById(`splash-sponsor-logo-${idx}`);
-            if (img) img.style.opacity = '1';
+            if (img) img.classList.add('logo-fade-in');
         });
 
         // Delay between showing next group (e.g. 800ms)
@@ -527,7 +527,6 @@ async function showIntro(htmlText, days, nome, expiry) {
                 animateSponsorsByGroups(selectedSponsors, sponsorsContainer, () => {
                     // General fade out of intro screen
                     if (introScreen) {
-                        introScreen.style.transition = 'opacity 800ms ease-in-out';
                         introScreen.style.opacity = '0';
                     }
                     const tFade = setTimeout(() => {
@@ -544,7 +543,6 @@ async function showIntro(htmlText, days, nome, expiry) {
         } else {
             // General fade out of intro screen if no sponsors
             if (introScreen) {
-                introScreen.style.transition = 'opacity 800ms ease-in-out';
                 introScreen.style.opacity = '0';
             }
             const tFade = setTimeout(() => {
