@@ -102,7 +102,8 @@ export default function AdminDashboard() {
   const [sponsorEmpresa, setSponsorEmpresa] = useState('');
   const [sponsorValor, setSponsorValor] = useState('');
   const [sponsorTempo, setSponsorTempo] = useState('1'); // months
-  const [sponsorTipo, setSponsorTipo] = useState<'portal' | 'app'>('portal');
+  const [sponsorPortal, setSponsorPortal] = useState(true);
+  const [sponsorApp, setSponsorApp] = useState(false);
   const [sponsorLogo, setSponsorLogo] = useState('');
   const [sponsorClickUrl, setSponsorClickUrl] = useState('');
   const [isSavingSponsor, setIsSavingSponsor] = useState(false);
@@ -367,26 +368,45 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!sponsorEmpresa) return alert('Por favor, informe o nome da empresa.');
     if (!sponsorLogo) return alert('Por favor, envie o logotipo do patrocinador.');
+    if (!sponsorPortal && !sponsorApp) return alert('Por favor, selecione ao menos um tipo de veiculação.');
 
     setIsSavingSponsor(true);
     try {
-      const { error } = await supabase
-        .from('patrocinios')
-        .insert({
+      const inserts = [];
+      if (sponsorPortal) {
+        inserts.push({
           empresa: sponsorEmpresa,
           valor_contrato: parseFloat(sponsorValor) || 0,
           tempo_contrato: parseInt(sponsorTempo) || 1,
-          tipo: sponsorTipo,
+          tipo: 'portal',
           logo_url: sponsorLogo,
           click_url: sponsorClickUrl || '#',
           status: 'ativo'
         });
+      }
+      if (sponsorApp) {
+        inserts.push({
+          empresa: sponsorEmpresa,
+          valor_contrato: sponsorPortal ? 0 : (parseFloat(sponsorValor) || 0),
+          tempo_contrato: parseInt(sponsorTempo) || 1,
+          tipo: 'app',
+          logo_url: sponsorLogo,
+          click_url: sponsorClickUrl || '#',
+          status: 'ativo'
+        });
+      }
+
+      const { error } = await supabase
+        .from('patrocinios')
+        .insert(inserts);
 
       if (error) throw error;
 
       setSponsorEmpresa('');
       setSponsorValor('');
       setSponsorTempo('1');
+      setSponsorPortal(true);
+      setSponsorApp(false);
       setSponsorLogo('');
       setSponsorClickUrl('');
       setIsSponsorModalOpen(false);
@@ -1511,14 +1531,26 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tipo de Veiculação</label>
-                  <select 
-                    className="w-full bg-black border border-white/10 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all appearance-none cursor-pointer font-black text-xs text-yellow-500 uppercase tracking-widest"
-                    value={sponsorTipo} 
-                    onChange={e => setSponsorTipo(e.target.value as any)}
-                  >
-                    <option value="portal">Notícias Portal</option>
-                    <option value="app">Patrocínio App (Splash)</option>
-                  </select>
+                  <div className="flex gap-6 items-center h-14 bg-black/40 border border-white/10 rounded-2xl px-6">
+                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={sponsorPortal} 
+                        onChange={(e) => setSponsorPortal(e.target.checked)}
+                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                      />
+                      Portal Notícias
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={sponsorApp} 
+                        onChange={(e) => setSponsorApp(e.target.checked)}
+                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                      />
+                      Splash App
+                    </label>
+                  </div>
                 </div>
                 <InputGroup label="Link de Redirecionamento" type="url" value={sponsorClickUrl} onChange={setSponsorClickUrl} placeholder="Ex: https://imperio.com.br" />
               </div>
