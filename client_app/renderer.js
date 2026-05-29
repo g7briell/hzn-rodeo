@@ -362,6 +362,7 @@ async function handleActivation() {
 }
 
 let activeIntroTimeouts = [];
+let activeIntroRunId = null;
 
 function clearIntroAnimations() {
     activeIntroTimeouts.forEach(t => clearTimeout(t));
@@ -376,11 +377,13 @@ function getAnimationGroups(n) {
     return [[0]];
 }
 
-async function animateSponsorsByGroups(sponsors, container, onComplete) {
+async function animateSponsorsByGroups(sponsors, container, runId, onComplete) {
     if (!container) {
         onComplete();
         return;
     }
+
+    if (activeIntroRunId !== runId) return;
 
     // Helper to extract position 1-5 from click_url hash fragment (#pos-X)
     function getSponsorPosition(s) {
@@ -406,9 +409,13 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
 
     // Function to animate a group
     function animateGroup(groupIndex) {
+        if (activeIntroRunId !== runId) return;
+
         if (groupIndex >= groups.length) {
             // All groups are now visible. Wait 2 seconds (2000ms), then perform the general fade out.
-            const t = setTimeout(onComplete, 2000);
+            const t = setTimeout(() => {
+                if (activeIntroRunId === runId) onComplete();
+            }, 2000);
             activeIntroTimeouts.push(t);
             return;
         }
@@ -421,7 +428,7 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
 
         // Delay between showing next group (e.g. 800ms)
         const t = setTimeout(() => {
-            animateGroup(groupIndex + 1);
+            if (activeIntroRunId === runId) animateGroup(groupIndex + 1);
         }, 800);
         activeIntroTimeouts.push(t);
     }
@@ -434,6 +441,8 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
 }
 
 async function showIntro(htmlText, days, nome, expiry) {
+    const currentRunId = Math.random().toString(36).substring(2, 15);
+    activeIntroRunId = currentRunId;
     clearIntroAnimations();
     if (loginScreen) loginScreen.classList.add('hidden'); 
     if (homeScreen) homeScreen.classList.add('hidden');
@@ -469,8 +478,10 @@ async function showIntro(htmlText, days, nome, expiry) {
     ];
 
     for (const portalUrl of portalUrls) {
+        if (activeIntroRunId !== currentRunId) return;
         try {
             const response = await fetch(portalUrl);
+            if (activeIntroRunId !== currentRunId) return;
             if (response.ok) {
                 appSponsors = await response.json();
                 fetchSuccess = true;
@@ -481,12 +492,15 @@ async function showIntro(htmlText, days, nome, expiry) {
         }
     }
 
+    if (activeIntroRunId !== currentRunId) return;
+
     // Fallback to Supabase direct API if portal endpoints failed
     if (!fetchSuccess) {
         try {
             const url = 'https://scivakieachwewdhnuhv.supabase.co/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
             const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjaXZha2llYWNod2V3ZGhudWh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTc3NzksImV4cCI6MjA5NDEzMzc3OX0.nwCC0FYPBsMGhuj7xJju9ubFD2GjKmlTLOptz0UFWfk';
             const response = await fetch(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
+            if (activeIntroRunId !== currentRunId) return;
             if (response.ok) {
                 appSponsors = await response.json();
                 fetchSuccess = true;
@@ -497,6 +511,8 @@ async function showIntro(htmlText, days, nome, expiry) {
             console.warn('Erro ao buscar patrocinios diretamente do Supabase:', e);
         }
     }
+
+    if (activeIntroRunId !== currentRunId) return;
 
     // Cache results offline or fallback to cache if completely offline
     if (fetchSuccess) {
@@ -517,19 +533,24 @@ async function showIntro(htmlText, days, nome, expiry) {
         }
     }
 
+    if (activeIntroRunId !== currentRunId) return;
+
     const tIntro = setTimeout(() => {
+        if (activeIntroRunId !== currentRunId) return;
         if (appSponsors.length > 0) {
             if (splashLogo) splashLogo.classList.add('hidden');
             if (splashSponsors) {
                 splashSponsors.classList.remove('hidden');
                 const selectedSponsors = appSponsors.sort(() => 0.5 - Math.random()).slice(0, 5);
                 
-                animateSponsorsByGroups(selectedSponsors, sponsorsContainer, () => {
+                animateSponsorsByGroups(selectedSponsors, sponsorsContainer, currentRunId, () => {
+                    if (activeIntroRunId !== currentRunId) return;
                     // General fade out of intro screen
                     if (introScreen) {
                         introScreen.style.opacity = '0';
                     }
                     const tFade = setTimeout(() => {
+                        if (activeIntroRunId !== currentRunId) return;
                         if (introScreen) {
                             introScreen.classList.add('hidden');
                             introScreen.style.opacity = '1';
@@ -541,11 +562,13 @@ async function showIntro(htmlText, days, nome, expiry) {
                 });
             }
         } else {
+            if (activeIntroRunId !== currentRunId) return;
             // General fade out of intro screen if no sponsors
             if (introScreen) {
                 introScreen.style.opacity = '0';
             }
             const tFade = setTimeout(() => {
+                if (activeIntroRunId !== currentRunId) return;
                 if (introScreen) {
                     introScreen.classList.add('hidden');
                     introScreen.style.opacity = '1';
