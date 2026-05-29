@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import BoiadaVisualEditor from './BoiadaVisualEditor';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias' | 'publicidades'>('overview');
   
   const [users, setUsers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -14,6 +14,11 @@ export default function AdminDashboard() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [editingBoiada, setEditingBoiada] = useState<any>(null);
+
+  // Advertising States
+  const [newAdImage, setNewAdImage] = useState('');
+  const [newAdClickUrl, setNewAdClickUrl] = useState('');
+  const [isSavingAd, setIsSavingAd] = useState(false);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
     const file = e.target.files?.[0];
@@ -159,6 +164,70 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAddAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdImage) return alert('Por favor, faça o upload de uma imagem ou GIF.');
+    
+    setIsSavingAd(true);
+    try {
+      const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
+      const currentAds = adsRow?.lados || [];
+      const newAd = {
+        id: Date.now().toString(),
+        image_url: newAdImage,
+        click_url: newAdClickUrl || '#'
+      };
+      const updatedAds = [...currentAds, newAd];
+
+      if (adsRow) {
+        const { error } = await supabase
+          .from('boiadas_oficiais')
+          .update({ lados: updatedAds })
+          .eq('id', adsRow.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('boiadas_oficiais')
+          .insert({
+            nome: '__PUBLICIDADES__',
+            lados: updatedAds
+          });
+        if (error) throw error;
+      }
+
+      setNewAdImage('');
+      setNewAdClickUrl('');
+      fetchDashboardData();
+      alert('Publicidade adicionada com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao salvar publicidade: ' + err.message);
+    } finally {
+      setIsSavingAd(false);
+    }
+  };
+
+  const handleDeleteAd = async (adId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta publicidade?')) return;
+    
+    try {
+      const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
+      if (!adsRow) return;
+      const currentAds = adsRow.lados || [];
+      const updatedAds = currentAds.filter((ad: any) => ad.id !== adId);
+
+      const { error } = await supabase
+        .from('boiadas_oficiais')
+        .update({ lados: updatedAds })
+        .eq('id', adsRow.id);
+      if (error) throw error;
+
+      fetchDashboardData();
+      alert('Publicidade excluída com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao excluir publicidade: ' + err.message);
+    }
+  };
+
   const pendingNews: any[] = [];
   events.forEach(ev => {
     const noticias = ev.detalhes?.noticias || [];
@@ -195,6 +264,9 @@ export default function AdminDashboard() {
         <button className={`btn ${activeTab === 'boiadas' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('boiadas')}>Boiadas ({boiadas.length})</button>
         <button className={`btn ${activeTab === 'noticias' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('noticias')} style={pendingNews.length > 0 ? { border: '1px solid #eab308' } : {}}>
           Notícias Pendentes ({pendingNews.length})
+        </button>
+        <button className={`btn ${activeTab === 'publicidades' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('publicidades')}>
+          Publicidades
         </button>
       </div>
 
@@ -480,6 +552,77 @@ export default function AdminDashboard() {
           )}
         </div>
       )}
+
+      {activeTab === 'publicidades' && (() => {
+        const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
+        const adsList = adsRow?.lados || [];
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', textTransform: 'uppercase' }}>Adicionar Nova Publicidade (GIF/Imagem)</h3>
+              <form onSubmit={handleAddAd} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Banner (Imagem ou GIF)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="form-input" 
+                      onChange={(e) => handlePhotoUpload(e, (base64) => setNewAdImage(base64))}
+                    />
+                    {newAdImage && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.5rem' }}>Pré-visualização:</span>
+                        <img src={newAdImage} alt="Preview" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '8px' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Link de Redirecionamento (Click URL)</label>
+                    <input 
+                      type="url" 
+                      placeholder="https://sua-marca.com.br" 
+                      className="form-input" 
+                      value={newAdClickUrl} 
+                      onChange={(e) => setNewAdClickUrl(e.target.value)} 
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '0.75rem 2rem' }} disabled={isSavingAd}>
+                  {isSavingAd ? 'Salvando...' : 'Adicionar Publicidade'}
+                </button>
+              </form>
+            </div>
+
+            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', textTransform: 'uppercase' }}>Publicidades Ativas ({adsList.length})</h3>
+              {adsList.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                  {adsList.map((ad: any) => (
+                    <div key={ad.id} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <img src={ad.image_url} alt="Banner" style={{ width: '100%', height: '120px', objectFit: 'contain', background: '#000', borderRadius: '8px' }} />
+                      <div style={{ fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#94a3b8' }}>
+                        <strong>Link:</strong> <a href={ad.click_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>{ad.click_url}</a>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="btn" 
+                        style={{ background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)', padding: '0.5rem', fontSize: '0.8rem' }}
+                        onClick={() => handleDeleteAd(ad.id)}
+                      >
+                        Excluir Banner
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#94a3b8', margin: 0, textAlign: 'center', padding: '2rem 0' }}>Nenhuma publicidade cadastrada no momento.</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Editing Boiada Modal */}
       {editingBoiada && (

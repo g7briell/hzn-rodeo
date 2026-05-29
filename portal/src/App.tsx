@@ -116,6 +116,8 @@ function App() {
   // Public Boiada States
   const [publicBoiadaSlug, setPublicBoiadaSlug] = useState<string | null>(null);
   const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
+  const [publicNewsId, setPublicNewsId] = useState<string | null>(null);
+  const [publicNews, setPublicNews] = useState<any>(null);
   const [selectedRankingDay, setSelectedRankingDay] = useState<string>('Geral');
   const [verifiedCpfs, setVerifiedCpfs] = useState<Set<string>>(new Set());
   const [eventTab, setEventTab] = useState<'home'|'ranking'|'sorteios'|'competidores'|'boiadas'|'noticias'|'midia'>('home');
@@ -505,11 +507,12 @@ function App() {
         ciaScores[ciaName].count += 1;
       });
 
-      const bestCiaName = Object.keys(ciaScores).sort((a, b) => {
+      const eligibleCias = Object.keys(ciaScores).filter(name => name !== 'Desconhecida' && ciaScores[name].count >= 2);
+      const bestCiaName = eligibleCias.sort((a, b) => {
         const avgA = ciaScores[a].total / ciaScores[a].count;
         const avgB = ciaScores[b].total / ciaScores[b].count;
         return avgB - avgA;
-      })[0] || 'Nenhuma registrada';
+      })[0] || 'Nenhuma boiada com 2+ saídas';
 
       // Find runner ups (top 3 next best)
       const runnerUps = sortedNotes.slice(1, 4).map((n: any) => {
@@ -1002,12 +1005,42 @@ Instruções importantes:
             setIsPublicBoiadaLoading(false);
           }
         }
+      } else if (path.startsWith('/noticia/')) {
+        const id = path.replace('/noticia/', '');
+        if (id) {
+          setPublicNewsId(id);
+          setPublicProfileSlug(null);
+          setPublicBoiadaSlug(null);
+          setPublicEventSlug(null);
+          try {
+            const { data } = await supabase
+              .from('eventos_oficiais')
+              .select('*');
+            
+            let foundNews = null;
+            let foundEvent = null;
+            (data || []).forEach(ev => {
+              const noticias = ev.detalhes?.noticias || [];
+              const match = noticias.find((n: any) => n.id === id);
+              if (match) {
+                foundNews = match;
+                foundEvent = ev;
+              }
+            });
+            setPublicNews(foundNews ? { article: foundNews, event: foundEvent } : null);
+          } catch (err) {
+            console.error(err);
+            setPublicNews(null);
+          }
+        }
       } else {
         setPublicProfileSlug(null);
         setPublicProfile(null);
         setPublicBoiadaSlug(null);
         setPublicBoiada(null);
-          setPublicEventSlug(null);
+        setPublicEventSlug(null);
+        setPublicNewsId(null);
+        setPublicNews(null);
       }
     };
 
@@ -2726,6 +2759,134 @@ Instruções importantes:
     );
   }
 
+  if (publicNewsId && publicNews) {
+    const article = publicNews.article;
+    const event = publicNews.event;
+    
+    // Find ads from __PUBLICIDADES__ boiada
+    const adsRow = boiadas.find(b => b.nome === '__PUBLICIDADES__');
+    const adsList = adsRow?.lados || [];
+    const randomAd = adsList.length > 0 ? adsList[Math.floor(Math.random() * adsList.length)] : null;
+
+    // Process article content into paragraphs
+    const paragraphs = (article.conteudo || '')
+      .split('\n')
+      .map((p: string) => p.trim())
+      .filter((p: string) => p.length > 0);
+
+    const half = Math.ceil(paragraphs.length / 2);
+    const firstHalf = paragraphs.slice(0, half);
+    const secondHalf = paragraphs.slice(half);
+
+    return (
+      <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', color: '#1e293b', fontFamily: '"Outfit", sans-serif' }}>
+        {/* Navigation Header */}
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
+          <div style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}>
+            <img src="/header_logo.png" alt="RodeoApp" style={{ height: '35px', filter: 'invert(1) brightness(0.2)' }} />
+          </div>
+          <button className="btn btn-outline" style={{ borderColor: '#cbd5e1', color: '#1e293b' }} onClick={() => navigateTo('/')}>
+            &larr; Voltar ao Portal
+          </button>
+        </header>
+
+        {/* Article Container */}
+        <main style={{ maxWidth: '800px', margin: '3rem auto 5rem auto', padding: '0 2rem' }}>
+          {/* Metadata */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <span style={{ color: '#E11D48', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>
+              {event ? `EVENTOS • ${event.nome}` : 'NOTÍCIAS'}
+            </span>
+          </div>
+
+          {/* Headline */}
+          <h1 style={{ fontSize: '3rem', fontWeight: 900, lineHeight: '1.15', color: '#0f172a', marginBottom: '1.5rem', textTransform: 'none', fontStyle: 'normal', letterSpacing: '-1px' }}>
+            {article.titulo}
+          </h1>
+
+          {/* Subtitle / Description */}
+          {paragraphs.length > 0 && (
+            <p style={{ fontSize: '1.25rem', color: '#475569', lineHeight: '1.5', marginBottom: '2rem', fontWeight: 'normal' }}>
+              {paragraphs[0]}
+            </p>
+          )}
+
+          {/* Byline / Date */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.5rem', marginBottom: '2rem', color: '#64748b', fontSize: '0.85rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#E11D48', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+              RA
+            </div>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#334155' }}>Redação RodeoApp</div>
+              <div>Publicado em {new Date(article.created_at || Date.now()).toLocaleDateString('pt-BR')} às {new Date(article.created_at || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={{ fontSize: '1.15rem', lineHeight: '1.8', color: '#334155', fontFamily: '"Inter", sans-serif' }}>
+            {/* Render First Half of paragraphs (starting from index 1 since index 0 is subtitle) */}
+            {firstHalf.slice(1).map((p: string, idx: number) => {
+              const isQuote = p.startsWith('"') || p.endsWith('"');
+              if (isQuote) {
+                return (
+                  <div key={idx} style={{ margin: '2.5rem 0' }}>
+                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
+                    <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
+                      {p}
+                    </blockquote>
+                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '1.5rem auto 0 auto' }} />
+                  </div>
+                );
+              }
+              return (
+                <p key={idx} style={{ marginBottom: '1.5rem' }}>
+                  {p}
+                </p>
+              );
+            })}
+
+            {/* ADVERTISEMENT SLOT */}
+            {randomAd && (
+              <div style={{ margin: '3rem 0', textAlign: 'center', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '1.5rem 0' }}>
+                <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800, marginBottom: '1rem' }}>
+                  Continua depois da publicidade
+                </span>
+                <a href={randomAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', maxWidth: '100%' }}>
+                  <img 
+                    src={randomAd.image_url} 
+                    alt="Publicidade" 
+                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                  />
+                </a>
+              </div>
+            )}
+
+            {/* Render Second Half of paragraphs */}
+            {secondHalf.map((p: string, idx: number) => {
+              const isQuote = p.startsWith('"') || p.endsWith('"');
+              if (isQuote) {
+                return (
+                  <div key={idx} style={{ margin: '2.5rem 0' }}>
+                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
+                    <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
+                      {p}
+                    </blockquote>
+                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '1.5rem auto 0 auto' }} />
+                  </div>
+                );
+              }
+              return (
+                <p key={idx} style={{ marginBottom: '1.5rem' }}>
+                  {p}
+                </p>
+              );
+            })}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // Explore and feed lists
 
   const newsFeed = [
@@ -2795,6 +2956,7 @@ Instruções importantes:
   });
 
   const filteredBoiadas = boiadas.filter(b => {
+    if (b.nome === '__PUBLICIDADES__') return false;
     const isPending = b.lados?.__meta?.status === 'pendente';
     if (isPending) return false;
     const nome = b.nome || '';
@@ -3062,16 +3224,27 @@ Instruções importantes:
                 <p className="text-muted" style={{ marginBottom: '2.5rem' }}>Fique por dentro de tudo o que acontece no mundo do rodeio.</p>
                 
                 <div className="news-grid">
-                  {filteredNews.map(post => (
-                    <div key={post.id} className="news-card">
-                      <div className="news-meta">
-                        <span className="news-category">{post.category}</span>
-                        <span className="news-time">{post.time}</span>
+                  {filteredNews.map(post => {
+                    const rawId = String(post.id).replace('dynamic-', '');
+                    const cleanSummary = (post.description || '')
+                      .split('\n')
+                      .filter((p: string) => p.trim().length > 0)[1] || post.description || '';
+                    const summaryText = cleanSummary.length > 150 ? cleanSummary.slice(0, 150) + '...' : cleanSummary;
+                    
+                    return (
+                      <div key={post.id} className="news-card" onClick={() => navigateTo(`/noticia/${rawId}`)} style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}>
+                        <div className="news-meta">
+                          <span className="news-category">{post.category}</span>
+                          <span className="news-time">{post.time}</span>
+                        </div>
+                        <h3 className="news-title">{post.title}</h3>
+                        <p className="news-description">{summaryText}</p>
+                        <span style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.5rem' }}>
+                          Leia a matéria completa &rarr;
+                        </span>
                       </div>
-                      <h3 className="news-title">{post.title}</h3>
-                      <p className="news-description">{post.description}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {filteredNews.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                       Nenhuma notícia encontrada para a busca "{searchTerm}".
