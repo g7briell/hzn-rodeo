@@ -106,6 +106,7 @@ export default function AdminDashboard() {
   const [sponsorApp, setSponsorApp] = useState(false);
   const [sponsorLogo, setSponsorLogo] = useState('');
   const [sponsorClickUrl, setSponsorClickUrl] = useState('');
+  const [sponsorPosition, setSponsorPosition] = useState('3'); // 1-5
   const [isSavingSponsor, setIsSavingSponsor] = useState(false);
 
   // Edit Sponsor Config States
@@ -117,6 +118,7 @@ export default function AdminDashboard() {
   const [editSponsorApp, setEditSponsorApp] = useState(false);
   const [editSponsorLogo, setEditSponsorLogo] = useState('');
   const [editSponsorClickUrl, setEditSponsorClickUrl] = useState('');
+  const [editSponsorPosition, setEditSponsorPosition] = useState('3'); // 1-5
   const [isSavingSponsorEdit, setIsSavingSponsorEdit] = useState(false);
 
   // New Expense Form States
@@ -420,13 +422,15 @@ export default function AdminDashboard() {
         });
       }
       if (sponsorApp) {
+        const baseClickUrl = sponsorClickUrl || '#';
+        const finalClickUrl = baseClickUrl.split('#pos-')[0] + '#pos-' + sponsorPosition;
         inserts.push({
           empresa: sponsorEmpresa,
           valor_contrato: sponsorPortal ? 0 : (parseFloat(sponsorValor) || 0),
           tempo_contrato: parseInt(sponsorTempo) || 1,
           tipo: 'app',
           logo_url: sponsorLogo,
-          click_url: sponsorClickUrl || '#',
+          click_url: finalClickUrl,
           status: 'ativo'
         });
       }
@@ -446,6 +450,7 @@ export default function AdminDashboard() {
       setSponsorApp(false);
       setSponsorLogo('');
       setSponsorClickUrl('');
+      setSponsorPosition('3');
       setIsSponsorModalOpen(false);
       fetchPatrocinios();
       alert('Patrocinador adicionado com sucesso!');
@@ -464,7 +469,10 @@ export default function AdminDashboard() {
     setEditSponsorPortal(pat.tipo === 'portal');
     setEditSponsorApp(pat.tipo === 'app');
     setEditSponsorLogo(pat.logo_url || '');
-    setEditSponsorClickUrl(pat.click_url || '');
+
+    const parts = pat.click_url ? pat.click_url.split('#pos-') : [];
+    setEditSponsorClickUrl(parts[0] || '');
+    setEditSponsorPosition(parts[1] || '3');
   };
 
   const handleSaveSponsorEditSubmit = async (e: React.FormEvent) => {
@@ -476,13 +484,18 @@ export default function AdminDashboard() {
 
     setIsSavingSponsorEdit(true);
     try {
+      const baseClickUrl = editSponsorClickUrl || '#';
+      const finalClickUrl = editSponsorApp 
+        ? (baseClickUrl.split('#pos-')[0] + '#pos-' + editSponsorPosition)
+        : baseClickUrl.split('#pos-')[0];
+
       const updates = {
         empresa: editSponsorEmpresa,
         valor_contrato: parseFloat(editSponsorValor) || 0,
         tempo_contrato: parseInt(editSponsorTempo) || 1,
         tipo: editSponsorPortal ? 'portal' : 'app',
         logo_url: editSponsorLogo,
-        click_url: editSponsorClickUrl || '#',
+        click_url: finalClickUrl,
       };
 
       const res = await fetch("/api/admin-db", {
@@ -1455,6 +1468,23 @@ export default function AdminDashboard() {
                 <InputGroup label="Link de Redirecionamento" type="url" value={editSponsorClickUrl} onChange={setEditSponsorClickUrl} placeholder="Ex: https://imperio.com.br" />
               </div>
 
+              {editSponsorApp && (
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Posição no Splash (1 a 5)</label>
+                  <select 
+                    value={editSponsorPosition} 
+                    onChange={(e: any) => setEditSponsorPosition(e.target.value)}
+                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-black text-xs md:text-sm text-yellow-500 uppercase tracking-widest cursor-pointer"
+                  >
+                    <option value="1">1 - Ponta Esquerda</option>
+                    <option value="2">2 - Meio-Esquerda</option>
+                    <option value="3">3 - Centro (Meio)</option>
+                    <option value="4">4 - Meio-Direita</option>
+                    <option value="5">5 - Ponta Direita</option>
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Logotipo / Banner / Arts / GIFs (Imagem/GIF)</label>
                 <input 
@@ -1746,6 +1776,23 @@ export default function AdminDashboard() {
                 </div>
                 <InputGroup label="Link de Redirecionamento" type="url" value={sponsorClickUrl} onChange={setSponsorClickUrl} placeholder="Ex: https://imperio.com.br" />
               </div>
+
+              {sponsorApp && (
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Posição no Splash (1 a 5)</label>
+                  <select 
+                    value={sponsorPosition} 
+                    onChange={(e: any) => setSponsorPosition(e.target.value)}
+                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-black text-xs md:text-sm text-yellow-500 uppercase tracking-widest cursor-pointer"
+                  >
+                    <option value="1">1 - Ponta Esquerda</option>
+                    <option value="2">2 - Meio-Esquerda</option>
+                    <option value="3">3 - Centro (Meio)</option>
+                    <option value="4">4 - Meio-Direita</option>
+                    <option value="5">5 - Ponta Direita</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Logotipo (Imagem/GIF)</label>

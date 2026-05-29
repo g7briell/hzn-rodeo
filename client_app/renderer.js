@@ -382,8 +382,20 @@ async function animateSponsorsByGroups(sponsors, container, onComplete) {
         return;
     }
 
-    // Render all sponsors side-by-side with inline style fallback for absolute safety
-    container.innerHTML = sponsors.map((s, idx) => `
+    // Helper to extract position 1-5 from click_url hash fragment (#pos-X)
+    function getSponsorPosition(s) {
+        if (s.click_url && s.click_url.includes('#pos-')) {
+            const pos = parseInt(s.click_url.split('#pos-')[1]);
+            if (!isNaN(pos)) return pos;
+        }
+        return 3; // default center
+    }
+
+    // Sort sponsors by position (1 to 5) so they line up correctly side-by-side
+    const sortedSponsors = [...sponsors].sort((a, b) => getSponsorPosition(a) - getSponsorPosition(b));
+
+    // Render sorted sponsors side-by-side with inline style fallback for absolute safety
+    container.innerHTML = sortedSponsors.map((s, idx) => `
         <img id="splash-sponsor-logo-${idx}" 
              src="${s.logo_url}" 
              class="h-28 md:h-36 w-auto object-contain max-w-[150px] md:max-w-[200px]" 
