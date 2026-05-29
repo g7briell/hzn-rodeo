@@ -3,6 +3,8 @@ import './index.css';
 import { supabase } from './supabaseClient';
 import AdminDashboard from './AdminDashboard';
 
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('hzn_gemini_api_key') || '';
+
 const formatSide = (s: any) => {
   if (!s) return s;
   if (typeof s !== 'string') return s;
@@ -99,6 +101,11 @@ function App() {
   const [isCreatingBoiada, setIsCreatingBoiada] = useState(false);
   const [bulkBullsText, setBulkBullsText] = useState('');
   const [newBoiadaCiaName, setNewBoiadaCiaName] = useState('');
+
+  // AI News States
+  const [showNewsModal, setShowNewsModal] = useState(false);
+  const [newsRound, setNewsRound] = useState('');
+  const [isGeneratingNews, setIsGeneratingNews] = useState(false);
 
   // Public Profile States
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(null);
@@ -445,6 +452,144 @@ function App() {
       }
     } catch (err) {
       console.error('Erro ao buscar eventos oficiais:', err);
+    }
+  };
+
+  const handleGenerateNews = async () => {
+    if (!newsRound) return alert("Selecione o Round / Dia.");
+    setIsGeneratingNews(true);
+    try {
+      const notas = selectedEvent.detalhes?.notas || [];
+      
+      // Filter notes for the selected round
+      const roundNotes = notas.filter((n: any) => 
+        (n.status === 'ativa' || n.status === 'nota_baixa') && 
+        n.dia === newsRound && 
+        (typeof n.totalPeao === 'number' && n.totalPeao > 0) &&
+        (typeof n.tempo === 'number' && n.tempo >= 8)
+      );
+
+      if (roundNotes.length === 0) {
+        throw new Error(`Nenhuma montaria com nota registrada no ${newsRound.replace(/DIA/i, 'ROUND')} deste evento.`);
+      }
+
+      // Sort notes to find top scores
+      const sortedNotes = [...roundNotes].sort((a: any, b: any) => {
+        const scoreA = (a.totalPeao || 0) + (a.totalTouro || 0);
+        const scoreB = (b.totalPeao || 0) + (b.totalTouro || 0);
+        return scoreB - scoreA;
+      });
+
+      const winner = sortedNotes[0];
+      const winnerScore = (winner.totalPeao || 0) + (winner.totalTouro || 0);
+      
+      // Find best company (CIA)
+      const ciaScores: { [key: string]: { total: number, count: number } } = {};
+      sortedNotes.forEach((n: any) => {
+        const matchedCia = boiadas.find((b: any) => b.lados && Object.keys(b.lados).some(k => k.toLowerCase().trim() === n.touro?.toLowerCase().trim()));
+        const ciaName = matchedCia ? matchedCia.nome : 'Desconhecida';
+        const score = (n.totalPeao || 0) + (n.totalTouro || 0);
+        if (!ciaScores[ciaName]) {
+          ciaScores[ciaName] = { total: 0, count: 0 };
+        }
+        ciaScores[ciaName].total += score;
+        ciaScores[ciaName].count += 1;
+      });
+
+      const bestCiaName = Object.keys(ciaScores).sort((a, b) => {
+        const avgA = ciaScores[a].total / ciaScores[a].count;
+        const avgB = ciaScores[b].total / ciaScores[b].count;
+        return avgB - avgA;
+      })[0] || 'Nenhuma registrada';
+
+      // Find runner ups (top 3 next best)
+      const runnerUps = sortedNotes.slice(1, 4).map((n: any) => {
+        const score = (n.totalPeao || 0) + (n.totalTouro || 0);
+        return `${n.peao} (${score.toFixed(2)} pts)`;
+      });
+
+      const winnerCiaMatch = boiadas.find((b: any) => b.lados && Object.keys(b.lados).some(k => k.toLowerCase().trim() === winner.touro?.toLowerCase().trim()));
+      const winnerCia = winnerCiaMatch ? winnerCiaMatch.nome : 'Desconhecida';
+
+      const promptText = `Escreva uma notícia sobre a noite do rodeio a partir dos seguintes dados reais:
+Evento: ${selectedEvent.nome}
+Cidade: ${selectedEvent.local}
+Rodada: ${newsRound.replace(/DIA/i, 'Round ')}
+Vencedor: ${winner.peao} montando o touro ${winner.touro} da CIA ${winnerCia}, fazendo a pontuação de ${winnerScore.toFixed(2)} pontos.
+Outras melhores notas: ${runnerUps.join(', ') || 'Nenhuma registrada'}
+Melhor Companhia (CIA) de Boiada da noite: ${bestCiaName} (baseado na média de pontos das montarias da CIA).
+
+Instruções importantes:
+- Escreva em português do Brasil com tom jornalístico de esportes de rodeio profissional e entusiasmado.
+- O título deve ser exatamente no formato: "[Vencedor] fez a maior nota do [Rodada] na cidade de [Cidade]!". Exemplo: "Gabriel Ramos fez a maior nota do Round 1 na cidade de Barretos!".
+- O corpo do texto deve começar citando o vencedor, o touro, a CIA de boiada, a pontuação obtida e que isso aconteceu na noite correspondente na cidade de ${selectedEvent.local}.
+- Cite também as outras melhores notas e a melhor boiada da noite.
+- Responda apenas em formato JSON com os campos 'titulo' e 'conteudo'. Não adicione markdown \`\`\`json ou outra formatação antes/depois do JSON.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                titulo: { type: "STRING" },
+                conteudo: { type: "STRING" }
+              },
+              required: ["titulo", "conteudo"]
+            }
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na API do Gemini: ${response.statusText}`);
+      }
+
+      const resJson = await response.json();
+      const rawText = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) throw new Error("Resposta inválida da IA.");
+
+      const result = JSON.parse(rawText);
+
+      // Save to Evento detalhes
+      const currentNoticias = selectedEvent.detalhes?.noticias || [];
+      const newArticle = {
+        id: Date.now().toString(),
+        dia: newsRound,
+        titulo: result.titulo,
+        conteudo: result.conteudo,
+        status: 'pendente',
+        created_at: new Date().toISOString()
+      };
+
+      const updatedDetalhes = {
+        ...selectedEvent.detalhes,
+        noticias: [newArticle, ...currentNoticias]
+      };
+
+      const { error } = await supabase
+        .from('eventos_oficiais')
+        .update({ detalhes: updatedDetalhes })
+        .eq('id', selectedEvent.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setSelectedEvent({ ...selectedEvent, detalhes: updatedDetalhes });
+      // Update global events array to sync state
+      setEventosOficiais(prev => prev.map(ev => ev.id === selectedEvent.id ? { ...ev, detalhes: updatedDetalhes } : ev));
+      
+      alert("Notícia gerada com sucesso e enviada para aprovação do Administrador no painel!");
+      setShowNewsModal(false);
+      setNewsRound('');
+    } catch (err: any) {
+      alert("Erro ao gerar notícia: " + err.message);
+    } finally {
+      setIsGeneratingNews(false);
     }
   };
 
@@ -1489,13 +1634,84 @@ function App() {
               </div>
             )}
 
-            {eventTab === 'noticias' && (
-              <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>
-                <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#fff' }}>Notícias em Breve</h3>
-                <p style={{ color: '#94a3b8', maxWidth: '400px', margin: '0 auto' }}>Este módulo está em desenvolvimento. Em breve, a comissão poderá publicar novidades e informativos sobre o evento.</p>
-              </div>
-            )}
+            {eventTab === 'noticias' && (() => {
+              const isEventDirectorOrAdmin = isAdmin || (userProfile && (
+                slugify(selectedEvent.diretor || '').includes(slugify(userProfile.nome)) || 
+                slugify(selectedEvent.nome).includes(slugify(userProfile.nome))
+              ));
+              
+              const allNews = (selectedEvent.detalhes?.noticias || []).filter((n: any) => 
+                isEventDirectorOrAdmin ? true : n.status === 'aprovado'
+              );
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  {isEventDirectorOrAdmin && (
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div>
+                        <h4 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Painel do Diretor - Notícias por IA</h4>
+                        <p style={{ margin: '0.25rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>Gere notícias automáticas com inteligência artificial para os rounds deste evento.</p>
+                      </div>
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => setShowNewsModal(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                      >
+                        ✨ Gerar Notícia do Round com IA
+                      </button>
+                    </div>
+                  )}
+
+                  {allNews.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                      {allNews.map((news: any) => (
+                        <div 
+                          key={news.id} 
+                          style={{ 
+                            background: 'var(--bg-card)', 
+                            padding: '2rem', 
+                            borderRadius: '24px', 
+                            border: news.status === 'pendente' ? '1px dashed #eab308' : '1px solid var(--border-light)', 
+                            position: 'relative' 
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                            <span style={{ background: 'rgba(225, 29, 72, 0.1)', color: 'var(--primary)', padding: '0.3rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                              {news.dia.replace(/DIA/i, 'ROUND ')}
+                            </span>
+                            
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              {news.status === 'pendente' && (
+                                <span style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '0.3rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                  Aguardando Aprovação do Admin
+                                </span>
+                              )}
+                              <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                                {new Date(news.created_at).toLocaleDateString('pt-BR')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <h3 style={{ fontSize: '1.5rem', fontWeight: '900', color: '#fff', marginBottom: '1rem', textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: '-0.5px' }}>
+                            {news.titulo}
+                          </h3>
+                          
+                          <p style={{ color: '#cbd5e1', lineHeight: '1.7', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>
+                            {news.conteudo}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#fff' }}>Nenhuma Notícia Publicada</h3>
+                      <p style={{ color: '#94a3b8', maxWidth: '400px', margin: '0 auto', fontSize: '0.9rem' }}>Nenhum informativo oficial foi publicado para este evento ainda.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {eventTab === 'midia' && (
               <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
@@ -2497,8 +2713,33 @@ function App() {
     }
   ];
 
+  // Collect dynamic news articles from events
+  const dynamicNews: any[] = [];
+  eventosOficiais.forEach(ev => {
+    const noticias = ev.detalhes?.noticias || [];
+    noticias.forEach((news: any) => {
+      if (news.status === 'aprovado') {
+        dynamicNews.push({
+          id: `dynamic-${news.id}`,
+          title: news.titulo,
+          description: news.conteudo,
+          category: `EVENTOS - ${ev.nome.toUpperCase()}`,
+          time: new Date(news.created_at).toLocaleDateString('pt-BR'),
+          created_at: news.created_at
+        });
+      }
+    });
+  });
+
+  // Sort dynamic news by date descending
+  const sortedDynamicNews = [...dynamicNews].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  const combinedNews = [...sortedDynamicNews, ...newsFeed];
+
   // Filters based on search
-  const filteredNews = newsFeed.filter(post => {
+  const filteredNews = combinedNews.filter(post => {
     const title = post.title || '';
     const description = post.description || '';
     const category = post.category || '';
@@ -3399,6 +3640,65 @@ function App() {
                 allowFullScreen
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================== */}
+      {/* MODAL DE GERAR NOTÍCIA COM IA (GEMINI) */}
+      {/* ==================================== */}
+      {showNewsModal && selectedEvent && (
+        <div className="modal-overlay active" onClick={() => !isGeneratingNews && setShowNewsModal(false)}>
+          <div className="auth-modal" style={{ maxWidth: '450px', width: '90%', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => !isGeneratingNews && setShowNewsModal(false)}>×</button>
+            <h2 className="modal-title" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Gerar Notícia</h2>
+            <p className="modal-subtitle" style={{ marginBottom: '1.5rem' }}>Selecione qual round você deseja usar para que a IA crie a notícia automaticamente.</p>
+            
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <label className="form-label">Selecione o Round / Dia</label>
+              <select 
+                className="form-select" 
+                value={newsRound} 
+                onChange={(e) => setNewsRound(e.target.value)}
+                disabled={isGeneratingNews}
+              >
+                <option value="">Selecione um round...</option>
+                {(() => {
+                  const days = new Set<string>();
+                  (selectedEvent.detalhes?.notas || []).forEach((n: any) => { if (n.dia) days.add(n.dia); });
+                  const customSort = (a: string, b: string) => {
+                      const wA = a.toUpperCase().includes('FINAL') && !a.toUpperCase().includes('SEMI') ? 100 : a.toUpperCase().includes('SEMI') ? 90 : 0;
+                      const wB = b.toUpperCase().includes('FINAL') && !b.toUpperCase().includes('SEMI') ? 100 : b.toUpperCase().includes('SEMI') ? 90 : 0;
+                      if (wA !== wB) return wA - wB;
+                      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                  };
+                  return Array.from(days).sort(customSort).map(d => (
+                    <option key={d} value={d}>{d.replace(/DIA/i, 'ROUND ')}</option>
+                  ));
+                })()}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                style={{ flex: 1 }} 
+                onClick={() => setShowNewsModal(false)}
+                disabled={isGeneratingNews}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                style={{ flex: 1 }} 
+                onClick={handleGenerateNews}
+                disabled={isGeneratingNews || !newsRound}
+              >
+                {isGeneratingNews ? 'Gerando...' : 'Gerar com IA'}
+              </button>
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import BoiadaVisualEditor from './BoiadaVisualEditor';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias'>('overview');
   
   const [users, setUsers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -116,6 +116,63 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleApproveNews = async (eventId: string, newsId: string) => {
+    try {
+      const event = events.find(e => e.id === eventId);
+      if (!event) return;
+      const noticias = event.detalhes?.noticias || [];
+      const updatedNoticias = noticias.map((n: any) => n.id === newsId ? { ...n, status: 'aprovado' } : n);
+      const updatedDetalhes = { ...event.detalhes, noticias: updatedNoticias };
+      
+      const { error } = await supabase
+        .from('eventos_oficiais')
+        .update({ detalhes: updatedDetalhes })
+        .eq('id', eventId);
+        
+      if (error) throw error;
+      alert("Notícia aprovada e publicada no portal!");
+      fetchDashboardData();
+    } catch (err: any) {
+      alert("Erro ao aprovar notícia: " + err.message);
+    }
+  };
+
+  const handleDeleteNews = async (eventId: string, newsId: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir esta notícia permanentemente?")) return;
+    try {
+      const event = events.find(e => e.id === eventId);
+      if (!event) return;
+      const noticias = event.detalhes?.noticias || [];
+      const updatedNoticias = noticias.filter((n: any) => n.id !== newsId);
+      const updatedDetalhes = { ...event.detalhes, noticias: updatedNoticias };
+      
+      const { error } = await supabase
+        .from('eventos_oficiais')
+        .update({ detalhes: updatedDetalhes })
+        .eq('id', eventId);
+        
+      if (error) throw error;
+      alert("Notícia excluída com sucesso!");
+      fetchDashboardData();
+    } catch (err: any) {
+      alert("Erro ao excluir notícia: " + err.message);
+    }
+  };
+
+  const pendingNews: any[] = [];
+  events.forEach(ev => {
+    const noticias = ev.detalhes?.noticias || [];
+    noticias.forEach((n: any) => {
+      if (n.status === 'pendente') {
+        pendingNews.push({
+          ...n,
+          eventId: ev.id,
+          eventNome: ev.nome
+        });
+      }
+    });
+  });
+
   const openEventModal = (ev: any) => {
     setEditingEvent({ ...ev, detalhes: ev.detalhes || {} });
   };
@@ -136,6 +193,9 @@ export default function AdminDashboard() {
         <button className={`btn ${activeTab === 'users' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('users')}>Usuários ({users.length})</button>
         <button className={`btn ${activeTab === 'events' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('events')}>Eventos ({events.length})</button>
         <button className={`btn ${activeTab === 'boiadas' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('boiadas')}>Boiadas ({boiadas.length})</button>
+        <button className={`btn ${activeTab === 'noticias' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('noticias')} style={pendingNews.length > 0 ? { border: '1px solid #eab308' } : {}}>
+          Notícias Pendentes ({pendingNews.length})
+        </button>
       </div>
 
       {activeTab === 'overview' && (
@@ -358,6 +418,66 @@ export default function AdminDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {activeTab === 'noticias' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {pendingNews.length > 0 ? (
+            pendingNews.map((news: any) => (
+              <div 
+                key={news.id} 
+                style={{ 
+                  background: 'var(--bg-card)', 
+                  padding: '2rem', 
+                  borderRadius: '24px', 
+                  border: '1px solid var(--border-light)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <span style={{ background: 'rgba(234,179,8,0.1)', color: '#eab308', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '0.5rem' }}>
+                      PENDENTE
+                    </span>
+                    <span style={{ color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      {news.eventNome}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: '#10b981', borderColor: '#10b981', color: '#fff' }}
+                      onClick={() => handleApproveNews(news.eventId, news.id)}
+                    >
+                      Aprovar & Publicar
+                    </button>
+                    <button 
+                      className="btn" 
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: 'rgba(255,50,50,0.15)', color: '#ff5555', border: '1px solid rgba(255,50,50,0.3)' }}
+                      onClick={() => handleDeleteNews(news.eventId, news.id)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.3rem', fontWeight: '900', textTransform: 'uppercase', fontStyle: 'italic' }}>
+                    {news.titulo}
+                  </h4>
+                  <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                    {news.conteudo}
+                  </p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--bg-card)', borderRadius: '24px', border: '1px dashed var(--border-light)' }}>
+              <p style={{ color: '#94a3b8', margin: 0 }}>Nenhuma notícia aguardando aprovação no momento.</p>
+            </div>
+          )}
         </div>
       )}
 
