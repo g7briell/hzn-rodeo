@@ -361,37 +361,54 @@ async function handleActivation() {
     } finally { btnActivate.disabled = false; }
 }
 
-async function showSponsorsSequentially(sponsors, index, container, onComplete) {
-    if (index >= sponsors.length) {
+function getAnimationGroups(n) {
+    if (n === 5) return [[2], [1, 3], [0, 4]];
+    if (n === 4) return [[1, 2], [0, 3]];
+    if (n === 3) return [[1], [0, 2]];
+    if (n === 2) return [[0, 1]];
+    return [[0]];
+}
+
+async function animateSponsorsByGroups(sponsors, container, onComplete) {
+    if (!container) {
         onComplete();
         return;
     }
 
-    const s = sponsors[index];
-    if (container) {
-        container.innerHTML = `
-            <img src="${s.logo_url}" 
-                 class="h-32 w-auto object-contain max-w-[280px] opacity-0 transition-opacity duration-700 ease-in-out" 
-                 style="filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6));" />
-        `;
-        
-        // Trigger reflow and set opacity to 1 (fade in)
-        const img = container.querySelector('img');
-        setTimeout(() => {
-            if (img) img.style.opacity = '1';
-        }, 50);
+    // Render all sponsors side-by-side with opacity-0
+    container.innerHTML = sponsors.map((s, idx) => `
+        <img id="splash-sponsor-logo-${idx}" 
+             src="${s.logo_url}" 
+             class="h-28 md:h-36 w-auto object-contain max-w-[150px] md:max-w-[200px] opacity-0 transition-opacity duration-800 ease-in-out" 
+             style="filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));" />
+    `).join('');
 
-        // Keep it visible, then fade it out
+    const groups = getAnimationGroups(sponsors.length);
+
+    // Function to animate a group
+    function animateGroup(groupIndex) {
+        if (groupIndex >= groups.length) {
+            // All groups are now visible. Wait 2 seconds (2000ms), then perform the general fade out.
+            setTimeout(onComplete, 2000);
+            return;
+        }
+
+        const indices = groups[groupIndex];
+        indices.forEach(idx => {
+            const img = document.getElementById(`splash-sponsor-logo-${idx}`);
+            if (img) img.style.opacity = '1';
+        });
+
+        // Delay between showing next group (e.g. 800ms)
         setTimeout(() => {
-            if (img) img.style.opacity = '0';
-            // Wait for fade out to complete before showing the next sponsor
-            setTimeout(() => {
-                showSponsorsSequentially(sponsors, index + 1, container, onComplete);
-            }, 700); // match duration-700 transition
-        }, 2200); // visible duration
-    } else {
-        showSponsorsSequentially(sponsors, index + 1, container, onComplete);
+            animateGroup(groupIndex + 1);
+        }, 800);
     }
+
+    // Start animating groups after a tiny delay to allow DOM insertion
+    setTimeout(() => {
+        animateGroup(0);
+    }, 100);
 }
 
 async function showIntro(htmlText, days, nome, expiry) {
@@ -484,7 +501,7 @@ async function showIntro(htmlText, days, nome, expiry) {
                 splashSponsors.classList.remove('hidden');
                 const selectedSponsors = appSponsors.sort(() => 0.5 - Math.random()).slice(0, 5);
                 
-                showSponsorsSequentially(selectedSponsors, 0, sponsorsContainer, () => {
+                animateSponsorsByGroups(selectedSponsors, sponsorsContainer, () => {
                     // General fade out of intro screen
                     if (introScreen) {
                         introScreen.style.transition = 'opacity 800ms ease-in-out';
