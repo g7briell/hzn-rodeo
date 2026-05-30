@@ -1131,32 +1131,34 @@ Instruções importantes:
     setRegisterError('');
 
     try {
-      // 1. Criar usuário no Auth do Supabase (Dispara e-mail de confirmação se configurado)
+      // 1. Criar usuário no Auth do Supabase (Dispara e-mail de confirmação OTP)
+      // NOTA: Quando confirmação de e-mail está ativa, o Supabase retorna user=null
+      // após o signUp() (modo OTP). O usuário só é confirmado após digitar o código.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: regEmail,
         password: regPassword,
       });
 
       if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error('Falha ao criar usuário na autenticação');
 
-      // 2. Salvar na tabela perfis_portal com endereço completo contendo Cidade e Estado
-      const fullAddress = `${regAddress.trim()}, ${regCity.trim()} - ${regState.trim()}`;
-      const { error: dbError } = await supabase.from('perfis_portal').insert([{
-        id: authData.user.id,
-        nome: regName,
-        email: regEmail,
-        whatsapp: regWhatsapp,
-        cpf: regCpf,
-        rg: regRg,
-        endereco: fullAddress,
-        cargo: regRole,
-        veio_do_app_desktop: isAppUser 
-      }]);
+      // Se authData.user existir (raro com OTP), salva o perfil agora
+      if (authData.user) {
+        const fullAddress = `${regAddress.trim()}, ${regCity.trim()} - ${regState.trim()}`;
+        const { error: dbError } = await supabase.from('perfis_portal').insert([{
+          id: authData.user.id,
+          nome: regName,
+          email: regEmail,
+          whatsapp: regWhatsapp,
+          cpf: regCpf,
+          rg: regRg,
+          endereco: fullAddress,
+          cargo: regRole,
+          veio_do_app_desktop: isAppUser 
+        }]);
+        if (dbError) console.warn('Aviso ao salvar perfil (pode já existir):', dbError.message);
+      }
 
-      if (dbError) throw new Error(dbError.message);
-
-      // Avança para tela de verificação de e-mail em vez de fechar
+      // Avança para tela de verificação de e-mail (o e-mail OTP já foi enviado)
       setRegisterStep('otp');
       
     } catch (err: any) {
@@ -1172,14 +1174,40 @@ Instruções importantes:
     setRegisterError('');
 
     try {
-      // Validar código nativo de e-mail do Supabase
-      const { error } = await supabase.auth.verifyOtp({
+      // Validar código OTP de e-mail do Supabase
+      const { data: otpData, error } = await supabase.auth.verifyOtp({
         email: regEmail,
         token: regOtpCode.trim(),
         type: 'signup'
       });
 
       if (error) throw new Error("Código inválido ou expirado.");
+
+      // Após verificação OTP, o usuário está confirmado e temos o user.id real
+      // Salvar perfil agora se ainda não foi salvo (caso user era null no signUp)
+      if (otpData?.user) {
+        const { data: existingProfile } = await supabase
+          .from('perfis_portal')
+          .select('id')
+          .eq('id', otpData.user.id)
+          .maybeSingle();
+
+        if (!existingProfile) {
+          const fullAddress = `${regAddress.trim()}, ${regCity.trim()} - ${regState.trim()}`;
+          const { error: dbError } = await supabase.from('perfis_portal').insert([{
+            id: otpData.user.id,
+            nome: regName,
+            email: regEmail,
+            whatsapp: regWhatsapp,
+            cpf: regCpf,
+            rg: regRg,
+            endereco: fullAddress,
+            cargo: regRole,
+            veio_do_app_desktop: isAppUser
+          }]);
+          if (dbError) console.warn('Aviso ao salvar perfil no OTP:', dbError.message);
+        }
+      }
 
       alert(isAppUser ? "Sincronização concluída! E-mail verificado com sucesso." : "Cadastro e verificação de e-mail realizados com sucesso!");
       setIsRegisterModalOpen(false);
