@@ -94,9 +94,14 @@
       </div>
       <div class="content">
         <h1>Confirmação de Cadastro</h1>
-        <p>Agradecemos por se cadastrar no RodeoApp. Para concluir a criação da sua conta e validar o seu e-mail, clique no botão abaixo:</p>
-        <a href="{{ .ConfirmationURL }}" class="btn">Confirmar E-mail</a>
-        <p style="margin-top: 40px; font-size: 14px; color: #4b5563;">Se o botão não funcionar, copie e cole o link abaixo no seu navegador:</p>
+        <p>Agradecemos por se cadastrar no RodeoApp. Para concluir a criação da sua conta, digite o código de segurança abaixo no portal:</p>
+        
+        <div style="margin: 30px auto; padding: 20px; background-color: #1f2937; border-radius: 8px; border: 1px solid #374151; max-width: 280px; text-align: center;">
+          <p style="font-size: 14px; text-transform: uppercase; color: #9ca3af; margin: 0 0 10px 0; letter-spacing: 1px;">Seu Código de Confirmação</p>
+          <h2 style="font-size: 36px; letter-spacing: 6px; color: #fbbf24; margin: 0; font-weight: bold;">{{ .Token }}</h2>
+        </div>
+
+        <p style="margin-top: 40px; font-size: 14px; color: #4b5563;">Alternativamente, você também pode confirmar sua conta clicando no link abaixo:</p>
         <a href="{{ .ConfirmationURL }}" class="link-alt">{{ .ConfirmationURL }}</a>
       </div>
       <div class="footer">
