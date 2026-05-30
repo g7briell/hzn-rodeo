@@ -2532,136 +2532,443 @@ Instruções importantes:
   });
 
   if (!user) {
+    // Patrocinadores ativos do tipo portal (para "Oferecimento")
+    const sponsorLogos = patrocinios.filter(p => p.tipo === 'portal' && p.status === 'ativo');
+
     return (
       <>
-        <div style={{ width: '100vw', overflowX: 'hidden' }}>
-          {/* Header */}
-          <header className="public-header">
-            <div className="logo" style={{ cursor: 'pointer' }} onClick={() => { setCurrentTab('home'); navigateTo('/'); }}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
-            <div className="header-buttons" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-              <button className="btn btn-outline" onClick={() => setIsLoginModalOpen(true)}>Entrar</button>
-              <button className="btn btn-primary" onClick={() => setIsRegisterModalOpen(true)}>Cadastre-se</button>
-            </div>
-          </header>
+        {/* ============================================================ */}
+        {/* LANDING PAGE — Split Screen (igual ao RodeoApp desktop app)  */}
+        {/* ============================================================ */}
+        <div style={{
+          display: 'flex',
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+          backgroundColor: '#000',
+          fontFamily: '"Outfit", "Inter", sans-serif',
+        }}>
 
-          <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '0 2rem' }}>
-            {/* Hero Section */}
-            <section className="hero-modern">
-              <h1 className="hero-modern-title">
-                O Portal Definitivo <br/>
-                <span className="text-primary">do Competidor</span>
-              </h1>
-              <p className="hero-modern-subtitle">
-                Acompanhe seus eventos, verifique suas notas ao vivo e gerencie seu perfil profissional de rodeio em um único lugar.
+          {/* ===== LADO ESQUERDO — Foto + Info ===== */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            overflow: 'hidden',
+            minWidth: 0,
+          }}>
+            {/* Foto de fundo do competidor */}
+            <img
+              src="/novacontasfoto.jpg"
+              alt="Competidor"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center top',
+              }}
+            />
+
+            {/* Gradiente: fade para preto no lado direito (para fundir com o painel de login) */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to right, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.92) 80%, #000 100%)',
+            }} />
+
+            {/* Gradiente sutil no topo e no rodapé */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 20%, transparent 65%, rgba(0,0,0,0.8) 100%)',
+            }} />
+
+            {/* ---- EVENTOS EM DESTAQUE DA SEMANA (topo esquerdo) ---- */}
+            <div style={{
+              position: 'absolute',
+              top: '10%',
+              left: '5%',
+              maxWidth: '55%',
+            }}>
+              <p style={{
+                margin: '0 0 14px 0',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'rgba(255,255,255,0.7)',
+                letterSpacing: '1.5px',
+                textTransform: 'uppercase',
+              }}>
+                Eventos em <strong style={{ color: '#FFD700' }}>Destaque</strong> da Semana:
               </p>
-              <button className="btn btn-primary btn-glow" style={{ padding: '1rem 3rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '50px' }} onClick={() => setIsRegisterModalOpen(true)}>
-                Fazer meu Cadastro Gratuito
-              </button>
-            </section>
-
-            {/* Weekly Events Section */}
-            <section className="events-section">
-              <div className="section-header">
-                <div>
-                  <h2>Eventos da <span className="text-primary">Semana</span></h2>
-                  <p className="text-muted" style={{ fontSize: '1.1rem' }}>Acompanhe as etapas que estão rolando agora no circuito</p>
-                </div>
-              </div>
-              
-              <div className="events-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
-                {homeEvents.length === 0 ? (
-                  <div style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)', padding: '4rem', textAlign: 'center', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem', opacity: 0.5 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Nenhum evento oficial disponível no momento</h3>
-                    <p style={{ fontSize: '0.9rem' }}>Fique ligado! Em breve novos eventos serão adicionados.</p>
+              {/* Logos dos eventos em destaque — implementação futura */}
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                alignItems: 'center',
+              }}>
+                {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).slice(0, 5).map(ev => (
+                  <div
+                    key={ev.id}
+                    onClick={() => setPublicRankingModal(ev)}
+                    style={{ cursor: 'pointer' }}
+                    title={ev.nome}
+                  >
+                    <img
+                      src={ev.detalhes.logo}
+                      alt={ev.nome}
+                      style={{
+                        height: '52px',
+                        width: 'auto',
+                        maxWidth: '110px',
+                        objectFit: 'contain',
+                        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.8))',
+                        borderRadius: '6px',
+                        transition: 'transform 0.2s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
+                      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                    />
                   </div>
-                ) : (
-                  homeEvents.map(ev => (
-                    <div 
-                      key={ev.id} 
-                      className="glass-card hover:bg-white/5" 
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', padding: '2.5rem 1.5rem', cursor: 'pointer', textAlign: 'center' }}
-                      onClick={() => setPublicRankingModal(ev)}
-                    >
-                      {ev.detalhes?.logo ? (
-                        <img src={ev.detalhes.logo} alt={ev.nome} style={{ width: '140px', height: '140px', objectFit: 'contain', borderRadius: '20px', background: 'rgba(0,0,0,0.4)', padding: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }} />
-                      ) : (
-                        <div style={{ width: '140px', height: '140px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '900', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>LOGO</div>
-                      )}
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                        <h3 className="event-name" style={{ margin: 0, fontSize: '1.5rem', fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-light)', lineHeight: '1.2' }}>{ev.nome}</h3>
-                        <div className="event-date" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                          {ev.data_inicio} {ev.data_fim ? `a ${ev.data_fim}` : ''}
-                        </div>
-                      </div>
-
-                      <span style={{ fontSize: '0.75rem', padding: '0.4rem 1rem', background: 'var(--primary)', color: '#000', borderRadius: '20px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase', marginTop: 'auto', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(255,215,0,0.3)' }}>
-                        Ver Top 3
-                      </span>
-                    </div>
-                  ))
-                )}
+                ))}
+                {/* Placeholder enquanto não há eventos com destacar_home */}
+                {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).length === 0 && homeEvents.filter(ev => ev.detalhes?.logo).slice(0, 4).map(ev => (
+                  <div
+                    key={ev.id}
+                    onClick={() => setPublicRankingModal(ev)}
+                    style={{ cursor: 'pointer' }}
+                    title={ev.nome}
+                  >
+                    <img
+                      src={ev.detalhes.logo}
+                      alt={ev.nome}
+                      style={{
+                        height: '52px',
+                        width: 'auto',
+                        maxWidth: '110px',
+                        objectFit: 'contain',
+                        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.8))',
+                        borderRadius: '6px',
+                        transition: 'transform 0.2s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
+                      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                    />
+                  </div>
+                ))}
               </div>
-            </section>
+            </div>
+
+            {/* ---- OFERECIMENTO (rodapé esquerdo) ---- */}
+            <div style={{
+              position: 'absolute',
+              bottom: '6%',
+              left: '5%',
+              maxWidth: '55%',
+            }}>
+              {sponsorLogos.length > 0 && (
+                <>
+                  <p style={{
+                    margin: '0 0 10px 0',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.45)',
+                    letterSpacing: '2.5px',
+                    textTransform: 'uppercase',
+                  }}>
+                    Oferecimento
+                  </p>
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '14px',
+                    alignItems: 'center',
+                  }}>
+                    {sponsorLogos.map(p => (
+                      <a
+                        key={p.id}
+                        href={p.click_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={p.empresa}
+                        style={{ display: 'inline-block' }}
+                      >
+                        <img
+                          src={p.logo_url}
+                          alt={p.empresa}
+                          style={{
+                            height: '36px',
+                            width: 'auto',
+                            maxWidth: '100px',
+                            objectFit: 'contain',
+                            filter: 'brightness(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.9))',
+                            transition: 'filter 0.2s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.15) drop-shadow(0 2px 6px rgba(0,0,0,0.9))')}
+                          onMouseLeave={e => (e.currentTarget.style.filter = 'brightness(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.9))')}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* PUBLIC RANKING MODAL */}
-          {publicRankingModal && (
-            <div className="modal-overlay active" onClick={() => setPublicRankingModal(null)}>
-              <div className="auth-modal fade-in" style={{ maxWidth: '500px', width: '90%', padding: '2.5rem 2rem' }} onClick={(e) => e.stopPropagation()}>
-                <button className="close-btn" style={{ top: '15px', right: '15px' }} onClick={() => setPublicRankingModal(null)}>×</button>
-                
-                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                  {publicRankingModal.detalhes?.logo && (
-                    <img src={publicRankingModal.detalhes.logo} alt="Logo" style={{ width: '90px', height: '90px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', padding: '10px', margin: '0 auto 1.5rem', border: '1px solid rgba(255,255,255,0.1)' }} />
-                  )}
-                  <h2 className="modal-title" style={{ margin: 0, fontSize: '1.85rem', fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', lineHeight: '1.2' }}>{publicRankingModal.nome}</h2>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.75rem' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    {publicRankingModal.local}
+          {/* ===== LADO DIREITO — Painel de Login ===== */}
+          <div style={{
+            width: '380px',
+            flexShrink: 0,
+            backgroundColor: '#000',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '40px 36px',
+            gap: '0',
+            position: 'relative',
+          }}>
+
+            {/* Logo topo (splash_logo) */}
+            <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+              <img
+                src="/splash_logo.png"
+                alt="RodeoApp"
+                style={{ height: '90px', width: 'auto', objectFit: 'contain' }}
+              />
+            </div>
+
+            {/* Label */}
+            <p style={{
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '13px',
+              fontWeight: 600,
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+              marginBottom: '18px',
+              alignSelf: 'flex-start',
+            }}>
+              Entrar no Portal
+            </p>
+
+            {/* Formulário de Login Inline */}
+            <form
+              style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (isLoading) return;
+                setIsLoading(true);
+                setLoginError('');
+                try {
+                  const { error } = await supabase.auth.signInWithPassword({
+                    email: loginEmail,
+                    password: loginPassword,
+                  });
+                  if (error) throw new Error(error.message);
+                  // OTP será enviado — abre modal para digitar código
+                  setIsLoginModalOpen(true);
+                  setLoginStep('otp');
+                } catch (err: any) {
+                  setLoginError(err.message || 'Erro ao entrar.');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+            >
+              <input
+                type="email"
+                placeholder="Email"
+                value={loginEmail}
+                onChange={e => setLoginEmail(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '10px',
+                  color: '#fff',
+                  fontSize: '15px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  fontFamily: 'inherit',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+              />
+              <input
+                type="password"
+                placeholder="Senha"
+                value={loginPassword}
+                onChange={e => setLoginPassword(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '10px',
+                  color: '#fff',
+                  fontSize: '15px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  fontFamily: 'inherit',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+              />
+
+              {loginError && (
+                <p style={{ color: '#f87171', fontSize: '13px', margin: '0', textAlign: 'center' }}>{loginError}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: '15px',
+                  background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: '#000',
+                  fontWeight: 900,
+                  fontSize: '17px',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.5px',
+                  fontFamily: 'inherit',
+                  transition: 'opacity 0.2s',
+                  boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
+                }}
+              >
+                {isLoading ? 'Entrando...' : 'Entrar'}
+              </button>
+            </form>
+
+            {/* Esqueceu a senha */}
+            <button
+              onClick={() => { setIsLoginModalOpen(true); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: '13px',
+                cursor: 'pointer',
+                marginTop: '10px',
+                fontFamily: 'inherit',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+            >
+              Esqueceu a senha?
+            </button>
+
+            {/* Divider */}
+            <div style={{
+              width: '100%',
+              height: '1px',
+              background: 'rgba(255,255,255,0.08)',
+              margin: '20px 0',
+            }} />
+
+            {/* Botão criar nova conta */}
+            <button
+              onClick={() => setIsRegisterModalOpen(true)}
+              style={{
+                width: '100%',
+                padding: '14px',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: '10px',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '15px',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                letterSpacing: '0.3px',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)';
+                e.currentTarget.style.color = '#FFD700';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
+                e.currentTarget.style.color = '#fff';
+              }}
+            >
+              Criar nova conta
+            </button>
+
+            {/* Logo rodapé (header_logo) */}
+            <div style={{ marginTop: '28px', opacity: 0.5 }}>
+              <img
+                src="/header_logo.png"
+                alt="RodeoApp"
+                style={{ height: '28px', width: 'auto', objectFit: 'contain' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* PUBLIC RANKING MODAL */}
+        {publicRankingModal && (
+          <div className="modal-overlay active" onClick={() => setPublicRankingModal(null)}>
+            <div className="auth-modal fade-in" style={{ maxWidth: '500px', width: '90%', padding: '2.5rem 2rem' }} onClick={(e) => e.stopPropagation()}>
+              <button className="close-btn" style={{ top: '15px', right: '15px' }} onClick={() => setPublicRankingModal(null)}>×</button>
+              
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                {publicRankingModal.detalhes?.logo && (
+                  <img src={publicRankingModal.detalhes.logo} alt="Logo" style={{ width: '90px', height: '90px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', padding: '10px', margin: '0 auto 1.5rem', border: '1px solid rgba(255,255,255,0.1)' }} />
+                )}
+                <h2 className="modal-title" style={{ margin: 0, fontSize: '1.85rem', fontFamily: 'Outfit, sans-serif', textTransform: 'uppercase', lineHeight: '1.2' }}>{publicRankingModal.nome}</h2>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.75rem' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  {publicRankingModal.local}
+                </div>
+              </div>
+
+              {publicRankingModal.detalhes?.ranking && publicRankingModal.detalhes.ranking.length > 0 ? (
+                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '20px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: '1.25rem', fontWeight: '900', letterSpacing: '1px', textAlign: 'center' }}>Top 3 - Ranking Atual</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {publicRankingModal.detalhes.ranking.slice(0, 3).map((competidor: any, idx: number) => (
+                      <div 
+                        key={idx} 
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem 1.25rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.1)' }}
+                        onClick={() => {
+                          const slug = competidor.slug || slugify(competidor.nome);
+                          navigateTo(`/perfil/${slug}`);
+                        }}
+                        className="hover:border-primary/50"
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                      >
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-light)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ color: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : '#CD7F32', fontSize: '1.25rem', fontWeight: '900' }}>{idx + 1}º</span>
+                          {competidor.nome}
+                        </span>
+                        <span style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.1rem' }}>
+                          {competidor.score > 0 ? competidor.score.toFixed(2) : competidor.tempoAcumulado ? competidor.tempoAcumulado.toFixed(2) + 's' : '0.00'} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span>
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                {publicRankingModal.detalhes?.ranking && publicRankingModal.detalhes.ranking.length > 0 ? (
-                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '20px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: '1.25rem', fontWeight: '900', letterSpacing: '1px', textAlign: 'center' }}>Top 3 - Ranking Atual</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {publicRankingModal.detalhes.ranking.slice(0, 3).map((competidor: any, idx: number) => (
-                        <div 
-                          key={idx} 
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem 1.25rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.1)' }}
-                          onClick={() => {
-                            const slug = competidor.slug || slugify(competidor.nome);
-                            navigateTo(`/perfil/${slug}`);
-                          }}
-                          className="hover:border-primary/50"
-                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                        >
-                          <span style={{ fontWeight: 'bold', color: 'var(--text-light)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span style={{ color: idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : '#CD7F32', fontSize: '1.25rem', fontWeight: '900' }}>{idx + 1}º</span>
-                            {competidor.nome}
-                          </span>
-                          <span style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.1rem' }}>
-                            {competidor.score > 0 ? competidor.score.toFixed(2) : competidor.tempoAcumulado ? competidor.tempoAcumulado.toFixed(2) + 's' : '0.00'} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    Ranking ainda não disponível para este evento.
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  Ranking ainda não disponível para este evento.
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      
 
         {/* ==================================== */}
         
