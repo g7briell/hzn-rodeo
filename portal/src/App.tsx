@@ -2559,7 +2559,7 @@ Instruções importantes:
           }}>
             {/* Foto de fundo do competidor */}
             <img
-              src="/novacontasfoto.jpg"
+              src="/maiorqualidade.jpg"
               alt="Competidor"
               style={{
                 position: 'absolute',
@@ -2567,7 +2567,7 @@ Instruções importantes:
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                objectPosition: 'center top',
+                objectPosition: 'right center',
               }}
             />
 
