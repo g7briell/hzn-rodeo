@@ -5,108 +5,226 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Confirme seu e-mail - RodeoApp</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      margin: 0;
-      padding: 0;
-      background-color: #0b0f19;
+      background-color: #000000;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       color: #f3f4f6;
+      -webkit-font-smoothing: antialiased;
     }
     .wrapper {
       width: 100%;
-      table-layout: fixed;
-      background-color: #0b0f19;
-      padding: 40px 0;
+      background-color: #000000;
+      padding: 48px 16px;
     }
     .container {
-      max-width: 600px;
+      max-width: 580px;
       margin: 0 auto;
-      background-color: #111827;
-      border: 1px solid #1f2937;
-      border-radius: 12px;
+      background-color: #0d0d0d;
+      border: 1px solid rgba(255, 215, 0, 0.15);
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 0 60px rgba(255, 215, 0, 0.06), 0 20px 60px rgba(0, 0, 0, 0.8);
     }
+    /* Header */
     .header {
-      background: linear-gradient(135deg, #1e1b4b 0%, #311005 100%);
-      padding: 30px;
+      background: linear-gradient(160deg, #111111 0%, #1a1500 50%, #0d0d00 100%);
+      padding: 36px 30px 28px;
       text-align: center;
-      border-bottom: 2px solid #b45309;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+      position: relative;
     }
-    .logo {
-      font-size: 24px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      color: #fbbf24;
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse at 50% -20%, rgba(255, 215, 0, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .logo-img {
+      height: 44px;
+      width: auto;
+      display: block;
+      margin: 0 auto;
+      filter: brightness(1.1);
+    }
+    .tagline {
+      font-size: 11px;
+      color: rgba(255, 215, 0, 0.5);
+      letter-spacing: 3px;
       text-transform: uppercase;
-      margin: 0;
+      margin-top: 10px;
+      font-weight: 600;
     }
+    /* Content */
     .content {
-      padding: 40px 30px;
+      padding: 44px 36px;
       text-align: center;
     }
-    h1 {
-      font-size: 22px;
+    .greeting {
+      font-size: 26px;
+      font-weight: 800;
       color: #ffffff;
-      margin-top: 0;
-      margin-bottom: 20px;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
     }
-    p {
-      font-size: 16px;
-      line-height: 1.6;
-      color: #9ca3af;
-      margin-bottom: 30px;
+    .greeting span {
+      color: #FFD700;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 700;
+      margin-bottom: 28px;
+    }
+    .desc {
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.55);
+      margin-bottom: 32px;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* OTP Code Box */
+    .code-box {
+      margin: 0 auto 36px auto;
+      padding: 28px 24px;
+      background: linear-gradient(145deg, #141414, #1a1a0a);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 215, 0, 0.25);
+      max-width: 300px;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .code-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 3px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .code-value {
+      font-size: 44px;
+      letter-spacing: 10px;
+      color: #FFD700;
+      font-weight: 900;
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    }
+    .code-expiry {
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      margin-top: 12px;
+      letter-spacing: 0.5px;
+    }
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      margin: 0 0 28px 0;
+    }
+    /* CTA button */
+    .cta-wrap {
+      margin-bottom: 28px;
     }
     .btn {
       display: inline-block;
-      background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
-      color: #000000 !important;
+      background: linear-gradient(135deg, #FFD700 0%, #d97706 100%);
+      color: #000000;
       text-decoration: none;
-      font-weight: bold;
-      font-size: 16px;
-      padding: 15px 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(251, 191, 36, 0.3);
+      font-weight: 900;
+      font-size: 14px;
+      padding: 14px 32px;
+      border-radius: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
     }
-    .footer {
-      background-color: #0f172a;
-      padding: 20px;
-      text-align: center;
+    .alt-link-label {
       font-size: 12px;
-      color: #64748b;
-      border-top: 1px solid #1e293b;
+      color: rgba(255,255,255,0.25);
+      margin-bottom: 8px;
     }
     .link-alt {
       word-break: break-all;
-      font-size: 12px;
-      color: #fbbf24;
+      font-size: 11px;
+      color: rgba(255, 215, 0, 0.5);
       text-decoration: none;
-      margin-top: 20px;
-      display: block;
+    }
+    /* Footer */
+    .footer {
+      background-color: #050505;
+      padding: 22px 30px;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      line-height: 1.7;
+      margin: 0;
+    }
+    .footer a {
+      color: rgba(255, 215, 0, 0.4);
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="container">
+
+      <!-- Header com Logo -->
       <div class="header">
-        <h2 class="logo">RodeoApp</h2>
+        <img
+          src="https://portal.rodeoapp.pro/logo_branca.png"
+          alt="RodeoApp"
+          class="logo-img"
+        />
+        <p class="tagline">Portal RodeoApp</p>
       </div>
+
+      <!-- Conteúdo -->
       <div class="content">
-        <h1>Confirmação de Cadastro</h1>
-        <p>Agradecemos por se cadastrar no RodeoApp. Para concluir a criação da sua conta, digite o código de segurança abaixo no portal:</p>
-        
-        <div style="margin: 30px auto; padding: 20px; background-color: #1f2937; border-radius: 8px; border: 1px solid #374151; max-width: 280px; text-align: center;">
-          <p style="font-size: 14px; text-transform: uppercase; color: #9ca3af; margin: 0 0 10px 0; letter-spacing: 1px;">Seu Código de Confirmação</p>
-          <h2 style="font-size: 36px; letter-spacing: 6px; color: #fbbf24; margin: 0; font-weight: bold;">{{ .Token }}</h2>
+        <p class="greeting">Olá, <span>{{ .Name }}</span>!</p>
+        <p class="subtitle">Confirmação de Cadastro</p>
+
+        <p class="desc">
+          Bem-vindo ao RodeoApp! Para concluir seu cadastro e ter acesso ao Portal RodeoApp,
+          utilize o código de verificação abaixo:
+        </p>
+
+        <!-- Caixa do Código OTP -->
+        <div class="code-box">
+          <p class="code-label">Seu Código de Confirmação</p>
+          <div class="code-value">{{ .Token }}</div>
+          <p class="code-expiry">Válido por 60 minutos</p>
         </div>
 
-        <p style="margin-top: 40px; font-size: 14px; color: #4b5563;">Alternativamente, você também pode confirmar sua conta clicando no link abaixo:</p>
+        <hr class="divider" />
+
+        <!-- Botão de acesso direto -->
+        <div class="cta-wrap">
+          <a href="https://portal.rodeoapp.pro" class="btn">
+            Acesso ao Portal RodeoApp
+          </a>
+        </div>
+
+        <p class="alt-link-label">Ou confirme via link direto:</p>
         <a href="{{ .ConfirmationURL }}" class="link-alt">{{ .ConfirmationURL }}</a>
       </div>
+
+      <!-- Footer -->
       <div class="footer">
-        <p style="margin: 0; font-size: 12px; color: #64748b;">Este é um e-mail automático enviado pelo sistema RodeoApp.<br>© 2026 RodeoApp. Todos os direitos reservados.</p>
+        <p>
+          Este é um e-mail automático. Não responda a esta mensagem.<br>
+          © 2026 RodeoApp · <a href="https://portal.rodeoapp.pro">portal.rodeoapp.pro</a>
+        </p>
       </div>
+
     </div>
   </div>
 </body>
