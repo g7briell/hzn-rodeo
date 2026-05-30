@@ -1126,6 +1126,7 @@ Instruções importantes:
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isRegistering) return; // Evita duplos cliques e envios simultâneos
     setIsRegistering(true);
     setRegisterError('');
 
