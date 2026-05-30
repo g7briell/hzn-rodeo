@@ -2804,12 +2804,17 @@ Instruções importantes:
     const article = publicNews.article;
     const event = publicNews.event;
     
-    // Find active news portal sponsorships (tipo = 'portal')
-    const activePortalAds = patrocinios.filter(p => p.tipo === 'portal' && p.status === 'ativo');
+    // Find active news portal sponsorships
+    const activePortalAds = patrocinios.filter(p => (p.tipo === 'portal' || p.tipo === 'app') && p.status === 'ativo');
     const randomAd = activePortalAds.length > 0 ? activePortalAds[Math.floor(Math.random() * activePortalAds.length)] : null;
 
     // Process article content into paragraphs
-    let paragraphs = (article.conteudo || '')
+    let rawConteudo = article.conteudo || '';
+    if (typeof rawConteudo === 'string') {
+      rawConteudo = rawConteudo.replace(/\\n/g, '\n');
+    }
+    
+    let paragraphs = rawConteudo
       .split('\n')
       .map((p: string) => p.trim())
       .filter((p: string) => p.length > 0);
