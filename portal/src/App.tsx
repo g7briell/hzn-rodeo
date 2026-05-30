@@ -1088,11 +1088,11 @@ Instruções importantes:
       document.body.style.backgroundColor = '#ffffff';
       document.body.classList.add('light-theme-news');
       return () => {
-        document.body.style.backgroundColor = '#0a0a0a';
+        document.body.style.backgroundColor = '';
         document.body.classList.remove('light-theme-news');
       };
     } else {
-      document.body.style.backgroundColor = '#0a0a0a';
+      document.body.style.backgroundColor = '';
       document.body.classList.remove('light-theme-news');
     }
   }, [publicNewsId, publicNews]);
@@ -2815,7 +2815,7 @@ Instruções importantes:
     const event = publicNews.event;
     
     // Find active news portal sponsorships
-    const activePortalAds = patrocinios.filter(p => (p.tipo === 'portal' || p.tipo === 'app') && p.status === 'ativo');
+    const activePortalAds = patrocinios.filter(p => p.tipo === 'portal' && p.status === 'ativo');
     const randomAd = activePortalAds.length > 0 ? activePortalAds[Math.floor(Math.random() * activePortalAds.length)] : null;
 
     // Process article content into paragraphs
