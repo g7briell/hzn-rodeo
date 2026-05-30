@@ -2532,8 +2532,9 @@ Instruções importantes:
   });
 
   if (!user) {
-    // Patrocinadores ativos do tipo portal (para "Oferecimento")
-    const sponsorLogos = patrocinios.filter(p => p.tipo === 'portal' && p.status === 'ativo');
+    // Patrocinadores ativos do tipo app (Splash do app — para "Oferecimento" na landing)
+    const sponsorLogos = patrocinios.filter(p => p.tipo === 'app' && p.status === 'ativo');
+
 
     return (
       <>
