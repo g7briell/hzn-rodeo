@@ -1124,16 +1124,18 @@ Instruções importantes:
 
     try {
       // 1. Criar usuário no Auth do Supabase (Dispara e-mail de confirmação se configurado)
-      const { error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: regEmail,
         password: regPassword,
       });
 
       if (authError) throw new Error(authError.message);
+      if (!authData.user) throw new Error('Falha ao criar usuário na autenticação');
 
       // 2. Salvar na tabela perfis_portal com endereço completo contendo Cidade e Estado
       const fullAddress = `${regAddress.trim()}, ${regCity.trim()} - ${regState.trim()}`;
       const { error: dbError } = await supabase.from('perfis_portal').insert([{
+        id: authData.user.id,
         nome: regName,
         email: regEmail,
         whatsapp: regWhatsapp,
