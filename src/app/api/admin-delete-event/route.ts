@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
     
-    const supabaseUrl = 'http://37.148.134.227:8000';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://api.rodeoapp.pro';
     const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODAxMTczNjAsImV4cCI6MjA5NTQ3NzM2MH0.Bry4zMkU1QeOJYRiu60Vp-VdNak_sJZYc-tEx20pXFM';
     
     if (!supabaseUrl || !supabaseServiceKey) {

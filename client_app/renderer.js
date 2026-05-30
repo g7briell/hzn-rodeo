@@ -499,7 +499,7 @@ async function showIntro(htmlText, days, nome, expiry) {
 
     if (!fetchSuccess) {
         try {
-            const url = 'http://37.148.134.227:8000/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
+            const url = 'https://api.rodeoapp.pro/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
             const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
             const response = await fetch(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
             if (activeIntroRunId !== currentRunId) return;
@@ -4697,7 +4697,7 @@ window.openCloudBoiadas = async () => {
     if (list) list.innerHTML = '<div class="text-white/30 text-center py-10 font-black uppercase tracking-widest text-xs">Conectando ao Servidor Oficial...</div>';
     
     try {
-        const url = 'http://37.148.134.227:8000/rest/v1/boiadas_oficiais?select=*&order=nome';
+        const url = 'https://api.rodeoapp.pro/rest/v1/boiadas_oficiais?select=*&order=nome';
         const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
         
         const response = await fetch(url, {
