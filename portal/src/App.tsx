@@ -2567,7 +2567,7 @@ Instruções importantes:
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                objectPosition: '30% center',
+                objectPosition: '15% center',
               }}
             />
 
