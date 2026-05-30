@@ -2719,17 +2719,25 @@ Instruções importantes:
 
           {/* ===== LADO DIREITO — Painel de Login ===== */}
           <div style={{
-            width: '380px',
+            width: '45%',
+            minWidth: '380px',
             flexShrink: 0,
             backgroundColor: '#000',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
-            padding: '40px 36px',
+            padding: '40px 40px 40px 48px',
             gap: '0',
             position: 'relative',
           }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '360px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}>
 
             {/* Logo topo (splash_logo) */}
             <div style={{ marginBottom: '32px', textAlign: 'center' }}>
@@ -2910,6 +2918,7 @@ Instruções importantes:
                 alt="RodeoApp"
                 style={{ height: '28px', width: 'auto', objectFit: 'contain' }}
               />
+            </div>
             </div>
           </div>
         </div>
