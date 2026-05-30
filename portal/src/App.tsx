@@ -2809,10 +2809,27 @@ Instruções importantes:
     const randomAd = activePortalAds.length > 0 ? activePortalAds[Math.floor(Math.random() * activePortalAds.length)] : null;
 
     // Process article content into paragraphs
-    const paragraphs = (article.conteudo || '')
+    let paragraphs = (article.conteudo || '')
       .split('\n')
       .map((p: string) => p.trim())
       .filter((p: string) => p.length > 0);
+      
+    // If it's just one huge block of text (no newlines), artificially split it into paragraphs by sentences
+    if (paragraphs.length === 1 && paragraphs[0].length > 500) {
+      const sentences = paragraphs[0].match(/[^.!?]+[.!?]+/g) || [paragraphs[0]];
+      paragraphs = [];
+      let currentParagraph = '';
+      for (const sentence of sentences) {
+        currentParagraph += sentence.trim() + ' ';
+        if (currentParagraph.length > 400) { // Approx 3-4 sentences per paragraph
+          paragraphs.push(currentParagraph.trim());
+          currentParagraph = '';
+        }
+      }
+      if (currentParagraph.trim().length > 0) {
+        paragraphs.push(currentParagraph.trim());
+      }
+    }
 
     const half = Math.ceil(paragraphs.length / 2);
     const firstHalf = paragraphs.slice(0, half);
