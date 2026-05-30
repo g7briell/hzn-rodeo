@@ -577,10 +577,17 @@ Instruções importantes:
       };
 
       let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, fetchPayload);
+      let primaryError = '';
 
       if (!response.ok) {
-        console.warn(`Gemini 2.5 Flash falhou com status ${response.status}. Tentando fallback para Gemini 1.5 Flash...`);
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, fetchPayload);
+        try {
+          const errBody = await response.json();
+          primaryError = errBody?.error?.message || JSON.stringify(errBody);
+        } catch (_) {
+          primaryError = response.statusText || `Status ${response.status}`;
+        }
+        console.warn(`Gemini 2.5 Flash falhou. Erro: ${primaryError}. Tentando fallback para Gemini 2.0 Flash...`);
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, fetchPayload);
       }
 
       if (!response.ok) {
@@ -598,7 +605,7 @@ Instruções importantes:
             if (errText) errorMsg = errText;
           } catch (__) {}
         }
-        throw new Error(`Erro na API do Gemini (${response.status}): ${errorMsg}`);
+        throw new Error(`Erro na API do Gemini. 2.5-flash: ${primaryError || 'Erro desconhecido'} | 2.0-flash (fallback): ${errorMsg}`);
       }
 
       const resJson = await response.json();
