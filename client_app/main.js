@@ -41,8 +41,8 @@ function saveLocalData(email, data, esporte = currentSportSession) {
 }
 
 // Credenciais Supabase
-const SUPABASE_URL = 'https://scivakieachwewdhnuhv.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_wX-v1S8OjLldjbwEQYaXVw_1ot31zcH';
+const SUPABASE_URL = 'http://37.148.134.227:8000';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false }

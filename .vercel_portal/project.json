@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_6N6R6Z04OKSEMaa1mjTDnkm2zEkP",
+  "orgId": "team_plmjJUrjGnsmrvDxEpDdbxbC",
+  "projectName": "portal-rodeoapp",
+  "settings": {
+    "createdAt": 1779548598569,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}
