@@ -41,6 +41,11 @@
       "target": "nsis",
       "icon": "build/icon.png"
     },
+    "mac": {
+      "target": [
+        "zip"
+      ]
+    },
     "extraResources": [
       {
         "from": "../modelos_contrato",
