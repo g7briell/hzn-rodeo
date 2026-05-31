@@ -2764,9 +2764,9 @@ Instruções importantes:
                       src={ev.detalhes.logo}
                       alt={ev.nome}
                       style={{
-                        height: '52px',
+                        height: '70px',
                         width: 'auto',
-                        maxWidth: '110px',
+                        maxWidth: '150px',
                         objectFit: 'contain',
                         filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.8))',
                         borderRadius: '6px',
@@ -2789,9 +2789,9 @@ Instruções importantes:
                       src={ev.detalhes.logo}
                       alt={ev.nome}
                       style={{
-                        height: '52px',
+                        height: '70px',
                         width: 'auto',
-                        maxWidth: '110px',
+                        maxWidth: '150px',
                         objectFit: 'contain',
                         filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.8))',
                         borderRadius: '6px',
@@ -2843,9 +2843,9 @@ Instruções importantes:
                           src={p.logo_url}
                           alt={p.empresa}
                           style={{
-                            height: '36px',
+                            height: '50px',
                             width: 'auto',
-                            maxWidth: '100px',
+                            maxWidth: '140px',
                             objectFit: 'contain',
                             filter: 'brightness(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.9))',
                             transition: 'filter 0.2s',
@@ -2871,7 +2871,7 @@ Instruções importantes:
             flexDirection: 'column',
             alignItems: 'flex-start',
             justifyContent: 'center',
-            padding: '40px 40px 40px 48px',
+            padding: '40px 40px 40px 80px',
             gap: '0',
             position: 'relative',
           }}>
