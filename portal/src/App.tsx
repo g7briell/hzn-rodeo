@@ -2632,6 +2632,10 @@ Instruções importantes:
     };
 
     if (isMobile) {
+      const highlightEventsList = homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).slice(0, 4);
+      const backupEventsList = homeEvents.filter(ev => ev.detalhes?.logo).slice(0, 3);
+      const finalEventsToRender = highlightEventsList.length > 0 ? highlightEventsList : backupEventsList;
+
       return (
         <>
           {/* Style block for loading animations */}
@@ -2649,7 +2653,7 @@ Instruções importantes:
               background: rgba(0,0,0,0.1);
             }
             .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(255,255,255,0.1);
+              background: rgba(255,255,255,0.15);
               border-radius: 4px;
             }
           `}</style>
@@ -2749,85 +2753,187 @@ Instruções importantes:
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            padding: '24px 16px',
+            padding: '16px 12px',
             fontFamily: '"Outfit", "Inter", sans-serif',
             boxSizing: 'border-box',
           }}>
             {/* TOPO: LOGO + EVENTOS */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-              <img
-                src="/splash_logo.png"
-                alt="RodeoApp"
-                style={{ height: '60px', width: 'auto', objectFit: 'contain', marginBottom: '16px' }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: '14px' }}>
+              {/* Brand Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 8px' }}>
+                <img
+                  src="/splash_logo.png"
+                  alt="RodeoApp"
+                  style={{ height: '42px', width: 'auto', objectFit: 'contain' }}
+                />
+                <div style={{
+                  background: 'linear-gradient(90deg, rgba(255,215,0,0.15) 0%, rgba(217,119,6,0.15) 100%)',
+                  border: '1px solid rgba(255,215,0,0.3)',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span style={{ width: '6px', height: '6px', backgroundColor: '#FFD700', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 8px #FFD700' }} />
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#FFD700', letterSpacing: '1px', textTransform: 'uppercase' }}>PORTAL</span>
+                </div>
+              </div>
 
               {/* EVENTOS EM DESTAQUE */}
-              <div style={{ width: '100%', textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ width: '100%', padding: '0 4px' }}>
                 <p style={{
-                  margin: '0 0 8px 0',
+                  margin: '0 0 10px 4px',
                   fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'rgba(255,255,255,0.6)',
-                  letterSpacing: '1px',
+                  fontWeight: 700,
+                  color: 'rgba(255,255,255,0.5)',
+                  letterSpacing: '1.5px',
                   textTransform: 'uppercase',
+                  textAlign: 'left',
                 }}>
-                  Eventos em <strong style={{ color: '#FFD700' }}>Destaque</strong>:
+                  Eventos em <strong style={{ color: '#FFD700' }}>Destaque</strong>
                 </p>
-                <div style={{
-                  display: 'flex',
-                  gap: '12px',
-                  overflowX: 'auto',
-                  paddingBottom: '4px',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  width: '100%',
-                }} className="custom-scrollbar">
-                  {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).slice(0, 4).map(ev => (
-                    <div key={ev.id} onClick={() => setPublicRankingModal(ev)} style={{ cursor: 'pointer', flexShrink: 0 }}>
-                      <img
-                        src={ev.detalhes.logo}
-                        alt={ev.nome}
-                        style={{ height: '42px', width: 'auto', maxWidth: '85px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', borderRadius: '4px' }}
-                      />
-                    </div>
-                  ))}
-                  {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).length === 0 && homeEvents.filter(ev => ev.detalhes?.logo).slice(0, 3).map(ev => (
-                    <div key={ev.id} onClick={() => setPublicRankingModal(ev)} style={{ cursor: 'pointer', flexShrink: 0 }}>
-                      <img
-                        src={ev.detalhes.logo}
-                        alt={ev.nome}
-                        style={{ height: '42px', width: 'auto', maxWidth: '85px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', borderRadius: '4px' }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                
+                {finalEventsToRender.length > 0 ? (
+                  <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    overflowX: 'auto',
+                    paddingBottom: '8px',
+                    width: '100%',
+                    scrollSnapType: 'x mandatory',
+                    WebkitOverflowScrolling: 'touch',
+                  }} className="custom-scrollbar">
+                    {finalEventsToRender.map(ev => {
+                      const dateText = ev.data_inicio ? `${ev.data_inicio.split('-').reverse().slice(0, 2).join('/')}` : '';
+                      const locationText = ev.local || ev.cidade || 'Brasil';
+                      return (
+                        <div
+                          key={ev.id}
+                          onClick={() => setPublicRankingModal(ev)}
+                          style={{
+                            flex: '0 0 82%',
+                            scrollSnapAlign: 'start',
+                            background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.7) 0%, rgba(10, 10, 10, 0.85) 100%)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(255, 215, 0, 0.2)',
+                            borderRadius: '16px',
+                            padding: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                            transition: 'transform 0.2s',
+                          }}
+                        >
+                          <img
+                            src={ev.detalhes.logo}
+                            alt={ev.nome}
+                            style={{
+                              height: '46px',
+                              width: '46px',
+                              objectFit: 'contain',
+                              backgroundColor: 'rgba(0,0,0,0.5)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '10px',
+                              padding: '4px',
+                            }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                              <span style={{
+                                fontSize: '8px',
+                                fontWeight: '900',
+                                background: 'rgba(255, 215, 0, 0.15)',
+                                color: '#FFD700',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                letterSpacing: '1px',
+                                textTransform: 'uppercase',
+                              }}>
+                                SEMANA 🏆
+                              </span>
+                            </div>
+                            <h4 style={{
+                              margin: 0,
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              color: '#fff',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                              {ev.nome}
+                            </h4>
+                            <p style={{
+                              margin: 0,
+                              fontSize: '11px',
+                              color: 'rgba(255,255,255,0.4)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                              {locationText} {dateText ? `• ${dateText}` : ''}
+                            </p>
+                          </div>
+                          <div style={{
+                            backgroundColor: 'rgba(255,215,0,0.1)',
+                            borderRadius: '50%',
+                            width: '28px',
+                            height: '28px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid rgba(255,215,0,0.2)',
+                          }}>
+                            <span style={{ color: '#FFD700', fontSize: '12px', fontWeight: 'bold' }}>→</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px dashed rgba(255,255,255,0.15)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    textAlign: 'center',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: '12px',
+                  }}>
+                    Nenhum evento em destaque no momento
+                  </div>
+                )}
               </div>
             </div>
 
             {/* MEIO: FORMULÁRIOS COM GLASSMORPHISM */}
             <div style={{
               width: '100%',
-              maxWidth: '360px',
-              margin: '24px auto',
-              background: 'rgba(10, 10, 10, 0.75)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
+              maxWidth: '380px',
+              margin: '20px auto',
+              background: 'rgba(10, 10, 10, 0.72)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '16px',
+              borderRadius: '24px',
               padding: '24px 20px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
               boxSizing: 'border-box',
             }}>
               {authMode === 'login' && loginStep === 'credentials' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 16px 0' }}>
                     Entrar no Portal
                   </p>
                   <form
-                    style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}
+                    style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}
                     onSubmit={async (e) => {
                       e.preventDefault();
                       if (isLoading) return;
@@ -2927,7 +3033,7 @@ Instruções importantes:
 
               {authMode === 'login' && loginStep === 'otp' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
                     Código de Segurança
                   </p>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
@@ -2986,7 +3092,7 @@ Instruções importantes:
 
               {authMode === 'forgot-password' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
                     Recuperar Senha
                   </p>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
@@ -3050,7 +3156,7 @@ Instruções importantes:
 
               {authMode === 'register' && registerStep === 'form' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
                     Criar Conta
                   </p>
                   <form
@@ -3137,7 +3243,7 @@ Instruções importantes:
 
               {authMode === 'register' && registerStep === 'otp' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
                     Validar Conta
                   </p>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
@@ -3196,34 +3302,57 @@ Instruções importantes:
             </div>
 
             {/* RODAPÉ: PATROCINADORES */}
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', marginTop: 'auto' }}>
               {sponsorLogos.length > 0 && (
-                <div style={{ width: '100%', textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ width: '100%', textAlign: 'center' }}>
                   <p style={{
-                    margin: '0 0 8px 0',
+                    margin: '0 0 12px 0',
                     fontSize: '10px',
-                    fontWeight: 700,
-                    color: 'rgba(255,255,255,0.4)',
-                    letterSpacing: '2px',
+                    fontWeight: 800,
+                    color: 'rgba(255,255,255,0.45)',
+                    letterSpacing: '2.5px',
                     textTransform: 'uppercase',
                   }}>
                     Oferecimento
                   </p>
                   <div style={{
                     display: 'flex',
-                    gap: '12px',
+                    gap: '10px',
                     overflowX: 'auto',
-                    paddingBottom: '4px',
+                    paddingBottom: '8px',
                     justifyContent: 'center',
                     alignItems: 'center',
                     width: '100%',
                   }} className="custom-scrollbar">
                     {sponsorLogos.map(p => (
-                      <a key={p.id} href={p.click_url || '#'} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                      <a
+                        key={p.id}
+                        href={p.click_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          flexShrink: 0,
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '16px',
+                          padding: '8px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '42px',
+                          boxSizing: 'border-box',
+                        }}
+                      >
                         <img
                           src={p.logo_url}
                           alt={p.empresa}
-                          style={{ height: '32px', width: 'auto', maxWidth: '80px', objectFit: 'contain', filter: 'brightness(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.9))' }}
+                          style={{
+                            height: '24px',
+                            width: 'auto',
+                            maxWidth: '75px',
+                            objectFit: 'contain',
+                            filter: 'brightness(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                          }}
                         />
                       </a>
                     ))}
@@ -3231,11 +3360,11 @@ Instruções importantes:
                 </div>
               )}
 
-              <div style={{ opacity: 0.5 }}>
+              <div style={{ opacity: 0.35 }}>
                 <img
                   src="/header_logo.png"
                   alt="RodeoApp"
-                  style={{ height: '20px', width: 'auto', objectFit: 'contain' }}
+                  style={{ height: '18px', width: 'auto', objectFit: 'contain' }}
                 />
               </div>
             </div>
