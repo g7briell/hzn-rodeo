@@ -288,8 +288,6 @@ async function init() {
             console.log("RODEOAPP: HWID obtido:", hwid);
             const res = await window.electronAPI.validateLicense({ email: auth.email, key: auth.key, hwid });
             
-            if (loadingOverlay) loadingOverlay.classList.add('hidden');
-            
             if (res && res.success) {
                 console.log("RODEOAPP: Licença válida!");
                 const data = res.data;
@@ -309,10 +307,44 @@ async function init() {
                 showIntro(`RODEO<span class="text-yellow-500">APP</span>`, authData.expiry, authData.nome, authData.expiry);
                 return;
             } else {
-                console.warn("RODEOAPP: Licença inválida ou expirada:", res.message);
+                console.warn("RODEOAPP: Licença inválida ou expirada no servidor:", res ? res.message : 'Sem resposta');
+                
+                // FALLBACK SE ESTIVER OFFLINE OU SE HOUVER ERRO DE CONEXÃO COM O SERVIDOR
+                const isNetworkError = !res || 
+                    (res.message && (
+                        res.message.toLowerCase().includes('fetch') || 
+                        res.message.toLowerCase().includes('failed to fetch') || 
+                        res.message.toLowerCase().includes('enotfound') || 
+                        res.message.toLowerCase().includes('etimedout') || 
+                        res.message.toLowerCase().includes('connect') ||
+                        res.message.toLowerCase().includes('network') ||
+                        res.message.toLowerCase().includes('erro interno')
+                    )) ||
+                    !navigator.onLine;
+
+                if (isNetworkError && auth.expiry) {
+                    const exp = new Date(auth.expiry);
+                    if (exp > new Date()) {
+                        console.log("RODEOAPP: Sem conexão com o servidor. Usando licença local válida até", auth.expiry);
+                        currentExpiryDate = auth.expiry;
+                        userSports = (auth.esportes || 'rodeio').split(',').map(s => s.trim().toLowerCase());
+                        showIntro(`RODEO<span class="text-yellow-500">APP</span>`, auth.expiry, auth.nome || 'Usuário', auth.expiry);
+                        return;
+                    }
+                }
             }
         } catch (e) { 
-            console.error("RODEOAPP: Erro crítico no init:", e); 
+            console.error("RODEOAPP: Erro crítico no init:", e);
+            if (auth.expiry) {
+                const exp = new Date(auth.expiry);
+                if (exp > new Date()) {
+                    console.log("RODEOAPP: Exceção no init. Usando licença local válida até", auth.expiry);
+                    currentExpiryDate = auth.expiry;
+                    userSports = (auth.esportes || 'rodeio').split(',').map(s => s.trim().toLowerCase());
+                    showIntro(`RODEO<span class="text-yellow-500">APP</span>`, auth.expiry, auth.nome || 'Usuário', auth.expiry);
+                    return;
+                }
+            }
         } finally {
             if (loadingOverlay) loadingOverlay.classList.add('hidden');
         }
