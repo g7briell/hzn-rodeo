@@ -2896,13 +2896,10 @@ Instruções importantes:
                   </div>
                 ) : (
                   <div style={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px dashed rgba(255,255,255,0.15)',
-                    borderRadius: '12px',
-                    padding: '16px',
                     textAlign: 'center',
-                    color: 'rgba(255,255,255,0.4)',
+                    color: 'rgba(255,255,255,0.3)',
                     fontSize: '12px',
+                    padding: '8px',
                   }}>
                     Nenhum evento em destaque no momento
                   </div>
@@ -3317,7 +3314,7 @@ Instruções importantes:
                   </p>
                   <div style={{
                     display: 'flex',
-                    gap: '10px',
+                    gap: '20px',
                     overflowX: 'auto',
                     paddingBottom: '8px',
                     justifyContent: 'center',
@@ -3332,26 +3329,20 @@ Instruções importantes:
                         rel="noopener noreferrer"
                         style={{
                           flexShrink: 0,
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: 'none',
-                          borderRadius: '16px',
-                          padding: '8px 16px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          height: '42px',
-                          boxSizing: 'border-box',
                         }}
                       >
                         <img
                           src={p.logo_url}
                           alt={p.empresa}
                           style={{
-                            height: '24px',
+                            height: '32px',
                             width: 'auto',
-                            maxWidth: '75px',
+                            maxWidth: '85px',
                             objectFit: 'contain',
-                            filter: 'brightness(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                            filter: 'brightness(0.95) drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
                           }}
                         />
                       </a>
