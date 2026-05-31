@@ -190,6 +190,22 @@ function App() {
   const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
   const [publicNewsId, setPublicNewsId] = useState<string | null>(null);
   const [publicNews, setPublicNews] = useState<any>(null);
+  const [currentArticleAd, setCurrentArticleAd] = useState<any>(null);
+
+  useEffect(() => {
+    if (publicNews && patrocinios.length > 0) {
+      const activePortalAds = patrocinios.filter((p: any) => p.tipo === 'portal' && p.status === 'ativo');
+      if (activePortalAds.length > 0) {
+        const randomAd = activePortalAds[Math.floor(Math.random() * activePortalAds.length)];
+        setCurrentArticleAd(randomAd);
+      } else {
+        setCurrentArticleAd(null);
+      }
+    } else if (!publicNews) {
+      setCurrentArticleAd(null);
+    }
+  }, [publicNews, patrocinios]);
+
   const [selectedRankingDay, setSelectedRankingDay] = useState<string>('Geral');
   const [verifiedCpfs, setVerifiedCpfs] = useState<Set<string>>(new Set());
   const [eventTab, setEventTab] = useState<'home'|'ranking'|'sorteios'|'competidores'|'boiadas'|'noticias'|'midia'>('home');
@@ -4621,8 +4637,7 @@ Instruções importantes:
     const event = publicNews.event;
     
     // Find active news portal sponsorships
-    const activePortalAds = patrocinios.filter(p => p.tipo === 'portal' && p.status === 'ativo');
-    const randomAd = activePortalAds.length > 0 ? activePortalAds[Math.floor(Math.random() * activePortalAds.length)] : null;
+    const randomAd = currentArticleAd;
 
     // Process article content into paragraphs
     let rawConteudo = article.conteudo || '';
