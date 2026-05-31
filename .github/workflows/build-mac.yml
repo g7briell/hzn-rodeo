@@ -33,3 +33,9 @@ jobs:
         run: |
           cd client_app
           npx electron-builder --mac zip --publish always
+
+      - name: Upload macOS build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HZN-RodeoApp-macOS
+          path: client_app/dist/HZN-RodeoApp-Setup-*.zip
