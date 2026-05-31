@@ -410,6 +410,7 @@ export default function AdminDashboard() {
     setIsSavingSponsor(true);
     try {
       const insertData = {
+        id: Date.now(),
         empresa: sponsorEmpresa,
         valor_contrato: parseFloat(sponsorValor) || 0,
         tempo_contrato: parseInt(sponsorTempo) || 1,
