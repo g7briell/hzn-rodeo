@@ -2772,7 +2772,27 @@ Instruções importantes:
 
   if (!user) {
     // Patrocinadores ativos do tipo app (Splash do app — para "Oferecimento" na landing)
-    const sponsorLogos = patrocinios.filter(p => p.tipo === 'app' && p.status === 'ativo');
+    const sponsorLogos = patrocinios
+      .filter(p => {
+        if (p.status !== 'ativo') return false;
+        if (p.tipo === 'app') return true;
+        if (p.tipo === 'consolidated') {
+          const details = typeof p.detalhes === 'string' ? JSON.parse(p.detalhes) : (p.detalhes || {});
+          return details.splash_app?.ativo === true;
+        }
+        return false;
+      })
+      .map(p => {
+        if (p.tipo === 'consolidated') {
+          const details = typeof p.detalhes === 'string' ? JSON.parse(p.detalhes) : (p.detalhes || {});
+          return {
+            ...p,
+            logo_url: details.splash_app?.logo_url || p.logo_url,
+            click_url: details.splash_app?.click_url || p.click_url || '#'
+          };
+        }
+        return p;
+      });
 
 
     const inputStyle = {
