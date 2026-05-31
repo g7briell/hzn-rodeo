@@ -29,6 +29,11 @@ function App() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   
+  // App Loader States
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [fadeLoader, setFadeLoader] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  
   // Register States
   const [registerStep, setRegisterStep] = useState<'form' | 'otp'>('form');
   const [regName, setRegName] = useState('');
@@ -807,9 +812,74 @@ Instruções importantes:
   };
 
   useEffect(() => {
-    fetchEventosOficiais();
-    fetchPatrocinios();
-    
+    const initApp = async () => {
+      // Helper function to preload images
+      const preloadImages = (urls: string[]): Promise<void[]> => {
+        return Promise.all(
+          urls.map(url => {
+            return new Promise<void>((resolve) => {
+              if (!url) {
+                resolve();
+                return;
+              }
+              const img = new Image();
+              img.src = url;
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            });
+          })
+        );
+      };
+
+      // Animate progress bar organically to about 85%
+      let progress = 0;
+      const progressInterval = setInterval(() => {
+        progress += Math.floor(Math.random() * 8) + 4;
+        if (progress > 85) {
+          clearInterval(progressInterval);
+        } else {
+          setLoadingProgress(progress);
+        }
+      }, 70);
+
+      // Start fetching db data and session
+      const dbPromises = [
+        fetchEventosOficiais(),
+        fetchPatrocinios(),
+        checkSession()
+      ];
+
+      try {
+        await Promise.all(dbPromises);
+      } catch (err) {
+        console.error("Database fetch error:", err);
+      }
+
+      // Preload essential images
+      const essentialImages = [
+        '/splash_logo.png',
+        '/header_logo.png',
+        '/maiorqualidade.jpg'
+      ];
+      try {
+        await preloadImages(essentialImages);
+      } catch (err) {
+        console.error("Image preloading error:", err);
+      }
+
+      // Finish progress bar to 100%
+      clearInterval(progressInterval);
+      setLoadingProgress(100);
+
+      // Start the fadeout animation
+      setTimeout(() => {
+        setFadeLoader(true);
+        setTimeout(() => {
+          setInitialLoading(false);
+        }, 800); // matches transition duration
+      }, 500);
+    };
+
     const checkSession = async () => {
       const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
       if (!isAuth) {
@@ -832,7 +902,7 @@ Instruções importantes:
       }
     };
 
-    checkSession();
+    initApp();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
@@ -2538,6 +2608,80 @@ Instruções importantes:
 
     return (
       <>
+        {/* Style block for loading animations */}
+        <style>{`
+          @keyframes pulseGlow {
+            0% { transform: scale(0.95); opacity: 0.8; filter: drop-shadow(0 0 15px rgba(255,215,0,0.2)); }
+            50% { transform: scale(1.02); opacity: 1; filter: drop-shadow(0 0 35px rgba(255,215,0,0.6)); }
+            100% { transform: scale(0.95); opacity: 0.8; filter: drop-shadow(0 0 15px rgba(255,215,0,0.2)); }
+          }
+        `}</style>
+
+        {initialLoading && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: '#000',
+            zIndex: 99999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: fadeLoader ? 0 : 1,
+            transition: 'opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1)',
+            pointerEvents: fadeLoader ? 'none' : 'auto',
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              animation: 'pulseGlow 2.5s infinite ease-in-out',
+            }}>
+              <img
+                src="/splash_logo.png"
+                alt="Carregando..."
+                style={{
+                  height: '110px',
+                  width: 'auto',
+                  objectFit: 'contain',
+                  marginBottom: '24px',
+                }}
+              />
+            </div>
+            
+            {/* Progress bar container */}
+            <div style={{
+              width: '250px',
+              height: '4px',
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderRadius: '10px',
+              overflow: 'hidden',
+              marginTop: '10px',
+              border: '1px solid rgba(255,255,255,0.05)',
+            }}>
+              <div style={{
+                width: `${loadingProgress}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #FFD700 0%, #d97706 100%)',
+                boxShadow: '0 0 10px rgba(255,215,0,0.5)',
+                transition: 'width 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+              }} />
+            </div>
+
+            <p style={{
+              color: 'rgba(255,255,255,0.4)',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginTop: '16px',
+              fontFamily: '"Outfit", "Inter", sans-serif',
+            }}>
+              Carregando {loadingProgress}%
+            </p>
+          </div>
+        )}
+
         {/* ============================================================ */}
         {/* LANDING PAGE — Split Screen (igual ao RodeoApp desktop app)  */}
         {/* ============================================================ */}
@@ -2567,7 +2711,7 @@ Instruções importantes:
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                objectPosition: '15% center',
+                objectPosition: '24% center',
               }}
             />
 
@@ -3355,6 +3499,80 @@ Instruções importantes:
   // Authenticated Dashboard Layout
   return (
     <>
+      {/* Style block for loading animations */}
+      <style>{`
+        @keyframes pulseGlow {
+          0% { transform: scale(0.95); opacity: 0.8; filter: drop-shadow(0 0 15px rgba(255,215,0,0.2)); }
+          50% { transform: scale(1.02); opacity: 1; filter: drop-shadow(0 0 35px rgba(255,215,0,0.6)); }
+          100% { transform: scale(0.95); opacity: 0.8; filter: drop-shadow(0 0 15px rgba(255,215,0,0.2)); }
+        }
+      `}</style>
+
+      {initialLoading && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: '#000',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: fadeLoader ? 0 : 1,
+          transition: 'opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1)',
+          pointerEvents: fadeLoader ? 'none' : 'auto',
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            animation: 'pulseGlow 2.5s infinite ease-in-out',
+          }}>
+            <img
+              src="/splash_logo.png"
+              alt="Carregando..."
+              style={{
+                height: '110px',
+                width: 'auto',
+                objectFit: 'contain',
+                marginBottom: '24px',
+              }}
+            />
+          </div>
+          
+          {/* Progress bar container */}
+          <div style={{
+            width: '250px',
+            height: '4px',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            marginTop: '10px',
+            border: '1px solid rgba(255,255,255,0.05)',
+          }}>
+            <div style={{
+              width: `${loadingProgress}%`,
+              height: '100%',
+              background: 'linear-gradient(90deg, #FFD700 0%, #d97706 100%)',
+              boxShadow: '0 0 10px rgba(255,215,0,0.5)',
+              transition: 'width 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+            }} />
+          </div>
+
+          <p style={{
+            color: 'rgba(255,255,255,0.4)',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            marginTop: '16px',
+            fontFamily: '"Outfit", "Inter", sans-serif',
+          }}>
+            Carregando {loadingProgress}%
+          </p>
+        </div>
+      )}
+
       <div className="dashboard-layout">
         {/* Left Sidebar */}
         <aside className="dashboard-sidebar">
