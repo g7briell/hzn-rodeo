@@ -133,6 +133,60 @@ function App() {
 
   // Public Boiada States
   const [publicBoiadaSlug, setPublicBoiadaSlug] = useState<string | null>(null);
+
+  // Favorites State
+  const [favorites, setFavorites] = useState<{ eventos: string[], competitors: string[], cias: string[] }>({
+    eventos: [],
+    competitors: [],
+    cias: []
+  });
+  const [peaoProfilesList, setPeaoProfilesList] = useState<any[]>([]);
+
+  // Load user favorites from localStorage when user is loaded
+  useEffect(() => {
+    if (user?.email) {
+      const stored = localStorage.getItem(`rodeo_favs_${user.email.toLowerCase()}`);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setFavorites({
+            eventos: Array.isArray(parsed.eventos) ? parsed.eventos : [],
+            competitors: Array.isArray(parsed.competitors) ? parsed.competitors : [],
+            cias: Array.isArray(parsed.cias) ? parsed.cias : []
+          });
+        } catch (e) {
+          console.error("Error parsing favorites", e);
+        }
+      } else {
+        setFavorites({ eventos: [], competitors: [], cias: [] });
+      }
+    }
+  }, [user]);
+
+  // Toggle favorite utility
+  const toggleFavorite = (type: 'eventos' | 'competitors' | 'cias', idOrName: string) => {
+    if (!user?.email) return;
+    setFavorites(prev => {
+      const current = prev[type] || [];
+      const updatedList = current.includes(idOrName)
+        ? current.filter(x => x !== idOrName)
+        : [...current, idOrName];
+      const nextFavs = { ...prev, [type]: updatedList };
+      localStorage.setItem(`rodeo_favs_${user.email!.toLowerCase()}`, JSON.stringify(nextFavs));
+      return nextFavs;
+    });
+  };
+
+  const fetchAllProfiles = async () => {
+    try {
+      const { data, error } = await supabase.from('perfis_portal').select('*');
+      if (error) throw error;
+      setPeaoProfilesList(data || []);
+    } catch (err) {
+      console.error("Error fetching profiles:", err);
+    }
+  };
+
   const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
   const [publicNewsId, setPublicNewsId] = useState<string | null>(null);
   const [publicNews, setPublicNews] = useState<any>(null);
@@ -858,7 +912,8 @@ Instruções importantes:
       const dbPromises = [
         fetchEventosOficiais(),
         fetchPatrocinios(),
-        checkSession()
+        checkSession(),
+        fetchAllProfiles()
       ];
 
       try {
@@ -909,7 +964,7 @@ Instruções importantes:
           fetchUserProfile(session.user.email);
           fetchBoiadas();
           fetchTropeiroBoiada(session.user.email);
-          setCurrentTab('explore');
+          setCurrentTab('home');
         }
       }
     };
@@ -928,7 +983,7 @@ Instruções importantes:
             fetchUserProfile(session.user.email);
             fetchBoiadas();
             fetchTropeiroBoiada(session.user.email);
-            setCurrentTab('explore');
+            setCurrentTab('home');
           }
           return;
         }
@@ -941,7 +996,7 @@ Instruções importantes:
           fetchBoiadas();
           fetchEventosOficiais();
           fetchTropeiroBoiada(session.user.email);
-          setCurrentTab(prev => prev === 'home' ? 'explore' : prev);
+          setCurrentTab(prev => prev === 'explore' ? 'home' : prev);
         }
       } else if (!session) {
         setUser(null);
@@ -4843,6 +4898,15 @@ Instruções importantes:
           </div>
           
           <nav className="sidebar-menu">
+            <button 
+              className={`menu-item ${currentTab === 'home' ? 'active' : ''}`} 
+              onClick={() => { setCurrentTab('home'); setSearchTerm(''); }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Home
+            </button>
             {isAdmin && (
               <button 
                 className={`menu-item ${currentTab === 'dashboard' ? 'active' : ''}`} 
@@ -4956,6 +5020,186 @@ Instruções importantes:
           {/* Dynamic Tabs Content */}
           <div className="dashboard-content">
             
+            {/* HOME CUSTOM PANEL TAB */}
+            {currentTab === 'home' && (
+              <div className="fade-in">
+                <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Meu Painel</h2>
+                <p className="text-muted" style={{ marginBottom: '2.5rem' }}>Acompanhe em tempo real seus eventos, competidores e companhias favoritas.</p>
+                
+                {/* Onboarding Empty State */}
+                {favorites.eventos.length === 0 && favorites.cias.length === 0 && favorites.competitors.length === 0 ? (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px dashed rgba(255,255,255,0.15)',
+                    borderRadius: '24px',
+                    padding: '3rem 2rem',
+                    textAlign: 'center',
+                    maxWidth: '500px',
+                    margin: '2rem auto',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+                  }}>
+                    <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>⭐</span>
+                    <h3 style={{ fontSize: '1.25rem', color: '#fff', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Seu Painel está Vazio</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem', lineHeight: '1.5', margin: 0 }}>
+                      Navegue pelas abas do portal e clique no ícone de estrela nos seus eventos, companhias (Cias) ou competidores preferidos para adicioná-los aqui e acompanhá-los rapidamente!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+                    {/* 1. EVENTOS FAVORITOS */}
+                    {favorites.eventos.length > 0 && (
+                      <div>
+                        <h3 style={{ fontSize: '1.4rem', marginBottom: '1.25rem', textTransform: 'uppercase', color: '#FFD700', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>Eventos Favoritados</h3>
+                        <div className="events-grid">
+                          {eventosOficiais.filter(ev => favorites.eventos.includes(ev.id.toString())).map(ev => (
+                            <div key={ev.id} onClick={() => { window.history.pushState({}, '', '/evento/' + slugify(ev.nome)); setPublicEventSlug(slugify(ev.nome)); setSelectedEvent(ev); setSelectedRankingDay('Geral'); setEventTab('home'); }} className="event-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                {ev.detalhes?.logo ? (
+                                  <img src={ev.detalhes.logo} alt={ev.nome} style={{ width: '64px', height: '64px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(0,0,0,0.4)', padding: '6px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                                ) : (
+                                  <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '900', border: '1px solid rgba(255,255,255,0.1)' }}>LOGO</div>
+                                )}
+                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                  <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.65rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{ev.tipo || 'RODEIO'}</span>
+                                  <h3 className="event-name" style={{ fontSize: '1.25rem', margin: 0, lineHeight: 1.2, fontWeight: '900', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.nome}</h3>
+                                </div>
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavorite('eventos', ev.id.toString());
+                                  }}
+                                  style={{
+                                    padding: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '22px',
+                                    color: '#FFD700',
+                                    alignSelf: 'center',
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  ★
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div className="event-location" style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                  </svg>
+                                  {ev.local || ev.cidade}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                  {ev.detalhes?.diretor || 'Diretor'}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2. COMPETIDORES FAVORITOS */}
+                    {favorites.competitors.length > 0 && (
+                      <div>
+                        <h3 style={{ fontSize: '1.4rem', marginBottom: '1.25rem', textTransform: 'uppercase', color: '#FFD700', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>Competidores Favoritados</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                          {peaoProfilesList.filter(p => favorites.competitors.includes(p.nome)).map(p => {
+                            return (
+                              <div key={p.id} onClick={() => {
+                                // Calculate event history
+                                const historico: any[] = [];
+                                const cleanCpf = p.cpf ? p.cpf.replace(/\D/g, '') : '';
+                                eventosOficiais.forEach(ev => {
+                                  const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
+                                    const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+                                    return rCpf === cleanCpf;
+                                  });
+                                  if (rankIndex !== undefined && rankIndex >= 0) {
+                                    historico.push({
+                                      eventoNome: ev.nome,
+                                      cidade: ev.local || ev.cidade,
+                                      posicao: rankIndex + 1
+                                    });
+                                  }
+                                });
+                                setSelectedPeaoProfile({ ...p, historico });
+                                setCurrentTab('explore'); // view detailed profile
+                              }} className="event-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
+                                <img src={p.foto || "/novacontasfoto.jpg"} alt={p.nome} style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</h4>
+                                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>{p.cidade || 'Competidor'}</p>
+                                </div>
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavorite('competitors', p.nome);
+                                  }}
+                                  style={{
+                                    padding: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '20px',
+                                    color: '#FFD700',
+                                  }}
+                                >
+                                  ★
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. COMPANHIAS / CIAS FAVORITAS */}
+                    {favorites.cias.length > 0 && (
+                      <div>
+                        <h3 style={{ fontSize: '1.4rem', marginBottom: '1.25rem', textTransform: 'uppercase', color: '#FFD700', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>Companhias Favoritadas (Cias)</h3>
+                        <div className="boiadas-grid">
+                          {boiadas.filter(b => favorites.cias.includes(b.nome)).map(b => {
+                            const totalBulls = Object.keys(b.lados || {}).length;
+                            return (
+                              <div key={b.id} className="boiada-card" onClick={() => {
+                                window.scrollTo(0, 0);
+                                navigateTo(`/boiada/${slugify(b.nome)}`);
+                              }} style={{ position: 'relative' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                  <h3 className="boiada-card-title" style={{ flex: 1, minWidth: 0, margin: 0 }}>{b.nome}</h3>
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleFavorite('cias', b.nome);
+                                    }}
+                                    style={{
+                                      padding: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '22px',
+                                      color: '#FFD700',
+                                      marginTop: '-4px',
+                                      lineHeight: 1,
+                                    }}
+                                  >
+                                    ★
+                                  </div>
+                                </div>
+                                <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.5px', marginTop: '4px' }}>
+                                  {totalBulls} {totalBulls === 1 ? 'TOURO CADASTRADO' : 'TOUROS CADASTRADOS'}
+                                </div>
+                                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                  <span className="badge badge-rodeoapp" style={{ margin: 0, fontSize: '0.7rem' }}>Ver Touros</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
             {/* ADMIN DASHBOARD TAB */}
             {currentTab === 'dashboard' && isAdmin && (
               <AdminDashboard />
@@ -4988,8 +5232,30 @@ Instruções importantes:
                           />
                         </div>
                         
-                        <div style={{ marginTop: '1.5rem' }}>
+                        <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                           <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>{selectedPeaoProfile.nome}</h3>
+                          
+                          <button
+                            onClick={() => toggleFavorite('competitors', selectedPeaoProfile.nome)}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid rgba(255, 215, 0, 0.3)',
+                              borderRadius: '20px',
+                              padding: '6px 14px',
+                              color: '#FFD700',
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                              marginTop: '6px',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            <span style={{ fontSize: '15px', lineHeight: 1 }}>{favorites.competitors.includes(selectedPeaoProfile.nome) ? '★' : '☆'}</span>
+                            <span>{favorites.competitors.includes(selectedPeaoProfile.nome) ? 'Favoritado' : 'Favoritar'}</span>
+                          </button>
                         </div>
 
                         <span className="badge badge-role" style={{ marginTop: '1rem', background: '#E11D48', color: '#fff' }}>
@@ -5057,9 +5323,25 @@ Instruções importantes:
                               ) : (
                                 <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '900', border: '1px solid rgba(255,255,255,0.1)' }}>LOGO</div>
                               )}
-                              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.65rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{ev.tipo || 'RODEIO'}</span>
-                                <h3 className="event-name" style={{ fontSize: '1.25rem', margin: 0, lineHeight: 1.2, fontWeight: '900', textTransform: 'uppercase' }}>{ev.nome}</h3>
+                              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.65rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{ev.tipo || 'RODEO'}</span>
+                                <h3 className="event-name" style={{ fontSize: '1.25rem', margin: 0, lineHeight: 1.2, fontWeight: '900', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.nome}</h3>
+                              </div>
+                              <div 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite('eventos', ev.id.toString());
+                                }}
+                                style={{
+                                  padding: '8px',
+                                  cursor: 'pointer',
+                                  fontSize: '22px',
+                                  color: '#FFD700',
+                                  alignSelf: 'center',
+                                  lineHeight: 1,
+                                }}
+                              >
+                                {favorites.eventos.includes(ev.id.toString()) ? '★' : '☆'}
                               </div>
                             </div>
                             
@@ -5138,9 +5420,27 @@ Instruções importantes:
                         <div key={b.id} className="boiada-card" onClick={() => {
                           window.scrollTo(0, 0);
                           navigateTo(`/boiada/${slugify(b.nome)}`);
-                        }}>
-                          <h3 className="boiada-card-title">{b.nome}</h3>
-                          <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.5px' }}>
+                        }} style={{ position: 'relative' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                            <h3 className="boiada-card-title" style={{ flex: 1, minWidth: 0, margin: 0 }}>{b.nome}</h3>
+                            <div 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite('cias', b.nome);
+                              }}
+                              style={{
+                                padding: '4px',
+                                cursor: 'pointer',
+                                fontSize: '22px',
+                                color: '#FFD700',
+                                marginTop: '-4px',
+                                lineHeight: 1,
+                              }}
+                            >
+                              {favorites.cias.includes(b.nome) ? '★' : '☆'}
+                            </div>
+                          </div>
+                          <div className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.5px', marginTop: '4px' }}>
                             {totalBulls} {totalBulls === 1 ? 'TOURO CADASTRADO' : 'TOUROS CADASTRADOS'}
                           </div>
                           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
@@ -5451,6 +5751,10 @@ Instruções importantes:
 
         {/* Mobile Bottom Navigation */}
         <nav className="mobile-bottom-nav">
+          <button className={`mobile-nav-item ${currentTab === 'home' ? 'active' : ''}`} onClick={() => { setCurrentTab('home'); setSearchTerm(''); }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Home
+          </button>
           {isAdmin && (
             <button className={`mobile-nav-item ${currentTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentTab('dashboard'); setSearchTerm(''); }} style={{ color: currentTab === 'dashboard' ? '#00ff00' : 'var(--text-muted)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
