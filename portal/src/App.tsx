@@ -28,6 +28,7 @@ const formatBirthDate = (dateStr: any) => {
 function App() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
   
   // App Loader States
   const [initialLoading, setInitialLoading] = useState(true);
@@ -908,7 +909,7 @@ Instruções importantes:
       const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
       
       if (event === 'SIGNED_IN' && !isAuth) {
-        const isSignupFlow = registerStep === 'otp' || isRegisterModalOpen;
+        const isSignupFlow = registerStep === 'otp' || authMode === 'register';
         if (isSignupFlow) {
           localStorage.setItem('hzn_portal_authenticated', 'true');
           setUser(session?.user ?? null);
@@ -941,7 +942,7 @@ Instruções importantes:
     });
 
     return () => subscription.unsubscribe();
-  }, [registerStep, isRegisterModalOpen]);
+  }, [registerStep, authMode]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2606,6 +2607,19 @@ Instruções importantes:
     const sponsorLogos = patrocinios.filter(p => p.tipo === 'app' && p.status === 'ativo');
 
 
+    const inputStyle = {
+      width: '100%',
+      padding: '14px 16px',
+      background: 'rgba(255,255,255,0.06)',
+      border: '1px solid rgba(255,255,255,0.15)',
+      borderRadius: '10px',
+      color: '#fff',
+      fontSize: '15px',
+      outline: 'none',
+      fontFamily: 'inherit',
+      transition: 'border-color 0.2s',
+    };
+
     return (
       <>
         {/* Style block for loading animations */}
@@ -2892,168 +2906,672 @@ Instruções importantes:
               />
             </div>
 
-            {/* Label */}
-            <p style={{
-              color: 'rgba(255,255,255,0.5)',
-              fontSize: '13px',
-              fontWeight: 600,
-              letterSpacing: '1.5px',
-              textTransform: 'uppercase',
-              marginBottom: '18px',
-              alignSelf: 'flex-start',
-            }}>
-              Entrar no Portal
-            </p>
+            {authMode === 'login' && loginStep === 'credentials' && (
+              <>
+                {/* Label */}
+                <p style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  marginBottom: '18px',
+                  alignSelf: 'flex-start',
+                }}>
+                  Entrar no Portal
+                </p>
 
-            {/* Formulário de Login Inline */}
-            <form
-              style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (isLoading) return;
-                setIsLoading(true);
-                setLoginError('');
-                try {
-                  const { error } = await supabase.auth.signInWithPassword({
-                    email: loginEmail,
-                    password: loginPassword,
-                  });
-                  if (error) throw new Error(error.message);
-                  // OTP será enviado — abre modal para digitar código
-                  setIsLoginModalOpen(true);
-                  setLoginStep('otp');
-                } catch (err: any) {
-                  setLoginError(err.message || 'Erro ao entrar.');
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-            >
-              <input
-                type="email"
-                placeholder="Email"
-                value={loginEmail}
-                onChange={e => setLoginEmail(e.target.value)}
-                required
-                style={{
+                {/* Formulário de Login Inline */}
+                <form
+                  style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (isLoading) return;
+                    setIsLoading(true);
+                    setLoginError('');
+                    try {
+                      const { error } = await supabase.auth.signInWithPassword({
+                        email: loginEmail,
+                        password: loginPassword,
+                      });
+                      if (error) throw new Error(error.message);
+
+                      const code = Math.floor(100000 + Math.random() * 900000).toString();
+                      const { error: dbError } = await supabase
+                        .from('otp_codes')
+                        .insert([{ email: loginEmail.toLowerCase().trim(), code: code }]);
+                      if (dbError) throw new Error("Erro ao gerar código de segurança.");
+
+                      const response = await fetch('/api/send-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: loginEmail.toLowerCase().trim(), code })
+                      });
+                      const result = await response.json();
+                      if (!result.success) throw new Error("Falha ao enviar e-mail de verificação.");
+
+                      setLoginStep('otp');
+                    } catch (err: any) {
+                      setLoginError(err.message || 'Erro ao entrar.');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                >
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    required
+                    style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Senha"
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    required
+                    style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                  />
+
+                  {loginError && (
+                    <p style={{ color: '#f87171', fontSize: '13px', margin: '0', textAlign: 'center' }}>{loginError}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{
+                      width: '100%',
+                      padding: '15px',
+                      background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      color: '#000',
+                      fontWeight: 900,
+                      fontSize: '17px',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      letterSpacing: '0.5px',
+                      fontFamily: 'inherit',
+                      transition: 'opacity 0.2s',
+                      boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
+                    }}
+                  >
+                    {isLoading ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </form>
+
+                {/* Esqueceu a senha */}
+                <button
+                  onClick={() => { setAuthMode('forgot-password'); setLoginError(''); }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    marginTop: '10px',
+                    fontFamily: 'inherit',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                >
+                  Esqueceu a senha?
+                </button>
+
+                {/* Divider */}
+                <div style={{
                   width: '100%',
-                  padding: '14px 16px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: '10px',
-                  color: '#fff',
-                  fontSize: '15px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  fontFamily: 'inherit',
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
-              />
-              <input
-                type="password"
-                placeholder="Senha"
-                value={loginPassword}
-                onChange={e => setLoginPassword(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: '10px',
-                  color: '#fff',
-                  fontSize: '15px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  fontFamily: 'inherit',
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
-              />
+                  height: '1px',
+                  background: 'rgba(255,255,255,0.08)',
+                  margin: '20px 0',
+                }} />
 
-              {loginError && (
-                <p style={{ color: '#f87171', fontSize: '13px', margin: '0', textAlign: 'center' }}>{loginError}</p>
-              )}
+                {/* Botão criar nova conta */}
+                <button
+                  onClick={() => { setAuthMode('register'); setRegisterStep('form'); setRegisterError(''); }}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    letterSpacing: '0.3px',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)';
+                    e.currentTarget.style.color = '#FFD700';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                >
+                  Criar nova conta
+                </button>
+              </>
+            )}
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  padding: '15px',
-                  background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
-                  border: 'none',
-                  borderRadius: '10px',
-                  color: '#000',
-                  fontWeight: 900,
-                  fontSize: '17px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  letterSpacing: '0.5px',
-                  fontFamily: 'inherit',
-                  transition: 'opacity 0.2s',
-                  boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
-                }}
-              >
-                {isLoading ? 'Entrando...' : 'Entrar'}
-              </button>
-            </form>
+            {authMode === 'login' && loginStep === 'otp' && (
+              <>
+                <p style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  marginBottom: '18px',
+                  alignSelf: 'flex-start',
+                }}>
+                  Código de Segurança
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13.5px', lineHeight: '1.5', textAlign: 'center', marginBottom: '20px' }}>
+                  Um código de 6 dígitos foi enviado para o seu e-mail (<strong>{loginEmail}</strong>). Digite-o abaixo.
+                </p>
 
-            {/* Esqueceu a senha */}
-            <button
-              onClick={() => { setIsLoginModalOpen(true); }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'rgba(255,255,255,0.4)',
-                fontSize: '13px',
-                cursor: 'pointer',
-                marginTop: '10px',
-                fontFamily: 'inherit',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
-            >
-              Esqueceu a senha?
-            </button>
+                <form onSubmit={handleVerifyOtp} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="------"
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '10px',
+                      color: '#fff',
+                      fontSize: '22px',
+                      letterSpacing: '6px',
+                      textAlign: 'center',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      fontFamily: 'inherit',
+                    }}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.trim())}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    required 
+                  />
 
-            {/* Divider */}
-            <div style={{
-              width: '100%',
-              height: '1px',
-              background: 'rgba(255,255,255,0.08)',
-              margin: '20px 0',
-            }} />
+                  {loginError && (
+                    <p style={{ color: '#f87171', fontSize: '13px', margin: '0', textAlign: 'center' }}>{loginError}</p>
+                  )}
 
-            {/* Botão criar nova conta */}
-            <button
-              onClick={() => setIsRegisterModalOpen(true)}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.25)',
-                borderRadius: '10px',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '15px',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                letterSpacing: '0.3px',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)';
-                e.currentTarget.style.color = '#FFD700';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
-                e.currentTarget.style.color = '#fff';
-              }}
-            >
-              Criar nova conta
-            </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{
+                      width: '100%',
+                      padding: '15px',
+                      background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      color: '#000',
+                      fontWeight: 900,
+                      fontSize: '17px',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      letterSpacing: '0.5px',
+                      fontFamily: 'inherit',
+                      transition: 'opacity 0.2s',
+                      boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
+                    }}
+                  >
+                    {isLoading ? 'Verificando...' : 'Verificar e Entrar'}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setLoginStep('credentials')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'rgba(255,255,255,0.4)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      marginTop: '10px',
+                      fontFamily: 'inherit',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                  >
+                    Voltar para Login
+                  </button>
+                </form>
+              </>
+            )}
+
+            {authMode === 'forgot-password' && (
+              <>
+                <p style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  marginBottom: '18px',
+                  alignSelf: 'flex-start',
+                }}>
+                  Recuperar Senha
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13.5px', lineHeight: '1.5', textAlign: 'center', marginBottom: '20px' }}>
+                  Digite seu e-mail para receber um link de redefinição de senha.
+                </p>
+                
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (isLoading) return;
+                  setIsLoading(true);
+                  setLoginError('');
+                  try {
+                    const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, {
+                      redirectTo: `${window.location.origin}/`,
+                    });
+                    if (error) throw error;
+                    alert("Link de redefinição enviado para o seu e-mail!");
+                    setAuthMode('login');
+                  } catch (err: any) {
+                    setLoginError(err.message || "Erro ao solicitar recuperação.");
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    required
+                    style={inputStyle}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                  />
+
+                  {loginError && (
+                    <p style={{ color: '#f87171', fontSize: '13px', margin: '0', textAlign: 'center' }}>{loginError}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{
+                      width: '100%',
+                      padding: '15px',
+                      background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      color: '#000',
+                      fontWeight: 900,
+                      fontSize: '17px',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      letterSpacing: '0.5px',
+                      fontFamily: 'inherit',
+                      transition: 'opacity 0.2s',
+                      boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
+                    }}
+                  >
+                    {isLoading ? 'Enviando...' : 'Enviar Link de Redefinição'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'rgba(255,255,255,0.4)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      marginTop: '10px',
+                      fontFamily: 'inherit',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                  >
+                    Voltar para Login
+                  </button>
+                </form>
+              </>
+            )}
+
+            {authMode === 'register' && registerStep === 'form' && (
+              <>
+                <p style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  marginBottom: '18px',
+                  alignSelf: 'flex-start',
+                }}>
+                  Criar Conta
+                </p>
+
+                <form
+                  onSubmit={handleRegisterSubmit}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    maxHeight: '52vh',
+                    overflowY: 'auto',
+                    paddingRight: '6px',
+                  }}
+                  className="custom-scrollbar"
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Nome Completo</label>
+                    <input
+                      type="text"
+                      placeholder="João da Silva"
+                      value={regName}
+                      onChange={e => setRegName(e.target.value)}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>E-mail</label>
+                    <input
+                      type="email"
+                      placeholder="joao@email.com"
+                      value={regEmail}
+                      onChange={handleRegEmailChange}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => { checkEmailInDB(); e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Crie uma Senha</label>
+                    <input
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={regPassword}
+                      onChange={e => setRegPassword(e.target.value)}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>WhatsApp</label>
+                    <input
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      value={regWhatsapp}
+                      onChange={e => setRegWhatsapp(e.target.value)}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>CPF</label>
+                    <input
+                      type="text"
+                      placeholder="000.000.000-00"
+                      value={regCpf}
+                      onChange={e => setRegCpf(e.target.value)}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>RG</label>
+                    <input
+                      type="text"
+                      placeholder="00.000.000-0"
+                      value={regRg}
+                      onChange={e => setRegRg(e.target.value)}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Cidade</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: São Paulo"
+                      value={regCity}
+                      onChange={e => setRegCity(e.target.value)}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Estado</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: SP"
+                      maxLength={2}
+                      value={regState}
+                      onChange={e => setRegState(e.target.value.toUpperCase())}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Endereço Completo</label>
+                    <input
+                      type="text"
+                      placeholder="Rua, Número, Bairro"
+                      value={regAddress}
+                      onChange={e => setRegAddress(e.target.value)}
+                      required
+                      style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Qual o seu Cargo no Rodeio?</label>
+                    <select
+                      required
+                      value={regRole}
+                      onChange={e => setRegRole(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '14px 16px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: '10px',
+                        color: '#fff',
+                        fontSize: '15px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="" disabled style={{ backgroundColor: '#000' }}>Selecione um cargo...</option>
+                      <option value="usuario_comum" style={{ backgroundColor: '#000' }}>Usuário Comum</option>
+                      <option value="diretor" style={{ backgroundColor: '#000' }}>Diretor</option>
+                      <option value="juiz" style={{ backgroundColor: '#000' }}>Juiz</option>
+                      <option value="peao_touros" style={{ backgroundColor: '#000' }}>Peão de Touros</option>
+                      <option value="peao_cavalos" style={{ backgroundColor: '#000' }}>Peão de Cavalos</option>
+                      <option value="competidor_tambores" style={{ backgroundColor: '#000' }}>Competidor 3 Tambores</option>
+                      <option value="competidor_team_roping" style={{ backgroundColor: '#000' }}>Competidor Team Roping</option>
+                      <option value="tropeiro" style={{ backgroundColor: '#000' }}>Tropeiro</option>
+                      <option value="treinador" style={{ backgroundColor: '#000' }}>Treinador</option>
+                    </select>
+                  </div>
+
+                  {registerError && (
+                    <p style={{ color: '#f87171', fontSize: '13px', margin: '0', textAlign: 'center' }}>{registerError}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isRegistering}
+                    style={{
+                      width: '100%',
+                      padding: '15px',
+                      background: isRegistering ? 'rgba(255,255,255,0.5)' : (isAppUser ? '#fff' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)'),
+                      border: 'none',
+                      borderRadius: '10px',
+                      color: '#000',
+                      fontWeight: 900,
+                      fontSize: '15px',
+                      cursor: isRegistering ? 'not-allowed' : 'pointer',
+                      letterSpacing: '0.5px',
+                      fontFamily: 'inherit',
+                      transition: 'opacity 0.2s',
+                      marginTop: '10px',
+                    }}
+                  >
+                    {isRegistering ? 'Salvando...' : (isAppUser ? 'Sincronizar Perfil' : 'Finalizar Cadastro')}
+                  </button>
+                </form>
+
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('login')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    marginTop: '15px',
+                    fontFamily: 'inherit',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                >
+                  Voltar para Login
+                </button>
+              </>
+            )}
+
+            {authMode === 'register' && registerStep === 'otp' && (
+              <>
+                <p style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  marginBottom: '18px',
+                  alignSelf: 'flex-start',
+                }}>
+                  Validar Conta
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13.5px', lineHeight: '1.5', textAlign: 'center', marginBottom: '20px' }}>
+                  Enviamos um código de 6 dígitos para o e-mail <strong>{regEmail}</strong> para validar sua conta. Digite-o abaixo:
+                </p>
+
+                <form onSubmit={handleVerifySignupOtp} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="------"
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '10px',
+                      color: '#fff',
+                      fontSize: '22px',
+                      letterSpacing: '6px',
+                      textAlign: 'center',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      fontFamily: 'inherit',
+                    }}
+                    value={regOtpCode}
+                    onChange={(e) => setRegOtpCode(e.target.value.trim())}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,215,0,0.6)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+                    required 
+                  />
+
+                  {registerError && (
+                    <p style={{ color: '#f87171', fontSize: '13px', margin: '0', textAlign: 'center' }}>{registerError}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isRegistering}
+                    style={{
+                      width: '100%',
+                      padding: '15px',
+                      background: isRegistering ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      color: '#000',
+                      fontWeight: 900,
+                      fontSize: '17px',
+                      cursor: isRegistering ? 'not-allowed' : 'pointer',
+                      letterSpacing: '0.5px',
+                      fontFamily: 'inherit',
+                      transition: 'opacity 0.2s',
+                      boxShadow: '0 4px 20px rgba(255,215,0,0.3)',
+                    }}
+                  >
+                    {isRegistering ? 'Verificando...' : 'Confirmar E-mail e Ativar Conta'}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setRegisterStep('form')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'rgba(255,255,255,0.4)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      marginTop: '10px',
+                      fontFamily: 'inherit',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                  >
+                    Voltar
+                  </button>
+                </form>
+              </>
+            )}
 
             {/* Logo rodapé (header_logo) */}
             <div style={{ marginTop: '28px', opacity: 0.5 }}>
