@@ -2740,7 +2740,7 @@ Instruções importantes:
           <div style={{
             position: 'fixed',
             inset: 0,
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.85) 60%, #000 100%)',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.92) 60%, #000 100%)',
             zIndex: 1,
           }} />
 
@@ -2791,7 +2791,7 @@ Instruções importantes:
                   textTransform: 'uppercase',
                   textAlign: 'left',
                 }}>
-                  Eventos em <strong style={{ color: '#FFD700' }}>Destaque</strong>
+                  Eventos em <strong style={{ color: '#FFD700' }}>Destaque da Semana</strong>
                 </p>
                 
                 {finalEventsToRender.length > 0 ? (
@@ -2817,7 +2817,7 @@ Instruções importantes:
                             background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.7) 0%, rgba(10, 10, 10, 0.85) 100%)',
                             backdropFilter: 'blur(12px)',
                             WebkitBackdropFilter: 'blur(12px)',
-                            border: '1px solid rgba(255, 215, 0, 0.2)',
+                            border: 'none',
                             borderRadius: '16px',
                             padding: '12px',
                             display: 'flex',
@@ -2914,7 +2914,7 @@ Instruções importantes:
             <div style={{
               width: '100%',
               maxWidth: '380px',
-              margin: '20px auto',
+              margin: 'auto',
               background: 'rgba(10, 10, 10, 0.72)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
@@ -2929,7 +2929,7 @@ Instruções importantes:
             }}>
               {authMode === 'login' && loginStep === 'credentials' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 16px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'center', margin: '0 0 16px 0' }}>
                     Entrar no Portal
                   </p>
                   <form
@@ -3033,7 +3033,7 @@ Instruções importantes:
 
               {authMode === 'login' && loginStep === 'otp' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'center', margin: '0 0 14px 0' }}>
                     Código de Segurança
                   </p>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
@@ -3092,7 +3092,7 @@ Instruções importantes:
 
               {authMode === 'forgot-password' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'center', margin: '0 0 14px 0' }}>
                     Recuperar Senha
                   </p>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
@@ -3156,7 +3156,7 @@ Instruções importantes:
 
               {authMode === 'register' && registerStep === 'form' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'center', margin: '0 0 14px 0' }}>
                     Criar Conta
                   </p>
                   <form
@@ -3243,7 +3243,7 @@ Instruções importantes:
 
               {authMode === 'register' && registerStep === 'otp' && (
                 <>
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', alignSelf: 'center', margin: '0 0 14px 0' }}>
                     Validar Conta
                   </p>
                   <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
@@ -3333,7 +3333,7 @@ Instruções importantes:
                         style={{
                           flexShrink: 0,
                           background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          border: 'none',
                           borderRadius: '16px',
                           padding: '8px 16px',
                           display: 'flex',
