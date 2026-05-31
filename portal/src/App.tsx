@@ -30,6 +30,17 @@ function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
   
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // App Loader States
   const [initialLoading, setInitialLoading] = useState(true);
   const [fadeLoader, setFadeLoader] = useState(false);
@@ -2619,6 +2630,619 @@ Instruções importantes:
       fontFamily: 'inherit',
       transition: 'border-color 0.2s',
     };
+
+    if (isMobile) {
+      return (
+        <>
+          {/* Style block for loading animations */}
+          <style>{`
+            @keyframes pulseGlow {
+              0% { transform: scale(0.95); opacity: 0.8; filter: drop-shadow(0 0 15px rgba(255,215,0,0.2)); }
+              50% { transform: scale(1.02); opacity: 1; filter: drop-shadow(0 0 35px rgba(255,215,0,0.6)); }
+              100% { transform: scale(0.95); opacity: 0.8; filter: drop-shadow(0 0 15px rgba(255,215,0,0.2)); }
+            }
+            .custom-scrollbar::-webkit-scrollbar {
+              height: 4px;
+              width: 4px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+              background: rgba(0,0,0,0.1);
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+              background: rgba(255,255,255,0.1);
+              border-radius: 4px;
+            }
+          `}</style>
+
+          {initialLoading && (
+            <div style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: '#000',
+              zIndex: 99999,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: fadeLoader ? 0 : 1,
+              transition: 'opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1)',
+              pointerEvents: fadeLoader ? 'none' : 'auto',
+            }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                animation: 'pulseGlow 2.5s infinite ease-in-out',
+              }}>
+                <img
+                  src="/splash_logo.png"
+                  alt="Carregando..."
+                  style={{
+                    height: '80px',
+                    width: 'auto',
+                    objectFit: 'contain',
+                    marginBottom: '20px',
+                  }}
+                />
+              </div>
+              
+              {/* Progress bar container */}
+              <div style={{
+                width: '200px',
+                height: '4px',
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                marginTop: '10px',
+                border: '1px solid rgba(255,255,255,0.05)',
+              }}>
+                <div style={{
+                  width: `${loadingProgress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #FFD700 0%, #d97706 100%)',
+                  boxShadow: '0 0 10px rgba(255,215,0,0.5)',
+                  transition: 'width 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                }} />
+              </div>
+
+              <p style={{
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: '10px',
+                fontWeight: 600,
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                marginTop: '12px',
+                fontFamily: '"Outfit", "Inter", sans-serif',
+              }}>
+                Carregando {loadingProgress}%
+              </p>
+            </div>
+          )}
+
+          {/* BACKGROUND FOTO DO COMPETIDOR COM COBERTURA ESCURA */}
+          <img
+            src="/maiorqualidade.jpg"
+            alt="Competidor"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
+              zIndex: 0,
+            }}
+          />
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.85) 60%, #000 100%)',
+            zIndex: 1,
+          }} />
+
+          {/* CONTEÚDO PRINCIPAL SCROLLABLE */}
+          <div style={{
+            position: 'relative',
+            zIndex: 2,
+            width: '100vw',
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '24px 16px',
+            fontFamily: '"Outfit", "Inter", sans-serif',
+            boxSizing: 'border-box',
+          }}>
+            {/* TOPO: LOGO + EVENTOS */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+              <img
+                src="/splash_logo.png"
+                alt="RodeoApp"
+                style={{ height: '60px', width: 'auto', objectFit: 'contain', marginBottom: '16px' }}
+              />
+
+              {/* EVENTOS EM DESTAQUE */}
+              <div style={{ width: '100%', textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <p style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.6)',
+                  letterSpacing: '1px',
+                  textTransform: 'uppercase',
+                }}>
+                  Eventos em <strong style={{ color: '#FFD700' }}>Destaque</strong>:
+                </p>
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  overflowX: 'auto',
+                  paddingBottom: '4px',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  width: '100%',
+                }} className="custom-scrollbar">
+                  {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).slice(0, 4).map(ev => (
+                    <div key={ev.id} onClick={() => setPublicRankingModal(ev)} style={{ cursor: 'pointer', flexShrink: 0 }}>
+                      <img
+                        src={ev.detalhes.logo}
+                        alt={ev.nome}
+                        style={{ height: '42px', width: 'auto', maxWidth: '85px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', borderRadius: '4px' }}
+                      />
+                    </div>
+                  ))}
+                  {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).length === 0 && homeEvents.filter(ev => ev.detalhes?.logo).slice(0, 3).map(ev => (
+                    <div key={ev.id} onClick={() => setPublicRankingModal(ev)} style={{ cursor: 'pointer', flexShrink: 0 }}>
+                      <img
+                        src={ev.detalhes.logo}
+                        alt={ev.nome}
+                        style={{ height: '42px', width: 'auto', maxWidth: '85px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))', borderRadius: '4px' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* MEIO: FORMULÁRIOS COM GLASSMORPHISM */}
+            <div style={{
+              width: '100%',
+              maxWidth: '360px',
+              margin: '24px auto',
+              background: 'rgba(10, 10, 10, 0.75)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '16px',
+              padding: '24px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              boxSizing: 'border-box',
+            }}>
+              {authMode === 'login' && loginStep === 'credentials' && (
+                <>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                    Entrar no Portal
+                  </p>
+                  <form
+                    style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (isLoading) return;
+                      setIsLoading(true);
+                      setLoginError('');
+                      try {
+                        const { error } = await supabase.auth.signInWithPassword({
+                          email: loginEmail,
+                          password: loginPassword,
+                        });
+                        if (error) throw new Error(error.message);
+
+                        const code = Math.floor(100000 + Math.random() * 900000).toString();
+                        const { error: dbError } = await supabase
+                          .from('otp_codes')
+                          .insert([{ email: loginEmail.toLowerCase().trim(), code: code }]);
+                        if (dbError) throw new Error("Erro ao gerar código de segurança.");
+
+                        const response = await fetch('/api/send-otp', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: loginEmail.toLowerCase().trim(), code })
+                        });
+                        const result = await response.json();
+                        if (!result.success) throw new Error("Falha ao enviar e-mail de verificação.");
+
+                        setLoginStep('otp');
+                      } catch (err: any) {
+                        setLoginError(err.message || 'Erro ao entrar.');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                  >
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={loginEmail}
+                      onChange={e => setLoginEmail(e.target.value)}
+                      required
+                      style={inputStyle}
+                    />
+                    <input
+                      type="password"
+                      placeholder="Senha"
+                      value={loginPassword}
+                      onChange={e => setLoginPassword(e.target.value)}
+                      required
+                      style={inputStyle}
+                    />
+                    {loginError && <p style={{ color: '#f87171', fontSize: '12px', margin: '0', textAlign: 'center' }}>{loginError}</p>}
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: '#000',
+                        fontWeight: 900,
+                        fontSize: '16px',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {isLoading ? 'Entrando...' : 'Entrar'}
+                    </button>
+                  </form>
+                  <button
+                    onClick={() => { setAuthMode('forgot-password'); setLoginError(''); }}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer', marginTop: '12px', fontFamily: 'inherit' }}
+                  >
+                    Esqueceu a senha?
+                  </button>
+                  <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.08)', margin: '16px 0' }} />
+                  <button
+                    onClick={() => { setAuthMode('register'); setRegisterStep('form'); setRegisterError(''); }}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                      borderRadius: '10px',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    Criar nova conta
+                  </button>
+                </>
+              )}
+
+              {authMode === 'login' && loginStep === 'otp' && (
+                <>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                    Código de Segurança
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
+                    Enviado para: <strong>{loginEmail}</strong>
+                  </p>
+                  <form onSubmit={handleVerifyOtp} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="------"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: '10px',
+                        color: '#fff',
+                        fontSize: '20px',
+                        letterSpacing: '4px',
+                        textAlign: 'center',
+                        outline: 'none',
+                        fontFamily: 'inherit',
+                      }}
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.trim())}
+                      required 
+                    />
+                    {loginError && <p style={{ color: '#f87171', fontSize: '12px', margin: '0', textAlign: 'center' }}>{loginError}</p>}
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: '#000',
+                        fontWeight: 900,
+                        fontSize: '16px',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {isLoading ? 'Verificando...' : 'Verificar e Entrar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLoginStep('credentials')}
+                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer', marginTop: '10px', fontFamily: 'inherit' }}
+                    >
+                      Voltar para Login
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {authMode === 'forgot-password' && (
+                <>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                    Recuperar Senha
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
+                    Digite seu e-mail para receber o link de redefinição.
+                  </p>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (isLoading) return;
+                    setIsLoading(true);
+                    setLoginError('');
+                    try {
+                      const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, {
+                        redirectTo: `${window.location.origin}/`,
+                      });
+                      if (error) throw error;
+                      alert("Link de redefinição enviado!");
+                      setAuthMode('login');
+                    } catch (err: any) {
+                      setLoginError(err.message || "Erro ao solicitar.");
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={loginEmail}
+                      onChange={e => setLoginEmail(e.target.value)}
+                      required
+                      style={inputStyle}
+                    />
+                    {loginError && <p style={{ color: '#f87171', fontSize: '12px', margin: '0', textAlign: 'center' }}>{loginError}</p>}
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        background: isLoading ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: '#000',
+                        fontWeight: 900,
+                        fontSize: '16px',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {isLoading ? 'Enviando...' : 'Enviar Link'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('login')}
+                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer', marginTop: '10px', fontFamily: 'inherit' }}
+                    >
+                      Voltar para Login
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {authMode === 'register' && registerStep === 'form' && (
+                <>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                    Criar Conta
+                  </p>
+                  <form
+                    onSubmit={handleRegisterSubmit}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      maxHeight: '40vh',
+                      overflowY: 'auto',
+                      paddingRight: '4px',
+                    }}
+                    className="custom-scrollbar"
+                  >
+                    <input type="text" placeholder="Nome Completo" value={regName} onChange={e => setRegName(e.target.value)} required style={inputStyle} />
+                    <input type="email" placeholder="E-mail" value={regEmail} onChange={handleRegEmailChange} onBlur={checkEmailInDB} required style={inputStyle} />
+                    <input type="password" placeholder="Senha" value={regPassword} onChange={e => setRegPassword(e.target.value)} required style={inputStyle} />
+                    <input type="tel" placeholder="WhatsApp" value={regWhatsapp} onChange={e => setRegWhatsapp(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="CPF" value={regCpf} onChange={e => setRegCpf(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="RG" value={regRg} onChange={e => setRegRg(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="Cidade" value={regCity} onChange={e => setRegCity(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="Estado (UF)" maxLength={2} value={regState} onChange={e => setRegState(e.target.value.toUpperCase())} required style={inputStyle} />
+                    <input type="text" placeholder="Endereço Completo" value={regAddress} onChange={e => setRegAddress(e.target.value)} required style={inputStyle} />
+                    
+                    <select
+                      required
+                      value={regRole}
+                      onChange={e => setRegRole(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: '10px',
+                        color: '#fff',
+                        fontSize: '14px',
+                        outline: 'none',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <option value="" disabled style={{ backgroundColor: '#111' }}>Selecione um cargo...</option>
+                      <option value="usuario_comum" style={{ backgroundColor: '#111' }}>Usuário Comum</option>
+                      <option value="diretor" style={{ backgroundColor: '#111' }}>Diretor</option>
+                      <option value="juiz" style={{ backgroundColor: '#111' }}>Juiz</option>
+                      <option value="peao_touros" style={{ backgroundColor: '#111' }}>Peão de Touros</option>
+                      <option value="peao_cavalos" style={{ backgroundColor: '#111' }}>Peão de Cavalos</option>
+                      <option value="competidor_tambores" style={{ backgroundColor: '#111' }}>Competidor 3 Tambores</option>
+                      <option value="competidor_team_roping" style={{ backgroundColor: '#111' }}>Competidor Team Roping</option>
+                      <option value="tropeiro" style={{ backgroundColor: '#111' }}>Tropeiro</option>
+                      <option value="treinador" style={{ backgroundColor: '#111' }}>Treinador</option>
+                    </select>
+
+                    {registerError && <p style={{ color: '#f87171', fontSize: '12px', margin: '0', textAlign: 'center' }}>{registerError}</p>}
+                    <button
+                      type="submit"
+                      disabled={isRegistering}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        background: isRegistering ? 'rgba(255,255,255,0.5)' : (isAppUser ? '#fff' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)'),
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: '#000',
+                        fontWeight: 900,
+                        fontSize: '15px',
+                        cursor: isRegistering ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                        marginTop: '8px',
+                      }}
+                    >
+                      {isRegistering ? 'Salvando...' : (isAppUser ? 'Sincronizar' : 'Finalizar')}
+                    </button>
+                  </form>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer', marginTop: '12px', fontFamily: 'inherit' }}
+                  >
+                    Voltar para Login
+                  </button>
+                </>
+              )}
+
+              {authMode === 'register' && registerStep === 'otp' && (
+                <>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px', alignSelf: 'flex-start', margin: '0 0 14px 0' }}>
+                    Validar Conta
+                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12.5px', lineHeight: '1.4', textAlign: 'center', marginBottom: '16px', margin: '0 0 16px 0' }}>
+                    Código enviado para: <strong>{regEmail}</strong>
+                  </p>
+                  <form onSubmit={handleVerifySignupOtp} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="------"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: '10px',
+                        color: '#fff',
+                        fontSize: '20px',
+                        letterSpacing: '4px',
+                        textAlign: 'center',
+                        outline: 'none',
+                        fontFamily: 'inherit',
+                      }}
+                      value={regOtpCode}
+                      onChange={(e) => setRegOtpCode(e.target.value.trim())}
+                      required 
+                    />
+                    {registerError && <p style={{ color: '#f87171', fontSize: '12px', margin: '0', textAlign: 'center' }}>{registerError}</p>}
+                    <button
+                      type="submit"
+                      disabled={isRegistering}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        background: isRegistering ? 'rgba(255,215,0,0.5)' : 'linear-gradient(135deg, #FFD700 0%, #d97706 100%)',
+                        border: 'none',
+                        borderRadius: '10px',
+                        color: '#000',
+                        fontWeight: 900,
+                        fontSize: '16px',
+                        cursor: isRegistering ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {isRegistering ? 'Verificando...' : 'Confirmar e Ativar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRegisterStep('form')}
+                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer', marginTop: '10px', fontFamily: 'inherit' }}
+                    >
+                      Voltar
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+
+            {/* RODAPÉ: PATROCINADORES */}
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {sponsorLogos.length > 0 && (
+                <div style={{ width: '100%', textAlign: 'center', marginBottom: '16px' }}>
+                  <p style={{
+                    margin: '0 0 8px 0',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.4)',
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase',
+                  }}>
+                    Oferecimento
+                  </p>
+                  <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    overflowX: 'auto',
+                    paddingBottom: '4px',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    width: '100%',
+                  }} className="custom-scrollbar">
+                    {sponsorLogos.map(p => (
+                      <a key={p.id} href={p.click_url || '#'} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                        <img
+                          src={p.logo_url}
+                          alt={p.empresa}
+                          style={{ height: '32px', width: 'auto', maxWidth: '80px', objectFit: 'contain', filter: 'brightness(0.9) drop-shadow(0 2px 4px rgba(0,0,0,0.9))' }}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ opacity: 0.5 }}>
+                <img
+                  src="/header_logo.png"
+                  alt="RodeoApp"
+                  style={{ height: '20px', width: 'auto', objectFit: 'contain' }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
 
     return (
       <>
