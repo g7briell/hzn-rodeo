@@ -4,19 +4,19 @@ const Jimp = require('jimp');
 
 async function resizeImage() {
     try {
-        // Read the heavy icon they provided
-        const sourceFile = path.join(__dirname, 'build', 'icon.png');
-        console.log('Reading image...', sourceFile);
+        const sourceFile = path.join(__dirname, 'assets', 'app_icon.png');
+        const outputFile = path.join(__dirname, 'build', 'icon.png');
+        console.log('Reading high-res image...', sourceFile);
         
         const image = await Jimp.read(sourceFile);
         
-        // Resize to 256x256 max
-        image.scaleToFit(256, 256);
+        // Resize to 512x512 for macOS compatibility
+        image.resize(512, 512);
         
-        // Overwrite the file with the compressed version
-        await image.writeAsync(sourceFile);
+        // Save the output
+        await image.writeAsync(outputFile);
         
-        console.log('Successfully compressed icon.png!');
+        console.log('Successfully generated 512x512 icon.png at ' + outputFile);
     } catch (e) {
         console.error('Error:', e);
     }
