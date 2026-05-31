@@ -119,6 +119,8 @@ export default function AdminDashboard() {
   const [editSponsorLogo, setEditSponsorLogo] = useState('');
   const [editSponsorClickUrl, setEditSponsorClickUrl] = useState('');
   const [editSponsorPosition, setEditSponsorPosition] = useState('3'); // 1-5
+  const [editSponsorDetalhes, setEditSponsorDetalhes] = useState<any>({});
+  const [configSubTab, setConfigSubTab] = useState<'contrato' | 'portal' | 'app' | 'relatorio'>('contrato');
   const [isSavingSponsorEdit, setIsSavingSponsorEdit] = useState(false);
 
   // New Expense Form States
@@ -404,41 +406,42 @@ export default function AdminDashboard() {
   const handleSaveSponsorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sponsorEmpresa) return alert('Por favor, informe o nome da empresa.');
-    if (!sponsorLogo) return alert('Por favor, envie o logotipo do patrocinador.');
-    if (!sponsorPortal && !sponsorApp) return alert('Por favor, selecione ao menos um tipo de veiculação.');
 
     setIsSavingSponsor(true);
     try {
-      const inserts = [];
-      if (sponsorPortal) {
-        inserts.push({
-          empresa: sponsorEmpresa,
-          valor_contrato: parseFloat(sponsorValor) || 0,
-          tempo_contrato: parseInt(sponsorTempo) || 1,
-          tipo: 'portal',
-          logo_url: sponsorLogo,
-          click_url: sponsorClickUrl || '#',
-          status: 'ativo'
-        });
-      }
-      if (sponsorApp) {
-        const baseClickUrl = sponsorClickUrl || '#';
-        const finalClickUrl = baseClickUrl.split('#pos-')[0] + '#pos-' + sponsorPosition;
-        inserts.push({
-          empresa: sponsorEmpresa,
-          valor_contrato: sponsorPortal ? 0 : (parseFloat(sponsorValor) || 0),
-          tempo_contrato: parseInt(sponsorTempo) || 1,
-          tipo: 'app',
-          logo_url: sponsorLogo,
-          click_url: finalClickUrl,
-          status: 'ativo'
-        });
-      }
+      const insertData = {
+        empresa: sponsorEmpresa,
+        valor_contrato: parseFloat(sponsorValor) || 0,
+        tempo_contrato: parseInt(sponsorTempo) || 1,
+        tipo: 'consolidated',
+        logo_url: '',
+        click_url: '#',
+        status: 'ativo',
+        detalhes: {
+          splash_app: {
+            ativo: false,
+            logo_url: '',
+            click_url: '',
+            posicao: 3
+          },
+          portal_noticias: {
+            ativo: false,
+            fino_redacao: { logo_url: '', click_url: '' },
+            meio_materia: { logo_url: '', click_url: '' },
+            fino_ia: { logo_url: '', click_url: '' },
+            grid_lateral: {
+              main: { logo_url: '', click_url: '' },
+              sub1: { logo_url: '', click_url: '' },
+              sub2: { logo_url: '', click_url: '' }
+            }
+          }
+        }
+      };
 
       const res = await fetch("/api/admin-db", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "insert-sponsor", data: inserts })
+        body: JSON.stringify({ action: "insert-sponsor", data: insertData })
       });
       const resJson = await res.json();
       if (!resJson.success) throw new Error(resJson.error);
@@ -446,14 +449,9 @@ export default function AdminDashboard() {
       setSponsorEmpresa('');
       setSponsorValor('');
       setSponsorTempo('1');
-      setSponsorPortal(true);
-      setSponsorApp(false);
-      setSponsorLogo('');
-      setSponsorClickUrl('');
-      setSponsorPosition('3');
       setIsSponsorModalOpen(false);
       fetchPatrocinios();
-      alert('Patrocinador adicionado com sucesso!');
+      alert('Patrocinador adicionado! Agora clique em "Configurar" para enviar as artes e definir as posições.');
     } catch (err: any) {
       alert('Erro ao salvar patrocinador: ' + err.message);
     } finally {
@@ -466,36 +464,86 @@ export default function AdminDashboard() {
     setEditSponsorEmpresa(pat.empresa || '');
     setEditSponsorValor(String(pat.valor_contrato || ''));
     setEditSponsorTempo(String(pat.tempo_contrato || '1'));
-    setEditSponsorPortal(pat.tipo === 'portal');
-    setEditSponsorApp(pat.tipo === 'app');
-    setEditSponsorLogo(pat.logo_url || '');
+    setConfigSubTab('contrato'); // reset config sub-tab to default
+    
+    // Initialize default detalhes
+    const defaultDetalhes = {
+      splash_app: {
+        ativo: false,
+        logo_url: '',
+        click_url: '',
+        posicao: 3
+      },
+      portal_noticias: {
+        ativo: false,
+        fino_redacao: { logo_url: '', click_url: '' },
+        meio_materia: { logo_url: '', click_url: '' },
+        fino_ia: { logo_url: '', click_url: '' },
+        grid_lateral: {
+          main: { logo_url: '', click_url: '' },
+          sub1: { logo_url: '', click_url: '' },
+          sub2: { logo_url: '', click_url: '' }
+        }
+      }
+    };
 
-    const parts = pat.click_url ? pat.click_url.split('#pos-') : [];
-    setEditSponsorClickUrl(parts[0] || '');
-    setEditSponsorPosition(parts[1] || '3');
+    setEditSponsorDetalhes({
+      ...defaultDetalhes,
+      ...pat.detalhes,
+      splash_app: {
+        ...defaultDetalhes.splash_app,
+        ...(pat.detalhes?.splash_app || {})
+      },
+      portal_noticias: {
+        ...defaultDetalhes.portal_noticias,
+        ...(pat.detalhes?.portal_noticias || {}),
+        fino_redacao: {
+          ...defaultDetalhes.portal_noticias.fino_redacao,
+          ...(pat.detalhes?.portal_noticias?.fino_redacao || {})
+        },
+        meio_materia: {
+          ...defaultDetalhes.portal_noticias.meio_materia,
+          ...(pat.detalhes?.portal_noticias?.meio_materia || {})
+        },
+        fino_ia: {
+          ...defaultDetalhes.portal_noticias.fino_ia,
+          ...(pat.detalhes?.portal_noticias?.fino_ia || {})
+        },
+        grid_lateral: {
+          ...defaultDetalhes.portal_noticias.grid_lateral,
+          ...(pat.detalhes?.portal_noticias?.grid_lateral || {}),
+          main: {
+            ...defaultDetalhes.portal_noticias.grid_lateral.main,
+            ...(pat.detalhes?.portal_noticias?.grid_lateral?.main || {})
+          },
+          sub1: {
+            ...defaultDetalhes.portal_noticias.grid_lateral.sub1,
+            ...(pat.detalhes?.portal_noticias?.grid_lateral?.sub1 || {})
+          },
+          sub2: {
+            ...defaultDetalhes.portal_noticias.grid_lateral.sub2,
+            ...(pat.detalhes?.portal_noticias?.grid_lateral?.sub2 || {})
+          }
+        }
+      }
+    });
   };
 
   const handleSaveSponsorEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSponsorForConfig) return;
     if (!editSponsorEmpresa) return alert('Por favor, informe o nome da empresa.');
-    if (!editSponsorLogo) return alert('Por favor, envie o logotipo do patrocinador.');
-    if (!editSponsorPortal && !editSponsorApp) return alert('Por favor, selecione ao menos um tipo de veiculação.');
 
     setIsSavingSponsorEdit(true);
     try {
-      const baseClickUrl = editSponsorClickUrl || '#';
-      const finalClickUrl = editSponsorApp 
-        ? (baseClickUrl.split('#pos-')[0] + '#pos-' + editSponsorPosition)
-        : baseClickUrl.split('#pos-')[0];
-
       const updates = {
         empresa: editSponsorEmpresa,
         valor_contrato: parseFloat(editSponsorValor) || 0,
         tempo_contrato: parseInt(editSponsorTempo) || 1,
-        tipo: editSponsorPortal ? 'portal' : 'app',
-        logo_url: editSponsorLogo,
-        click_url: finalClickUrl,
+        // Sync legacy top level fields with primary values
+        logo_url: editSponsorDetalhes.portal_noticias?.fino_redacao?.logo_url || editSponsorDetalhes.splash_app?.logo_url || selectedSponsorForConfig.logo_url || '',
+        click_url: editSponsorDetalhes.portal_noticias?.fino_redacao?.click_url || editSponsorDetalhes.splash_app?.click_url || '#',
+        detalhes: editSponsorDetalhes
       };
 
       const res = await fetch("/api/admin-db", {
@@ -1416,90 +1464,372 @@ export default function AdminDashboard() {
               </button>
             </div>
 
+            {/* Sub-tab selection */}
+            <div className="flex border-b border-white/10 pb-4 mb-6 gap-2 overflow-x-auto">
+              {[
+                { id: 'contrato', label: 'Dados do Contrato' },
+                { id: 'portal', label: 'Portal Notícias' },
+                { id: 'app', label: 'Splash App' },
+                { id: 'relatorio', label: 'Relatório / Desempenho' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setConfigSubTab(tab.id as any)}
+                  className={`px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all border ${
+                    configSubTab === tab.id
+                      ? 'bg-yellow-500 text-black border-yellow-500 shadow-md shadow-yellow-500/10'
+                      : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <form onSubmit={handleSaveSponsorEditSubmit} className="bg-white/5 border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] space-y-6 backdrop-blur-xl">
-              <InputGroup label="Nome da Empresa" value={editSponsorEmpresa} onChange={setEditSponsorEmpresa} placeholder="Ex: Cerveja Império" />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <InputGroup label="Valor do Contrato (R$)" type="number" value={editSponsorValor} onChange={setEditSponsorValor} placeholder="Ex: 5000.00" />
-                <div>
-                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tempo de Contrato (meses)</label>
-                  <input 
-                    type="number"
-                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
-                    value={editSponsorTempo} 
-                    onChange={e => setEditSponsorTempo(e.target.value)} 
-                    placeholder="Ex: 12"
-                    min="1"
-                    required 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tipo de Veiculação</label>
-                  <div className="flex gap-6 items-center h-14 bg-black/40 border border-white/10 rounded-2xl px-6">
-                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+              {configSubTab === 'contrato' && (
+                <div className="space-y-6">
+                  <InputGroup label="Nome da Empresa" value={editSponsorEmpresa} onChange={setEditSponsorEmpresa} placeholder="Ex: Cerveja Império" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <InputGroup label="Valor do Contrato (R$)" type="number" value={editSponsorValor} onChange={setEditSponsorValor} placeholder="Ex: 5000.00" />
+                    <div>
+                      <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tempo de Contrato (meses)</label>
                       <input 
-                        type="checkbox" 
-                        checked={editSponsorPortal} 
-                        onChange={(e) => {
-                          setEditSponsorPortal(e.target.checked);
-                          if (e.target.checked) setEditSponsorApp(false);
-                        }}
-                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                        type="number"
+                        className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                        value={editSponsorTempo} 
+                        onChange={e => setEditSponsorTempo(e.target.value)} 
+                        placeholder="Ex: 12"
+                        min="1"
+                        required 
                       />
-                      Portal Notícias
-                    </label>
-                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={editSponsorApp} 
-                        onChange={(e) => {
-                          setEditSponsorApp(e.target.checked);
-                          if (e.target.checked) setEditSponsorPortal(false);
-                        }}
-                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
-                      />
-                      Splash App
-                    </label>
+                    </div>
                   </div>
-                </div>
-                <InputGroup label="Link de Redirecionamento" type="url" value={editSponsorClickUrl} onChange={setEditSponsorClickUrl} placeholder="Ex: https://imperio.com.br" />
-              </div>
-
-              {editSponsorApp && (
-                <div>
-                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Posição no Splash (1 a 5)</label>
-                  <select 
-                    value={editSponsorPosition} 
-                    onChange={(e: any) => setEditSponsorPosition(e.target.value)}
-                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-black text-xs md:text-sm text-yellow-500 uppercase tracking-widest cursor-pointer"
-                  >
-                    <option value="1">1 - Ponta Esquerda</option>
-                    <option value="2">2 - Meio-Esquerda</option>
-                    <option value="3">3 - Centro (Meio)</option>
-                    <option value="4">4 - Meio-Direita</option>
-                    <option value="5">5 - Ponta Direita</option>
-                  </select>
                 </div>
               )}
 
-              <div>
-                <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Logotipo / Banner / Arts / GIFs (Imagem/GIF)</label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
-                  onChange={e => handlePhotoUpload(e, (b64) => setEditSponsorLogo(b64))} 
-                />
-                {editSponsorLogo && (
-                  <div className="mt-4 text-center bg-black/40 border border-white/5 p-4 rounded-xl">
-                    <span className="text-[10px] font-black text-white/30 uppercase tracking-wider block mb-2">Visualização da Arte Atual:</span>
-                    <img src={editSponsorLogo} alt="Sponsor Art Preview" className="mx-auto max-h-[150px] object-contain bg-white p-2 rounded-lg" />
+              {configSubTab === 'portal' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={editSponsorDetalhes.portal_noticias?.ativo || false} 
+                        onChange={(e) => {
+                          const det = { ...editSponsorDetalhes };
+                          det.portal_noticias = { ...det.portal_noticias, ativo: e.target.checked };
+                          setEditSponsorDetalhes(det);
+                        }}
+                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                      />
+                      Ativar vinculação no Portal de Notícias
+                    </label>
                   </div>
-                )}
-              </div>
+
+                  {editSponsorDetalhes.portal_noticias?.ativo && (
+                    <div className="space-y-8 border-t border-white/5 pt-6 animate-in fade-in duration-300">
+                      {/* Fino Redação */}
+                      <div className="bg-black/20 border border-white/5 p-5 rounded-2xl space-y-4">
+                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">1. Banner Fino (Abaixo do Autor da Matéria) - Recomenda-se 728x90px</h4>
+                        <InputGroup 
+                          label="Link de Redirecionamento (Fino Redação)" 
+                          type="url" 
+                          value={editSponsorDetalhes.portal_noticias?.fino_redacao?.click_url || ''} 
+                          onChange={(val: any) => {
+                            const det = { ...editSponsorDetalhes };
+                            det.portal_noticias.fino_redacao.click_url = val;
+                            setEditSponsorDetalhes(det);
+                          }} 
+                          placeholder="Ex: https://imperio.com.br/redacao" 
+                        />
+                        <div>
+                          <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload da Arte</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
+                            onChange={e => handlePhotoUpload(e, (b64) => {
+                              const det = { ...editSponsorDetalhes };
+                              det.portal_noticias.fino_redacao.logo_url = b64;
+                              setEditSponsorDetalhes(det);
+                            })} 
+                          />
+                          {editSponsorDetalhes.portal_noticias?.fino_redacao?.logo_url && (
+                            <img src={editSponsorDetalhes.portal_noticias.fino_redacao.logo_url} alt="Fino Redação" className="mt-3 max-h-[60px] object-contain bg-white p-1 rounded" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Meio Matéria */}
+                      <div className="bg-black/20 border border-white/5 p-5 rounded-2xl space-y-4">
+                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">2. Banner do Meio da Matéria (Continua após publicidade) - Recomenda-se 728x90px</h4>
+                        <InputGroup 
+                          label="Link de Redirecionamento (Meio Matéria)" 
+                          type="url" 
+                          value={editSponsorDetalhes.portal_noticias?.meio_materia?.click_url || ''} 
+                          onChange={(val: any) => {
+                            const det = { ...editSponsorDetalhes };
+                            det.portal_noticias.meio_materia.click_url = val;
+                            setEditSponsorDetalhes(det);
+                          }} 
+                          placeholder="Ex: https://imperio.com.br/meio" 
+                        />
+                        <div>
+                          <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload da Arte</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
+                            onChange={e => handlePhotoUpload(e, (b64) => {
+                              const det = { ...editSponsorDetalhes };
+                              det.portal_noticias.meio_materia.logo_url = b64;
+                              setEditSponsorDetalhes(det);
+                            })} 
+                          />
+                          {editSponsorDetalhes.portal_noticias?.meio_materia?.logo_url && (
+                            <img src={editSponsorDetalhes.portal_noticias.meio_materia.logo_url} alt="Meio Matéria" className="mt-3 max-h-[60px] object-contain bg-white p-1 rounded" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Fino IA */}
+                      <div className="bg-black/20 border border-white/5 p-5 rounded-2xl space-y-4">
+                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">3. Banner Fino Inferior (Acima do aviso de IA) - Recomenda-se 728x90px</h4>
+                        <InputGroup 
+                          label="Link de Redirecionamento (Fino Rodapé)" 
+                          type="url" 
+                          value={editSponsorDetalhes.portal_noticias?.fino_ia?.click_url || ''} 
+                          onChange={(val: any) => {
+                            const det = { ...editSponsorDetalhes };
+                            det.portal_noticias.fino_ia.click_url = val;
+                            setEditSponsorDetalhes(det);
+                          }} 
+                          placeholder="Ex: https://imperio.com.br/rodape" 
+                        />
+                        <div>
+                          <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload da Arte</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
+                            onChange={e => handlePhotoUpload(e, (b64) => {
+                              const det = { ...editSponsorDetalhes };
+                              det.portal_noticias.fino_ia.logo_url = b64;
+                              setEditSponsorDetalhes(det);
+                            })} 
+                          />
+                          {editSponsorDetalhes.portal_noticias?.fino_ia?.logo_url && (
+                            <img src={editSponsorDetalhes.portal_noticias.fino_ia.logo_url} alt="Fino IA" className="mt-3 max-h-[60px] object-contain bg-white p-1 rounded" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Grade Lateral AliExpress */}
+                      <div className="bg-black/20 border border-white/5 p-5 rounded-2xl space-y-6">
+                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">4. Grade Lateral de Anúncios (Estilo AliExpress)</h4>
+                        
+                        {/* Main Lateral */}
+                        <div className="border-l-2 border-white/10 pl-4 space-y-4">
+                          <h5 className="text-[9px] font-black text-white/60 uppercase tracking-wider">A) Imagem Principal da Esquerda (Recomenda-se 300x250px)</h5>
+                          <InputGroup 
+                            label="Link Principal" 
+                            type="url" 
+                            value={editSponsorDetalhes.portal_noticias?.grid_lateral?.main?.click_url || ''} 
+                            onChange={(val: any) => {
+                              const det = { ...editSponsorDetalhes };
+                              det.portal_noticias.grid_lateral.main.click_url = val;
+                              setEditSponsorDetalhes(det);
+                            }} 
+                            placeholder="Ex: https://imperio.com.br/principal" 
+                          />
+                          <div>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
+                              onChange={e => handlePhotoUpload(e, (b64) => {
+                                const det = { ...editSponsorDetalhes };
+                                det.portal_noticias.grid_lateral.main.logo_url = b64;
+                                setEditSponsorDetalhes(det);
+                              })} 
+                            />
+                            {editSponsorDetalhes.portal_noticias?.grid_lateral?.main?.logo_url && (
+                              <img src={editSponsorDetalhes.portal_noticias.grid_lateral.main.logo_url} alt="Grid Main" className="mt-2 max-h-[80px] object-contain bg-white p-1 rounded" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sub1 Lateral */}
+                        <div className="border-l-2 border-white/10 pl-4 space-y-4">
+                          <h5 className="text-[9px] font-black text-white/60 uppercase tracking-wider">B) Imagem Lateral Superior Direita (Recomenda-se 200x200px)</h5>
+                          <InputGroup 
+                            label="Link Sub 1" 
+                            type="url" 
+                            value={editSponsorDetalhes.portal_noticias?.grid_lateral?.sub1?.click_url || ''} 
+                            onChange={(val: any) => {
+                              const det = { ...editSponsorDetalhes };
+                              det.portal_noticias.grid_lateral.sub1.click_url = val;
+                              setEditSponsorDetalhes(det);
+                            }} 
+                            placeholder="Ex: https://imperio.com.br/sub1" 
+                          />
+                          <div>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
+                              onChange={e => handlePhotoUpload(e, (b64) => {
+                                const det = { ...editSponsorDetalhes };
+                                det.portal_noticias.grid_lateral.sub1.logo_url = b64;
+                                setEditSponsorDetalhes(det);
+                              })} 
+                            />
+                            {editSponsorDetalhes.portal_noticias?.grid_lateral?.sub1?.logo_url && (
+                              <img src={editSponsorDetalhes.portal_noticias.grid_lateral.sub1.logo_url} alt="Grid Sub 1" className="mt-2 max-h-[60px] object-contain bg-white p-1 rounded" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sub2 Lateral */}
+                        <div className="border-l-2 border-white/10 pl-4 space-y-4">
+                          <h5 className="text-[9px] font-black text-white/60 uppercase tracking-wider">C) Imagem Lateral Inferior Direita (Recomenda-se 200x200px)</h5>
+                          <InputGroup 
+                            label="Link Sub 2" 
+                            type="url" 
+                            value={editSponsorDetalhes.portal_noticias?.grid_lateral?.sub2?.click_url || ''} 
+                            onChange={(val: any) => {
+                              const det = { ...editSponsorDetalhes };
+                              det.portal_noticias.grid_lateral.sub2.click_url = val;
+                              setEditSponsorDetalhes(det);
+                            }} 
+                            placeholder="Ex: https://imperio.com.br/sub2" 
+                          />
+                          <div>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
+                              onChange={e => handlePhotoUpload(e, (b64) => {
+                                const det = { ...editSponsorDetalhes };
+                                det.portal_noticias.grid_lateral.sub2.logo_url = b64;
+                                setEditSponsorDetalhes(det);
+                              })} 
+                            />
+                            {editSponsorDetalhes.portal_noticias?.grid_lateral?.sub2?.logo_url && (
+                              <img src={editSponsorDetalhes.portal_noticias.grid_lateral.sub2.logo_url} alt="Grid Sub 2" className="mt-2 max-h-[60px] object-contain bg-white p-1 rounded" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {configSubTab === 'app' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={editSponsorDetalhes.splash_app?.ativo || false} 
+                        onChange={(e) => {
+                          const det = { ...editSponsorDetalhes };
+                          det.splash_app = { ...det.splash_app, ativo: e.target.checked };
+                          setEditSponsorDetalhes(det);
+                        }}
+                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                      />
+                      Ativar vinculação no Splash do Aplicativo
+                    </label>
+                  </div>
+
+                  {editSponsorDetalhes.splash_app?.ativo && (
+                    <div className="space-y-6 border-t border-white/5 pt-6 animate-in fade-in duration-300">
+                      <InputGroup 
+                        label="Link de Redirecionamento (Splash App)" 
+                        type="url" 
+                        value={editSponsorDetalhes.splash_app?.click_url || ''} 
+                        onChange={(val: any) => {
+                          const det = { ...editSponsorDetalhes };
+                          det.splash_app.click_url = val;
+                          setEditSponsorDetalhes(det);
+                        }} 
+                        placeholder="Ex: https://imperio.com.br/app" 
+                      />
+
+                      <div>
+                        <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Posição no Splash (1 a 5)</label>
+                        <select 
+                          value={editSponsorDetalhes.splash_app?.posicao || 3} 
+                          onChange={(e: any) => {
+                            const det = { ...editSponsorDetalhes };
+                            det.splash_app.posicao = parseInt(e.target.value);
+                            setEditSponsorDetalhes(det);
+                          }}
+                          className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-black text-xs md:text-sm text-yellow-500 uppercase tracking-widest cursor-pointer"
+                        >
+                          <option value="1">1 - Ponta Esquerda</option>
+                          <option value="2">2 - Meio-Esquerda</option>
+                          <option value="3">3 - Centro (Meio)</option>
+                          <option value="4">4 - Meio-Direita</option>
+                          <option value="5">5 - Ponta Direita</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload do Logotipo / Splash Banner</label>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none text-xs text-white" 
+                          onChange={e => handlePhotoUpload(e, (b64) => {
+                            const det = { ...editSponsorDetalhes };
+                            det.splash_app.logo_url = b64;
+                            setEditSponsorDetalhes(det);
+                          })} 
+                        />
+                        {editSponsorDetalhes.splash_app?.logo_url && (
+                          <div className="mt-4 text-center bg-black/40 border border-white/5 p-4 rounded-xl">
+                            <span className="text-[10px] font-black text-white/30 uppercase tracking-wider block mb-2">Pré-visualização da Logo (Splash):</span>
+                            <img src={editSponsorDetalhes.splash_app.logo_url} alt="Splash Logo Preview" className="mx-auto max-h-[120px] object-contain bg-white p-2 rounded-lg" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {configSubTab === 'relatorio' && (
+                <div className="space-y-6">
+                  <div className="bg-black/20 border border-white/5 p-6 rounded-3xl text-center space-y-4">
+                    <span className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.3em] block">Total de Visualizações (Impressões)</span>
+                    <span className="text-6xl md:text-7xl font-black font-mono leading-none tracking-tighter text-white block">
+                      {selectedSponsorForConfig.views_count || 0}
+                    </span>
+                    <p className="text-white/40 text-xs font-bold uppercase tracking-wider max-w-md mx-auto">
+                      Esta métrica representa a soma das exibições do patrocinador em todos os canais (Splash do aplicativo desktop e posições do portal de notícias).
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-black/40 border border-white/10 p-5 rounded-2xl text-center">
+                      <span className="text-[8px] font-black text-rose-400 uppercase tracking-[0.2em] block mb-1">Visualizações no Portal</span>
+                      <span className="text-2xl font-black font-mono text-white">
+                        {editSponsorDetalhes.portal_noticias?.ativo ? "Ativo (Integrado)" : "Inativo"}
+                      </span>
+                    </div>
+                    <div className="bg-black/40 border border-white/10 p-5 rounded-2xl text-center">
+                      <span className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em] block mb-1">Visualizações no App</span>
+                      <span className="text-2xl font-black font-mono text-white">
+                        {editSponsorDetalhes.splash_app?.ativo ? `Ativo (Posição ${editSponsorDetalhes.splash_app.posicao})` : "Inativo"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50" disabled={isSavingSponsorEdit}>
                 {isSavingSponsorEdit ? 'Salvando Alterações...' : 'Salvar Alterações'}
@@ -1530,27 +1860,43 @@ export default function AdminDashboard() {
                     <div key={pat.id} className="bg-black/40 border border-white/10 p-5 rounded-2xl flex flex-col justify-between gap-4 hover:border-yellow-500/30 transition-all">
                       <div>
                         <div className="flex items-center gap-4 mb-4">
-                          {pat.logo_url ? (
-                            <img src={pat.logo_url} alt="Logo" className="w-14 h-14 object-contain bg-white rounded-lg p-1 shrink-0" />
+                          {pat.logo_url || pat.detalhes?.portal_noticias?.fino_redacao?.logo_url || pat.detalhes?.splash_app?.logo_url ? (
+                            <img 
+                              src={pat.logo_url || pat.detalhes?.portal_noticias?.fino_redacao?.logo_url || pat.detalhes?.splash_app?.logo_url} 
+                              alt="Logo" 
+                              className="w-14 h-14 object-contain bg-white rounded-lg p-1 shrink-0" 
+                            />
                           ) : (
-                            <div className="w-14 h-14 bg-white/5 rounded-lg flex items-center justify-center shrink-0 border border-white/10">S</div>
+                            <div className="w-14 h-14 bg-white/5 rounded-lg flex items-center justify-center shrink-0 border border-white/10 font-black text-white/40">S</div>
                           )}
                           <div className="min-w-0 flex-1">
                             <h4 className="font-bold text-sm text-white truncate">{pat.empresa}</h4>
-                            <span className={`text-[9px] font-black uppercase tracking-wider ${pat.tipo === 'app' ? 'text-blue-400' : 'text-rose-400'}`}>
-                              {pat.tipo === 'app' ? '📱 Splash App' : '📰 Portal Notícias'}
-                            </span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(pat.detalhes?.portal_noticias?.ativo || pat.tipo === 'portal') && (
+                                <span className="text-[8px] font-black uppercase tracking-wider text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">Portal</span>
+                              )}
+                              {(pat.detalhes?.splash_app?.ativo || pat.tipo === 'app') && (
+                                <span className="text-[8px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">Splash App</span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
                         <div className="text-[10px] text-white/50 space-y-1.5 uppercase font-bold tracking-wider">
                           <div><span className="text-white/30">Valor:</span> <span className="text-white">R$ {Number(pat.valor_contrato).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
                           <div><span className="text-white/30">Tempo:</span> <span className="text-white">{pat.tempo_contrato} {pat.tempo_contrato === 1 ? 'mês' : 'meses'}</span></div>
+                          <div><span className="text-white/30">Visualizações:</span> <span className="text-yellow-500 font-black">{pat.views_count || 0}</span></div>
                           <div>
-                            <span className="text-white/30">Link:</span>{' '}
-                            <a href={pat.click_url} target="_blank" rel="noopener noreferrer" className="text-yellow-500 hover:underline break-all">
-                              Ir para o site
-                            </a>
+                            <span className="text-white/30">Artes:</span>{' '}
+                            <span className="text-white font-black">
+                              {[
+                                pat.detalhes?.portal_noticias?.fino_redacao?.logo_url,
+                                pat.detalhes?.portal_noticias?.meio_materia?.logo_url,
+                                pat.detalhes?.portal_noticias?.fino_ia?.logo_url,
+                                pat.detalhes?.portal_noticias?.grid_lateral?.main?.logo_url,
+                                pat.detalhes?.splash_app?.logo_url
+                              ].filter(Boolean).length} / 5
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1728,7 +2074,7 @@ export default function AdminDashboard() {
       {/* Novo Patrocínio Modal */}
       {isSponsorModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
-          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-2xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
             <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsSponsorModalOpen(false)}>×</button>
             <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Novo Patrocinador</h2>
             <form onSubmit={handleSaveSponsorSubmit} className="space-y-6">
@@ -1748,67 +2094,6 @@ export default function AdminDashboard() {
                     required 
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Tipo de Veiculação</label>
-                  <div className="flex gap-6 items-center h-14 bg-black/40 border border-white/10 rounded-2xl px-6">
-                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={sponsorPortal} 
-                        onChange={(e) => setSponsorPortal(e.target.checked)}
-                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
-                      />
-                      Portal Notícias
-                    </label>
-                    <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={sponsorApp} 
-                        onChange={(e) => setSponsorApp(e.target.checked)}
-                        className="w-4 h-4 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
-                      />
-                      Splash App
-                    </label>
-                  </div>
-                </div>
-                <InputGroup label="Link de Redirecionamento" type="url" value={sponsorClickUrl} onChange={setSponsorClickUrl} placeholder="Ex: https://imperio.com.br" />
-              </div>
-
-              {sponsorApp && (
-                <div>
-                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Posição no Splash (1 a 5)</label>
-                  <select 
-                    value={sponsorPosition} 
-                    onChange={(e: any) => setSponsorPosition(e.target.value)}
-                    className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-black text-xs md:text-sm text-yellow-500 uppercase tracking-widest cursor-pointer"
-                  >
-                    <option value="1">1 - Ponta Esquerda</option>
-                    <option value="2">2 - Meio-Esquerda</option>
-                    <option value="3">3 - Centro (Meio)</option>
-                    <option value="4">4 - Meio-Direita</option>
-                    <option value="5">5 - Ponta Direita</option>
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Logotipo (Imagem/GIF)</label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
-                  onChange={e => handlePhotoUpload(e, (b64) => setSponsorLogo(b64))} 
-                  required
-                />
-                {sponsorLogo && (
-                  <div className="mt-4 text-center bg-black/40 border border-white/5 p-4 rounded-xl">
-                    <span className="text-[10px] font-black text-white/30 uppercase tracking-wider block mb-2">Pré-visualização da Logo:</span>
-                    <img src={sponsorLogo} alt="Logo Preview" className="mx-auto max-h-[80px] object-contain bg-white p-2 rounded-lg" />
-                  </div>
-                )}
               </div>
 
               <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50" disabled={isSavingSponsor}>

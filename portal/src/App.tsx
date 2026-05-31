@@ -191,20 +191,106 @@ function App() {
   const [publicNewsId, setPublicNewsId] = useState<string | null>(null);
   const [publicNews, setPublicNews] = useState<any>(null);
   const [currentArticleAd, setCurrentArticleAd] = useState<any>(null);
+  const [thinBylineAd, setThinBylineAd] = useState<any>(null);
+  const [aboveIaAd, setAboveIaAd] = useState<any>(null);
+  const [gridMainAd, setGridMainAd] = useState<any>(null);
+  const [gridSubAd1, setGridSubAd1] = useState<any>(null);
+  const [gridSubAd2, setGridSubAd2] = useState<any>(null);
 
   useEffect(() => {
-    if (publicNews && patrocinios.length > 0) {
-      const activePortalAds = patrocinios.filter((p: any) => p.tipo === 'portal' && p.status === 'ativo');
-      if (activePortalAds.length > 0) {
-        const randomAd = activePortalAds[Math.floor(Math.random() * activePortalAds.length)];
-        setCurrentArticleAd(randomAd);
+    if (publicNewsId && patrocinios.length > 0) {
+      const portalSponsors = patrocinios.filter((p: any) => {
+        if (!p.detalhes || Object.keys(p.detalhes).length === 0) {
+          return p.tipo === 'portal';
+        }
+        return p.detalhes?.portal_noticias?.ativo === true;
+      });
+
+      if (portalSponsors.length > 0) {
+        const getRandomSponsor = () => portalSponsors[Math.floor(Math.random() * portalSponsors.length)];
+        
+        const getArtForPlacement = (p: any, placement: string) => {
+          if (!p) return null;
+          if (!p.detalhes || Object.keys(p.detalhes).length === 0) {
+            return {
+              id: p.id,
+              nome: p.empresa,
+              logo_url: p.logo_url,
+              click_url: p.click_url
+            };
+          }
+          
+          let art = null;
+          if (placement === 'fino_redacao') art = p.detalhes.portal_noticias?.fino_redacao;
+          else if (placement === 'meio_materia') art = p.detalhes.portal_noticias?.meio_materia;
+          else if (placement === 'fino_ia') art = p.detalhes.portal_noticias?.fino_ia;
+          else if (placement === 'grid_main') art = p.detalhes.portal_noticias?.grid_lateral?.main;
+          else if (placement === 'grid_sub1') art = p.detalhes.portal_noticias?.grid_lateral?.sub1;
+          else if (placement === 'grid_sub2') art = p.detalhes.portal_noticias?.grid_lateral?.sub2;
+          
+          return {
+            id: p.id,
+            nome: p.empresa,
+            logo_url: art?.logo_url || p.logo_url || '',
+            click_url: art?.click_url || p.click_url || '#'
+          };
+        };
+
+        const sponsorForByline = getRandomSponsor();
+        const sponsorForMeio = getRandomSponsor();
+        const sponsorForIa = getRandomSponsor();
+        const sponsorForGridMain = getRandomSponsor();
+        const sponsorForGridSub1 = getRandomSponsor();
+        const sponsorForGridSub2 = getRandomSponsor();
+
+        const adByline = getArtForPlacement(sponsorForByline, 'fino_redacao');
+        const adMeio = getArtForPlacement(sponsorForMeio, 'meio_materia');
+        const adIa = getArtForPlacement(sponsorForIa, 'fino_ia');
+        const adGridMain = getArtForPlacement(sponsorForGridMain, 'grid_main');
+        const adGridSub1 = getArtForPlacement(sponsorForGridSub1, 'grid_sub1');
+        const adGridSub2 = getArtForPlacement(sponsorForGridSub2, 'grid_sub2');
+
+        setCurrentArticleAd(adMeio);
+        setThinBylineAd(adByline);
+        setAboveIaAd(adIa);
+        setGridMainAd(adGridMain);
+        setGridSubAd1(adGridSub1);
+        setGridSubAd2(adGridSub2);
+
+        // Track impressions
+        const uniqueSponsorIds = Array.from(new Set([
+          sponsorForByline?.id,
+          sponsorForMeio?.id,
+          sponsorForIa?.id,
+          sponsorForGridMain?.id,
+          sponsorForGridSub1?.id,
+          sponsorForGridSub2?.id
+        ].filter(Boolean)));
+
+        if (uniqueSponsorIds.length > 0) {
+          fetch('https://api.rodeoapp.pro/api/sponsors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: uniqueSponsorIds })
+          }).catch(err => console.error("Error sending sponsor impressions:", err));
+        }
       } else {
         setCurrentArticleAd(null);
+        setThinBylineAd(null);
+        setAboveIaAd(null);
+        setGridMainAd(null);
+        setGridSubAd1(null);
+        setGridSubAd2(null);
       }
-    } else if (!publicNews) {
+    } else if (!publicNewsId) {
       setCurrentArticleAd(null);
+      setThinBylineAd(null);
+      setAboveIaAd(null);
+      setGridMainAd(null);
+      setGridSubAd1(null);
+      setGridSubAd2(null);
     }
-  }, [publicNews, patrocinios]);
+  }, [publicNewsId, patrocinios]);
 
   const [selectedRankingDay, setSelectedRankingDay] = useState<string>('Geral');
   const [verifiedCpfs, setVerifiedCpfs] = useState<Set<string>>(new Set());
@@ -4708,14 +4794,75 @@ Instruções importantes:
             </div>
           </div>
 
+          {/* Thin ad below byline */}
+          {thinBylineAd && (
+            <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
+              <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Publicidade
+              </span>
+              <a href={thinBylineAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', width: '100%' }}>
+                <img 
+                  src={thinBylineAd.logo_url} 
+                  alt="Patrocinador" 
+                  style={{ width: '100%', maxHeight: '90px', objectFit: 'contain', borderRadius: '6px', border: '1px solid #e2e8f0' }} 
+                />
+              </a>
+            </div>
+          )}
+
           {/* Content */}
-          <div style={{ fontSize: '1.15rem', lineHeight: '1.8', color: '#334155', fontFamily: '"Inter", sans-serif' }}>
+          <div style={{ fontSize: '1.15rem', lineHeight: '1.8', color: '#334155', fontFamily: '"Inter", sans-serif', position: 'relative' }}>
+            {/* Embedded Float-Right Grid Ad (AliExpress-style product grid) */}
+            {gridMainAd && (
+              <div style={{
+                float: 'right',
+                width: '320px',
+                marginLeft: '1.5rem',
+                marginBottom: '1.5rem',
+                padding: '8px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                backgroundColor: '#f8fafc',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                fontFamily: '"Outfit", sans-serif',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {/* Left Main Large Square Ad */}
+                    <a href={gridMainAd.click_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1.2, display: 'block', position: 'relative' }}>
+                      <img src={gridMainAd.logo_url} alt={gridMainAd.nome} style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px' }} />
+                    </a>
+                    
+                    {/* Right Stack of Two Smaller Ads */}
+                    <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {gridSubAd1 && (
+                        <a href={gridSubAd1.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
+                          <img src={gridSubAd1.logo_url} alt={gridSubAd1.nome} style={{ width: '100%', height: '87px', objectFit: 'cover', borderRadius: '8px' }} />
+                        </a>
+                      )}
+                      {gridSubAd2 && (
+                        <a href={gridSubAd2.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
+                          <img src={gridSubAd2.logo_url} alt={gridSubAd2.nome} style={{ width: '100%', height: '87px', objectFit: 'cover', borderRadius: '8px' }} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px 0 4px', borderTop: '1px solid #f1f5f9' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#0f172a' }}>{gridMainAd.nome}</span>
+                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Anúncio</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Render First Half of paragraphs */}
             {firstHalf.map((p: string, idx: number) => {
               const isQuote = p.startsWith('"') || p.endsWith('"');
               if (isQuote) {
                 return (
-                  <div key={idx} style={{ margin: '2.5rem 0' }}>
+                  <div key={idx} style={{ margin: '2.5rem 0', clear: 'both' }}>
                     <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
                     <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
                       {p}
@@ -4733,7 +4880,7 @@ Instruções importantes:
 
             {/* ADVERTISEMENT SLOT */}
             {randomAd && (
-              <div style={{ margin: '3rem 0', textAlign: 'center', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '1.5rem 0' }}>
+              <div style={{ margin: '3rem 0', textAlign: 'center', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '1.5rem 0', clear: 'both' }}>
                 <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800, marginBottom: '1rem' }}>
                   Continua depois da publicidade
                 </span>
@@ -4752,7 +4899,7 @@ Instruções importantes:
               const isQuote = p.startsWith('"') || p.endsWith('"');
               if (isQuote) {
                 return (
-                  <div key={idx} style={{ margin: '2.5rem 0' }}>
+                  <div key={idx} style={{ margin: '2.5rem 0', clear: 'both' }}>
                     <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
                     <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
                       {p}
@@ -4768,6 +4915,22 @@ Instruções importantes:
               );
             })}
           </div>
+
+          {/* Ad above IA disclaimer */}
+          {aboveIaAd && (
+            <div style={{ marginTop: '4rem', textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '2rem' }}>
+              <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Anúncio Patrocinado
+              </span>
+              <a href={aboveIaAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', width: '100%' }}>
+                <img 
+                  src={aboveIaAd.logo_url} 
+                  alt="Patrocinador" 
+                  style={{ width: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e2e8f0' }} 
+                />
+              </a>
+            </div>
+          )}
 
           {/* Footer note */}
           <div style={{ marginTop: '5rem', borderTop: '1px solid #e2e8f0', paddingTop: '2.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', lineHeight: '1.6', fontFamily: '"Outfit", sans-serif' }}>
