@@ -29,6 +29,7 @@ jobs:
       - name: Build & Publish macOS app
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
           cd client_app
           npx electron-builder --mac zip --publish always
