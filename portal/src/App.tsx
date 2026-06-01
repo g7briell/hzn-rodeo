@@ -1903,7 +1903,7 @@ Instruções importantes:
                             </span>
                           </div>
                           <span style={{ color: '#E11D48', fontWeight: '900', fontSize: '1.2rem' }}>
-                            {peao.score > 0 ? peao.score.toFixed(2) : peao.tempoAcumulado ? peao.tempoAcumulado.toFixed(2) + 's' : '0.00'} pts
+                            {peao.score > 0 ? peao.score.toFixed(2) + ' pts' : peao.tempoAcumulado ? peao.tempoAcumulado.toFixed(2) + 's' : '0.00 pts'}
                           </span>
                         </div>
                         <div style={{ marginLeft: '2.5rem', color: '#94a3b8', fontSize: '0.85rem' }}>{peao.cidade}</div>
@@ -4612,7 +4612,13 @@ Instruções importantes:
                           {competidor.nome}
                         </span>
                         <span style={{ color: 'var(--primary)', fontWeight: '900', fontSize: '1.1rem' }}>
-                          {competidor.score > 0 ? competidor.score.toFixed(2) : competidor.tempoAcumulado ? competidor.tempoAcumulado.toFixed(2) + 's' : '0.00'} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span>
+                          {competidor.score > 0 ? (
+                            <>{competidor.score.toFixed(2)} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span></>
+                          ) : competidor.tempoAcumulado ? (
+                            <>{competidor.tempoAcumulado.toFixed(2)}<span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>s</span></>
+                          ) : (
+                            <>0.00 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>pts</span></>
+                          )}
                         </span>
                       </div>
                     ))}
