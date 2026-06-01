@@ -44,8 +44,7 @@
     "mac": {
       "target": [
         "zip"
-      ],
-      "identity": null
+      ]
     },
     "extraResources": [
       {
