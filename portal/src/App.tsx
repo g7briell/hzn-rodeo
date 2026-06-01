@@ -1827,7 +1827,10 @@ Instruções importantes:
                            });
                        }
                        // Ordena
-                       return rankingBase.sort((a, b) => (b.score || 0) - (a.score || 0)).filter(p => selectedRankingDay === 'Geral' || (p.score > 0 || p.tempoAcumulado > 0));
+                       return rankingBase.sort((a, b) => {
+                         if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+                         return (b.tempoAcumulado || 0) - (a.tempoAcumulado || 0);
+                       }).filter(p => selectedRankingDay === 'Geral' || (p.score > 0 || p.tempoAcumulado > 0));
                     })().map((peao: any, idx: number) => (
                       <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         
