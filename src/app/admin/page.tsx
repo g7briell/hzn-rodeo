@@ -1607,6 +1607,7 @@ export default function AdminDashboard() {
                             setEditSponsorDetalhes(det);
                           }} 
                           placeholder="Ex: https://imperio.com.br/redacao" 
+                          required={false}
                         />
                         <div>
                           <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload da Arte</label>
@@ -1639,6 +1640,7 @@ export default function AdminDashboard() {
                             setEditSponsorDetalhes(det);
                           }} 
                           placeholder="Ex: https://imperio.com.br/meio" 
+                          required={false}
                         />
                         <div>
                           <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload da Arte</label>
@@ -1671,6 +1673,7 @@ export default function AdminDashboard() {
                             setEditSponsorDetalhes(det);
                           }} 
                           placeholder="Ex: https://imperio.com.br/rodape" 
+                          required={false}
                         />
                         <div>
                           <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload da Arte</label>
@@ -1707,6 +1710,7 @@ export default function AdminDashboard() {
                               setEditSponsorDetalhes(det);
                             }} 
                             placeholder="Ex: https://imperio.com.br/principal" 
+                            required={false}
                           />
                           <div>
                             <input 
@@ -2246,7 +2250,7 @@ function DashboardCard({ title, icon, items, emptyMsg }: any) {
   );
 }
 
-function InputGroup({ label, placeholder, value, onChange, type = "text" }: any) {
+function InputGroup({ label, placeholder, value, onChange, type = "text", required = true }: any) {
   return (
     <div className="space-y-2">
       <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">{label}</label>
@@ -2256,7 +2260,7 @@ function InputGroup({ label, placeholder, value, onChange, type = "text" }: any)
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl px-5 md:px-6 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm placeholder:text-white/20 text-white shadow-inner hover:bg-black/60 focus:bg-black/80"
-        required
+        required={required}
       />
     </div>
   );

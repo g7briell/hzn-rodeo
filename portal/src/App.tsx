@@ -194,8 +194,6 @@ function App() {
   const [thinBylineAd, setThinBylineAd] = useState<any>(null);
   const [aboveIaAd, setAboveIaAd] = useState<any>(null);
   const [gridMainAd, setGridMainAd] = useState<any>(null);
-  const [gridSubAd1, setGridSubAd1] = useState<any>(null);
-  const [gridSubAd2, setGridSubAd2] = useState<any>(null);
 
   useEffect(() => {
     if (publicNewsId && patrocinios.length > 0) {
@@ -240,31 +238,23 @@ function App() {
         const sponsorForMeio = getRandomSponsor();
         const sponsorForIa = getRandomSponsor();
         const sponsorForGridMain = getRandomSponsor();
-        const sponsorForGridSub1 = getRandomSponsor();
-        const sponsorForGridSub2 = getRandomSponsor();
 
         const adByline = getArtForPlacement(sponsorForByline, 'fino_redacao');
         const adMeio = getArtForPlacement(sponsorForMeio, 'meio_materia');
         const adIa = getArtForPlacement(sponsorForIa, 'fino_ia');
         const adGridMain = getArtForPlacement(sponsorForGridMain, 'grid_main');
-        const adGridSub1 = getArtForPlacement(sponsorForGridSub1, 'grid_sub1');
-        const adGridSub2 = getArtForPlacement(sponsorForGridSub2, 'grid_sub2');
 
         setCurrentArticleAd(adMeio);
         setThinBylineAd(adByline);
         setAboveIaAd(adIa);
         setGridMainAd(adGridMain);
-        setGridSubAd1(adGridSub1);
-        setGridSubAd2(adGridSub2);
 
         // Track impressions
         const uniqueSponsorIds = Array.from(new Set([
           sponsorForByline?.id,
           sponsorForMeio?.id,
           sponsorForIa?.id,
-          sponsorForGridMain?.id,
-          sponsorForGridSub1?.id,
-          sponsorForGridSub2?.id
+          sponsorForGridMain?.id
         ].filter(Boolean)));
 
         if (uniqueSponsorIds.length > 0) {
@@ -279,8 +269,6 @@ function App() {
         setThinBylineAd(null);
         setAboveIaAd(null);
         setGridMainAd(null);
-        setGridSubAd1(null);
-        setGridSubAd2(null);
       }
     } else if (!publicNewsId) {
       setCurrentArticleAd(null);
