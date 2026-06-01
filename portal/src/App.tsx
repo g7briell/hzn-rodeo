@@ -205,44 +205,48 @@ function App() {
       });
 
       if (portalSponsors.length > 0) {
-        const getRandomSponsor = () => portalSponsors[Math.floor(Math.random() * portalSponsors.length)];
-        
-        const getArtForPlacement = (p: any, placement: string) => {
-          if (!p) return null;
-          if (!p.detalhes || Object.keys(p.detalhes).length === 0) {
+        const getSponsorForPlacement = (placement: string) => {
+          const validSponsors = portalSponsors.filter((p: any) => {
+            if (!p.detalhes || Object.keys(p.detalhes).length === 0) {
+              return !!p.logo_url;
+            }
+            if (placement === 'fino_redacao') return !!p.detalhes.portal_noticias?.fino_redacao?.logo_url;
+            if (placement === 'meio_materia') return !!p.detalhes.portal_noticias?.meio_materia?.logo_url;
+            if (placement === 'fino_ia') return !!p.detalhes.portal_noticias?.fino_ia?.logo_url;
+            if (placement === 'grid_main') return !!p.detalhes.portal_noticias?.grid_lateral?.main?.logo_url;
+            return false;
+          });
+
+          if (validSponsors.length === 0) return null;
+          const selected = validSponsors[Math.floor(Math.random() * validSponsors.length)];
+          
+          if (!selected.detalhes || Object.keys(selected.detalhes).length === 0) {
             return {
-              id: p.id,
-              nome: p.empresa,
-              logo_url: p.logo_url,
-              click_url: p.click_url
+              id: selected.id,
+              nome: selected.empresa,
+              logo_url: selected.logo_url,
+              click_url: selected.click_url || '#'
             };
           }
-          
+
           let art = null;
-          if (placement === 'fino_redacao') art = p.detalhes.portal_noticias?.fino_redacao;
-          else if (placement === 'meio_materia') art = p.detalhes.portal_noticias?.meio_materia;
-          else if (placement === 'fino_ia') art = p.detalhes.portal_noticias?.fino_ia;
-          else if (placement === 'grid_main') art = p.detalhes.portal_noticias?.grid_lateral?.main;
-          else if (placement === 'grid_sub1') art = p.detalhes.portal_noticias?.grid_lateral?.sub1;
-          else if (placement === 'grid_sub2') art = p.detalhes.portal_noticias?.grid_lateral?.sub2;
+          if (placement === 'fino_redacao') art = selected.detalhes.portal_noticias?.fino_redacao;
+          else if (placement === 'meio_materia') art = selected.detalhes.portal_noticias?.meio_materia;
+          else if (placement === 'fino_ia') art = selected.detalhes.portal_noticias?.fino_ia;
+          else if (placement === 'grid_main') art = selected.detalhes.portal_noticias?.grid_lateral?.main;
           
           return {
-            id: p.id,
-            nome: p.empresa,
-            logo_url: art?.logo_url || p.logo_url || '',
-            click_url: art?.click_url || p.click_url || '#'
+            id: selected.id,
+            nome: selected.empresa,
+            logo_url: art?.logo_url,
+            click_url: art?.click_url || '#'
           };
         };
 
-        const sponsorForByline = getRandomSponsor();
-        const sponsorForMeio = getRandomSponsor();
-        const sponsorForIa = getRandomSponsor();
-        const sponsorForGridMain = getRandomSponsor();
-
-        const adByline = getArtForPlacement(sponsorForByline, 'fino_redacao');
-        const adMeio = getArtForPlacement(sponsorForMeio, 'meio_materia');
-        const adIa = getArtForPlacement(sponsorForIa, 'fino_ia');
-        const adGridMain = getArtForPlacement(sponsorForGridMain, 'grid_main');
+        const adByline = getSponsorForPlacement('fino_redacao');
+        const adMeio = getSponsorForPlacement('meio_materia');
+        const adIa = getSponsorForPlacement('fino_ia');
+        const adGridMain = getSponsorForPlacement('grid_main');
 
         setCurrentArticleAd(adMeio);
         setThinBylineAd(adByline);
@@ -251,10 +255,10 @@ function App() {
 
         // Track impressions
         const uniqueSponsorIds = Array.from(new Set([
-          sponsorForByline?.id,
-          sponsorForMeio?.id,
-          sponsorForIa?.id,
-          sponsorForGridMain?.id
+          adByline?.id,
+          adMeio?.id,
+          adIa?.id,
+          adGridMain?.id
         ].filter(Boolean)));
 
         if (uniqueSponsorIds.length > 0) {
