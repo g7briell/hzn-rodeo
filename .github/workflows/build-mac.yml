@@ -46,7 +46,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: client_app/dist/HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_name: HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_name: HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}-mac.zip
           tag: v${{ steps.get_version.outputs.VERSION }}
           overwrite: true
 
