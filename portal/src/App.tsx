@@ -3688,7 +3688,7 @@ Instruções importantes:
                 gap: '12px',
                 alignItems: 'center',
               }}>
-                {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).slice(0, 5).map(ev => (
+                {homeEvents.filter(ev => (ev.detalhes?.logo || ev.detalhes?.foto_evento) && (ev.detalhes?.portalConfig?.destaque || ev.detalhes?.destacar_home)).slice(0, 5).map(ev => (
                   <div
                     key={ev.id}
                     onClick={() => setPublicRankingModal(ev)}
@@ -3696,7 +3696,7 @@ Instruções importantes:
                     title={ev.nome}
                   >
                     <img
-                      src={ev.detalhes.logo}
+                      src={ev.detalhes.logo || ev.detalhes.foto_evento}
                       alt={ev.nome}
                       style={{
                         height: '70px',
