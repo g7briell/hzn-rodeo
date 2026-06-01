@@ -796,6 +796,49 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleGenerateAdditionalKey = async (license: any) => {
+    if (!license) return;
+    if (!window.confirm(`Deseja gerar uma chave adicional para ${license.nome} (${license.email})?`)) return;
+    
+    try {
+      const newKey = `APP-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+      
+      const { error } = await supabase.from("licencas").insert([{
+        nome: license.nome,
+        email: license.email,
+        whatsapp: license.whatsapp,
+        descricao: `${license.descricao || ''} (Chave adicional baseada na chave ${license.key_code})`.trim(),
+        key_code: newKey,
+        dias_validos: license.dias_validos || 30,
+        is_active: true,
+        esportes: license.esportes || "rodeio"
+      }]);
+
+      if (error) throw error;
+
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + (license.dias_validos || 30));
+      const validadeStr = expiryDate.toLocaleDateString('pt-BR');
+
+      fetch('/api/send-license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: license.email,
+          nome: license.nome,
+          token: newKey,
+          validade: validadeStr
+        })
+      });
+
+      alert(`Nova chave gerada e enviada por e-mail!\n\nChave Adicional: ${newKey}`);
+      fetchLicenses();
+      setSelectedLicense(null);
+    } catch (err: any) {
+      alert("Erro ao gerar chave adicional: " + err.message);
+    }
+  };
+
   // Finance and Sponsorship calculations
   const totalEntradas = patrocinios.reduce((acc, p) => acc + (Number(p.valor_contrato) || 0), 0);
   const totalSaidas = despesas.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
@@ -2066,6 +2109,13 @@ export default function AdminDashboard() {
                 className={`w-full py-5 md:py-6 rounded-[1rem] md:rounded-[1.5rem] font-black text-[10px] md:text-xs tracking-[0.2em] flex items-center justify-center gap-3 transition-all uppercase ${selectedLicense.is_active ? 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10' : 'bg-yellow-500 text-black border border-yellow-500/20'}`}
               >
                 {selectedLicense.is_active ? <><Pause className="w-4 h-4 fill-current" /> Pausar Acesso</> : <><Play className="w-4 h-4 fill-current" /> Retomar Acesso</>}
+              </button>
+              
+              <button 
+                onClick={() => handleGenerateAdditionalKey(selectedLicense)}
+                className="w-full py-5 md:py-6 rounded-[1rem] md:rounded-[1.5rem] font-black text-[10px] md:text-xs tracking-[0.2em] flex items-center justify-center gap-3 transition-all uppercase bg-yellow-500 text-black hover:bg-yellow-400 border border-yellow-500/20 shadow-lg shadow-yellow-500/10"
+              >
+                <Plus className="w-4 h-4" /> Gerar Chave Adicional
               </button>
             </div>
           </div>
