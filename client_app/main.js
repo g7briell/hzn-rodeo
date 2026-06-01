@@ -175,7 +175,16 @@ ipcMain.handle('validate-license', async (event, { email, key, hwid, appVersion 
       .eq('key_code', cleanKey)
       .maybeSingle();
 
-    if (error || !data) return { success: false, message: 'E-mail ou Chave inválidos.' };
+    if (error) {
+      console.error("Supabase query error:", error);
+      const errMsg = error.message ? error.message.toLowerCase() : '';
+      if (errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('connection') || errMsg.includes('timeout') || errMsg.includes('enotfound') || errMsg.includes('load failed')) {
+        return { success: false, isNetworkError: true, message: 'Erro de conexão com o servidor. Verifique sua internet.' };
+      }
+      return { success: false, isNetworkError: true, message: 'Erro de conexão com o servidor.' };
+    }
+
+    if (!data) return { success: false, message: 'E-mail ou Chave inválidos.' };
     if (!data.is_active) return { success: false, message: 'Esta licença foi desativada.' };
     if (data.is_used && data.hwid !== hwid) return { success: false, message: 'Chave vinculada a outro PC.' };
     
@@ -213,7 +222,7 @@ ipcMain.handle('validate-license', async (event, { email, key, hwid, appVersion 
     };
   } catch (err) {
     console.error("Validate License Error:", err);
-    return { success: false, message: 'Erro interno: ' + err.message + ' | ' + err.stack };
+    return { success: false, isNetworkError: true, message: 'Erro interno: ' + err.message };
   }
 });
 
@@ -233,7 +242,16 @@ ipcMain.handle('heartbeat', async (event, { email, key, appVersion }) => {
       .select('is_active, dias_validos, data_ativacao, esportes')
       .maybeSingle();
 
-    if (error || !data) return { valid: false, reason: 'deleted' };
+    if (error) {
+      console.error("Heartbeat error:", error);
+      const errMsg = error.message ? error.message.toLowerCase() : '';
+      if (errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('connection') || errMsg.includes('timeout') || errMsg.includes('enotfound') || errMsg.includes('load failed')) {
+        return { valid: true, isNetworkError: true };
+      }
+      return { valid: false, reason: 'deleted' };
+    }
+
+    if (!data) return { valid: false, reason: 'deleted' };
     if (!data.is_active) return { valid: false, reason: 'disabled' };
     return { valid: true, data: data };
   } catch (err) {

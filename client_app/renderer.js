@@ -311,6 +311,7 @@ async function init() {
                 
                 // FALLBACK SE ESTIVER OFFLINE OU SE HOUVER ERRO DE CONEXÃO COM O SERVIDOR
                 const isNetworkError = !res || 
+                    res.isNetworkError ||
                     (res.message && (
                         res.message.toLowerCase().includes('fetch') || 
                         res.message.toLowerCase().includes('failed to fetch') || 
@@ -318,6 +319,7 @@ async function init() {
                         res.message.toLowerCase().includes('etimedout') || 
                         res.message.toLowerCase().includes('connect') ||
                         res.message.toLowerCase().includes('network') ||
+                        res.message.toLowerCase().includes('erro de conexão') ||
                         res.message.toLowerCase().includes('erro interno')
                     )) ||
                     !navigator.onLine;
@@ -332,6 +334,10 @@ async function init() {
                         return;
                     }
                 }
+
+                alert(res && res.message ? res.message : 'Sua licença expirou ou é inválida.');
+                window.electronAPI.clearAuth();
+                showLogin();
             }
         } catch (e) { 
             console.error("RODEOAPP: Erro crítico no init:", e);
