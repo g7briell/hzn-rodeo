@@ -34,7 +34,8 @@
       {
         "provider": "github",
         "owner": "g7briell",
-        "repo": "hzn-rodeo"
+        "repo": "hzn-rodeo",
+        "releaseType": "release"
       }
     ],
     "win": {
