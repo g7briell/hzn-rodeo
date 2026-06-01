@@ -31,7 +31,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
           cd client_app
-          npx electron-builder --mac zip --x64 --arm64
+          npx electron-builder --mac zip --x64 --arm64 --publish never
 
       - name: Get version
         id: get_version
