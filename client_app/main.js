@@ -2002,6 +2002,7 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
                 .eq('id', existingEvent.id);
             if (error) throw error;
         } else {
+            payload.id = require('crypto').randomUUID();
             const { error } = await supabase.from('eventos_oficiais').insert([payload]);
             if (error) throw error;
         }
