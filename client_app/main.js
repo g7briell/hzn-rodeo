@@ -1620,8 +1620,119 @@ ipcMain.handle('export-melhor-animal', async (event, { eventName, data, format }
 
 // --- AUTO UPDATER ---
 const { autoUpdater } = require('electron-updater');
+const https = require('https');
 
 autoUpdater.autoDownload = false;
+
+// Custom State for macOS update
+let macUpdateInfo = null;
+let macDownloadPath = null;
+
+function isNewerVersion(latest, current) {
+    const lParts = latest.split('.').map(Number);
+    const cParts = current.split('.').map(Number);
+    for (let i = 0; i < Math.max(lParts.length, cParts.length); i++) {
+        const lVal = lParts[i] || 0;
+        const cVal = cParts[i] || 0;
+        if (lVal > cVal) return true;
+        if (lVal < cVal) return false;
+    }
+    return false;
+}
+
+function checkMacUpdates() {
+    return new Promise((resolve, reject) => {
+        const options = {
+            hostname: 'api.github.com',
+            path: `/repos/g7briell/hzn-rodeo/releases/latest`,
+            headers: {
+                'User-Agent': 'HZN-RodeoApp-Updater'
+            }
+        };
+        
+        https.get(options, (res) => {
+            if (res.statusCode !== 200) {
+                return reject(new Error(`Failed to fetch updates, status code: ${res.statusCode}`));
+            }
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+                try {
+                    const release = JSON.parse(data);
+                    const latestVersion = release.tag_name.replace(/^v/, '');
+                    const currentVersion = app.getVersion();
+                    
+                    if (isNewerVersion(latestVersion, currentVersion)) {
+                        const zipAsset = release.assets.find(asset => asset.name.endsWith('.zip') && asset.name.toLowerCase().includes('mac'));
+                        if (zipAsset) {
+                            macUpdateInfo = {
+                                version: latestVersion,
+                                releaseName: release.name,
+                                releaseNotes: release.body,
+                                url: zipAsset.browser_download_url,
+                                size: zipAsset.size
+                            };
+                            resolve({ available: true, info: macUpdateInfo });
+                        } else {
+                            resolve({ available: false });
+                        }
+                    } else {
+                        resolve({ available: false });
+                    }
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }).on('error', (err) => {
+            reject(err);
+        });
+    });
+}
+
+function downloadMacUpdate(url, dest, onProgress) {
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(dest);
+        
+        function getUri(uri) {
+            https.get(uri, {
+                headers: { 'User-Agent': 'HZN-RodeoApp-Updater' }
+            }, (res) => {
+                if (res.statusCode === 301 || res.statusCode === 302) {
+                    return getUri(res.headers.location);
+                }
+                if (res.statusCode !== 200) {
+                    return reject(new Error(`Failed to download update, status code: ${res.statusCode}`));
+                }
+                
+                const totalBytes = parseInt(res.headers['content-length'], 10) || 0;
+                let downloadedBytes = 0;
+                
+                res.on('data', (chunk) => {
+                    downloadedBytes += chunk.length;
+                    file.write(chunk);
+                    if (totalBytes > 0 && onProgress) {
+                        const percent = (downloadedBytes / totalBytes) * 100;
+                        onProgress({
+                            total: totalBytes,
+                            transferred: downloadedBytes,
+                            percent: percent
+                        });
+                    }
+                });
+                
+                res.on('end', () => {
+                    file.end();
+                    resolve();
+                });
+            }).on('error', (err) => {
+                fs.unlink(dest, () => {});
+                reject(err);
+            });
+        }
+        
+        getUri(url);
+    });
+}
 
 autoUpdater.on('update-available', (info) => {
     if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-available', info });
@@ -1644,36 +1755,171 @@ autoUpdater.on('error', (err) => {
 });
 
 ipcMain.handle('check-for-updates', () => {
-    try {
-        autoUpdater.checkForUpdates().then(res => {
-            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
+    if (process.platform === 'darwin') {
+        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: Starting check-for-updates on macOS...' });
+        checkMacUpdates().then(res => {
+            if (res.available) {
+                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-available', info: res.info });
+            } else {
+                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-not-available', info: { version: app.getVersion() } });
+            }
         }).catch(err => {
-            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates REJECTED: ' + err.message });
+            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS check updates error: ' + err.message });
         });
-    } catch (e) {
-        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates SYNC ERROR: ' + e.message });
+    } else {
+        try {
+            autoUpdater.checkForUpdates().then(res => {
+                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
+            }).catch(err => {
+                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates REJECTED: ' + err.message });
+            });
+        } catch (e) {
+            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates SYNC ERROR: ' + e.message });
+        }
     }
 });
 
 ipcMain.handle('download-update', () => {
-    autoUpdater.downloadUpdate();
+    if (process.platform === 'darwin') {
+        if (!macUpdateInfo) {
+            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'No update info available to download.' });
+            return;
+        }
+        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'Starting macOS download from: ' + macUpdateInfo.url });
+        
+        const tempDir = app.getPath('temp');
+        macDownloadPath = path.join(tempDir, `HZN-RodeoApp-Setup-${macUpdateInfo.version}.zip`);
+        
+        downloadMacUpdate(macUpdateInfo.url, macDownloadPath, (progress) => {
+            if (mainWindow) {
+                mainWindow.webContents.send('updater-event', {
+                    type: 'download-progress',
+                    progress: {
+                        percent: progress.percent,
+                        transferred: progress.transferred,
+                        total: progress.total,
+                        bytesPerSecond: 0
+                    }
+                });
+            }
+        }).then(() => {
+            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-downloaded', info: macUpdateInfo });
+        }).catch(err => {
+            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS download error: ' + err.message });
+        });
+    } else {
+        autoUpdater.downloadUpdate();
+    }
 });
 
 ipcMain.handle('install-update', () => {
-    autoUpdater.quitAndInstall();
+    if (process.platform === 'darwin') {
+        installMacUpdate();
+    } else {
+        autoUpdater.quitAndInstall();
+    }
 });
 
 ipcMain.handle('quit-and-install', () => {
-    autoUpdater.quitAndInstall(false, true);
+    if (process.platform === 'darwin') {
+        installMacUpdate();
+    } else {
+        autoUpdater.quitAndInstall(false, true);
+    }
 });
+
+function installMacUpdate() {
+    try {
+        if (!macDownloadPath || !fs.existsSync(macDownloadPath)) {
+            throw new Error('Downloaded update file not found.');
+        }
+        
+        const currentExe = app.getPath('exe');
+        let appBundlePath = currentExe;
+        if (appBundlePath.includes('.app/Contents/MacOS/')) {
+            appBundlePath = appBundlePath.substring(0, appBundlePath.indexOf('.app') + 4);
+        } else {
+            appBundlePath = path.dirname(path.dirname(path.dirname(currentExe)));
+        }
+        
+        const tempDir = app.getPath('temp');
+        const scriptPath = path.join(tempDir, 'hzn_update.sh');
+        
+        const scriptContent = `#!/bin/bash
+# Wait for the main process to exit
+sleep 2
+
+echo "Starting HZN RodeoApp update process..."
+echo "Temp Zip: ${macDownloadPath}"
+echo "Target App Path: ${appBundlePath}"
+
+# Create temp extraction folder
+mkdir -p "/tmp/hzn_update"
+
+# Extract
+unzip -o "${macDownloadPath}" -d "/tmp/hzn_update"
+
+# Find the extracted app bundle (usually /tmp/hzn_update/*.app)
+EXTRACTED_APP=$(find "/tmp/hzn_update" -maxdepth 2 -name "*.app" | head -n 1)
+
+if [ -z "$EXTRACTED_APP" ]; then
+    echo "Error: Extracted .app bundle not found!"
+    exit 1
+fi
+
+echo "Extracted App: $EXTRACTED_APP"
+
+# Move old app bundle to temp backup
+rm -rf "/tmp/hzn_old_app.app"
+if [ -d "${appBundlePath}" ]; then
+    mv "${appBundlePath}" "/tmp/hzn_old_app.app"
+fi
+
+# Move new app to final destination
+mv "$EXTRACTED_APP" "${appBundlePath}"
+
+# Remove quarantine and set execution permissions
+xattr -cr "${appBundlePath}"
+chmod -R 755 "${appBundlePath}"
+
+# Clean up
+rm -rf "/tmp/hzn_update"
+rm -f "${macDownloadPath}"
+
+# Relaunch the app
+open "${appBundlePath}"
+`;
+
+        fs.writeFileSync(scriptPath, scriptContent, { mode: 0o755 });
+        
+        const { spawn } = require('child_process');
+        const child = spawn('/bin/bash', [scriptPath], {
+            detached: true,
+            stdio: 'ignore'
+        });
+        child.unref();
+        
+        app.quit();
+    } catch (e) {
+        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS install error: ' + e.message });
+    }
+}
 
 // Start checking shortly after startup
 app.on('ready', () => {
     setTimeout(() => {
-        try {
-            autoUpdater.checkForUpdates();
-        } catch (e) {
-            console.log('Error checking for updates:', e);
+        if (process.platform === 'darwin') {
+            checkMacUpdates().then(res => {
+                if (res.available && mainWindow) {
+                    mainWindow.webContents.send('updater-event', { type: 'update-available', info: res.info });
+                }
+            }).catch(e => console.log('Error checking mac updates:', e));
+        } else {
+            try {
+                autoUpdater.checkForUpdates();
+            } catch (e) {
+                console.log('Error checking for updates:', e);
+            }
         }
     }, 5000);
 });

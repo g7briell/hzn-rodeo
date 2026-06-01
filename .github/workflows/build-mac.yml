@@ -26,13 +26,27 @@ jobs:
           cd client_app
           npm install
 
-      - name: Build & Publish macOS app
+      - name: Build macOS app
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
           cd client_app
-          npx electron-builder --mac zip --x64 --arm64 --publish always
+          npx electron-builder --mac zip --x64 --arm64
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./client_app/package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Upload macOS release asset
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: client_app/dist/HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_name: HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.zip
+          tag: v${{ steps.get_version.outputs.VERSION }}
+          overwrite: true
 
       - name: Upload macOS build artifact
         uses: actions/upload-artifact@v4
