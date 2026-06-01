@@ -676,6 +676,7 @@ export default function AdminDashboard() {
     const validadeStr = expiryDate.toLocaleDateString('pt-BR');
 
     const { error } = await supabase.from("licencas").insert([{
+      id: crypto.randomUUID(),
       nome: formData.nome,
       email: formData.email,
       whatsapp: formData.whatsapp,
@@ -804,6 +805,7 @@ export default function AdminDashboard() {
       const newKey = `APP-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
       
       const { error } = await supabase.from("licencas").insert([{
+        id: crypto.randomUUID(),
         nome: license.nome,
         email: license.email,
         whatsapp: license.whatsapp,
