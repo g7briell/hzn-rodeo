@@ -3713,7 +3713,7 @@ Instruções importantes:
                   </div>
                 ))}
                 {/* Placeholder enquanto não há eventos com destacar_home */}
-                {homeEvents.filter(ev => ev.detalhes?.logo && ev.detalhes?.destacar_home).length === 0 && homeEvents.filter(ev => ev.detalhes?.logo).slice(0, 4).map(ev => (
+                {homeEvents.filter(ev => (ev.detalhes?.logo || ev.detalhes?.foto_evento) && (ev.detalhes?.portalConfig?.destaque || ev.detalhes?.destacar_home)).length === 0 && homeEvents.filter(ev => ev.detalhes?.logo || ev.detalhes?.foto_evento).slice(0, 4).map(ev => (
                   <div
                     key={ev.id}
                     onClick={() => setPublicRankingModal(ev)}
@@ -3721,7 +3721,7 @@ Instruções importantes:
                     title={ev.nome}
                   >
                     <img
-                      src={ev.detalhes.logo}
+                      src={ev.detalhes.logo || ev.detalhes.foto_evento}
                       alt={ev.nome}
                       style={{
                         height: '70px',
