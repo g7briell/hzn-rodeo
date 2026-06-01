@@ -4530,7 +4530,13 @@ Instruções importantes:
                 <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '20px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: '1.25rem', fontWeight: '900', letterSpacing: '1px', textAlign: 'center' }}>Top 3 - Ranking Atual</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {publicRankingModal.detalhes.ranking.slice(0, 3).map((competidor: any, idx: number) => (
+                    {[...publicRankingModal.detalhes.ranking]
+                      .sort((a: any, b: any) => {
+                        if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+                        return (b.tempoAcumulado || 0) - (a.tempoAcumulado || 0);
+                      })
+                      .slice(0, 3)
+                      .map((competidor: any, idx: number) => (
                       <div 
                         key={idx} 
                         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem 1.25rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid rgba(255,255,255,0.1)' }}
