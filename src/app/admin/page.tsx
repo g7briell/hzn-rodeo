@@ -1695,11 +1695,11 @@ export default function AdminDashboard() {
 
                       {/* Grade Lateral AliExpress */}
                       <div className="bg-black/20 border border-white/5 p-5 rounded-2xl space-y-6">
-                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">4. Grade Lateral de Anúncios (Estilo AliExpress)</h4>
+                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">4. Anúncio Lateral Quadrado</h4>
                         
                         {/* Main Lateral */}
-                        <div className="border-l-2 border-white/10 pl-4 space-y-4">
-                          <h5 className="text-[9px] font-black text-white/60 uppercase tracking-wider">A) Imagem Principal da Esquerda (Recomenda-se 300x250px)</h5>
+                        <div className="space-y-4">
+                          <h5 className="text-[9px] font-black text-white/60 uppercase tracking-wider">Imagem Principal (Recomenda-se 320x280px)</h5>
                           <InputGroup 
                             label="Link Principal" 
                             type="url" 
@@ -1725,68 +1725,6 @@ export default function AdminDashboard() {
                             />
                             {editSponsorDetalhes.portal_noticias?.grid_lateral?.main?.logo_url && (
                               <img src={editSponsorDetalhes.portal_noticias.grid_lateral.main.logo_url} alt="Grid Main" className="mt-2 max-h-[80px] object-contain bg-white p-1 rounded" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Sub1 Lateral */}
-                        <div className="border-l-2 border-white/10 pl-4 space-y-4">
-                          <h5 className="text-[9px] font-black text-white/60 uppercase tracking-wider">B) Imagem Lateral Superior Direita (Recomenda-se 200x200px)</h5>
-                          <InputGroup 
-                            label="Link Sub 1" 
-                            type="url" 
-                            value={editSponsorDetalhes.portal_noticias?.grid_lateral?.sub1?.click_url || ''} 
-                            onChange={(val: any) => {
-                              const det = { ...editSponsorDetalhes };
-                              det.portal_noticias.grid_lateral.sub1.click_url = val;
-                              setEditSponsorDetalhes(det);
-                            }} 
-                            placeholder="Ex: https://imperio.com.br/sub1" 
-                          />
-                          <div>
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
-                              onChange={e => handlePhotoUpload(e, (b64) => {
-                                const det = { ...editSponsorDetalhes };
-                                det.portal_noticias.grid_lateral.sub1.logo_url = b64;
-                                setEditSponsorDetalhes(det);
-                              })} 
-                            />
-                            {editSponsorDetalhes.portal_noticias?.grid_lateral?.sub1?.logo_url && (
-                              <img src={editSponsorDetalhes.portal_noticias.grid_lateral.sub1.logo_url} alt="Grid Sub 1" className="mt-2 max-h-[60px] object-contain bg-white p-1 rounded" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Sub2 Lateral */}
-                        <div className="border-l-2 border-white/10 pl-4 space-y-4">
-                          <h5 className="text-[9px] font-black text-white/60 uppercase tracking-wider">C) Imagem Lateral Inferior Direita (Recomenda-se 200x200px)</h5>
-                          <InputGroup 
-                            label="Link Sub 2" 
-                            type="url" 
-                            value={editSponsorDetalhes.portal_noticias?.grid_lateral?.sub2?.click_url || ''} 
-                            onChange={(val: any) => {
-                              const det = { ...editSponsorDetalhes };
-                              det.portal_noticias.grid_lateral.sub2.click_url = val;
-                              setEditSponsorDetalhes(det);
-                            }} 
-                            placeholder="Ex: https://imperio.com.br/sub2" 
-                          />
-                          <div>
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
-                              onChange={e => handlePhotoUpload(e, (b64) => {
-                                const det = { ...editSponsorDetalhes };
-                                det.portal_noticias.grid_lateral.sub2.logo_url = b64;
-                                setEditSponsorDetalhes(det);
-                              })} 
-                            />
-                            {editSponsorDetalhes.portal_noticias?.grid_lateral?.sub2?.logo_url && (
-                              <img src={editSponsorDetalhes.portal_noticias.grid_lateral.sub2.logo_url} alt="Grid Sub 2" className="mt-2 max-h-[60px] object-contain bg-white p-1 rounded" />
                             )}
                           </div>
                         </div>
