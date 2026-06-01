@@ -99,14 +99,26 @@ supabase
         
         if (payload.payload && payload.payload.email === currentActiveEmail) {
           if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: E-mail bateu! Chamando checkForUpdates...' });
-          try {
-              autoUpdater.checkForUpdates().then(res => {
-                  if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
+          if (process.platform === 'darwin') {
+              checkMacUpdates().then(res => {
+                  if (res.available) {
+                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-available', info: res.info });
+                  } else {
+                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-not-available', info: { version: app.getVersion() } });
+                  }
               }).catch(err => {
-                  if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates REJECTED: ' + err.message + ' ' + err.stack });
+                  if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS check updates error: ' + err.message });
               });
-          } catch (e) {
-              if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates SYNC ERROR: ' + e.message });
+          } else {
+              try {
+                  autoUpdater.checkForUpdates().then(res => {
+                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
+                  }).catch(err => {
+                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates REJECTED: ' + err.message + ' ' + err.stack });
+                  });
+              } catch (e) {
+                  if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates SYNC ERROR: ' + e.message });
+              }
           }
         } else {
           if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: E-mail não bateu. Ignorando.' });
