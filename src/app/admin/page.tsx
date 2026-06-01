@@ -744,13 +744,17 @@ export default function AdminDashboard() {
   };
 
   const handleUpdateSports = async (id: string, sports: string[]) => {
+    if (!selectedLicense || !selectedLicense.email) return;
     const sportsStr = sports.join(",");
-    const { error } = await supabase.from("licencas").update({ esportes: sportsStr }).eq("id", id);
+    const { error } = await supabase
+      .from("licencas")
+      .update({ esportes: sportsStr })
+      .ilike("email", selectedLicense.email);
       
     if (!error) {
       setSelectedLicense({ ...selectedLicense, esportes: sportsStr });
       fetchLicenses();
-      if (selectedLicense && selectedLicense.email) sendLicenseBroadcast(selectedLicense.email);
+      sendLicenseBroadcast(selectedLicense.email);
       alert("Esportes atualizados com sucesso!");
     } else {
       alert("Erro ao atualizar: " + error.message);
@@ -758,15 +762,17 @@ export default function AdminDashboard() {
   };
 
   const handleUpdateDays = async (id: string, newDays: number) => {
+    if (!selectedLicense || !selectedLicense.email) return;
     const nowISO = new Date().toISOString();
-    const { error } = await supabase.from("licencas")
+    const { error } = await supabase
+      .from("licencas")
       .update({ dias_validos: newDays, data_ativacao: nowISO })
-      .eq("id", id);
+      .ilike("email", selectedLicense.email);
 
     if (!error) {
       setSelectedLicense({ ...selectedLicense, dias_validos: newDays, data_ativacao: nowISO });
       fetchLicenses();
-      if (selectedLicense && selectedLicense.email) sendLicenseBroadcast(selectedLicense.email);
+      sendLicenseBroadcast(selectedLicense.email);
       alert(`Atualizado! Cronômetro reiniciado com ${newDays} dias.`);
     } else {
       alert("Erro ao atualizar dias: " + error.message);
@@ -774,11 +780,16 @@ export default function AdminDashboard() {
   };
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase.from("licencas").update({ is_active: !currentStatus }).eq("id", id);
+    if (!selectedLicense || !selectedLicense.email) return;
+    const { error } = await supabase
+      .from("licencas")
+      .update({ is_active: !currentStatus })
+      .ilike("email", selectedLicense.email);
+
     if (!error) {
-      setSelectedLicense(selectedLicense ? { ...selectedLicense, is_active: !currentStatus } : null);
+      setSelectedLicense({ ...selectedLicense, is_active: !currentStatus });
       fetchLicenses();
-      if (selectedLicense && selectedLicense.email) sendLicenseBroadcast(selectedLicense.email);
+      sendLicenseBroadcast(selectedLicense.email);
     } else {
       alert("Erro ao alterar status: " + error.message);
     }
