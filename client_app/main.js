@@ -1821,7 +1821,7 @@ ipcMain.handle('download-update', () => {
         macDownloadPath = path.join(tempDir, `HZN-RodeoApp-Setup-${macUpdateInfo.version}.zip`);
         
         downloadMacUpdate(macUpdateInfo.url, macDownloadPath, (progress) => {
-            if (mainWindow) {
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
                 mainWindow.webContents.send('updater-event', {
                     type: 'download-progress',
                     progress: {
@@ -1833,9 +1833,9 @@ ipcMain.handle('download-update', () => {
                 });
             }
         }).then(() => {
-            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-downloaded', info: macUpdateInfo });
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('updater-event', { type: 'update-downloaded', info: macUpdateInfo });
         }).catch(err => {
-            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS download error: ' + err.message });
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS download error: ' + err.message });
         });
     } else {
         autoUpdater.downloadUpdate();
