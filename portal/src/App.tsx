@@ -1899,19 +1899,28 @@ Instruções importantes:
                               }}
                             >
                               {peao.nome.replace(' (RE-RIDE)', '')}
-                              {peao.nome.includes('(RE-RIDE)') && (
-                                <div 
-                                  onClick={(e) => { e.stopPropagation(); toggleReRide(peao.nome); }}
-                                  style={{ 
-                                    display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#eab30822', color: '#eab308', padding: '2px 8px', borderRadius: '6px', border: '1px solid #eab30855', fontSize: '0.7rem', cursor: 'pointer', marginLeft: '6px', verticalAlign: 'middle'
-                                  }}
-                                >
-                                  RE-RIDE
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expandedReRides[peao.nome] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                  </svg>
-                                </div>
-                              )}
+                              {(() => {
+                                 const baseName = peao.nome.replace(' (RE-RIDE)', '');
+                                 const peaoAllNotesDay = (selectedEvent.detalhes.notas || []).filter((n: any) => 
+                                     (n.peao === baseName || n.peaoNome === baseName) && 
+                                     (selectedRankingDay === 'Geral' || n.dia === selectedRankingDay)
+                                 );
+                                 const hasReRide = peao.nome.includes('(RE-RIDE)') || peaoAllNotesDay.some((n: any) => n.isReride);
+                                 if (!hasReRide) return null;
+                                 return (
+                                  <div 
+                                    onClick={(e) => { e.stopPropagation(); toggleReRide(peao.nome); }}
+                                    style={{ 
+                                      display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#eab30822', color: '#eab308', padding: '2px 8px', borderRadius: '6px', border: '1px solid #eab30855', fontSize: '0.7rem', cursor: 'pointer', marginLeft: '6px', verticalAlign: 'middle'
+                                    }}
+                                  >
+                                    RE-RIDE
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expandedReRides[peao.nome] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                                      <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                  </div>
+                                 );
+                              })()}
                             {peao.cpf && verifiedCpfs.has(peao.cpf.replace(/\D/g, '')) && (
   <svg aria-label="Competidor Verificado" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginLeft: '6px', verticalAlign: 'text-bottom', display: 'inline-block' }}>
     <path d="M11.517 1.408a.633.633 0 0 1 .966 0l1.79 2.148c.204.245.534.343.844.25l2.705-.81a.633.633 0 0 1 .803.582l.235 2.81c.026.319.23.593.524.704l2.639.998a.633.633 0 0 1 .386.915l-1.346 2.457a.89.89 0 0 0 0 .874l1.346 2.457a.633.633 0 0 1-.386.915l-2.639.998a.89.89 0 0 0-.524.704l-.235 2.81a.633.633 0 0 1-.803.582l-2.705-.81a.89.89 0 0 0-.844.25l-1.79 2.148a.633.633 0 0 1-.966 0l-1.79-2.148a.89.89 0 0 0-.844-.25l-2.705.81a.633.633 0 0 1-.803-.582l-.235-2.81a.89.89 0 0 0-.524-.704l-2.639-.998a.633.633 0 0 1-.386-.915L3.13 12.437a.89.89 0 0 0 0-.874L1.784 9.106a.633.633 0 0 1 .386-.915l2.639-.998a.89.89 0 0 0 .524-.704l.235-2.81a.633.633 0 0 1 .803-.582l2.705.81a.89.89 0 0 0 .844-.25l1.79-2.148z" fill="#3b82f6"/>
@@ -1955,29 +1964,35 @@ Instruções importantes:
                         )}
 
                         {/* Detalhamento Re-Ride Expansion */}
-                        {peao.nome.includes('(RE-RIDE)') && expandedReRides[peao.nome] && (
-                          <div style={{ marginLeft: '2.5rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#eab30811', padding: '1rem', borderRadius: '12px', border: '1px solid #eab30833' }}>
-                            <strong style={{ color: '#eab308', fontSize: '0.8rem', textTransform: 'uppercase' }}>Detalhes do Touro Substituído (Re-Ride)</strong>
-                            {(() => {
-                               const baseName = peao.nome.replace(' (RE-RIDE)', '');
-                               const substitutedNotes = (selectedEvent.detalhes.notas || []).filter((n: any) => 
-                                 (n.peao === baseName || n.peaoNome === baseName) && 
-                                 n.status === 'substituida' &&
-                                 (selectedRankingDay === 'Geral' || n.dia === selectedRankingDay)
-                               );
-                               
-                               if (substitutedNotes.length === 0) return <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Dados do touro original não encontrados neste dia.</div>;
-                               
-                               return substitutedNotes.map((subNote: any, sIdx: number) => (
+                        {(() => {
+                           const baseName = peao.nome.replace(' (RE-RIDE)', '');
+                           const peaoAllNotesDay = (selectedEvent.detalhes.notas || []).filter((n: any) => 
+                               (n.peao === baseName || n.peaoNome === baseName) && 
+                               (selectedRankingDay === 'Geral' || n.dia === selectedRankingDay)
+                           );
+                           const hasReRide = peao.nome.includes('(RE-RIDE)') || peaoAllNotesDay.some((n: any) => n.isReride);
+                           
+                           if (!hasReRide || !expandedReRides[peao.nome]) return null;
+
+                           const substitutedNotes = peaoAllNotesDay.filter((n: any) => 
+                             n.status === 'substituida' || n.status === 'nota_baixa' || n.status === 'tropeiro'
+                           );
+                           
+                           return (
+                             <div style={{ marginLeft: '2.5rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#eab30811', padding: '1rem', borderRadius: '12px', border: '1px solid #eab30833' }}>
+                               <strong style={{ color: '#eab308', fontSize: '0.8rem', textTransform: 'uppercase' }}>Detalhes do Touro Substituído (Re-Ride)</strong>
+                               {substitutedNotes.length === 0 ? (
+                                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Dados do touro original não encontrados neste dia.</div>
+                               ) : substitutedNotes.map((subNote: any, sIdx: number) => (
                                   <div key={sIdx} style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Round</span><strong style={{ color: '#fff', fontSize: '0.85rem' }}>{subNote.dia?.replace(/DIA/i, 'ROUND')}</strong></div>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Touro Original</span><strong style={{ color: '#fff', fontSize: '0.85rem' }}>{subNote.touro || subNote.bullName || '---'}</strong></div>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Nota do Touro</span><strong style={{ color: '#ef4444', fontSize: '0.85rem' }}>{subNote.bullScore ? subNote.bullScore.toFixed(2) : (subNote.totalTouro ? subNote.totalTouro.toFixed(2) : '---')}</strong></div>
                                   </div>
-                               ));
-                            })()}
-                          </div>
-                        )}
+                               ))}
+                             </div>
+                           );
+                        })()}
 
                       </div>
                     ))
