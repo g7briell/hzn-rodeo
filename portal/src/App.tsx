@@ -4924,24 +4924,10 @@ Instruções importantes:
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    {/* Left Main Large Square Ad */}
-                    <a href={gridMainAd.click_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1.2, display: 'block', position: 'relative' }}>
-                      <img src={gridMainAd.logo_url} alt={gridMainAd.nome} style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px' }} />
+                    {/* Main Large Square Ad */}
+                    <a href={gridMainAd.click_url} target="_blank" rel="noopener noreferrer" style={{ width: '100%', display: 'block', position: 'relative' }}>
+                      <img src={gridMainAd.logo_url} alt={gridMainAd.nome} style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '8px' }} />
                     </a>
-                    
-                    {/* Right Stack of Two Smaller Ads */}
-                    <div style={{ flex: 0.8, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {gridSubAd1 && (
-                        <a href={gridSubAd1.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
-                          <img src={gridSubAd1.logo_url} alt={gridSubAd1.nome} style={{ width: '100%', height: '87px', objectFit: 'cover', borderRadius: '8px' }} />
-                        </a>
-                      )}
-                      {gridSubAd2 && (
-                        <a href={gridSubAd2.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
-                          <img src={gridSubAd2.logo_url} alt={gridSubAd2.nome} style={{ width: '100%', height: '87px', objectFit: 'cover', borderRadius: '8px' }} />
-                        </a>
-                      )}
-                    </div>
                   </div>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px 0 4px', borderTop: '1px solid #f1f5f9' }}>
