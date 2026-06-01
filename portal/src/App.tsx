@@ -275,8 +275,6 @@ function App() {
       setThinBylineAd(null);
       setAboveIaAd(null);
       setGridMainAd(null);
-      setGridSubAd1(null);
-      setGridSubAd2(null);
     }
   }, [publicNewsId, patrocinios]);
 
