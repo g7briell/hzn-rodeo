@@ -495,30 +495,64 @@ function App() {
         
         // Buscar perfil pelo slug do nome
         supabase.from('perfis_portal').select('*').then(({ data }) => {
-          if (data) {
-            const matchedProfile = data.find((p: any) => p.nome && p.nome.replace(/\s+/g, '').toLowerCase() === slug);
-            if (matchedProfile) {
-              // Calcular historico
-              const historico: any[] = [];
-              const cleanCpf = matchedProfile.cpf ? matchedProfile.cpf.replace(/\D/g, '') : '';
-              
-              eventosOficiais.forEach(ev => {
-                const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
-                  const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
-                  return rCpf === cleanCpf;
+          let matchedProfile = data ? data.find((p: any) => p.nome && p.nome.replace(/\s+/g, '').toLowerCase() === slug) : null;
+          
+          if (!matchedProfile) {
+            // Tentar achar nos rankings dos eventos (perfil gerado automaticamente)
+            for (const ev of eventosOficiais) {
+              if (ev.detalhes?.ranking) {
+                const comp = ev.detalhes.ranking.find((r: any) => {
+                  const rSlug = r.slug || (r.nome ? r.nome.replace(/\s+/g, '').toLowerCase() : '');
+                  return rSlug === slug;
                 });
-                if (rankIndex !== undefined && rankIndex >= 0) {
-                  historico.push({
-                    eventoNome: ev.nome,
-                    cidade: ev.local || ev.cidade,
-                    posicao: rankIndex + 1
-                  });
+                if (comp) {
+                  matchedProfile = {
+                    nome: comp.nome,
+                    cpf: comp.cpf || '',
+                    cargo: 'Competidor',
+                    bio: 'Perfil de competidor do HZN Rodeo.',
+                    foto: ''
+                  };
+                  break;
                 }
-              });
-              
-              setSelectedPeaoProfile({ ...matchedProfile, historico });
-              setCurrentTab('explore'); // ir para aba Eventos (antiga Explore)
+              }
             }
+          }
+
+          if (matchedProfile) {
+            // Calcular historico
+            const historico: any[] = [];
+            const cleanCpf = matchedProfile.cpf ? matchedProfile.cpf.replace(/\D/g, '') : '';
+            
+            eventosOficiais.forEach(ev => {
+              if (!ev.detalhes?.ranking) return;
+              
+              // Primeiro ordena o ranking (mesma lógica do modal)
+              const sortedRanking = [...ev.detalhes.ranking].sort((a: any, b: any) => {
+                if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+                return (b.tempoAcumulado || 0) - (a.tempoAcumulado || 0);
+              });
+
+              const rankIndex = sortedRanking.findIndex((r: any) => {
+                const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+                if (cleanCpf && rCpf && cleanCpf === rCpf) return true;
+                if (r.nome && matchedProfile.nome) {
+                  return r.nome.replace(/\s+/g, '').toLowerCase() === matchedProfile.nome.replace(/\s+/g, '').toLowerCase();
+                }
+                return false;
+              });
+
+              if (rankIndex !== undefined && rankIndex >= 0) {
+                historico.push({
+                  eventoNome: ev.nome,
+                  cidade: ev.local || ev.cidade,
+                  posicao: rankIndex + 1
+                });
+              }
+            });
+            
+            setSelectedPeaoProfile({ ...matchedProfile, historico });
+            setCurrentTab('explore'); // ir para aba Eventos (antiga Explore)
           }
         });
       }
@@ -1250,7 +1284,42 @@ Instruções importantes:
               setPublicProfileBio(match.bio || '');
               setPublicProfileFoto(match.foto || '');
             } else {
-              setPublicProfile(null);
+              // Fallback: search in event rankings
+              try {
+                const { data: evData } = await supabase.from('eventos_oficiais').select('*');
+                let foundMatch = null;
+                if (evData) {
+                  for (const ev of evData) {
+                    if (ev.detalhes?.ranking) {
+                      const comp = ev.detalhes.ranking.find((r: any) => {
+                        const rSlug = r.slug || (r.nome ? slugify(r.nome) : '');
+                        return rSlug === slug;
+                      });
+                      if (comp) {
+                        foundMatch = {
+                          nome: comp.nome,
+                          cpf: comp.cpf || '',
+                          cargo: 'Competidor',
+                          bio: 'Perfil de competidor.',
+                          foto: ''
+                        };
+                        break;
+                      }
+                    }
+                  }
+                }
+                
+                if (foundMatch) {
+                  setPublicProfile(foundMatch);
+                  setPublicProfileBio(foundMatch.bio || '');
+                  setPublicProfileFoto(foundMatch.foto || '');
+                } else {
+                  setPublicProfile(null);
+                }
+              } catch (e) {
+                console.error('Error fetching mock public profile:', e);
+                setPublicProfile(null);
+              }
             }
           } catch (err) {
             console.error('Error fetching public profile:', err);
