@@ -16,17 +16,31 @@ import {
   ChevronRight,
   FileSpreadsheet,
   Tv,
-  ListOrdered
+  ListOrdered,
+  Calendar
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [featuredEvents, setFeaturedEvents] = useState<any[]>([]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      const { data } = await supabase.from('eventos_oficiais').select('*');
+      if (data) {
+        const featured = data.filter((e: any) => e.detalhes?.destaque === true);
+        setFeaturedEvents(featured);
+      }
+    };
+    fetchFeatured();
   }, []);
 
   return (
@@ -89,6 +103,52 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Featured Event Section */}
+      {featuredEvents.length > 0 && (
+        <section className="py-20 px-6 relative bg-gradient-to-b from-black to-[#050505] border-t border-yellow-500/20 z-30">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 px-6 py-3 rounded-full font-black text-sm uppercase tracking-widest shadow-lg mb-6">
+                <Star className="w-5 h-5 fill-current" /> DESTAQUE DA SEMANA
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredEvents.map((evt) => (
+                <div key={evt.id} className="group bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden hover:border-yellow-500/50 hover:bg-white/10 transition-all duration-500 shadow-2xl relative">
+                  <div className="absolute top-4 right-4 z-10 bg-yellow-500 text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                    EM DESTAQUE
+                  </div>
+                  {evt.detalhes?.foto_evento ? (
+                    <div className="h-48 w-full overflow-hidden relative">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10" />
+                      <img src={evt.detalhes.foto_evento} alt={evt.nome} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    </div>
+                  ) : (
+                    <div className="h-48 w-full bg-black/50 border-b border-white/5 flex items-center justify-center relative overflow-hidden">
+                      <Trophy className="w-16 h-16 text-white/10" />
+                    </div>
+                  )}
+                  
+                  <div className="p-8">
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-2 text-white group-hover:text-yellow-500 transition-colors">
+                      {evt.nome}
+                    </h3>
+                    <p className="text-white/40 font-bold text-sm uppercase tracking-widest mb-6">
+                      {evt.local} • {evt.data_inicio}
+                    </p>
+                    
+                    <Link href={`/eventos/${evt.id}`} className="w-full flex items-center justify-center gap-2 bg-yellow-500 text-black py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-yellow-400 transition-colors">
+                      Acompanhar Evento <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Grid */}
       <section id="features" className="py-32 px-6 relative bg-[#050505] border-t border-white/5">

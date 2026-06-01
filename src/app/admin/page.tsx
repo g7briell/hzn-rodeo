@@ -43,6 +43,7 @@ import {
   Database,
   Eye,
   EyeOff,
+  Star,
   DollarSign,
   TrendingUp,
   PiggyBank,
@@ -1399,6 +1400,13 @@ export default function AdminDashboard() {
                             title={portalConfig.ocultarDaHome ? "Oculto no Portal (Clique para Mostrar)" : "Visível no Portal (Clique para Ocultar)"}
                           >
                             {portalConfig.ocultarDaHome ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                          <button 
+                            onClick={() => handleUpdateEventConfig(e.id, e.detalhes, 'destaque', !portalConfig.destaque)} 
+                            className={`p-3 rounded-xl transition-all border ${portalConfig.destaque ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20 hover:bg-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.3)]' : 'text-white/20 bg-white/5 border-white/10 hover:bg-white/10 hover:text-white/50'}`} 
+                            title={portalConfig.destaque ? "Remover Destaque da Semana" : "Definir como Destaque da Semana"}
+                          >
+                            <Star className={`w-5 h-5 ${portalConfig.destaque ? 'fill-current' : ''}`} />
                           </button>
                           <button onClick={() => handleRejectEvento(e.id)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all" title="Excluir">
                             <Trash2 className="w-5 h-5" />
