@@ -1373,7 +1373,7 @@ function renderStep2() {
         const tempo = p.tempoAcumulado || 0;
         const diff = idx > 0 ? (leaderScore - score).toFixed(2) : null;
         
-        const posText = !isDia1 ? `<span class="bg-yellow-500 text-black px-2 py-0.5 rounded text-[10px] mr-2 font-black">${idx + 1}Âº</span>` : '';
+        const posText = !isDia1 ? `<span class="bg-yellow-500 text-black px-2 py-0.5 rounded text-[10px] mr-2 font-black">${idx + 1}º</span>` : '';
         
         const scoreDisplay = score === 0 && tempo > 0 
             ? `0.00 <div class="text-[9px] text-slate-500">(${tempo.toFixed(2)}s)</div>` 
@@ -2927,7 +2927,7 @@ window.renderRanking = (filter = 'geral') => {
     if (rankingData.length === 0) { if (container) container.innerHTML = `<div class="p-20 text-center text-slate-500 italic font-bold">Nenhum competidor cadastrado.</div>`; return; }
     let html = `<table class="w-full text-left border-collapse"><thead class="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest"><tr><th class="px-8 py-6 w-20">POS</th><th class="px-8 py-6">COMPETIDOR</th><th class="px-8 py-6">CIDADE</th><th class="px-8 py-6 text-right">PONTOS</th></tr></thead><tbody class="divide-y divide-slate-800/50">`;
     rankingData.forEach((p, idx) => {
-        const pos = hasScores ? `${idx + 1}Âº` : '---'; const isPodium = hasScores && idx < 3;
+        const pos = hasScores ? `${idx + 1}º` : '---'; const isPodium = hasScores && idx < 3;
         const rowClass = isPodium ? (idx === 0 ? 'bg-yellow-500/5' : 'bg-slate-800/10') : 'hover:bg-slate-800/20';
         const posClass = idx === 0 ? 'text-yellow-500 font-black' : (idx < 3 ? 'text-white font-black' : 'text-slate-500 font-bold');
         html += `<tr class="${rowClass} transition-colors"><td class="px-8 py-6 ${posClass} italic text-xl">${pos}</td><td class="px-8 py-6"><div class="font-black text-white uppercase text-lg tracking-tighter">${p.nome}</div></td><td class="px-8 py-6 text-slate-500 font-bold uppercase text-xs">${p.cidade}</td><td class="px-8 py-6 text-right"><div class="text-2xl font-black italic ${p.totalPoints > 0 ? 'text-yellow-500' : 'text-slate-700'}">${p.totalPoints.toFixed(2)}</div></td></tr>`;
@@ -3504,7 +3504,7 @@ window.exportRankingPDF = async () => {
 
     rankingData.rows.forEach(function(r, idx) {
         const hasScore = r.totalPoints > 0 || r.tempoAcumulado > 0;
-        const pos = hasScore ? (idx + 1) + 'Âº' : '---';
+        const pos = hasScore ? (idx + 1) + 'º' : '---';
         const tempoInfo = (r.totalPoints === 0 && r.tempoAcumulado > 0) ? ' (' + r.tempoAcumulado.toFixed(2) + 's)' : '';
         const totalStr = (r.totalPoints > 0 ? r.totalPoints.toFixed(2).replace('.', ',') : '0,00') + tempoInfo;
 
@@ -4097,7 +4097,7 @@ window.openModalContratoConfig = async (eventId) => {
     distContainer.innerHTML = '';
     const dist = cq.distribuicao || [];
     if (dist.length === 0) {
-        addCcDist('1Âº lugar', '');
+        addCcDist('1º lugar', '');
     } else {
         dist.forEach(d => addCcDist(d.posicao, d.valor));
     }
@@ -4140,7 +4140,7 @@ window.addCcDist = (posicao = '', valor = '') => {
     row.className = 'flex items-center gap-4 cc-dist-row';
     row.innerHTML = `
         <div class="flex-1">
-            <input type="text" placeholder="Posição (ex: 1Âº Lugar)" value="${posicao}" class="cc-dist-posicao w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none text-xs font-bold">
+            <input type="text" placeholder="Posição (ex: 1º Lugar)" value="${posicao}" class="cc-dist-posicao w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none text-xs font-bold">
         </div>
         <div class="flex-1">
             <input type="text" placeholder="Valor (ex: 5.000,00)" value="${valor}" class="cc-dist-valor w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none text-xs font-bold">
@@ -4424,7 +4424,7 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
         <tbody class="divide-y divide-slate-800/50">`;
         
     rankingData.forEach((item, idx) => {
-        const pos = `${idx + 1}Âº`;
+        const pos = `${idx + 1}º`;
         const isPodium = idx < 3;
         const rowClass = isPodium ? (idx === 0 ? 'bg-emerald-500/5' : 'bg-slate-800/10') : 'hover:bg-slate-800/20';
         const posClass = idx === 0 ? 'text-emerald-500 font-black' : (idx < 3 ? 'text-white font-black' : 'text-slate-500 font-bold');
