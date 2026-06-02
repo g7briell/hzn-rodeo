@@ -410,13 +410,16 @@ function App() {
         if (matchesName || matchesCpf) {
           const runScore = (typeof n.totalPeao === 'number' ? n.totalPeao : 0) + (typeof n.totalTouro === 'number' ? n.totalTouro : 0);
           if (runScore > 0) {
-            totalOuts++;
+            const isSubstituida = n.status === 'substituida' || n.status === 'nota_baixa' || n.status === 'tropeiro';
             const isParada = typeof n.tempo === 'number' && n.tempo >= 8 && n.totalPeao > 0;
-            
-            if (isParada) {
-              paradas++;
-              if (runScore >= 90) {
-                notas90Plus++;
+
+            if (!isSubstituida) {
+              totalOuts++;
+              if (isParada) {
+                paradas++;
+                if (runScore >= 90) {
+                  notas90Plus++;
+                }
               }
             }
 
@@ -426,7 +429,7 @@ function App() {
               tempo: n.tempo,
               score: runScore,
               dia: n.dia,
-              status: isParada ? 'Parada' : 'Queda'
+              status: isSubstituida ? 'Re-Ride' : (isParada ? 'Parada' : 'Queda')
             });
           }
         }
@@ -2313,10 +2316,10 @@ Instruções importantes:
                                 <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{run.eventoNome} • {run.dia}</span>
                               </div>
                               <div style={{ textAlign: 'right' }}>
-                                <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : '#ef4444' }}>
+                                <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : (run.status === 'Re-Ride' ? '#eab308' : '#ef4444') }}>
                                   {run.status} ({run.tempo.toFixed(2)}s)
                                 </span>
-                                {run.status === 'Parada' && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota: {run.score.toFixed(2)}</span>}
+                                {(run.status === 'Parada' || run.status === 'Re-Ride') && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota: {run.score.toFixed(2)}</span>}
                               </div>
                             </div>
                           ))
@@ -2614,10 +2617,10 @@ Instruções importantes:
                                   <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{run.eventoNome} • {run.dia}</span>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                  <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : '#ef4444' }}>
+                                  <span style={{ display: 'block', fontWeight: 'bold', fontSize: '0.95rem', color: run.status === 'Parada' ? '#10b981' : (run.status === 'Re-Ride' ? '#eab308' : '#ef4444') }}>
                                     {run.status} ({run.tempo.toFixed(2)}s)
                                   </span>
-                                  {run.status === 'Parada' && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota: {run.score.toFixed(2)}</span>}
+                                  {(run.status === 'Parada' || run.status === 'Re-Ride') && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Nota: {run.score.toFixed(2)}</span>}
                                 </div>
                               </div>
                             ))
