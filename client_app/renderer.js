@@ -1012,12 +1012,16 @@ window.openModalEvento = async (id = null) => {
                 previewContainer.classList.add('hidden');
             }
             if (title) title.innerText = "EDITAR EVENTO";
+            const btnSubmit = document.getElementById('btn-submit-evento');
+            if (btnSubmit) btnSubmit.innerText = "SALVAR ALTERAÇÕES";
         }
     } else {
         document.getElementById('form-evento').reset();
         previewImg.classList.add('hidden');
         previewContainer.classList.remove('hidden');
         if (title) title.innerText = "CRIAR NOVO EVENTO";
+        const btnSubmit = document.getElementById('btn-submit-evento');
+        if (btnSubmit) btnSubmit.innerText = "CRIAR EVENTO";
     }
     if (modalEvento) modalEvento.classList.remove('hidden');
     setTimeout(() => document.getElementById('event-name')?.focus(), 50);
@@ -2635,42 +2639,12 @@ window.addEventListener('DOMContentLoaded', () => {
     // Inicializar elementos do modal evento
     modalEvento = document.getElementById('modal-evento');
     formEvento = document.getElementById('form-evento');
-    if (formEvento) formEvento.addEventListener('submit', handleEventSubmit);
+
 
     init();
 });
 
-async function handleEventSubmit(e) {
-    e.preventDefault();
-    const email = getCurrentUserEmail();
-    const previewImg = document.getElementById('logo-preview-img');
-    let themeColor = '#EAB308';
-    let logoBase64 = null;
 
-    if (previewImg && !previewImg.classList.contains('hidden')) {
-        logoBase64 = previewImg.src;
-        themeColor = extractDominantColor(previewImg);
-    }
-
-    const res = await window.electronAPI.saveLocalEvent(email, { 
-        type: document.getElementById('event-type').value, 
-        name: document.getElementById('event-name').value, 
-        city: document.getElementById('event-city').value, 
-        days: document.getElementById('event-days').value, 
-        judges: document.getElementById('event-judges').value, 
-        logo: logoBase64,
-        themeColor: themeColor,
-        peoes: [], boiadas: [], juizes: [], sorteios: [], notas: [] 
-    });
-
-    if (res.success) {
-        closeModalEvento();
-        formEvento.reset();
-        previewImg.classList.add('hidden');
-        document.getElementById('logo-preview-container').classList.remove('hidden');
-        renderEvents();
-    }
-}
 
 // --- FUNÇÕES GLOBAIS (Visíveis para o HTML) ---
 window.confirmLogout = () => { 
