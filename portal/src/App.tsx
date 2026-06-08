@@ -1634,7 +1634,12 @@ Instruções importantes:
             )}
             <div>
               <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.8rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>{selectedEvent.tipo || 'RODEIO'}</span>
-              <h2 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0', lineHeight: 1, fontWeight: '900', textTransform: 'uppercase' }}>{selectedEvent.nome}</h2>
+              <h2 style={{ fontSize: '2.5rem', margin: '0 0 0.5rem 0', lineHeight: 1, fontWeight: '900', textTransform: 'uppercase' }}>{selectedEvent.nome}</h2>
+              {selectedEvent.detalhes?.circuito && (
+                <h3 style={{ fontSize: '1.2rem', color: '#eab308', margin: '0 0 1rem 0', fontWeight: '800', textTransform: 'uppercase', fontStyle: 'italic' }}>
+                  Etapa: {selectedEvent.detalhes.circuito}
+                </h3>
+              )}
               
               <div style={{ display: 'flex', gap: '1.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -5378,6 +5383,11 @@ Instruções importantes:
                                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                                   <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.65rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{ev.tipo || 'RODEIO'}</span>
                                   <h3 className="event-name" style={{ fontSize: '1.25rem', margin: 0, lineHeight: 1.2, fontWeight: '900', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.nome}</h3>
+                                  {ev.detalhes?.circuito && (
+                                    <span style={{ fontSize: '0.75rem', color: '#eab308', fontWeight: 'bold', marginTop: '0.2rem', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      Etapa: {ev.detalhes.circuito}
+                                    </span>
+                                  )}
                                 </div>
                                 <div 
                                   onClick={(e) => {
@@ -5642,6 +5652,11 @@ Instruções importantes:
                               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                                 <span className="event-date" style={{ color: '#E11D48', fontWeight: '900', fontSize: '0.65rem', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{ev.tipo || 'RODEO'}</span>
                                 <h3 className="event-name" style={{ fontSize: '1.25rem', margin: 0, lineHeight: 1.2, fontWeight: '900', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.nome}</h3>
+                                {ev.detalhes?.circuito && (
+                                  <span style={{ fontSize: '0.75rem', color: '#eab308', fontWeight: 'bold', marginTop: '0.2rem', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    Etapa: {ev.detalhes.circuito}
+                                  </span>
+                                )}
                               </div>
                               <div 
                                 onClick={(e) => {

@@ -576,6 +576,11 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
+              <div>
+                <label className="form-label">Circuito</label>
+                <input className="form-input" value={editingEvent.detalhes?.circuito || ''} onChange={e => setEditingEvent({...editingEvent, detalhes: { ...editingEvent.detalhes, circuito: e.target.value }})} placeholder="Ex: Circuito Rancho Primavera" />
+              </div>
+              
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary)' }}>Mídia do Evento</h3>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

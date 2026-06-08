@@ -1978,7 +1978,8 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
                 notas: ev.notas || [],
                 sorteios: ev.sorteios || [],
                 logo: ev.logo || null,
-                diretor: diretorNome
+                diretor: diretorNome,
+                circuito: ev.circuito || null
             }
         };
 

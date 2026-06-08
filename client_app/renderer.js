@@ -1003,6 +1003,7 @@ window.openModalEvento = async (id = null) => {
             document.getElementById('event-type').value = ev.type;
             document.getElementById('event-name').value = ev.name;
             document.getElementById('event-city').value = ev.city;
+            document.getElementById('event-circuito').value = ev.circuito || '';
             document.getElementById('event-days').value = ev.days;
             document.getElementById('event-judges').value = ev.judges;
             if (ev.logo) {
@@ -1199,6 +1200,7 @@ async function handleEventSubmit(e) {
         type: document.getElementById('event-type').value, 
         name: document.getElementById('event-name').value, 
         city: document.getElementById('event-city').value, 
+        circuito: document.getElementById('event-circuito').value, 
         days: document.getElementById('event-days').value, 
         judges: document.getElementById('event-judges').value, 
         logo: logoBase64,
