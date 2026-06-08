@@ -161,6 +161,14 @@ app.whenReady().then(() => {
     const win = BrowserWindow.getFocusedWindow();
     if (win) win.reload();
   });
+  globalShortcut.register('F12', () => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (win) win.webContents.toggleDevTools();
+  });
+  globalShortcut.register('CommandOrControl+Shift+I', () => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (win) win.webContents.toggleDevTools();
+  });
 });
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
