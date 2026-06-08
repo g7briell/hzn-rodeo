@@ -16,7 +16,7 @@ window.addEventListener('unhandledrejection', function(event) {
 
 // Seleção de elementos (serão preenchidos no DOMContentLoaded)
 let loginScreen, homeScreen, introScreen, introText, errorMsg, btnActivate, daysBadge, loadingOverlay;
-let modalEvento, formEvento, eventControlView, supportBtn, sportSelectScreen;
+let modalEvento, formEvento, eventControlView, supportBtn, sportSelectScreen, transmissaoScreen;
 
 let currentEvent = null;
 let heartbeatInterval = null;
@@ -35,26 +35,30 @@ let globalPeoes = [];
 let globalBoiadas = [];
 
 function updateConnectionStatus(status) {
-    const dot = document.getElementById('db-status-dot');
-    const text = document.getElementById('db-status-text');
-    if (!dot || !text) return;
+    const dots = [document.getElementById('db-status-dot'), document.getElementById('transmissao-db-status-dot')];
+    const texts = [document.getElementById('db-status-text'), document.getElementById('transmissao-db-status-text')];
     
-    dot.className = "w-2 h-2 rounded-full animate-pulse";
-    text.className = "text-[9px] font-black uppercase tracking-[0.3em]";
-    
-    if (status === 'connected') {
-        dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
-        text.classList.add('text-emerald-500');
-        text.innerText = "BANCO ONLINE";
-    } else if (status === 'connecting') {
-        dot.classList.add('bg-yellow-500', 'shadow-[0_0_10px_rgba(234,179,8,0.5)]');
-        text.classList.add('text-yellow-500');
-        text.innerText = "CONECTANDO BANCO";
-    } else {
-        dot.classList.add('bg-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.5)]');
-        text.classList.add('text-red-500');
-        text.innerText = "BANCO OFFLINE";
-    }
+    dots.forEach((dot, idx) => {
+        const text = texts[idx];
+        if (!dot || !text) return;
+        
+        dot.className = "w-2 h-2 rounded-full animate-pulse";
+        text.className = "text-[9px] font-black uppercase tracking-[0.3em]";
+        
+        if (status === 'connected') {
+            dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
+            text.classList.add('text-emerald-500');
+            text.innerText = "BANCO ONLINE";
+        } else if (status === 'connecting') {
+            dot.classList.add('bg-yellow-500', 'shadow-[0_0_10px_rgba(234,179,8,0.5)]');
+            text.classList.add('text-yellow-500');
+            text.innerText = "CONECTANDO BANCO";
+        } else {
+            dot.classList.add('bg-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.5)]');
+            text.classList.add('text-red-500');
+            text.innerText = "BANCO OFFLINE";
+        }
+    });
 }
 
 async function verifyConnection() {
@@ -289,6 +293,7 @@ window.addEventListener('DOMContentLoaded', () => {
     eventControlView = document.getElementById('event-control-view');
     supportBtn = document.getElementById('support-btn');
     sportSelectScreen = document.getElementById('sport-select-screen');
+    transmissaoScreen = document.getElementById('transmissao-screen');
 
     if (btnActivate) btnActivate.addEventListener('click', handleActivation);
     if (formEvento) formEvento.addEventListener('submit', handleEventSubmit);
@@ -797,7 +802,7 @@ function showSportSelection() {
 }
 
 window.selectSport = async (sport) => {
-    if (!userSports.includes(sport)) {
+    if (sport !== 'transmissao' && !userSports.includes(sport)) {
         alert('Você não tem acesso a esta modalidade.');
         return;
     }
@@ -806,15 +811,20 @@ window.selectSport = async (sport) => {
         await window.electronAPI.setCurrentSport(sport);
         currentSport = sport;
         
-        // Atualiza o badge do esporte no header
-        const badge = document.getElementById('sport-active-badge');
-        if (badge) {
-            badge.innerText = sport === '3tambores' ? '3 Tambores' : 'Rodeio';
-        }
+        if (sport === 'transmissao') {
+            if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
+            if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
+        } else {
+            // Atualiza o badge do esporte no header
+            const badge = document.getElementById('sport-active-badge');
+            if (badge) {
+                badge.innerText = sport === '3tambores' ? '3 Tambores' : 'Rodeio';
+            }
 
-        if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
-        const auth = window.electronAPI.getAuth();
-        showHome(auth ? auth.expiry : null, auth ? auth.nome : '');
+            if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
+            const auth = window.electronAPI.getAuth();
+            showHome(auth ? auth.expiry : null, auth ? auth.nome : '');
+        }
     } catch(e) {
         console.error(e);
     } finally {
@@ -824,6 +834,7 @@ window.selectSport = async (sport) => {
 
 window.backToSports = () => {
     if (homeScreen) homeScreen.classList.add('hidden');
+    if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
     if (eventControlView) eventControlView.classList.add('hidden');
     const contentView = document.getElementById('content-view');
     if (contentView) contentView.classList.add('hidden');

@@ -236,7 +236,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
             <!-- Botão Rodeio -->
             <button id="btn-sport-rodeio" onclick="selectSport('rodeio')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] sport-anim-item sport-anim-card-1">
                 <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
@@ -261,8 +261,20 @@
                 <div id="badge-3tambores" class="absolute top-6 right-6 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Liberado</div>
             </button>
 
+            <!-- Botão Transmissão -->
+            <button id="btn-sport-transmissao" onclick="selectSport('transmissao')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] sport-anim-item sport-anim-card-3">
+                <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </div>
+                <div>
+                    <h3 class="font-black text-2xl text-white tracking-tighter uppercase leading-none">Transmissão</h3>
+                    <p class="text-xs text-slate-500 mt-2 font-medium uppercase tracking-tight">Gráficos e Overlays Ao Vivo</p>
+                </div>
+                <div id="badge-transmissao" class="absolute top-6 right-6 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Liberado</div>
+            </button>
+
             <!-- Botão Em Criação -->
-            <button id="btn-sport-criacao" disabled class="glass p-8 rounded-[2.5rem] border-white/5 opacity-40 text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] cursor-not-allowed sport-anim-item sport-anim-card-3">
+            <button id="btn-sport-criacao" disabled class="glass p-8 rounded-[2.5rem] border-white/5 opacity-40 text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] cursor-not-allowed sport-anim-item sport-anim-card-4">
                 <div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700">
                     <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
                 </div>
@@ -276,6 +288,62 @@
 
         <div class="mt-12 flex justify-center gap-4 sport-anim-item sport-anim-footer">
             <button onclick="confirmLogout()" class="bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/20 px-6 py-3 rounded-2xl text-xs font-black text-red-500 uppercase tracking-widest transition-all active:scale-95">Sair da Licença</button>
+        </div>
+    </div>
+
+    <!-- Tela Principal Transmissão (Transmissao) -->
+    <div id="transmissao-screen" class="max-w-5xl w-full glass p-12 rounded-[3rem] shadow-2xl relative z-10 hidden">
+        <div class="flex items-center justify-between mb-16 reveal-item">
+            <div class="flex flex-col items-start gap-2">
+                <img src="assets/header_logo.png" class="h-14 w-auto object-contain">
+                <div class="flex items-center gap-2 ml-1">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-[0.3em]">MÓDULO TRANSMISSÃO</p>
+                    <span class="w-1.5 h-1.5 bg-slate-800 rounded-full mx-1"></span>
+                    <span id="transmissao-db-status-dot" class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]"></span>
+                    <p id="transmissao-db-status-text" class="text-[9px] font-black text-yellow-500 uppercase tracking-[0.3em]">CONECTANDO BANCO</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="backToSports()" class="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 p-3 rounded-2xl hover:bg-yellow-500 hover:text-black transition-all group shadow-lg" title="Mudar de Esporte/Módulo">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <button onclick="confirmLogout()" class="bg-red-500/10 text-red-500 border border-red-500/20 p-3 rounded-2xl hover:bg-red-500 hover:text-white transition-all group shadow-lg" title="Sair do Sistema">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-8">
+            <!-- Botão Eventos -->
+            <button onclick="alert('Funcionalidade de Eventos da Transmissão em desenvolvimento!')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.2s">
+                <div class="w-16 h-16 bg-yellow-500/10 rounded-3xl flex items-center justify-center mb-10 border border-yellow-500/20 group-hover:scale-110 transition-all">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <h3 class="font-black text-3xl text-white tracking-tighter uppercase mb-2">Eventos</h3>
+                <p class="text-xs text-slate-500 font-bold uppercase tracking-wide">Gerenciar Sobreposições e Gráficos de Eventos</p>
+                <div class="absolute -right-4 -bottom-4 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-all"></div>
+            </button>
+
+            <!-- Botão Banco de Dados -->
+            <button onclick="alert('Funcionalidade de Banco de Dados da Transmissão em desenvolvimento!')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.4s">
+                <div class="w-16 h-16 bg-yellow-500/10 rounded-3xl flex items-center justify-center mb-10 border border-yellow-500/20 group-hover:scale-110 transition-all">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                </div>
+                <h3 class="font-black text-3xl text-white tracking-tighter uppercase mb-2">Banco de Dados</h3>
+                <p class="text-xs text-slate-500 font-bold uppercase tracking-wide">Gerenciar informações e competidores offline</p>
+                <div class="absolute -right-4 -bottom-4 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-all"></div>
+            </button>
+
+            <!-- Botão Configurações (Vmix, OBS) -->
+            <button onclick="alert('Funcionalidade de Configurações (Vmix, OBS) em desenvolvimento!')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.6s">
+                <div class="w-16 h-16 bg-yellow-500/10 rounded-3xl flex items-center justify-center mb-10 border border-yellow-500/20 group-hover:scale-110 transition-all">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </div>
+                <h3 class="font-black text-3xl text-white tracking-tighter uppercase mb-2">Configurações</h3>
+                <p class="text-xs text-slate-500 font-bold uppercase tracking-wide">Configurar conexões com vMix e OBS Studio</p>
+                <div class="absolute -right-4 -bottom-4 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-all"></div>
+            </button>
         </div>
     </div>
 
