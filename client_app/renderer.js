@@ -2677,7 +2677,7 @@ window.confirmLogout = () => {
     if (confirm("Deseja realmente sair do sistema?")) logout(); 
 };
 
-window.openModalEvento = () => { if (modalEvento) modalEvento.classList.remove('hidden'); };
+
 window.closeModalEvento = () => { if (modalEvento) modalEvento.classList.add('hidden'); };
 
 window.closeTab = () => { 
