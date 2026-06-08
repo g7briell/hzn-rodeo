@@ -736,6 +736,7 @@ export default function AdminDashboard() {
             payload: { email: email.toLowerCase().trim() }
           });
           alert("Comando de atualização remota enviado para " + email);
+          supabase.removeChannel(forceChannel);
         }
       });
     } catch (e) {
