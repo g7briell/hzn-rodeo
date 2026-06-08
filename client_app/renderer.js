@@ -813,7 +813,10 @@ window.selectSport = async (sport) => {
         
         if (sport === 'transmissao') {
             if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
-            if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
+            if (transmissaoScreen) {
+                transmissaoScreen.classList.remove('hidden');
+                transmissaoScreen.querySelectorAll('.reveal-item').forEach(item => item.classList.add('animate-reveal'));
+            }
         } else {
             // Atualiza o badge do esporte no header
             const badge = document.getElementById('sport-active-badge');
