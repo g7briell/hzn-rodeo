@@ -50,5 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportContracts: (email, eventId, target, format) => ipcRenderer.invoke('export-contracts', {email, eventId, target, format}),
   exportMelhorCia: (data) => ipcRenderer.invoke('export-melhor-cia', data),
   exportMelhorAnimal: (data) => ipcRenderer.invoke('export-melhor-animal', data),
-  sendEventToPortal: (payload) => ipcRenderer.invoke('send-event-to-portal', payload)
+  sendEventToPortal: (payload) => ipcRenderer.invoke('send-event-to-portal', payload),
+  checkDbConnection: () => ipcRenderer.invoke('check-db-connection'),
+  getOnlineCompetitors: () => ipcRenderer.invoke('get-online-competitors')
 });

@@ -2014,3 +2014,30 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
         return { success: false, error: e.message };
     }
 });
+
+// Verificar conexão com banco online
+ipcMain.handle('check-db-connection', async () => {
+    try {
+        const { error } = await supabase.from('perfis_portal').select('id').limit(1);
+        if (error) return false;
+        return true;
+    } catch (e) {
+        return false;
+    }
+});
+
+// Buscar competidores cadastrados online
+ipcMain.handle('get-online-competitors', async () => {
+    try {
+        const { data, error } = await supabase
+            .from('perfis_portal')
+            .select('nome, cpf, endereco, cargo')
+            .in('cargo', ['peao_touros', 'peao_cavalos']);
+        
+        if (error) throw error;
+        return { success: true, competitors: data || [] };
+    } catch (e) {
+        console.error("Erro ao buscar competidores online:", e);
+        return { success: false, error: e.message, competitors: [] };
+    }
+});

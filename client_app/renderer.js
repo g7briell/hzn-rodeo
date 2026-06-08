@@ -34,6 +34,55 @@ let currentSport = 'rodeio';
 let globalPeoes = [];
 let globalBoiadas = [];
 
+function updateConnectionStatus(status) {
+    const dot = document.getElementById('db-status-dot');
+    const text = document.getElementById('db-status-text');
+    if (!dot || !text) return;
+    
+    dot.className = "w-2 h-2 rounded-full animate-pulse";
+    text.className = "text-[9px] font-black uppercase tracking-[0.3em]";
+    
+    if (status === 'connected') {
+        dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
+        text.classList.add('text-emerald-500');
+        text.innerText = "BANCO ONLINE";
+    } else if (status === 'connecting') {
+        dot.classList.add('bg-yellow-500', 'shadow-[0_0_10px_rgba(234,179,8,0.5)]');
+        text.classList.add('text-yellow-500');
+        text.innerText = "CONECTANDO BANCO";
+    } else {
+        dot.classList.add('bg-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.5)]');
+        text.classList.add('text-red-500');
+        text.innerText = "BANCO OFFLINE";
+    }
+}
+
+async function verifyConnection() {
+    updateConnectionStatus('connecting');
+    if (!navigator.onLine) {
+        updateConnectionStatus('offline');
+        return false;
+    }
+    const connected = await window.electronAPI.checkDbConnection();
+    if (connected) {
+        updateConnectionStatus('connected');
+        return true;
+    } else {
+        updateConnectionStatus('offline');
+        return false;
+    }
+}
+
+function parseCityFromAddress(address) {
+    if (!address) return '';
+    const parts = address.split(',');
+    if (parts.length > 1) {
+        const cityState = parts[1].split('-');
+        return cityState[0].trim().toUpperCase();
+    }
+    return address.trim().toUpperCase();
+}
+
 async function fetchGlobalData() {
     const email = getCurrentUserEmail();
     if (!email) return;
@@ -41,6 +90,44 @@ async function fetchGlobalData() {
         const data = await window.electronAPI.getGlobalData(email);
         globalPeoes = data.peoes || [];
         globalBoiadas = data.boiadas || [];
+        
+        // Se estiver online, buscar competidores do portal e fazer merge/deduplicação
+        if (navigator.onLine) {
+            try {
+                const res = await window.electronAPI.getOnlineCompetitors();
+                if (res && res.success && res.competitors) {
+                    const mergedPeoes = [...globalPeoes];
+                    res.competitors.forEach(op => {
+                        const opName = (op.nome || '').trim().toUpperCase();
+                        const opCpf = (op.cpf || '').replace(/\D/g, '');
+                        const opCity = parseCityFromAddress(op.endereco);
+                        
+                        if (!opName) return;
+                        
+                        const exists = mergedPeoes.some(gp => {
+                            const gpName = (gp.nome || '').trim().toUpperCase();
+                            const gpCpf = (gp.cpf || '').replace(/\D/g, '');
+                            if (opCpf && gpCpf) {
+                                return opCpf === gpCpf;
+                            }
+                            return gpName === opName;
+                        });
+                        
+                        if (!exists) {
+                            mergedPeoes.push({
+                                nome: opName,
+                                cidade: opCity,
+                                cpf: op.cpf || '',
+                                score: 0
+                            });
+                        }
+                    });
+                    globalPeoes = mergedPeoes;
+                }
+            } catch (err) {
+                console.error("Erro ao fundir dados online:", err);
+            }
+        }
     } catch (e) {
         console.error('Failed to fetch global data:', e);
     }
@@ -276,6 +363,12 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function init() {
+    // Inicializar verificação de conexão
+    verifyConnection();
+    window.addEventListener('online', verifyConnection);
+    window.addEventListener('offline', () => updateConnectionStatus('offline'));
+    setInterval(verifyConnection, 30000);
+
     console.log("RODEOAPP: Iniciando sistema...");
     const auth = window.electronAPI.getAuth();
     
