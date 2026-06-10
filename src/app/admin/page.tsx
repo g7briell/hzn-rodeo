@@ -1151,8 +1151,8 @@ export default function AdminDashboard() {
               </div>
               
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1 block">Liberar Esportes</label>
-                <div className="flex flex-col md:flex-row gap-4 md:gap-6 bg-black border border-white/10 rounded-2xl p-6">
+                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1 block">Categorias Liberadas</label>
+                <div className="flex flex-col md:flex-row gap-4 md:gap-6 bg-black border border-white/10 rounded-2xl p-6 flex-wrap">
                   <label className="flex items-center gap-3 cursor-pointer text-sm font-bold text-white/80 select-none">
                     <input 
                       type="checkbox" 
@@ -1183,6 +1183,22 @@ export default function AdminDashboard() {
                       className="w-5 h-5 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
                     />
                     3 Tambores
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer text-sm font-bold text-white/80 select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedSportsRegister.includes("transmissao")}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedSportsRegister([...selectedSportsRegister, "transmissao"]);
+                        } else {
+                          setSelectedSportsRegister(selectedSportsRegister.filter(s => s !== "transmissao"));
+                        }
+                      }}
+                      className="w-5 h-5 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                    />
+                    Transmissão
                   </label>
                 </div>
               </div>
@@ -1490,7 +1506,7 @@ export default function AdminDashboard() {
                               key={sp} 
                               className="text-[8px] md:text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 rounded-lg"
                             >
-                              {sp === "3tambores" ? "3 Tambores" : "Rodeio"}
+                              {sp === "3tambores" ? "3 Tambores" : sp === "transmissao" ? "Transmissão" : "Rodeio"}
                             </span>
                           ))}
                         </div>
@@ -2024,9 +2040,9 @@ export default function AdminDashboard() {
               </div>
 
               <div className="bg-white/5 p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border border-white/10 md:col-span-2">
-                <div className="text-[9px] md:text-[10px] font-black text-white/30 uppercase tracking-widest mb-4">Esportes Liberados</div>
+                <div className="text-[9px] md:text-[10px] font-black text-white/30 uppercase tracking-widest mb-4">Categorias Liberadas</div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 flex-wrap">
                     <label className="flex items-center gap-3 cursor-pointer text-xs md:text-sm font-bold text-white/80 select-none">
                       <input 
                         type="checkbox" 
@@ -2050,6 +2066,18 @@ export default function AdminDashboard() {
                         className="w-5 h-5 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
                       />
                       3 Tambores
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer text-xs md:text-sm font-bold text-white/80 select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={tempSports.includes("transmissao")}
+                        onChange={(e) => {
+                          if (e.target.checked) setTempSports([...tempSports, "transmissao"]);
+                          else setTempSports(tempSports.filter(s => s !== "transmissao"));
+                        }}
+                        className="w-5 h-5 accent-yellow-500 rounded border-white/20 bg-black cursor-pointer"
+                      />
+                      Transmissão
                     </label>
                   </div>
                   <button 
