@@ -52,5 +52,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportMelhorAnimal: (data) => ipcRenderer.invoke('export-melhor-animal', data),
   sendEventToPortal: (payload) => ipcRenderer.invoke('send-event-to-portal', payload),
   checkDbConnection: () => ipcRenderer.invoke('check-db-connection'),
-  getOnlineCompetitors: () => ipcRenderer.invoke('get-online-competitors')
+  getOnlineCompetitors: () => ipcRenderer.invoke('get-online-competitors'),
+  shareEventToCloud: (payload) => ipcRenderer.invoke('share-event-to-cloud', payload),
+  pullEventFromCloud: (payload) => ipcRenderer.invoke('pull-event-from-cloud', payload),
+  sendOverlayCommand: (payload) => ipcRenderer.send('send-overlay-command', payload),
+  uploadMedia: (filePath) => ipcRenderer.invoke('upload-media', filePath),
+  deleteMedia: (fileName) => ipcRenderer.invoke('delete-media', fileName)
 });

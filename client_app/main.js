@@ -2024,6 +2024,109 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
     }
 });
 
+// Compartilhar evento na nuvem (status 'compartilhado')
+ipcMain.handle('share-event-to-cloud', async (event, { email, eventId, password }) => {
+    try {
+        const localData = getLocalData(email);
+        const ev = localData.eventos.find(e => e.id === eventId);
+        if (!ev) throw new Error("Evento não encontrado localmente.");
+
+        // Gerar um share_id se não existir no objeto local
+        if (!ev.share_id) {
+            const cleanName = ev.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const randNum = Math.floor(10000000 + Math.random() * 90000000);
+            ev.share_id = `${cleanName}-${randNum}`;
+            ev.share_password = password;
+            saveLocalData(email, localData);
+        } else {
+            ev.share_password = password;
+            saveLocalData(email, localData);
+        }
+
+        const payload = {
+            nome: ev.name,
+            data_inicio: ev.days + ' dias',
+            data_fim: '',
+            local: ev.city,
+            organizador_email: email,
+            status: 'compartilhado',
+            detalhes: {
+                share_id: ev.share_id,
+                share_password: password,
+                sport: currentSportSession,
+                localData: ev
+            }
+        };
+
+        // Procurar por evento oficial existente usando o share_id no JSONB detalhes
+        const { data: existingEvents } = await supabase.from('eventos_oficiais')
+            .select('id')
+            .eq('detalhes->>share_id', ev.share_id)
+            .limit(1);
+
+        const existingEvent = existingEvents && existingEvents.length > 0 ? existingEvents[0] : null;
+
+        if (existingEvent) {
+            const { error } = await supabase.from('eventos_oficiais')
+                .update(payload)
+                .eq('id', existingEvent.id);
+            if (error) throw error;
+        } else {
+            payload.id = require('crypto').randomUUID();
+            const { error } = await supabase.from('eventos_oficiais').insert([payload]);
+            if (error) throw error;
+        }
+
+        return { success: true, shareId: ev.share_id };
+    } catch (e) {
+        console.error("Erro ao compartilhar evento na nuvem:", e);
+        return { success: false, error: e.message };
+    }
+});
+
+// Puxar evento existente da nuvem usando ID e Senha
+ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password }) => {
+    try {
+        const { data: events, error } = await supabase.from('eventos_oficiais')
+            .select('*')
+            .eq('detalhes->>share_id', shareId.trim())
+            .eq('detalhes->>share_password', password.trim())
+            .limit(1);
+
+        if (error) throw error;
+        if (!events || events.length === 0) {
+            throw new Error("ID do evento ou senha inválidos.");
+        }
+
+        const cloudEvent = events[0];
+        const localDataObj = cloudEvent.detalhes.localData;
+        if (!localDataObj) {
+            throw new Error("Dados do evento corrompidos na nuvem.");
+        }
+
+        // Adiciona ou atualiza no banco local
+        const localData = getLocalData(email, currentSportSession);
+        
+        // Verifica se já existe localmente
+        const existingIndex = localData.eventos.findIndex(e => e.id === localDataObj.id || (e.share_id && e.share_id === localDataObj.share_id));
+        
+        localDataObj.share_id = shareId;
+        localDataObj.share_password = password;
+
+        if (existingIndex > -1) {
+            localData.eventos[existingIndex] = localDataObj;
+        } else {
+            localData.eventos.push(localDataObj);
+        }
+
+        saveLocalData(email, localData, currentSportSession);
+        return { success: true, eventName: localDataObj.name, sport: currentSportSession };
+    } catch (e) {
+        console.error("Erro ao importar evento da nuvem:", e);
+        return { success: false, error: e.message };
+    }
+});
+
 // Verificar conexão com banco online
 ipcMain.handle('check-db-connection', async () => {
     try {
@@ -2050,3 +2153,122 @@ ipcMain.handle('get-online-competitors', async () => {
         return { success: false, error: e.message, competitors: [] };
     }
 });
+
+// --- SISTEMA DE OVERLAY (OBS/vMix) ---
+const http = require('http');
+
+let overlayWsClients = [];
+
+// Criar Servidor HTTP na porta 3005
+const overlayServer = http.createServer((req, res) => {
+    if (req.url === '/') {
+        fs.readFile(path.join(__dirname, 'overlay.html'), (err, content) => {
+            if (err) {
+                res.writeHead(500);
+                res.end('Erro ao carregar overlay.html');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(content, 'utf-8');
+        });
+    } else if (req.url.startsWith('/media/')) {
+        // Servir arquivos de mídia salvos pelo usuário (logos, vídeos de patrocinadores)
+        const mediaDir = path.join(app.getPath('userData'), 'media');
+        if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+        
+        const fileName = decodeURIComponent(req.url.replace('/media/', ''));
+        const filePath = path.join(mediaDir, fileName);
+        
+        fs.readFile(filePath, (err, content) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('Not found');
+                return;
+            }
+            const ext = path.extname(filePath).toLowerCase();
+            let contentType = 'application/octet-stream';
+            if (ext === '.png') contentType = 'image/png';
+            if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+            if (ext === '.svg') contentType = 'image/svg+xml';
+            if (ext === '.mp4') contentType = 'video/mp4';
+            if (ext === '.webm') contentType = 'video/webm';
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(content);
+        });
+    } else {
+        // Servir assets do app caso o overlay os requisite
+        const filePath = path.join(__dirname, req.url);
+        fs.readFile(filePath, (err, content) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('Not found');
+                return;
+            }
+            const ext = path.extname(filePath).toLowerCase();
+            let contentType = 'text/plain';
+            if (ext === '.css') contentType = 'text/css';
+            if (ext === '.js') contentType = 'text/javascript';
+            if (ext === '.png') contentType = 'image/png';
+            if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+            if (ext === '.svg') contentType = 'image/svg+xml';
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(content, 'utf-8');
+        });
+    }
+});
+
+// Manipuladores de Mídia
+ipcMain.handle('upload-media', async (event, sourcePath) => {
+    try {
+        const mediaDir = path.join(app.getPath('userData'), 'media');
+        if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+        
+        const fileName = `${Date.now()}_${path.basename(sourcePath)}`;
+        const destPath = path.join(mediaDir, fileName);
+        
+        fs.copyFileSync(sourcePath, destPath);
+        return { success: true, url: `/media/${fileName}`, fileName };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('delete-media', async (event, fileName) => {
+    try {
+        const mediaDir = path.join(app.getPath('userData'), 'media');
+        const filePath = path.join(mediaDir, fileName);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+// Anexar servidor WebSocket ao servidor HTTP
+const wssOverlay = new WebSocket.Server({ server: overlayServer });
+
+wssOverlay.on('connection', (ws) => {
+    console.log('OBS Overlay Client connected');
+    overlayWsClients.push(ws);
+
+    ws.on('close', () => {
+        overlayWsClients = overlayWsClients.filter(client => client !== ws);
+    });
+});
+
+overlayServer.listen(3005, () => {
+    console.log('Overlay server running at http://localhost:3005/');
+});
+
+// Handler IPC para enviar comandos da Interface Principal para os Overlays
+ipcMain.on('send-overlay-command', (event, payload) => {
+    const message = JSON.stringify(payload);
+    overlayWsClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+});
+

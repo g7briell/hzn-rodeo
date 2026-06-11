@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>OBS Overlay - HZN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --theme-color: #EAB308;
+        }
+
+        body {
+            background-color: #00FF00; /* Chroma Key Green */
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .glass-overlay {
+            background: linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(2,6,23,0.95) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .theme-text { color: var(--theme-color); }
+        .theme-border { border-color: var(--theme-color); }
+        .theme-bg { background-color: var(--theme-color); }
+
+        /* Animações de entrada e saída */
+        .fade-enter {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .fade-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        .fade-exit {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .fade-exit-active {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-in, transform 0.5s ease-in;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Container de Logos (Permanente) -->
+    <div id="logos-container" class="fixed top-10 right-10 flex flex-col gap-6 z-50"></div>
+
+    <!-- Container Principal (Segura os elementos gráficos) -->
+    <div id="overlay-container" class="relative w-full h-full z-40"></div>
+
+    <script>
+        const container = document.getElementById('overlay-container');
+        let currentComponent = null;
+
+        // Conectar ao WebSocket do Electron App
+        function connectWebSocket() {
+            const ws = new WebSocket(`ws://${window.location.host}`);
+
+            ws.onopen = () => console.log('Conectado ao HZN Overlay Server');
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleCommand(data);
+            };
+
+            ws.onclose = () => {
+                console.log('Desconectado. Tentando reconectar...');
+                setTimeout(connectWebSocket, 2000);
+            };
+        }
+
+        function handleCommand(payload) {
+            console.log("Comando recebido:", payload);
+            
+            if (payload.settings) {
+                applySettings(payload.settings);
+            }
+
+            if (payload.action === 'clear') {
+                clearScreen();
+                return;
+            }
+
+            if (payload.action === 'show_competidores') {
+                renderCompetidores(payload.mode, payload.data);
+            } else if (payload.action === 'show_ranking') {
+                renderRanking(payload.mode, payload.data);
+            } else if (payload.action === 'show_sponsors') {
+                renderSponsors(payload.settings);
+            }
+        }
+
+        function applySettings(settings) {
+            document.documentElement.style.setProperty('--theme-color', settings.color || '#EAB308');
+            
+            const logosContainer = document.getElementById('logos-container');
+            if (settings.logos && settings.logos.length > 0) {
+                logosContainer.innerHTML = settings.logos.map(url => `<img src="${url}" class="w-48 h-auto object-contain drop-shadow-2xl">`).join('');
+            } else {
+                logosContainer.innerHTML = '';
+            }
+        }
+
+        let currentVideoIndex = 0;
+        function renderSponsors(settings) {
+            if (!settings || !settings.sponsors || settings.sponsors.length === 0) return;
+            
+            currentVideoIndex = 0;
+            playNextSponsor(settings.sponsors);
+        }
+
+        function playNextSponsor(sponsorsList) {
+            if (currentVideoIndex >= sponsorsList.length) {
+                clearScreen(); // Terminou a lista
+                return;
+            }
+            const url = sponsorsList[currentVideoIndex];
+            const html = `
+                <div class="absolute inset-0 bg-black flex items-center justify-center z-[100]">
+                    <video id="sponsor-video" src="${url}" class="w-full h-full object-contain" autoplay></video>
+                </div>
+            `;
+            mountComponent(html);
+            
+            setTimeout(() => {
+                const vid = document.getElementById('sponsor-video');
+                if (vid) {
+                    vid.onended = () => {
+                        currentVideoIndex++;
+                        playNextSponsor(sponsorsList);
+                    };
+                }
+            }, 700);
+        }
+
+        function clearScreen() {
+            if (currentComponent) {
+                currentComponent.classList.remove('fade-enter-active');
+                currentComponent.classList.add('fade-exit-active');
+                setTimeout(() => {
+                    container.innerHTML = '';
+                    currentComponent = null;
+                }, 500); // tempo da animação de saída
+            }
+        }
+
+        function mountComponent(htmlString) {
+            clearScreen();
+            
+            setTimeout(() => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = htmlString.trim();
+                const newEl = tempDiv.firstChild;
+                newEl.classList.add('fade-enter');
+                
+                container.appendChild(newEl);
+                currentComponent = newEl;
+                
+                // Força o reflow para a animação CSS rodar
+                void newEl.offsetWidth;
+                newEl.classList.remove('fade-enter');
+                newEl.classList.add('fade-enter-active');
+            }, currentComponent ? 600 : 0);
+        }
+
+        function renderCompetidores(mode, data) {
+            if (!data || data.length === 0) return;
+
+            if (mode === 'barra') {
+                // Modo Barra: Exibe um carrossel ou apenas o primeiro por enquanto
+                // Para simplificar no MVP, exibimos o próximo competidor da lista (o primeiro)
+                const c = data[0]; // TODO: Lógica de paginação depois se necessário
+                const html = `
+                    <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-[800px] glass-overlay rounded-3xl p-6 flex items-center justify-between">
+                        <div class="flex items-center gap-6">
+                            <div class="w-20 h-20 bg-slate-800 rounded-full border-2 theme-border flex items-center justify-center font-black text-2xl theme-text">
+                                ${c.nome.charAt(0)}
+                            </div>
+                            <div>
+                                <div class="text-[10px] font-black theme-text uppercase tracking-widest mb-1">COMPETIDOR</div>
+                                <div class="text-3xl font-black text-white uppercase italic tracking-tighter">${c.nome}</div>
+                                <div class="text-sm font-bold text-slate-400 uppercase">${c.cidade}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] font-black theme-text uppercase tracking-widest mb-1">PONTOS</div>
+                            <div class="text-4xl font-black text-white">${c.score ? c.score.toFixed(2) : '0.00'}</div>
+                        </div>
+                    </div>
+                `;
+                mountComponent(html);
+            } else if (mode === 'tela_cheia') {
+                const listHtml = data.slice(0, 10).map((c, i) => `
+                    <div class="flex items-center justify-between py-3 border-b border-white/5">
+                        <div class="flex items-center gap-4">
+                            <div class="theme-text font-black text-xl w-6">${i + 1}</div>
+                            <div>
+                                <div class="text-xl font-black text-white uppercase">${c.nome}</div>
+                                <div class="text-xs text-slate-400 uppercase font-bold">${c.cidade}</div>
+                            </div>
+                        </div>
+                        <div class="text-xl font-black theme-text">${c.score ? c.score.toFixed(2) : '0.00'}</div>
+                    </div>
+                `).join('');
+
+                const html = `
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="w-[900px] glass-overlay rounded-[3rem] p-12">
+                            <div class="text-center mb-8">
+                                <h2 class="text-5xl font-black italic theme-text uppercase tracking-tighter">COMPETIDORES</h2>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                ${listHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                mountComponent(html);
+            }
+        }
+
+        function renderRanking(mode, data) {
+            // Opcional: ordenar data
+            const sortedData = data.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+            if (mode === 'barra') {
+                const top3 = sortedData.slice(0, 3);
+                const html = `
+                    <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-[1000px] glass-overlay rounded-3xl p-6 flex items-center justify-around">
+                        <div class="text-2xl font-black italic theme-text uppercase tracking-tighter mr-4">RANKING TOP 3</div>
+                        ${top3.map((c, i) => `
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-slate-800 rounded-full border theme-border flex items-center justify-center font-black text-sm theme-text">${i+1}</div>
+                                <div>
+                                    <div class="text-sm font-black text-white uppercase">${c.nome}</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">${c.score ? c.score.toFixed(2) : '0.00'} PTS</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                mountComponent(html);
+            } else if (mode === 'tela_cheia') {
+                const listHtml = sortedData.slice(0, 10).map((c, i) => `
+                    <div class="flex items-center justify-between py-3 border-b border-white/5">
+                        <div class="flex items-center gap-4">
+                            <div class="theme-text font-black text-2xl w-8 text-center">${i + 1}º</div>
+                            <div>
+                                <div class="text-2xl font-black text-white uppercase">${c.nome}</div>
+                                <div class="text-sm text-slate-400 uppercase font-bold">${c.cidade}</div>
+                            </div>
+                        </div>
+                        <div class="text-3xl font-black theme-text">${c.score ? c.score.toFixed(2) : '0.00'}</div>
+                    </div>
+                `).join('');
+
+                const html = `
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="w-[900px] glass-overlay rounded-[3rem] p-12">
+                            <div class="text-center mb-10">
+                                <h2 class="text-6xl font-black italic theme-text uppercase tracking-tighter">RANKING OFICIAL</h2>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                ${listHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                mountComponent(html);
+            }
+        }
+
+        connectWebSocket();
+    </script>
+</body>
+</html>

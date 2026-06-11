@@ -747,6 +747,18 @@ function showSportSelection() {
     if (loginScreen) loginScreen.classList.add('hidden');
     if (homeScreen) homeScreen.classList.add('hidden');
     if (introScreen) introScreen.classList.add('hidden');
+    
+    const auth = window.electronAPI.getAuth();
+    if (auth && auth.esportes) {
+        userSports = auth.esportes.split(',').map(s => s.trim().toLowerCase());
+    }
+
+    if (userSports.length === 1) {
+        // Redireciona direto se tiver apenas um esporte liberado
+        selectSport(userSports[0]);
+        return;
+    }
+
     if (sportSelectScreen) {
         // Reset animation classes before showing
         sportSelectScreen.classList.remove('sport-anim-active');
@@ -757,11 +769,6 @@ function showSportSelection() {
         });
     }
     toggleSupportBtn(true);
-
-    const auth = window.electronAPI.getAuth();
-    if (auth && auth.esportes) {
-        userSports = auth.esportes.split(',').map(s => s.trim().toLowerCase());
-    }
 
     // Configura botões de esporte
     const btnRodeio = document.getElementById('btn-sport-rodeio');
@@ -802,7 +809,7 @@ function showSportSelection() {
 }
 
 window.selectSport = async (sport) => {
-    if (sport !== 'transmissao' && !userSports.includes(sport)) {
+    if (!userSports.includes(sport)) {
         alert('Você não tem acesso a esta modalidade.');
         return;
     }
@@ -1078,10 +1085,17 @@ async function renderEvents() {
                     <div>
                         <div class="text-[10px] font-black text-accent uppercase tracking-widest mb-2">${ev.type}</div>
                         <h4 class="text-3xl font-black italic mb-1 uppercase tracking-tighter">${ev.name}</h4>
-                        <button onclick="event.stopPropagation(); sendEventToPortal('${ev.id}')" class="mt-2 mb-2 bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-blue-500/20 shadow-lg w-fit">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                            Enviar pro Portal Oficial
-                        </button>
+                        <div class="flex gap-2 flex-wrap items-center mt-2 mb-2">
+                            <button onclick="event.stopPropagation(); sendEventToPortal('${ev.id}')" class="bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-blue-500/20 shadow-lg w-fit">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 8m4-4v12"/></svg>
+                                Enviar pro Portal Oficial
+                            </button>
+                            <button onclick="event.stopPropagation(); promptShareEvent('${ev.id}')" class="bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-green-500/20 shadow-lg w-fit">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 10.742a3 3 0 11-2.2-.075m.93 1.185l6.164 2.739m0 0a3 3 0 11-.412 1.411m-.518-2.58l-6.164-2.74"/></svg>
+                                Compartilhar Evento
+                            </button>
+                        </div>
+                        ${ev.share_id ? `<div class="text-[10px] font-bold text-slate-500 font-mono tracking-wider mb-2">ID COMPARTILHADO: ${ev.share_id}</div>` : ''}
                         <p class="text-slate-500 font-bold text-sm uppercase">${ev.city}</p>
                     </div>
                 </div>
@@ -1097,6 +1111,16 @@ async function renderEvents() {
 }
 
 window.openModalEvento = async (id = null) => {
+    editingEventId = id;
+    if (id) {
+        openModalEventoDirect(id);
+    } else {
+        const chooseModal = document.getElementById('modal-choose-creation');
+        if (chooseModal) chooseModal.classList.remove('hidden');
+    }
+};
+
+window.openModalEventoDirect = async (id = null) => {
     editingEventId = id;
     const title = document.querySelector('#modal-evento h2');
     const previewImg = document.getElementById('logo-preview-img');
@@ -1132,6 +1156,20 @@ window.openModalEvento = async (id = null) => {
     }
     if (modalEvento) modalEvento.classList.remove('hidden');
     setTimeout(() => document.getElementById('event-name')?.focus(), 50);
+};
+
+window.choosePullEvent = () => {
+    const chooseModal = document.getElementById('modal-choose-creation');
+    if (chooseModal) chooseModal.classList.add('hidden');
+    const pullModal = document.getElementById('modal-pull-event');
+    if (pullModal) pullModal.classList.remove('hidden');
+    document.getElementById('pull-share-id')?.focus();
+};
+
+window.chooseCreateNewEvent = () => {
+    const chooseModal = document.getElementById('modal-choose-creation');
+    if (chooseModal) chooseModal.classList.add('hidden');
+    openModalEventoDirect(null);
 };
 
 window.deleteEvent = async (id) => {
@@ -1411,12 +1449,40 @@ window.openEventControl = async (id) => {
 
     document.getElementById('control-event-name').innerText = currentEvent.name;
     document.getElementById('control-event-info').innerText = `${currentEvent.city} - ${currentEvent.days} DIAS - ${currentEvent.judges} JUIZES`;
+    
+    // Ajustar visibilidade dos botões para o módulo de Transmissão (apenas mostra Listas, Sorteios e Rankings)
+    const btnCadastro = document.getElementById('control-btn-cadastro');
+    const btnExportar = document.getElementById('control-btn-exportar');
+    const btnNotas = document.getElementById('control-btn-notas');
+    const btnSorteios = document.getElementById('control-btn-sorteios');
+    
+    if (currentSport === 'transmissao') {
+        if (btnCadastro) btnCadastro.classList.add('hidden');
+        if (btnExportar) btnExportar.classList.add('hidden');
+        if (btnNotas) btnNotas.classList.add('hidden');
+        if (btnSorteios) btnSorteios.setAttribute('onclick', 'openSorteiosList()');
+    } else {
+        if (btnCadastro) btnCadastro.classList.remove('hidden');
+        if (btnExportar) btnExportar.classList.remove('hidden');
+        if (btnNotas) btnNotas.classList.remove('hidden');
+        if (btnSorteios) btnSorteios.setAttribute('onclick', "document.getElementById('modal-menu-sorteios').classList.remove('hidden')");
+    }
+
     if (eventControlView) eventControlView.classList.remove('hidden');
 };
 
 window.closeEventControl = () => {
     if (eventControlView) eventControlView.classList.add('hidden');
+    toggleSupportBtn(true);
     applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
+    
+    if (currentSport === 'transmissao') {
+        if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
+        const modalTrans = document.getElementById('modal-transmissao-eventos');
+        if (modalTrans) modalTrans.classList.remove('hidden');
+    } else {
+        if (homeScreen) homeScreen.classList.remove('hidden');
+    }
 };
 
 // Sorteio Manual
@@ -2515,7 +2581,8 @@ window.openSorteiosList = () => {
 window.viewDrawDetails = (idx) => {
     const s = currentEvent.sorteios[idx];
     const container = document.getElementById('sorteios-table-container');
-    let html = `<div class="col-span-3 animate-in fade-in zoom-in-95 duration-300"><div class="flex items-center justify-between mb-8"><div class="flex items-center gap-4"><button onclick="openSorteiosList()" class="p-3 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><div><h4 class="text-2xl font-black italic uppercase text-yellow-500 tracking-tighter">${s.day}</h4><p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sorteio realizado em ${s.date}</p></div></div><div class="flex gap-4"><button onclick="reExportSorteio(${idx})" class="bg-emerald-600/10 text-emerald-400 px-6 py-3 rounded-xl font-black text-[10px] uppercase border border-emerald-500/20 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>EXPORTAR</button><button onclick="deleteSorteio(${idx})" class="bg-red-500/10 text-red-500 px-4 py-3 rounded-xl hover:bg-red-500 hover:text-white transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div></div><div class="grid grid-cols-2 gap-4">${s.riders.map((r, rIdx) => { const bull = s.bulls[s.assignments[rIdx]]; return `<div class="glass p-5 rounded-2xl border-white/5 flex items-center justify-between"><div class="flex-1"><div class="text-[9px] font-black text-yellow-500 uppercase tracking-tighter mb-1">Competidor</div><div class="text-sm font-black text-white uppercase">${r.nome}</div></div><div class="px-4 text-slate-700 font-black italic">VS</div><div class="flex-1 text-right"><div class="text-[9px] font-black text-yellow-500 uppercase tracking-tighter mb-1">Touro</div><div class="text-sm font-black text-white uppercase">${bull.nome}</div><div class="text-[8px] font-bold text-slate-500">${bull.cia}</div></div></div>`; }).join('')}</div></div>`;
+    const deleteBtn = currentSport === 'transmissao' ? '' : `<button onclick="deleteSorteio(${idx})" class="bg-red-500/10 text-red-500 px-4 py-3 rounded-xl hover:bg-red-500 hover:text-white transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
+    let html = `<div class="col-span-3 animate-in fade-in zoom-in-95 duration-300"><div class="flex items-center justify-between mb-8"><div class="flex items-center gap-4"><button onclick="openSorteiosList()" class="p-3 bg-slate-900 rounded-xl text-slate-500 hover:text-white transition-all"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><div><h4 class="text-2xl font-black italic uppercase text-yellow-500 tracking-tighter">${s.day}</h4><p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sorteio realizado em ${s.date}</p></div></div><div class="flex gap-4"><button onclick="reExportSorteio(${idx})" class="bg-emerald-600/10 text-emerald-400 px-6 py-3 rounded-xl font-black text-[10px] uppercase border border-emerald-500/20 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>EXPORTAR</button>${deleteBtn}</div></div><div class="grid grid-cols-2 gap-4">${s.riders.map((r, rIdx) => { const bull = s.bulls[s.assignments[rIdx]]; return `<div class="glass p-5 rounded-2xl border-white/5 flex items-center justify-between"><div class="flex-1"><div class="text-[9px] font-black text-yellow-500 uppercase tracking-tighter mb-1">Competidor</div><div class="text-sm font-black text-white uppercase">${r.nome}</div></div><div class="px-4 text-slate-700 font-black italic">VS</div><div class="flex-1 text-right"><div class="text-[9px] font-black text-yellow-500 uppercase tracking-tighter mb-1">Touro</div><div class="text-sm font-black text-white uppercase">${bull.nome}</div><div class="text-[8px] font-bold text-slate-500">${bull.cia}</div></div></div>`; }).join('')}</div></div>`;
     if (container) container.innerHTML = html;
 };
 
@@ -2770,6 +2837,15 @@ window.closeTab = () => {
 window.closeEventControl = () => { 
     if (eventControlView) eventControlView.classList.add('hidden'); 
     toggleSupportBtn(true);
+    applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
+    
+    if (currentSport === 'transmissao') {
+        if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
+        const modalTrans = document.getElementById('modal-transmissao-eventos');
+        if (modalTrans) modalTrans.classList.remove('hidden');
+    } else {
+        if (homeScreen) homeScreen.classList.remove('hidden');
+    }
 };
 
 function logout(message) {
@@ -5096,3 +5172,439 @@ window.sendEventToPortal = async (id) => {
         renderEvents();
     }
 };
+
+window.executePullEvent = async (e) => {
+    e.preventDefault();
+    const shareId = document.getElementById('pull-share-id').value;
+    const password = document.getElementById('pull-share-password').value;
+    const email = getCurrentUserEmail();
+
+    const originalLoadingTitle = document.querySelector('#modal-loading h2').innerText;
+    const originalLoadingDesc = document.querySelector('#modal-loading p').innerText;
+    
+    document.querySelector('#modal-loading h2').innerText = "IMPORTANDO EVENTO";
+    document.querySelector('#modal-loading p').innerText = "Buscando dados na nuvem, aguarde...";
+    document.getElementById('modal-loading').classList.remove('hidden');
+    document.getElementById('modal-pull-event').classList.add('hidden');
+
+    try {
+        const res = await window.electronAPI.pullEventFromCloud({ email, shareId, password });
+        if (res.success) {
+            await showAlert(`Evento "${res.eventName}" importado com sucesso!`, "SUCESSO");
+            document.getElementById('form-pull-event').reset();
+            renderEvents();
+            
+            // Recarrega a lista de eventos da transmissão se o modal estiver aberto
+            const transEventsModal = document.getElementById('modal-transmissao-eventos');
+            if (transEventsModal && !transEventsModal.classList.contains('hidden')) {
+                openTransmissaoEventsModal();
+            }
+        } else {
+            await showAlert("Erro ao importar evento: " + (res.error || "Erro desconhecido"), "ERRO");
+            document.getElementById('modal-pull-event').classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error(err);
+        await showAlert("Erro na conexão com a nuvem.", "ERRO");
+        document.getElementById('modal-pull-event').classList.remove('hidden');
+    } finally {
+        document.getElementById('modal-loading').classList.add('hidden');
+        document.querySelector('#modal-loading h2').innerText = originalLoadingTitle;
+        document.querySelector('#modal-loading p').innerText = originalLoadingDesc;
+    }
+};
+
+let currentSharingEventId = null;
+
+window.promptShareEvent = async (eventId) => {
+    currentSharingEventId = eventId;
+    const email = getCurrentUserEmail();
+    const eventos = await window.electronAPI.getLocalEvents(email);
+    const ev = eventos.find(e => e.id === eventId);
+    if (!ev) return;
+
+    let shareId = ev.share_id;
+    if (!shareId) {
+        const cleanName = ev.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const randNum = Math.floor(10000000 + Math.random() * 90000000);
+        shareId = `${cleanName}-${randNum}`;
+    }
+
+    document.getElementById('share-display-id').value = shareId;
+    document.getElementById('share-input-password').value = ev.share_password || '';
+    document.getElementById('modal-share-event').classList.remove('hidden');
+};
+
+window.executeShareEvent = async (e) => {
+    e.preventDefault();
+    if (!currentSharingEventId) return;
+
+    const password = document.getElementById('share-input-password').value;
+    const email = getCurrentUserEmail();
+
+    const originalLoadingTitle = document.querySelector('#modal-loading h2').innerText;
+    const originalLoadingDesc = document.querySelector('#modal-loading p').innerText;
+    
+    document.querySelector('#modal-loading h2').innerText = "COMPARTILHANDO EVENTO";
+    document.querySelector('#modal-loading p').innerText = "Sincronizando dados com a nuvem, aguarde...";
+    document.getElementById('modal-loading').classList.remove('hidden');
+    document.getElementById('modal-share-event').classList.add('hidden');
+
+    try {
+        const res = await window.electronAPI.shareEventToCloud({ email, eventId: currentSharingEventId, password });
+        if (res.success) {
+            document.getElementById('form-share-event').reset();
+            
+            // Exibir modal de sucesso com dados preenchidos
+            document.getElementById('success-display-id').value = res.shareId;
+            document.getElementById('success-display-password').value = password;
+            document.getElementById('modal-share-success').classList.remove('hidden');
+            
+            renderEvents();
+        } else {
+            await showAlert("Erro ao compartilhar evento: " + (res.error || "Erro desconhecido"), "ERRO");
+            document.getElementById('modal-share-event').classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error(err);
+        await showAlert("Erro na conexão com a nuvem.", "ERRO");
+        document.getElementById('modal-share-event').classList.remove('hidden');
+    } finally {
+        document.getElementById('modal-loading').classList.add('hidden');
+        document.querySelector('#modal-loading h2').innerText = originalLoadingTitle;
+        document.querySelector('#modal-loading p').innerText = originalLoadingDesc;
+    }
+};
+
+window.copyToClipboard = (elementId) => {
+    const inputEl = document.getElementById(elementId);
+    if (!inputEl) return;
+    
+    inputEl.select();
+    inputEl.setSelectionRange(0, 99999);
+    
+    navigator.clipboard.writeText(inputEl.value).then(() => {
+        const btn = inputEl.nextElementSibling;
+        if (btn) {
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = `<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
+            setTimeout(() => {
+                btn.innerHTML = origHTML;
+            }, 1500);
+        }
+    }).catch(err => {
+        console.error('Falha ao copiar:', err);
+    });
+};
+
+window.copyAllShareInfo = () => {
+    const shareId = document.getElementById('success-display-id').value;
+    const password = document.getElementById('success-display-password').value;
+    const copyText = `ID do Evento: ${shareId}\nSenha: ${password}`;
+    
+    navigator.clipboard.writeText(copyText).then(() => {
+        const copyBtn = document.querySelector('button[onclick="copyAllShareInfo()"]');
+        if (copyBtn) {
+            const origHTML = copyBtn.innerHTML;
+            copyBtn.innerHTML = `<svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg> Copiado!`;
+            setTimeout(() => {
+                copyBtn.innerHTML = origHTML;
+            }, 1500);
+        }
+    }).catch(err => {
+        console.error('Falha ao copiar:', err);
+    });
+};
+
+window.openTransmissaoEventsModal = async () => {
+    const email = getCurrentUserEmail();
+    const container = document.getElementById('transmissao-events-list-container');
+    if (!container) return;
+
+    document.getElementById('modal-transmissao-eventos').classList.remove('hidden');
+    
+    const events = await window.electronAPI.getLocalEvents(email);
+    
+    if (!events || events.length === 0) {
+        container.innerHTML = '<div class="col-span-2 p-20 text-center text-slate-500 italic font-bold">Nenhum evento carregado para a transmissão. Puxe um evento existente usando ID e Senha!</div>';
+        return;
+    }
+
+    let html = '';
+    events.forEach(ev => {
+        html += `
+        <div onclick="document.getElementById('modal-transmissao-eventos').classList.add('hidden'); if(document.getElementById('transmissao-screen')) document.getElementById('transmissao-screen').classList.add('hidden'); openTransmissaoEventControl('${ev.id}')" class="w-full cursor-pointer glass p-8 rounded-[2.5rem] border-white/5 flex justify-between items-start text-left hover:border-accent transition-all relative group">
+            <div class="flex gap-6 items-start">
+                ${ev.logo ? `<img src="${ev.logo}" class="w-16 h-16 object-contain rounded-2xl bg-black/40 p-2 border border-white/10 shadow-lg">` : `<div class="w-16 h-16 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-slate-700 font-black italic text-[10px]">LOGO</div>`}
+                <div>
+                    <div class="text-[9px] font-black text-accent uppercase tracking-widest mb-1">${ev.type || 'EVENTO'}</div>
+                    <h4 class="text-2xl font-black italic mb-1 uppercase tracking-tighter text-white">${ev.name}</h4>
+                    <p class="text-slate-500 font-bold text-xs uppercase">${ev.city}</p>
+                    ${ev.share_id ? `<div class="text-[9px] text-slate-500 font-bold font-mono mt-2 uppercase tracking-wide">ID: ${ev.share_id}</div>` : ''}
+                </div>
+            </div>
+            <div class="text-[10px] font-black bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-400">${ev.days}D / ${ev.judges}J</div>
+        </div>`;
+    });
+    container.innerHTML = html;
+};
+
+window.openPullEventFromTransmissao = () => {
+    const pullModal = document.getElementById('modal-pull-event');
+    if (pullModal) {
+        pullModal.classList.remove('hidden');
+        document.getElementById('pull-share-id')?.focus();
+    }
+};
+
+window.showAlert = (message, title = "AVISO") => {
+    return new Promise((resolve) => {
+        document.getElementById('modal-alert-title').innerText = title;
+        document.getElementById('modal-alert-message').innerText = message;
+        document.getElementById('modal-alert').classList.remove('hidden');
+        
+        window.closeModalAlert = () => {
+            document.getElementById('modal-alert').classList.add('hidden');
+            resolve();
+        };
+    });
+};
+
+window.openTransmissaoEventControl = async (id) => {
+    const email = getCurrentUserEmail();
+    const eventos = await window.electronAPI.getLocalEvents(email);
+    currentEvent = eventos.find(e => e.id === id);
+    if (!currentEvent) return;
+
+    // APLICAR COR DO EVENTO
+    applyThemeColor(currentEvent.themeColor || '#EAB308');
+
+    document.getElementById('transmissao-event-name').innerText = currentEvent.name;
+    document.getElementById('transmissao-event-info').innerText = `${currentEvent.city} - ${currentEvent.days} DIAS - ${currentEvent.judges} JUIZES`;
+    
+    const tv = document.getElementById('transmissao-event-view');
+    if (tv) tv.classList.remove('hidden');
+};
+
+window.closeTransmissaoEventControl = () => {
+    const tv = document.getElementById('transmissao-event-view');
+    if (tv) tv.classList.add('hidden');
+    
+    applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
+    
+    const transmissaoScreen = document.getElementById('transmissao-screen');
+    if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
+    
+    const modalTrans = document.getElementById('modal-transmissao-eventos');
+    if (modalTrans) modalTrans.classList.remove('hidden');
+};
+
+// --- CONTROLES DE OVERLAY (OBS/vMix) ---
+window.openOverlaySettingsList = async () => {
+    const email = getCurrentUserEmail();
+    const container = document.getElementById('overlay-settings-events-list');
+    if (!container) return;
+
+    document.getElementById('overlay-settings-list-screen').classList.remove('hidden');
+    
+    const events = await window.electronAPI.getLocalEvents(email);
+    
+    if (!events || events.length === 0) {
+        container.innerHTML = '<div class="col-span-2 p-20 text-center text-slate-500 italic font-bold">Nenhum evento carregado para configurar.</div>';
+        return;
+    }
+
+    let html = '';
+    events.forEach(ev => {
+        html += `
+        <div onclick="openOverlayConfigForm('${ev.id}')" class="w-full cursor-pointer glass p-8 rounded-[2.5rem] border-white/5 flex justify-between items-start text-left hover:border-yellow-500 transition-all relative group">
+            <div class="flex gap-6 items-start">
+                ${ev.logo ? `<img src="${ev.logo}" class="w-16 h-16 object-contain rounded-2xl bg-black/40 p-2 border border-white/10 shadow-lg">` : `<div class="w-16 h-16 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-slate-700 font-black italic text-[10px]">LOGO</div>`}
+                <div>
+                    <h4 class="text-2xl font-black italic mb-1 uppercase tracking-tighter text-white">${ev.name}</h4>
+                    <p class="text-slate-500 font-bold text-xs uppercase">${ev.city}</p>
+                </div>
+            </div>
+            <div class="text-xs font-black text-yellow-500 bg-yellow-500/10 px-4 py-2 rounded-xl">CONFIGURAR MÍDIAS</div>
+        </div>`;
+    });
+    container.innerHTML = html;
+};
+
+window.closeOverlaySettingsList = () => {
+    document.getElementById('overlay-settings-list-screen').classList.add('hidden');
+};
+
+let currentOverlayEventId = null;
+
+window.openOverlayConfigForm = async (id) => {
+    document.getElementById('overlay-settings-list-screen').classList.add('hidden');
+    document.getElementById('overlay-settings-config-screen').classList.remove('hidden');
+    
+    const email = getCurrentUserEmail();
+    const events = await window.electronAPI.getLocalEvents(email);
+    const ev = events.find(e => e.id === id);
+    if (!ev) return;
+    
+    currentOverlayEventId = id;
+    document.getElementById('overlay-config-event-name').innerText = ev.name;
+    
+    // Configurações atuais ou padrão
+    const overlaySettings = ev.overlaySettings || { color: '#EAB308', logos: [], sponsors: [] };
+    document.getElementById('overlay-color-picker').value = overlaySettings.color;
+    
+    renderOverlayMedia(overlaySettings);
+};
+
+window.closeOverlayConfigForm = () => {
+    document.getElementById('overlay-settings-config-screen').classList.add('hidden');
+    document.getElementById('overlay-settings-list-screen').classList.remove('hidden');
+    currentOverlayEventId = null;
+};
+
+window.saveOverlayColor = async () => {
+    if (!currentOverlayEventId) return;
+    const color = document.getElementById('overlay-color-picker').value;
+    
+    const email = getCurrentUserEmail();
+    const events = await window.electronAPI.getLocalEvents(email);
+    const ev = events.find(e => e.id === currentOverlayEventId);
+    
+    if (!ev.overlaySettings) ev.overlaySettings = { color: '#EAB308', logos: [], sponsors: [] };
+    ev.overlaySettings.color = color;
+    
+    await window.electronAPI.updateLocalEvent(email, currentOverlayEventId, ev);
+    await showAlert('Cor do evento atualizada com sucesso!', 'SUCESSO');
+};
+
+window.handleMediaUpload = async (event, type) => {
+    if (!currentOverlayEventId) return;
+    const fileInput = event.target;
+    if (fileInput.files.length === 0) return;
+    
+    const file = fileInput.files[0];
+    const email = getCurrentUserEmail();
+    const events = await window.electronAPI.getLocalEvents(email);
+    const ev = events.find(e => e.id === currentOverlayEventId);
+    
+    document.getElementById('modal-loading').classList.remove('hidden');
+    try {
+        const result = await window.electronAPI.uploadMedia(file.path);
+        if (result.success) {
+            if (!ev.overlaySettings) ev.overlaySettings = { color: '#EAB308', logos: [], sponsors: [] };
+            if (type === 'logo') {
+                ev.overlaySettings.logos.push(result.url);
+            } else if (type === 'video') {
+                ev.overlaySettings.sponsors.push(result.url);
+            }
+            await window.electronAPI.updateLocalEvent(email, currentOverlayEventId, ev);
+            renderOverlayMedia(ev.overlaySettings);
+        } else {
+            await showAlert('Erro ao enviar arquivo: ' + result.error, 'ERRO');
+        }
+    } catch (e) {
+        await showAlert('Falha ao comunicar com sistema de arquivos.', 'ERRO');
+    } finally {
+        document.getElementById('modal-loading').classList.add('hidden');
+        fileInput.value = ''; // reseta
+    }
+};
+
+window.deleteOverlayMedia = async (url, type) => {
+    if (!currentOverlayEventId) return;
+    
+    const email = getCurrentUserEmail();
+    const events = await window.electronAPI.getLocalEvents(email);
+    const ev = events.find(e => e.id === currentOverlayEventId);
+    
+    if (!ev || !ev.overlaySettings) return;
+    
+    if (type === 'logo') {
+        ev.overlaySettings.logos = ev.overlaySettings.logos.filter(l => l !== url);
+    } else {
+        ev.overlaySettings.sponsors = ev.overlaySettings.sponsors.filter(s => s !== url);
+    }
+    
+    await window.electronAPI.updateLocalEvent(email, currentOverlayEventId, ev);
+    renderOverlayMedia(ev.overlaySettings);
+    
+    // Opcional: deletar arquivo fisicamente
+    const fileName = url.replace('/media/', '');
+    await window.electronAPI.deleteMedia(fileName);
+};
+
+function renderOverlayMedia(settings) {
+    const logosContainer = document.getElementById('overlay-logos-container');
+    const videosContainer = document.getElementById('overlay-videos-container');
+    
+    logosContainer.innerHTML = '';
+    settings.logos.forEach(url => {
+        logosContainer.innerHTML += `
+            <div class="relative group w-24 h-24 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center overflow-hidden">
+                <img src="http://localhost:3005${url}" class="w-full h-full object-contain p-2">
+                <div class="absolute inset-0 bg-red-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer" onclick="deleteOverlayMedia('${url}', 'logo')">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </div>
+            </div>`;
+    });
+    
+    videosContainer.innerHTML = '';
+    settings.sponsors.forEach(url => {
+        videosContainer.innerHTML += `
+            <div class="relative group w-full aspect-video bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center overflow-hidden">
+                <video src="http://localhost:3005${url}" class="w-full h-full object-cover opacity-50" autoplay muted loop></video>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                </div>
+                <div class="absolute inset-0 bg-red-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer" onclick="deleteOverlayMedia('${url}', 'video')">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </div>
+            </div>`;
+    });
+}
+
+window.copyOBSLink = async () => {
+    try {
+        await navigator.clipboard.writeText('http://localhost:3005/');
+        await showAlert('Link copiado! Cole no OBS Studio como uma Fonte de Navegador (Browser Source) com fundo transparente ou aplique o filtro Chroma Key no verde (#00FF00).', 'COPIADO');
+    } catch (err) {
+        await showAlert('Não foi possível copiar o link. O link é: http://localhost:3005/', 'ERRO');
+    }
+};
+
+window.triggerOverlay = async (action, mode = '') => {
+    let payload = { action, mode, data: [], settings: null };
+
+    if (action === 'clear') {
+        window.electronAPI.sendOverlayCommand(payload);
+        return;
+    }
+
+    if (!currentEvent) {
+        await showAlert('Nenhum evento selecionado para extrair dados.', 'ERRO');
+        return;
+    }
+
+    // Incluir as configurações do evento atual
+    payload.settings = currentEvent.overlaySettings || { color: '#EAB308', logos: [], sponsors: [] };
+
+    if (action === 'show_competidores') {
+        if (!currentEvent.peoes || currentEvent.peoes.length === 0) {
+            await showAlert('Não há competidores neste evento.', 'AVISO');
+            return;
+        }
+        payload.data = currentEvent.peoes; // Enviamos a lista de peões
+    }
+
+    if (action === 'show_ranking') {
+        if (!currentEvent.peoes || currentEvent.peoes.length === 0) {
+            await showAlert('Não há competidores para o ranking.', 'AVISO');
+            return;
+        }
+        // Clona e envia para não mutar localmente
+        payload.data = [...currentEvent.peoes];
+    }
+
+    window.electronAPI.sendOverlayCommand(payload);
+};
+
