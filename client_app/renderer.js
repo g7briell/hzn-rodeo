@@ -1474,10 +1474,32 @@ window.openEventControl = async (id) => {
     if (eventControlView) eventControlView.classList.remove('hidden');
 };
 
+window.hideAllModalsAndViews = () => {
+    const ids = [
+        'list-peoes-view', 'list-boiadas-view', 'list-sorteios-view',
+        'modal-menu-cadastro', 'modal-menu-lista', 'modal-menu-sorteios', 'modal-menu-rankings',
+        'modal-peao', 'modal-list-juizes', 'modal-juiz', 'modal-bulk-peoes',
+        'modal-cloud-boiadas', 'modal-boiada', 'modal-evento', 'modal-choose-creation',
+        'modal-pull-event', 'modal-share-event', 'modal-share-success',
+        'modal-ordem-days', 'modal-ordem-dragdrop', 'modal-ordem-smart',
+        'modal-export-days', 'modal-export-options', 'modal-export-juiz', 'modal-export-format',
+        'modal-notas-days', 'modal-scoring-new', 'modal-reride-reason', 'modal-reride-bull',
+        'modal-reride-confirm', 'modal-notas-summary', 'modal-contrato-config', 'modal-export-contract',
+        'modal-settings', 'modal-global-peao', 'modal-global-boiada',
+        'overlay-settings-list-screen', 'overlay-settings-config-screen'
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+};
+
 window.closeEventControl = () => {
     if (eventControlView) eventControlView.classList.add('hidden');
     toggleSupportBtn(true);
     applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
+    
+    window.hideAllModalsAndViews();
     
     if (currentSport === 'transmissao') {
         if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
@@ -2841,6 +2863,8 @@ window.closeEventControl = () => {
     if (eventControlView) eventControlView.classList.add('hidden'); 
     toggleSupportBtn(true);
     applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
+    
+    window.hideAllModalsAndViews();
     
     if (currentSport === 'transmissao') {
         if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
@@ -5392,6 +5416,8 @@ window.openTransmissaoEventControl = async (id) => {
 window.closeTransmissaoEventControl = () => {
     const tv = document.getElementById('transmissao-event-view');
     if (tv) tv.classList.add('hidden');
+    
+    window.hideAllModalsAndViews();
     
     applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
     
