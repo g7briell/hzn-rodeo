@@ -740,6 +740,7 @@ function showLogin() {
     if (homeScreen) homeScreen.classList.add('hidden'); 
     if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
     if (introScreen) introScreen.classList.add('hidden');
+    if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
     toggleSupportBtn(false);
 }
 
@@ -747,6 +748,7 @@ function showSportSelection() {
     if (loginScreen) loginScreen.classList.add('hidden');
     if (homeScreen) homeScreen.classList.add('hidden');
     if (introScreen) introScreen.classList.add('hidden');
+    if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
     
     const auth = window.electronAPI.getAuth();
     if (auth && auth.esportes) {
@@ -854,6 +856,7 @@ window.backToSports = () => {
 function showHome(expiryOrDays, nome) { 
     if (loginScreen) loginScreen.classList.add('hidden'); 
     if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
+    if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
     if (homeScreen) homeScreen.classList.remove('hidden');
     // Se receber ISO string de expiry, usa ela; senão usa currentExpiryDate
     if (typeof expiryOrDays === 'string' && expiryOrDays.includes('T')) {
