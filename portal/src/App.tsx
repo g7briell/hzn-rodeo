@@ -1648,7 +1648,7 @@ Instruções importantes:
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  Diretor: <strong style={{ color: '#fff' }}>{selectedEvent.detalhes?.diretor || 'N/A'}</strong>
+                  Diretor: <strong style={{ color: '#fff' }}>{(selectedEvent.detalhes?.diretor?.includes('@') ? selectedEvent.detalhes.diretor.split('@')[0] : selectedEvent.detalhes?.diretor) || 'N/A'}</strong>
                 </div>
               </div>
             </div>
@@ -5416,7 +5416,7 @@ Instruções importantes:
                                 </div>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                  {ev.detalhes?.diretor || 'Diretor'}
+                                  {(ev.detalhes?.diretor?.includes('@') ? ev.detalhes.diretor.split('@')[0] : ev.detalhes?.diretor) || 'Diretor'}
                                 </div>
                               </div>
                             </div>
@@ -5686,7 +5686,7 @@ Instruções importantes:
                               </div>
                               <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                {ev.detalhes?.diretor || 'Diretor'}
+                                {(ev.detalhes?.diretor?.includes('@') ? ev.detalhes.diretor.split('@')[0] : ev.detalhes?.diretor) || 'Diretor'}
                               </div>
                             </div>
                           </div>
