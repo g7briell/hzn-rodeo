@@ -1981,6 +1981,7 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
             local: ev.city,
             organizador_email: email,
             status: 'pendente',
+            created_at: new Date().toISOString(),
             detalhes: {
                 ranking: ev.peoes || [],
                 boiadas: ev.boiadas || [],
@@ -1997,6 +1998,7 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
             .select('id, status')
             .eq('organizador_email', email)
             .eq('nome', ev.name)
+            .order('status', { ascending: true })
             .order('created_at', { ascending: false })
             .limit(1);
             
