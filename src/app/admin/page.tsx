@@ -131,6 +131,54 @@ export default function AdminDashboard() {
   const [expenseData, setExpenseData] = useState(new Date().toISOString().split('T')[0]);
   const [isSavingExpense, setIsSavingExpense] = useState(false);
 
+  // Competidores & Touros state
+  const [relSearchQuery, setRelSearchQuery] = useState('');
+  const [relSearchResultCompetidores, setRelSearchResultCompetidores] = useState<any[]>([]);
+  const [relSearchResultTouros, setRelSearchResultTouros] = useState<any[]>([]);
+  const [relSearchResultCias, setRelSearchResultCias] = useState<any[]>([]);
+  
+  const [selectedCompetidor, setSelectedCompetidor] = useState<any>(null);
+  const [selectedTouro, setSelectedTouro] = useState<any>(null);
+  const [selectedCia, setSelectedCia] = useState<any>(null);
+  const [ciaBulls, setCiaBulls] = useState<any[]>([]);
+  const [relHistory, setRelHistory] = useState<any[]>([]);
+  const [allRelEvents, setAllRelEvents] = useState<any[]>([]);
+
+  // Modals for relational DB
+  const [isManualEventModalOpen, setIsManualEventModalOpen] = useState(false);
+  const [manualEventName, setManualEventName] = useState('');
+  const [manualEventCidade, setManualEventCidade] = useState('');
+  const [manualEventData, setManualEventData] = useState('');
+
+  const [isManualRideModalOpen, setIsManualRideModalOpen] = useState(false);
+  const [manualRideEventId, setManualRideEventId] = useState<number | null>(null);
+  const [manualRideCompetidorId, setManualRideCompetidorId] = useState<number | null>(null);
+  const [manualRideTouroId, setManualRideTouroId] = useState<number | null>(null);
+  
+  // Forms for adding/creating a new ride
+  const [rideDia, setRideDia] = useState('DIA 1');
+  const [rideTempo, setRideTempo] = useState('8.0');
+  const [rideJ1Peao, setRideJ1Peao] = useState('0');
+  const [rideJ2Peao, setRideJ2Peao] = useState('0');
+  const [rideJ1Touro, setRideJ1Touro] = useState('0');
+  const [rideJ2Touro, setRideJ2Touro] = useState('0');
+  const [rideStatus, setRideStatus] = useState('ativa');
+
+  // Input states for inserting competitor/bull on-the-fly during manual creation
+  const [manualRideTouroNome, setManualRideTouroNome] = useState('');
+  const [manualRideCiaNome, setManualRideCiaNome] = useState('');
+
+  // Editing/Creating new competitors / bulls
+  const [isNewCompetidorModalOpen, setIsNewCompetidorModalOpen] = useState(false);
+  const [newCompetidorNome, setNewCompetidorNome] = useState('');
+  const [newCompetidorCpf, setNewCompetidorCpf] = useState('');
+  const [newCompetidorCidade, setNewCompetidorCidade] = useState('');
+
+  const [isNewTouroModalOpen, setIsNewTouroModalOpen] = useState(false);
+  const [newTouroNome, setNewTouroNome] = useState('');
+  const [newTouroCia, setNewTouroCia] = useState('');
+  const [newTouroLado, setNewTouroLado] = useState('Esquerdo');
+
   useEffect(() => {
     if (selectedLicense) {
       setTempDays(selectedLicense.dias_validos || 0);
@@ -853,7 +901,392 @@ export default function AdminDashboard() {
       alert("Erro ao gerar chave adicional: " + err.message);
     }
   };
+  // Competidores & Touros handlers
+  const handleRelationalSearch = async (query: string) => {
+    setRelSearchQuery(query);
+    if (!query.trim()) {
+      setRelSearchResultCompetidores([]);
+      setRelSearchResultTouros([]);
+      setRelSearchResultCias([]);
+      return;
+    }
 
+    try {
+      const cleanQ = query.trim();
+      
+      // 1. Search Competidores
+      let compReq = supabase.from('rel_competidores').select('*');
+      if (/\d/.test(cleanQ)) {
+        compReq = compReq.ilike('cpf', `%${cleanQ.replace(/\D/g, '')}%`);
+      } else {
+        compReq = compReq.ilike('nome', `%${cleanQ}%`);
+      }
+      const { data: comps } = await compReq.limit(20);
+      setRelSearchResultCompetidores(comps || []);
+
+      // 2. Search Bulls
+      const { data: bulls } = await supabase.from('rel_touros')
+        .select('*')
+        .ilike('nome', `%${cleanQ}%`)
+        .limit(20);
+      setRelSearchResultTouros(bulls || []);
+
+      // 3. Search Cias
+      const { data: cias } = await supabase.from('rel_cias')
+        .select('*')
+        .ilike('nome', `%${cleanQ}%`)
+        .limit(20);
+      setRelSearchResultCias(cias || []);
+    } catch (err) {
+      console.error("Error searching relational DB", err);
+    }
+  };
+
+  const handleSelectCompetidor = async (comp: any) => {
+    setSelectedCompetidor(comp);
+    setSelectedTouro(null);
+    setSelectedCia(null);
+    try {
+      const { data: rides, error } = await supabase.from('rel_montarias')
+        .select('*, rel_eventos(*), rel_touros(*)')
+        .eq('competidor_id', comp.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setRelHistory(rides || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectTouro = async (bull: any) => {
+    setSelectedTouro(bull);
+    setSelectedCompetidor(null);
+    setSelectedCia(null);
+    try {
+      const { data: rides, error } = await supabase.from('rel_montarias')
+        .select('*, rel_eventos(*), rel_competidores(*)')
+        .eq('touro_id', bull.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setRelHistory(rides || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectCia = async (cia: any) => {
+    setSelectedCia(cia);
+    setSelectedCompetidor(null);
+    setSelectedTouro(null);
+    try {
+      const { data: bulls, error } = await supabase.from('rel_touros')
+        .select('*')
+        .eq('cia', cia.nome)
+        .order('nome', { ascending: true });
+      if (error) throw error;
+      setCiaBulls(bulls || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const syncRelationalEventToEventosOficiais = async (eventName: string) => {
+    try {
+      const { data: relEv } = await supabase.from('rel_eventos')
+        .select('*')
+        .eq('nome', eventName.trim().toUpperCase())
+        .maybeSingle();
+      if (!relEv) return;
+
+      const { data: rides } = await supabase.from('rel_montarias')
+        .select('*, rel_competidores(*), rel_touros(*)')
+        .eq('evento_id', relEv.id);
+
+      const notas = (rides || []).map(r => ({
+        id: r.id.toString(),
+        dia: r.dia,
+        peao: r.rel_competidores?.nome || 'DESCONHECIDO',
+        cpf: r.rel_competidores?.cpf || '',
+        cidade: r.rel_competidores?.cidade || '',
+        touro: r.rel_touros?.nome || 'DESCONHECIDO',
+        cia: r.rel_touros?.cia || 'DESCONHECIDA',
+        status: r.status,
+        tempo: r.tempo,
+        j1_peao: r.j1_peao,
+        j2_peao: r.j2_peao,
+        j1_touro: r.j1_touro,
+        j2_touro: r.j2_touro,
+        totalPeao: r.total_peao,
+        totalTouro: r.total_touro
+      }));
+
+      const competitorScores = new Map<string, { nome: string, cpf: string, score: number, cidade: string, tempoAcumulado: number }>();
+      notas.forEach(n => {
+        const key = n.cpf ? n.cpf : n.peao;
+        if (!competitorScores.has(key)) {
+          competitorScores.set(key, {
+            nome: n.peao,
+            cpf: n.cpf,
+            score: 0,
+            cidade: n.cidade,
+            tempoAcumulado: 0
+          });
+        }
+        const score = (n.totalPeao || 0) + (n.totalTouro || 0);
+        const isParada = n.tempo >= 8 || n.tempo == null;
+        const entry = competitorScores.get(key)!;
+        entry.score += score;
+        if (isParada) {
+          entry.tempoAcumulado += 8;
+        } else {
+          entry.tempoAcumulado += n.tempo || 0;
+        }
+      });
+
+      const ranking = Array.from(competitorScores.values()).sort((a, b) => b.score - a.score);
+
+      const boiadasMap = new Map<string, Set<string>>();
+      notas.forEach(n => {
+        if (n.cia && n.touro) {
+          if (!boiadasMap.has(n.cia)) {
+            boiadasMap.set(n.cia, new Set());
+          }
+          boiadasMap.get(n.cia)!.add(n.touro);
+        }
+      });
+      const boiadas = Array.from(boiadasMap.entries()).map(([ciaName, tourosSet]) => ({
+        nome: ciaName,
+        lados: {},
+        touros: Array.from(tourosSet)
+      }));
+
+      const { data: existingEvs } = await supabase.from('eventos_oficiais')
+        .select('*')
+        .eq('nome', relEv.nome)
+        .limit(1);
+
+      const existingEv = existingEvs && existingEvs.length > 0 ? existingEvs[0] : null;
+
+      const payload = {
+        nome: relEv.nome,
+        data_inicio: relEv.data || '',
+        data_fim: '',
+        local: relEv.cidade,
+        organizador_email: existingEv ? existingEv.organizador_email : 'admin@rodeoapp.pro',
+        status: 'aprovado',
+        detalhes: {
+          ...(existingEv?.detalhes || {}),
+          notas,
+          ranking,
+          boiadas,
+          portalConfig: {
+            ...(existingEv?.detalhes?.portalConfig || {}),
+            manual: relEv.is_manual
+          }
+        }
+      };
+
+      if (existingEv) {
+        await supabase.from('eventos_oficiais').update(payload).eq('id', existingEv.id);
+      } else {
+        await supabase.from('eventos_oficiais').insert({
+          ...payload,
+          id: typeof window !== 'undefined' && window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
+        });
+      }
+    } catch (err) {
+      console.error("Error syncing back to raw events", err);
+    }
+  };
+
+  const handleCreateManualEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualEventName || !manualEventCidade) return alert("Preencha nome e cidade.");
+    try {
+      const evName = manualEventName.trim().toUpperCase();
+      const { error } = await supabase.from('rel_eventos')
+        .insert({
+          nome: evName,
+          cidade: manualEventCidade.trim().toUpperCase(),
+          data: manualEventData || new Date().toLocaleDateString('pt-BR'),
+          is_manual: true
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      
+      await syncRelationalEventToEventosOficiais(evName);
+
+      alert("Evento criado com sucesso!");
+      setIsManualEventModalOpen(false);
+      setManualEventName('');
+      setManualEventCidade('');
+      setManualEventData('');
+
+      if (selectedCompetidor) {
+        handleSelectCompetidor(selectedCompetidor);
+      }
+    } catch (err: any) {
+      alert("Erro ao criar evento: " + err.message);
+    }
+  };
+
+  const handleCreateManualRide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualRideEventId) return alert("Selecione um evento.");
+    if (!manualRideTouroNome || !manualRideCiaNome) return alert("Preencha Touro e Cia.");
+
+    try {
+      const tName = manualRideTouroNome.trim().toUpperCase();
+      const cName = manualRideCiaNome.trim().toUpperCase();
+
+      // Resolve Cia
+      const { data: ciaData } = await supabase.from('rel_cias').select('id').eq('nome', cName).maybeSingle();
+      if (!ciaData) {
+        await supabase.from('rel_cias').insert({ nome: cName });
+      }
+
+      // Resolve Touro
+      let { data: bullData } = await supabase.from('rel_touros').select('id').eq('nome', tName).eq('cia', cName).maybeSingle();
+      let bId = bullData?.id;
+      if (!bId) {
+        const { data: newB } = await supabase.from('rel_touros').insert({ nome: tName, cia: cName }).select('id').single();
+        bId = newB?.id;
+      }
+
+      const tVal = parseFloat(rideTempo) || 0;
+      const j1p = parseFloat(rideJ1Peao) || 0;
+      const j2p = parseFloat(rideJ2Peao) || 0;
+      const j1t = parseFloat(rideJ1Touro) || 0;
+      const j2t = parseFloat(rideJ2Touro) || 0;
+
+      const totPeao = j1p + j2p;
+      const totTouro = j1t + j2t;
+      const notaFin = totPeao + totTouro;
+
+      const payload = {
+        evento_id: manualRideEventId,
+        competidor_id: selectedCompetidor ? selectedCompetidor.id : manualRideCompetidorId,
+        touro_id: bId || manualRideTouroId || null,
+        dia: rideDia || 'DIA 1',
+        tempo: tVal,
+        j1_peao: j1p,
+        j2_peao: j2p,
+        j1_touro: j1t,
+        j2_touro: j2t,
+        total_peao: totPeao,
+        total_touro: totTouro,
+        nota_final: notaFin,
+        status: rideStatus
+      };
+
+      const { error } = await supabase.from('rel_montarias').insert(payload);
+      if (error) throw error;
+
+      const targetEvent = allRelEvents.find(ev => ev.id === manualRideEventId);
+      if (targetEvent) {
+        await syncRelationalEventToEventosOficiais(targetEvent.nome);
+      }
+
+      alert("Montaria adicionada com sucesso!");
+      setIsManualRideModalOpen(false);
+
+      setManualRideTouroNome('');
+      setManualRideCiaNome('');
+      setRideTempo('8.0');
+      setRideJ1Peao('0');
+      setRideJ2Peao('0');
+      setRideJ1Touro('0');
+      setRideJ2Touro('0');
+
+      if (selectedCompetidor) {
+        handleSelectCompetidor(selectedCompetidor);
+      } else if (selectedTouro) {
+        handleSelectTouro(selectedTouro);
+      }
+    } catch (err: any) {
+      alert("Erro ao salvar montaria: " + err.message);
+    }
+  };
+
+  const handleCreateCompetidor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCompetidorNome) return alert("Nome é obrigatório.");
+    try {
+      const { data, error } = await supabase.from('rel_competidores')
+        .insert({
+          nome: newCompetidorNome.trim().toUpperCase(),
+          cpf: newCompetidorCpf.replace(/\D/g, '') || null,
+          cidade: newCompetidorCidade.trim().toUpperCase() || null
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      alert("Competidor cadastrado com sucesso!");
+      setIsNewCompetidorModalOpen(false);
+      setNewCompetidorNome('');
+      setNewCompetidorCpf('');
+      setNewCompetidorCidade('');
+      handleSelectCompetidor(data);
+    } catch (err: any) {
+      alert("Erro ao cadastrar competidor: " + err.message);
+    }
+  };
+
+  const handleCreateTouro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTouroNome || !newTouroCia) return alert("Nome e Cia são obrigatórios.");
+    try {
+      const cName = newTouroCia.trim().toUpperCase();
+      const tName = newTouroNome.trim().toUpperCase();
+
+      const { data: ciaData } = await supabase.from('rel_cias').select('id').eq('nome', cName).maybeSingle();
+      if (!ciaData) {
+        await supabase.from('rel_cias').insert({ nome: cName });
+      }
+
+      const { data, error } = await supabase.from('rel_touros')
+        .insert({
+          nome: tName,
+          cia: cName,
+          lado: newTouroLado
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      alert("Touro cadastrado com sucesso!");
+      setIsNewTouroModalOpen(false);
+      setNewTouroNome('');
+      setNewTouroCia('');
+      handleSelectTouro(data);
+    } catch (err: any) {
+      alert("Erro ao cadastrar touro: " + err.message);
+    }
+  };
+
+  const openManualRideModal = async (eventId: number | null, compId: number | null, bullId: number | null) => {
+    setManualRideEventId(eventId);
+    setManualRideCompetidorId(compId);
+    setManualRideTouroId(bullId);
+    
+    if (bullId) {
+      const { data: bull } = await supabase.from('rel_touros').select('*').eq('id', bullId).maybeSingle();
+      if (bull) {
+        setManualRideTouroNome(bull.nome);
+        setManualRideCiaNome(bull.cia);
+      }
+    } else {
+      setManualRideTouroNome('');
+      setManualRideCiaNome('');
+    }
+    
+    const { data } = await supabase.from('rel_eventos').select('*').order('nome', { ascending: true });
+    setAllRelEvents(data || []);
+    
+    setIsManualRideModalOpen(true);
+  };
   // Finance and Sponsorship calculations
   const totalEntradas = patrocinios.reduce((acc, p) => acc + (Number(p.valor_contrato) || 0), 0);
   const totalSaidas = despesas.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
@@ -981,6 +1414,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<Database className="w-4 h-4" />} label="Eventos" active={activeTab === "eventos"} onClick={() => setActiveTab("eventos")} />
           <TopNavBtn icon={<Download className="w-4 h-4" />} label="Download" active={activeTab === "download"} onClick={() => setActiveTab("download")} />
           <TopNavBtn icon={<DollarSign className="w-4 h-4" />} label="Patrocinadores" active={activeTab === "patrocinios"} onClick={() => setActiveTab("patrocinios")} />
+          <TopNavBtn icon={<ShieldCheck className="w-4 h-4" />} label="Competidores" active={activeTab === "competidores"} onClick={() => setActiveTab("competidores")} />
         </div>
 
         <div className="flex items-center gap-4">
@@ -1009,6 +1443,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<Database className="w-5 h-5" />} label="EVENTOS" active={activeTab === "eventos"} onClick={() => { setActiveTab("eventos"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<Download className="w-5 h-5" />} label="DOWNLOAD" active={activeTab === "download"} onClick={() => { setActiveTab("download"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<DollarSign className="w-5 h-5" />} label="PATROCINADORES" active={activeTab === "patrocinios"} onClick={() => { setActiveTab("patrocinios"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<ShieldCheck className="w-5 h-5" />} label="COMPETIDORES" active={activeTab === "competidores"} onClick={() => { setActiveTab("competidores"); setIsSidebarOpen(false); }} fullWidth />
         </div>
       </div>
 
@@ -2110,6 +2545,436 @@ export default function AdminDashboard() {
                 <Plus className="w-4 h-4" /> Gerar Chave Adicional
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+        {activeTab === "competidores" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-10">Competidores & Animais</h2>
+            
+            {/* Action buttons */}
+            <div className="flex gap-4 flex-wrap mb-8">
+              <button onClick={() => setIsNewCompetidorModalOpen(true)} className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-yellow-500/10 active:scale-95 flex items-center gap-2">
+                + CADASTRAR COMPETIDOR
+              </button>
+              <button onClick={() => setIsNewTouroModalOpen(true)} className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2">
+                + CADASTRAR NOVO TOURO
+              </button>
+              <button onClick={() => setIsManualEventModalOpen(true)} className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2">
+                + CRIAR NOVO EVENTO MANUAL
+              </button>
+            </div>
+
+            {/* Search Box */}
+            <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm mb-8">
+              <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-1 block mb-3">Pesquisar Competidor (Nome ou CPF), Touro ou Cia</label>
+              <input 
+                type="text" 
+                value={relSearchQuery} 
+                onChange={e => handleRelationalSearch(e.target.value)} 
+                placeholder="Digite o nome do peão, CPF (apenas números), nome do touro ou nome da Cia..." 
+                className="w-full bg-black border border-white/10 rounded-2xl p-4 font-bold text-sm outline-none focus:border-yellow-500 transition-all text-white"
+              />
+            </div>
+
+            {/* Search Results */}
+            {!selectedCompetidor && !selectedTouro && !selectedCia && relSearchQuery.trim() !== '' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* Competidores Results */}
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm">
+                  <h3 className="font-black italic uppercase text-yellow-500 mb-6 pb-2 border-b border-white/10">Competidores ({relSearchResultCompetidores.length})</h3>
+                  {relSearchResultCompetidores.length > 0 ? (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {relSearchResultCompetidores.map(c => (
+                        <div 
+                          key={c.id} 
+                          onClick={() => handleSelectCompetidor(c)}
+                          className="p-4 bg-black/40 border border-white/10 rounded-2xl hover:border-yellow-500 cursor-pointer transition-all"
+                        >
+                          <strong className="text-white text-sm uppercase">{c.nome}</strong>
+                          <div className="text-[10px] text-white/40 mt-1 uppercase">
+                            CPF: {c.cpf || 'Não informado'} | Cidade: {c.cidade || 'Não informada'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="text-xs text-white/30 font-bold uppercase tracking-wider">Nenhum competidor encontrado.</p>}
+                </div>
+
+                {/* Touros Results */}
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm">
+                  <h3 className="font-black italic uppercase text-yellow-500 mb-6 pb-2 border-b border-white/10">Touros ({relSearchResultTouros.length})</h3>
+                  {relSearchResultTouros.length > 0 ? (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {relSearchResultTouros.map(t => (
+                        <div 
+                          key={t.id} 
+                          onClick={() => handleSelectTouro(t)}
+                          className="p-4 bg-black/40 border border-white/10 rounded-2xl hover:border-yellow-500 cursor-pointer transition-all"
+                        >
+                          <strong className="text-white text-sm uppercase">{t.nome}</strong>
+                          <div className="text-[10px] text-white/40 mt-1 uppercase">
+                            Cia: {t.cia} | Lado: {t.lado || 'Não informado'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="text-xs text-white/30 font-bold uppercase tracking-wider">Nenhum touro encontrado.</p>}
+                </div>
+
+                {/* Cias Results */}
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm">
+                  <h3 className="font-black italic uppercase text-yellow-500 mb-6 pb-2 border-b border-white/10">Cias / Tropeiros ({relSearchResultCias.length})</h3>
+                  {relSearchResultCias.length > 0 ? (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {relSearchResultCias.map(cia => (
+                        <div 
+                          key={cia.id} 
+                          onClick={() => handleSelectCia(cia)}
+                          className="p-4 bg-black/40 border border-white/10 rounded-2xl hover:border-yellow-500 cursor-pointer transition-all"
+                        >
+                          <strong className="text-white text-sm uppercase">{cia.nome}</strong>
+                          <div className="text-[10px] text-white/40 mt-1 uppercase">Clique para ver os touros</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="text-xs text-white/30 font-bold uppercase tracking-wider">Nenhuma Cia encontrada.</p>}
+                </div>
+
+              </div>
+            )}
+
+            {/* Selected Competidor Profile */}
+            {selectedCompetidor && (
+              <div className="bg-white/5 border border-white/10 p-8 md:p-10 rounded-[2rem] backdrop-blur-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-white/10 pb-6 mb-8">
+                  <div>
+                    <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">Ficha do Competidor</span>
+                    <h3 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter mt-1">{selectedCompetidor.nome}</h3>
+                    <p className="text-xs font-bold text-white/40 uppercase tracking-wider mt-2">
+                      CPF: {selectedCompetidor.cpf || 'Não informado'} | Cidade: {selectedCompetidor.cidade || 'Não informada'}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => openManualRideModal(null, selectedCompetidor.id, null)} className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                      + Cadastrar Montaria
+                    </button>
+                    <button onClick={() => setSelectedCompetidor(null)} className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="font-black italic uppercase text-lg text-white mb-6">Histórico de Montarias ({relHistory.length})</h4>
+                  {relHistory.length > 0 ? (
+                    (() => {
+                      const eventsMap = new Map<number, { event: any, rides: any[] }>();
+                      relHistory.forEach(ride => {
+                        if (!ride.rel_eventos) return;
+                        const evId = ride.rel_eventos.id;
+                        if (!eventsMap.has(evId)) {
+                          eventsMap.set(evId, { event: ride.rel_eventos, rides: [] });
+                        }
+                        eventsMap.get(evId)!.rides.push(ride);
+                      });
+
+                      return Array.from(eventsMap.values()).map(({ event, rides }) => (
+                        <div key={event.id} className="bg-black/40 border border-white/10 rounded-[1.5rem] p-6 space-y-4">
+                          <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                            <div>
+                              <h5 className="font-black uppercase tracking-wider text-yellow-500">{event.nome}</h5>
+                              <span className="text-[10px] font-bold text-white/30 uppercase">Cidade: {event.cidade} | Data: {event.data}</span>
+                            </div>
+                            <button onClick={() => openManualRideModal(event.id, selectedCompetidor.id, null)} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all">
+                              + Adicionar Montaria
+                            </button>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                              <thead>
+                                <tr className="text-white/40 uppercase font-black border-b border-white/10">
+                                  <th className="pb-3">Round</th>
+                                  <th className="pb-3">Touro / Cia</th>
+                                  <th className="pb-3">Tempo</th>
+                                  <th className="pb-3">Notas (Peão / Touro)</th>
+                                  <th className="pb-3">Total</th>
+                                  <th className="pb-3">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="font-bold text-white/80">
+                                {rides.map(r => (
+                                  <tr key={r.id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                                    <td className="py-3">{r.dia}</td>
+                                    <td className="py-3">
+                                      {r.rel_touros ? (
+                                        <span onClick={() => handleSelectTouro(r.rel_touros)} className="text-yellow-500 cursor-pointer hover:underline">
+                                          {r.rel_touros.nome}
+                                        </span>
+                                      ) : 'Desconhecido'}
+                                      <div className="text-[9px] text-white/30 uppercase mt-0.5">Cia: {r.rel_touros?.cia || 'Desconhecida'}</div>
+                                    </td>
+                                    <td className="py-3">{r.tempo != null ? `${r.tempo}s` : '-'}</td>
+                                    <td className="py-3">
+                                      P: {r.j1_peao} / {r.j2_peao} | T: {r.j1_touro} / {r.j2_touro}
+                                    </td>
+                                    <td className="py-3 text-yellow-500">{r.nota_final} pts</td>
+                                    <td className="py-3 uppercase text-[10px]">
+                                      <span className={r.status === 'ativa' ? 'text-green-500' : 'text-red-500'}>{r.status}</span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ));
+                    })()
+                  ) : <p className="text-xs text-white/30 font-bold uppercase tracking-wider py-4">Nenhuma montaria registrada.</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Selected Touro Profile */}
+            {selectedTouro && (
+              <div className="bg-white/5 border border-white/10 p-8 md:p-10 rounded-[2rem] backdrop-blur-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-white/10 pb-6 mb-8">
+                  <div>
+                    <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">Ficha do Touro</span>
+                    <h3 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter mt-1">{selectedTouro.nome}</h3>
+                    <p className="text-xs font-bold text-white/40 uppercase tracking-wider mt-2">
+                      Cia: {selectedTouro.cia} | Lado: {selectedTouro.lado || 'Não informado'}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => openManualRideModal(null, null, selectedTouro.id)} className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                      + Cadastrar Montaria
+                    </button>
+                    <button onClick={() => setSelectedTouro(null)} className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="font-black italic uppercase text-lg text-white mb-6">Montarias nesse Touro ({relHistory.length})</h4>
+                  {relHistory.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="text-white/40 uppercase font-black border-b border-white/10">
+                            <th className="pb-3">Evento</th>
+                            <th className="pb-3">Competidor</th>
+                            <th className="pb-3">Round</th>
+                            <th className="pb-3">Tempo</th>
+                            <th className="pb-3">Nota Final</th>
+                            <th className="pb-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="font-bold text-white/80">
+                          {relHistory.map(r => (
+                            <tr key={r.id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                              <td className="py-3">
+                                <div className="text-white">{r.rel_eventos?.nome}</div>
+                                <div className="text-[9px] text-white/30 uppercase mt-0.5">{r.rel_eventos?.cidade}</div>
+                              </td>
+                              <td className="py-3">
+                                {r.rel_competidores ? (
+                                  <span onClick={() => handleSelectCompetidor(r.rel_competidores)} className="text-yellow-500 cursor-pointer hover:underline">
+                                    {r.rel_competidores.nome}
+                                  </span>
+                                ) : 'Desconhecido'}
+                                <div className="text-[9px] text-white/30 mt-0.5">CPF: {r.rel_competidores?.cpf || '-'}</div>
+                              </td>
+                              <td className="py-3">{r.dia}</td>
+                              <td className="py-3">{r.tempo != null ? `${r.tempo}s` : '-'}</td>
+                              <td className="py-3 text-yellow-500">{r.nota_final} pts</td>
+                              <td className="py-3 uppercase text-[10px]">
+                                <span className={r.status === 'ativa' ? 'text-green-500' : 'text-red-500'}>{r.status}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : <p className="text-xs text-white/30 font-bold uppercase tracking-wider py-4">Nenhuma montaria registrada.</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Selected Cia View */}
+            {selectedCia && (
+              <div className="bg-white/5 border border-white/10 p-8 md:p-10 rounded-[2rem] backdrop-blur-sm">
+                <div className="flex justify-between items-center border-b border-white/10 pb-6 mb-8">
+                  <div>
+                    <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">Companhia de Rodeio</span>
+                    <h3 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter mt-1">{selectedCia.nome}</h3>
+                  </div>
+                  <button onClick={() => setSelectedCia(null)} className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                    Voltar
+                  </button>
+                </div>
+
+                <div>
+                  <h4 className="font-black italic uppercase text-lg text-white mb-6">Touros Associados ({ciaBulls.length})</h4>
+                  {ciaBulls.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                      {ciaBulls.map(b => (
+                        <div 
+                          key={b.id} 
+                          onClick={() => handleSelectTouro(b)}
+                          className="p-6 bg-black/40 border border-white/10 rounded-2xl hover:border-yellow-500 cursor-pointer transition-all"
+                        >
+                          <h5 className="font-black uppercase tracking-wider text-yellow-500 text-sm">{b.nome}</h5>
+                          <span className="text-[10px] font-bold text-white/30 mt-1 block">Lado: {b.lado || 'Não informado'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="text-xs text-white/30 font-bold uppercase tracking-wider">Nenhum touro associado a esta Cia.</p>}
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+      {/* Manual Event Registration Modal */}
+      {isManualEventModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsManualEventModalOpen(false)}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Novo Evento Manual</h2>
+            <form onSubmit={handleCreateManualEvent} className="space-y-6">
+              <InputGroup label="Nome do Evento" value={manualEventName} onChange={setManualEventName} placeholder="Ex: RODEIO DE COLORADO" />
+              <InputGroup label="Cidade / Estado" value={manualEventCidade} onChange={setManualEventCidade} placeholder="Ex: COLORADO - PR" />
+              <InputGroup label="Data" value={manualEventData} onChange={setManualEventData} placeholder="Ex: 23/06/2026" required={false} />
+              
+              <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95">
+                Criar Evento
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Ride Registration Modal */}
+      {isManualRideModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsManualRideModalOpen(false)}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Cadastrar Montaria</h2>
+            <form onSubmit={handleCreateManualRide} className="space-y-6">
+              
+              <div>
+                <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Evento</label>
+                <select 
+                  className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                  value={manualRideEventId || ''} 
+                  onChange={e => setManualRideEventId(Number(e.target.value) || null)}
+                  required
+                >
+                  <option value="">-- Selecione o Evento --</option>
+                  {allRelEvents.map(e => (
+                    <option key={e.id} value={e.id}>{e.nome} ({e.cidade})</option>
+                  ))}
+                </select>
+              </div>
+
+              {!selectedCompetidor && (
+                <InputGroup label="ID do Competidor" type="number" value={manualRideCompetidorId || ''} onChange={(val: any) => setManualRideCompetidorId(Number(val) || null)} />
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <InputGroup label="Nome do Touro" value={manualRideTouroNome} onChange={setManualRideTouroNome} placeholder="Ex: ACESSO NEGADO" />
+                <InputGroup label="Cia / Tropeiro" value={manualRideCiaNome} onChange={setManualRideCiaNome} placeholder="Ex: TERCIO MIRANDA" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-6">
+                <InputGroup label="Round / Dia" value={rideDia} onChange={setRideDia} placeholder="Ex: DIA 1" />
+                <InputGroup label="Tempo (s)" type="number" value={rideTempo} onChange={setRideTempo} />
+                <div>
+                  <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Status</label>
+                  <select 
+                    className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                    value={rideStatus} 
+                    onChange={e => setRideStatus(e.target.value)}
+                  >
+                    <option value="ativa">Parada (8s)</option>
+                    <option value="queda">Queda</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-black/30 border border-white/10 p-6 rounded-2xl space-y-4">
+                <h4 className="font-black uppercase tracking-wider text-yellow-500 text-xs">Notas dos Juízes</h4>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <InputGroup label="J1 - Nota Peão" type="number" value={rideJ1Peao} onChange={setRideJ1Peao} />
+                  <InputGroup label="J1 - Nota Touro" type="number" value={rideJ1Touro} onChange={setRideJ1Touro} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <InputGroup label="J2 - Nota Peão" type="number" value={rideJ2Peao} onChange={setRideJ2Peao} />
+                  <InputGroup label="J2 - Nota Touro" type="number" value={rideJ2Touro} onChange={setRideJ2Touro} />
+                </div>
+              </div>
+
+              <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95">
+                Salvar Montaria
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Competidor Modal */}
+      {isNewCompetidorModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsNewCompetidorModalOpen(false)}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Novo Competidor</h2>
+            <form onSubmit={handleCreateCompetidor} className="space-y-6">
+              <InputGroup label="Nome Completo" value={newCompetidorNome} onChange={setNewCompetidorNome} placeholder="Ex: ADRIANO MORAES" />
+              <InputGroup label="CPF (Apenas números)" value={newCompetidorCpf} onChange={setNewCompetidorCpf} placeholder="Ex: 12345678901" required={false} />
+              <InputGroup label="Cidade de Origem" value={newCompetidorCidade} onChange={setNewCompetidorCidade} placeholder="Ex: QUINTANA - SP" required={false} />
+              
+              <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95">
+                Salvar Competidor
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Touro Modal */}
+      {isNewTouroModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsNewTouroModalOpen(false)}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Novo Touro</h2>
+            <form onSubmit={handleCreateTouro} className="space-y-6">
+              <InputGroup label="Nome do Touro" value={newTouroNome} onChange={setNewTouroNome} placeholder="Ex: ACESSO NEGADO" />
+              <InputGroup label="Cia / Proprietário" value={newTouroCia} onChange={setNewTouroCia} placeholder="Ex: TERCIO MIRANDA" />
+              <div>
+                <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Lado Preferido de Giro</label>
+                <select 
+                  className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                  value={newTouroLado} 
+                  onChange={e => setNewTouroLado(e.target.value)}
+                >
+                  <option value="Esquerdo">Esquerdo</option>
+                  <option value="Direito">Direito</option>
+                  <option value="Indefinido">Indefinido</option>
+                </select>
+              </div>
+              
+              <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95">
+                Salvar Touro
+              </button>
+            </form>
           </div>
         </div>
       )}
