@@ -1963,6 +1963,235 @@ app.on('ready', () => {
     }, 5000);
 });
 
+async function saveEventToRelationalDb(supabase, ev, email) {
+    try {
+        const evNome = ev.name.trim().toUpperCase();
+        const evCidade = (ev.city || 'DESCONHECIDA').trim().toUpperCase();
+        const evData = ev.days + ' dias';
+
+        // 1. Get or create event in rel_eventos
+        let relEvId = null;
+        const { data: existingEvs } = await supabase.from('rel_eventos')
+            .select('id')
+            .eq('nome', evNome)
+            .limit(1);
+
+        if (existingEvs && existingEvs.length > 0) {
+            relEvId = existingEvs[0].id;
+            // Update event
+            await supabase.from('rel_eventos')
+                .update({ cidade: evCidade, data: evData })
+                .eq('id', relEvId);
+            // Clean up existing rides for this event to rebuild them
+            await supabase.from('rel_montarias')
+                .delete()
+                .eq('evento_id', relEvId);
+        } else {
+            const { data: newEv, error: evErr } = await supabase.from('rel_eventos')
+                .insert({ nome: evNome, cidade: evCidade, data: evData, is_manual: false })
+                .select('id')
+                .single();
+            if (evErr) throw evErr;
+            relEvId = newEv.id;
+        }
+
+        // 2. Pre-process Competitors from ranking and notas
+        const competitors = []; // array of { name, cpf, cidade }
+        const ranking = ev.peoes || [];
+        const notas = ev.notas || [];
+
+        for (const rider of ranking) {
+            const name = rider.nome ? rider.nome.trim().toUpperCase() : '';
+            if (!name) continue;
+            const cpf = rider.cpf ? rider.cpf.replace(/\D/g, '') : '';
+            const cidade = rider.cidade || rider.local ? (rider.cidade || rider.local).trim().toUpperCase() : '';
+            competitors.push({ name, cpf, cidade });
+        }
+
+        for (const nota of notas) {
+            const name = nota.peao ? nota.peao.trim().toUpperCase() : '';
+            if (!name) continue;
+            const cpf = nota.cpf ? nota.cpf.replace(/\D/g, '') : '';
+            const existing = competitors.find(c => c.name === name);
+            if (existing) {
+                if (cpf && !existing.cpf) {
+                    existing.cpf = cpf;
+                }
+            } else {
+                competitors.push({ name, cpf, cidade: '' });
+            }
+        }
+
+        // Insert competitors and retrieve their database IDs
+        const compMap = new Map();
+        for (const comp of competitors) {
+            let compId = null;
+            if (comp.cpf) {
+                const { data: byCpf } = await supabase.from('rel_competidores')
+                    .select('id, cpf')
+                    .eq('cpf', comp.cpf)
+                    .maybeSingle();
+                if (byCpf) {
+                    compId = byCpf.id;
+                    await supabase.from('rel_competidores').update({ nome: comp.name }).eq('id', compId);
+                }
+            }
+
+            if (!compId) {
+                const { data: byName } = await supabase.from('rel_competidores')
+                    .select('id, cpf')
+                    .eq('nome', comp.name)
+                    .limit(1);
+                if (byName && byName.length > 0) {
+                    compId = byName[0].id;
+                    if (comp.cpf && !byName[0].cpf) {
+                        await supabase.from('rel_competidores').update({ cpf: comp.cpf }).eq('id', compId);
+                    }
+                }
+            }
+
+            if (!compId) {
+                const { data: newComp, error: insErr } = await supabase.from('rel_competidores')
+                    .insert({ nome: comp.name, cpf: comp.cpf || null, cidade: comp.cidade || null })
+                    .select('id')
+                    .single();
+                if (!insErr && newComp) {
+                    compId = newComp.id;
+                }
+            }
+
+            if (compId) {
+                compMap.set(comp.name, compId);
+                if (comp.cpf) compMap.set(comp.cpf, compId);
+            }
+        }
+
+        // 3. Insert Cias and Bulls
+        const boiadas = ev.boiadas || [];
+        const bullMap = new Map();
+
+        const ciasSet = new Set();
+        const bullsList = [];
+
+        for (const boiada of boiadas) {
+            const ciaName = boiada.nome ? boiada.nome.trim().toUpperCase() : '';
+            if (!ciaName) continue;
+            ciasSet.add(ciaName);
+
+            const lados = boiada.lados || {};
+            const touros = boiada.touros || Object.keys(lados);
+            for (const tName of touros) {
+                const bullName = tName.trim().toUpperCase();
+                if (!bullName || bullName === '__META') continue;
+                let lado = lados[tName] || '';
+                if (lado) lado = lado.trim();
+                bullsList.push({ name: bullName, cia: ciaName, lado });
+            }
+        }
+
+        for (const nota of notas) {
+            const ciaName = nota.cia ? nota.cia.trim().toUpperCase() : '';
+            const bullName = nota.touro ? nota.touro.trim().toUpperCase() : '';
+            if (ciaName) ciasSet.add(ciaName);
+            if (bullName && ciaName) {
+                const exists = bullsList.some(b => b.name === bullName && b.cia === ciaName);
+                if (!exists) {
+                    bullsList.push({ name: bullName, cia: ciaName, lado: '' });
+                }
+            }
+        }
+
+        for (const cia of ciasSet) {
+            const { data: existingCia } = await supabase.from('rel_cias')
+                .select('id')
+                .eq('nome', cia)
+                .maybeSingle();
+            if (!existingCia) {
+                await supabase.from('rel_cias').insert({ nome: cia });
+            }
+        }
+
+        for (const bull of bullsList) {
+            let bullId = null;
+            const { data: existingBull } = await supabase.from('rel_touros')
+                .select('id')
+                .eq('nome', bull.name)
+                .eq('cia', bull.cia)
+                .maybeSingle();
+
+            if (existingBull) {
+                bullId = existingBull.id;
+                if (bull.lado) {
+                    await supabase.from('rel_touros').update({ lado: bull.lado }).eq('id', bullId);
+                }
+            } else {
+                const { data: newBull, error: bErr } = await supabase.from('rel_touros')
+                    .insert({ nome: bull.name, cia: bull.cia, lado: bull.lado || null })
+                    .select('id')
+                    .single();
+                if (!bErr && newBull) {
+                    bullId = newBull.id;
+                }
+            }
+
+            if (bullId) {
+                bullMap.set(`${bull.name}#${bull.cia}`, bullId);
+            }
+        }
+
+        // 4. Insert Montarias
+        const montariasToInsert = [];
+        for (const nota of notas) {
+            const riderName = nota.peao ? nota.peao.trim().toUpperCase() : '';
+            const riderCpf = nota.cpf ? nota.cpf.replace(/\D/g, '') : '';
+            const bullName = nota.touro ? nota.touro.trim().toUpperCase() : '';
+            const ciaName = nota.cia ? nota.cia.trim().toUpperCase() : '';
+
+            if (!riderName) continue;
+
+            const compId = compMap.get(riderCpf) || compMap.get(riderName);
+            const bullId = bullMap.get(`${bullName}#${ciaName}`);
+
+            if (!compId) continue;
+
+            const dia = nota.dia || 'DIA 1';
+            const tempo = typeof nota.tempo === 'number' ? nota.tempo : parseFloat(nota.tempo) || null;
+            const j1_peao = typeof nota.j1_peao === 'number' ? nota.j1_peao : parseFloat(nota.j1_peao) || 0;
+            const j2_peao = typeof nota.j2_peao === 'number' ? nota.j2_peao : parseFloat(nota.j2_peao) || 0;
+            const j1_touro = typeof nota.j1_touro === 'number' ? nota.j1_touro : parseFloat(nota.j1_touro) || 0;
+            const j2_touro = typeof nota.j2_touro === 'number' ? nota.j2_touro : parseFloat(nota.j2_touro) || 0;
+            const total_peao = typeof nota.totalPeao === 'number' ? nota.totalPeao : parseFloat(nota.totalPeao) || (j1_peao + j2_peao);
+            const total_touro = typeof nota.totalTouro === 'number' ? nota.totalTouro : parseFloat(nota.totalTouro) || (j1_touro + j2_touro);
+            const nota_final = total_peao + total_touro;
+            const status = nota.status || 'ativa';
+
+            montariasToInsert.push({
+                evento_id: relEvId,
+                competidor_id: compId,
+                touro_id: bullId || null,
+                dia,
+                tempo,
+                j1_peao,
+                j2_peao,
+                j1_touro,
+                j2_touro,
+                total_peao,
+                total_touro,
+                nota_final,
+                status
+            });
+        }
+
+        if (montariasToInsert.length > 0) {
+            await supabase.from('rel_montarias').insert(montariasToInsert);
+        }
+
+        console.log(`Relational sync completed for event: ${evNome}`);
+    } catch (err) {
+        console.error("Error in saveEventToRelationalDb:", err);
+    }
+}
+
 // Envio para o Portal
 ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
     try {
@@ -2018,6 +2247,9 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
             const { error } = await supabase.from('eventos_oficiais').insert([payload]);
             if (error) throw error;
         }
+        
+        // Sincroniza dados relacionais no portal
+        await saveEventToRelationalDb(supabase, ev, email);
         
         return { success: true };
     } catch (e) {

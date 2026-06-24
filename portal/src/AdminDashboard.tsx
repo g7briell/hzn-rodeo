@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import BoiadaVisualEditor from './BoiadaVisualEditor';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias' | 'patrocinios'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias' | 'patrocinios' | 'competidores'>('overview');
   
   const [users, setUsers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -11,6 +11,54 @@ export default function AdminDashboard() {
   const [patrocinios, setPatrocinios] = useState<any[]>([]);
   const [despesas, setDespesas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Competidores & Touros state
+  const [relSearchQuery, setRelSearchQuery] = useState('');
+  const [relSearchResultCompetidores, setRelSearchResultCompetidores] = useState<any[]>([]);
+  const [relSearchResultTouros, setRelSearchResultTouros] = useState<any[]>([]);
+  const [relSearchResultCias, setRelSearchResultCias] = useState<any[]>([]);
+  
+  const [selectedCompetidor, setSelectedCompetidor] = useState<any>(null);
+  const [selectedTouro, setSelectedTouro] = useState<any>(null);
+  const [selectedCia, setSelectedCia] = useState<any>(null);
+  const [ciaBulls, setCiaBulls] = useState<any[]>([]);
+  const [relHistory, setRelHistory] = useState<any[]>([]);
+  const [allRelEvents, setAllRelEvents] = useState<any[]>([]);
+
+  // Modals for relational DB
+  const [isManualEventModalOpen, setIsManualEventModalOpen] = useState(false);
+  const [manualEventName, setManualEventName] = useState('');
+  const [manualEventCidade, setManualEventCidade] = useState('');
+  const [manualEventData, setManualEventData] = useState('');
+
+  const [isManualRideModalOpen, setIsManualRideModalOpen] = useState(false);
+  const [manualRideEventId, setManualRideEventId] = useState<number | null>(null);
+  const [manualRideCompetidorId, setManualRideCompetidorId] = useState<number | null>(null);
+  const [manualRideTouroId, setManualRideTouroId] = useState<number | null>(null);
+  
+  // Forms for adding/creating a new ride
+  const [rideDia, setRideDia] = useState('DIA 1');
+  const [rideTempo, setRideTempo] = useState('8.0');
+  const [rideJ1Peao, setRideJ1Peao] = useState('0');
+  const [rideJ2Peao, setRideJ2Peao] = useState('0');
+  const [rideJ1Touro, setRideJ1Touro] = useState('0');
+  const [rideJ2Touro, setRideJ2Touro] = useState('0');
+  const [rideStatus, setRideStatus] = useState('ativa');
+
+  // Input states for inserting competitor/bull on-the-fly during manual creation
+  const [manualRideTouroNome, setManualRideTouroNome] = useState('');
+  const [manualRideCiaNome, setManualRideCiaNome] = useState('');
+
+  // Editing/Creating new competitors / bulls
+  const [isNewCompetidorModalOpen, setIsNewCompetidorModalOpen] = useState(false);
+  const [newCompetidorNome, setNewCompetidorNome] = useState('');
+  const [newCompetidorCpf, setNewCompetidorCpf] = useState('');
+  const [newCompetidorCidade, setNewCompetidorCidade] = useState('');
+
+  const [isNewTouroModalOpen, setIsNewTouroModalOpen] = useState(false);
+  const [newTouroNome, setNewTouroNome] = useState('');
+  const [newTouroCia, setNewTouroCia] = useState('');
+  const [newTouroLado, setNewTouroLado] = useState('Esquerdo');
 
   // Edit Modals State
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -70,6 +118,276 @@ export default function AdminDashboard() {
       console.error('Error fetching admin data', err);
     }
     setLoading(false);
+  };
+
+  const handleRelationalSearch = async (query: string) => {
+    setRelSearchQuery(query);
+    if (!query.trim()) {
+      setRelSearchResultCompetidores([]);
+      setRelSearchResultTouros([]);
+      setRelSearchResultCias([]);
+      return;
+    }
+
+    try {
+      const cleanQ = query.trim();
+      
+      // 1. Search Competidores
+      let compReq = supabase.from('rel_competidores').select('*');
+      if (/\d/.test(cleanQ)) {
+        compReq = compReq.ilike('cpf', `%${cleanQ.replace(/\D/g, '')}%`);
+      } else {
+        compReq = compReq.ilike('nome', `%${cleanQ}%`);
+      }
+      const { data: comps } = await compReq.limit(20);
+      setRelSearchResultCompetidores(comps || []);
+
+      // 2. Search Bulls
+      const { data: bulls } = await supabase.from('rel_touros')
+        .select('*')
+        .ilike('nome', `%${cleanQ}%`)
+        .limit(20);
+      setRelSearchResultTouros(bulls || []);
+
+      // 3. Search Cias
+      const { data: cias } = await supabase.from('rel_cias')
+        .select('*')
+        .ilike('nome', `%${cleanQ}%`)
+        .limit(20);
+      setRelSearchResultCias(cias || []);
+    } catch (err) {
+      console.error("Error searching relational DB", err);
+    }
+  };
+
+  const handleSelectCompetidor = async (comp: any) => {
+    setSelectedCompetidor(comp);
+    setSelectedTouro(null);
+    setSelectedCia(null);
+    try {
+      const { data: rides, error } = await supabase.from('rel_montarias')
+        .select('*, rel_eventos(*), rel_touros(*)')
+        .eq('competidor_id', comp.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setRelHistory(rides || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectTouro = async (bull: any) => {
+    setSelectedTouro(bull);
+    setSelectedCompetidor(null);
+    setSelectedCia(null);
+    try {
+      const { data: rides, error } = await supabase.from('rel_montarias')
+        .select('*, rel_eventos(*), rel_competidores(*)')
+        .eq('touro_id', bull.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setRelHistory(rides || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectCia = async (cia: any) => {
+    setSelectedCia(cia);
+    setSelectedCompetidor(null);
+    setSelectedTouro(null);
+    try {
+      const { data: bulls, error } = await supabase.from('rel_touros')
+        .select('*')
+        .eq('cia', cia.nome)
+        .order('nome', { ascending: true });
+      if (error) throw error;
+      setCiaBulls(bulls || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateManualEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualEventName || !manualEventCidade) return alert("Preencha nome e cidade.");
+    try {
+      const { error } = await supabase.from('rel_eventos')
+        .insert({
+          nome: manualEventName.trim().toUpperCase(),
+          cidade: manualEventCidade.trim().toUpperCase(),
+          data: manualEventData || new Date().toLocaleDateString('pt-BR'),
+          is_manual: true
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      
+      alert("Evento criado com sucesso!");
+      setIsManualEventModalOpen(false);
+      setManualEventName('');
+      setManualEventCidade('');
+      setManualEventData('');
+
+      if (selectedCompetidor) {
+        handleSelectCompetidor(selectedCompetidor);
+      }
+    } catch (err: any) {
+      alert("Erro ao criar evento: " + err.message);
+    }
+  };
+
+  const handleCreateManualRide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualRideEventId) return alert("Selecione um evento.");
+    if (!manualRideTouroNome || !manualRideCiaNome) return alert("Preencha Touro e Cia.");
+
+    try {
+      const tName = manualRideTouroNome.trim().toUpperCase();
+      const cName = manualRideCiaNome.trim().toUpperCase();
+
+      // Resolve Cia
+      const { data: ciaData } = await supabase.from('rel_cias').select('id').eq('nome', cName).maybeSingle();
+      if (!ciaData) {
+        await supabase.from('rel_cias').insert({ nome: cName });
+      }
+
+      // Resolve Touro
+      let { data: bullData } = await supabase.from('rel_touros').select('id').eq('nome', tName).eq('cia', cName).maybeSingle();
+      let bId = bullData?.id;
+      if (!bId) {
+        const { data: newB } = await supabase.from('rel_touros').insert({ nome: tName, cia: cName }).select('id').single();
+        bId = newB?.id;
+      }
+
+      const tVal = parseFloat(rideTempo) || 0;
+      const j1p = parseFloat(rideJ1Peao) || 0;
+      const j2p = parseFloat(rideJ2Peao) || 0;
+      const j1t = parseFloat(rideJ1Touro) || 0;
+      const j2t = parseFloat(rideJ2Touro) || 0;
+
+      const totPeao = j1p + j2p;
+      const totTouro = j1t + j2t;
+      const notaFin = totPeao + totTouro;
+
+      const payload = {
+        evento_id: manualRideEventId,
+        competidor_id: selectedCompetidor ? selectedCompetidor.id : manualRideCompetidorId,
+        touro_id: bId || manualRideTouroId || null,
+        dia: rideDia || 'DIA 1',
+        tempo: tVal,
+        j1_peao: j1p,
+        j2_peao: j2p,
+        j1_touro: j1t,
+        j2_touro: j2t,
+        total_peao: totPeao,
+        total_touro: totTouro,
+        nota_final: notaFin,
+        status: rideStatus
+      };
+
+      const { error } = await supabase.from('rel_montarias').insert(payload);
+      if (error) throw error;
+
+      alert("Montaria adicionada com sucesso!");
+      setIsManualRideModalOpen(false);
+
+      setManualRideTouroNome('');
+      setManualRideCiaNome('');
+      setRideTempo('8.0');
+      setRideJ1Peao('0');
+      setRideJ2Peao('0');
+      setRideJ1Touro('0');
+      setRideJ2Touro('0');
+
+      if (selectedCompetidor) {
+        handleSelectCompetidor(selectedCompetidor);
+      } else if (selectedTouro) {
+        handleSelectTouro(selectedTouro);
+      }
+    } catch (err: any) {
+      alert("Erro ao salvar montaria: " + err.message);
+    }
+  };
+
+  const handleCreateCompetidor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCompetidorNome) return alert("Nome é obrigatório.");
+    try {
+      const { data, error } = await supabase.from('rel_competidores')
+        .insert({
+          nome: newCompetidorNome.trim().toUpperCase(),
+          cpf: newCompetidorCpf.replace(/\D/g, '') || null,
+          cidade: newCompetidorCidade.trim().toUpperCase() || null
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      alert("Competidor cadastrado com sucesso!");
+      setIsNewCompetidorModalOpen(false);
+      setNewCompetidorNome('');
+      setNewCompetidorCpf('');
+      setNewCompetidorCidade('');
+      handleSelectCompetidor(data);
+    } catch (err: any) {
+      alert("Erro ao cadastrar competidor: " + err.message);
+    }
+  };
+
+  const handleCreateTouro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTouroNome || !newTouroCia) return alert("Nome e Cia são obrigatórios.");
+    try {
+      const cName = newTouroCia.trim().toUpperCase();
+      const tName = newTouroNome.trim().toUpperCase();
+
+      const { data: ciaData } = await supabase.from('rel_cias').select('id').eq('nome', cName).maybeSingle();
+      if (!ciaData) {
+        await supabase.from('rel_cias').insert({ nome: cName });
+      }
+
+      const { data, error } = await supabase.from('rel_touros')
+        .insert({
+          nome: tName,
+          cia: cName,
+          lado: newTouroLado
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      alert("Touro cadastrado com sucesso!");
+      setIsNewTouroModalOpen(false);
+      setNewTouroNome('');
+      setNewTouroCia('');
+      handleSelectTouro(data);
+    } catch (err: any) {
+      alert("Erro ao cadastrar touro: " + err.message);
+    }
+  };
+
+  const openManualRideModal = async (eventId: number | null, compId: number | null, bullId: number | null) => {
+    setManualRideEventId(eventId);
+    setManualRideCompetidorId(compId);
+    setManualRideTouroId(bullId);
+    
+    if (bullId) {
+      const { data: bull } = await supabase.from('rel_touros').select('*').eq('id', bullId).maybeSingle();
+      if (bull) {
+        setManualRideTouroNome(bull.nome);
+        setManualRideCiaNome(bull.cia);
+      }
+    } else {
+      setManualRideTouroNome('');
+      setManualRideCiaNome('');
+    }
+    
+    // Fetch all events for the dropdown
+    const { data } = await supabase.from('rel_eventos').select('*').order('nome', { ascending: true });
+    setAllRelEvents(data || []);
+    
+    setIsManualRideModalOpen(true);
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -372,6 +690,9 @@ export default function AdminDashboard() {
         </button>
         <button className={`btn ${activeTab === 'patrocinios' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('patrocinios')}>
           Patrocínios & Finanças
+        </button>
+        <button className={`btn ${activeTab === 'competidores' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('competidores')}>
+          Competidores & Animais
         </button>
       </div>
 
@@ -1093,6 +1414,587 @@ export default function AdminDashboard() {
 
               <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }} disabled={isSavingExpense}>
                 {isSavingExpense ? 'Salvando...' : 'Confirmar Despesa'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'competidores' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          {/* Header Actions */}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={() => setIsNewCompetidorModalOpen(true)}>
+              + Cadastrar Competidor
+            </button>
+            <button className="btn btn-outline" style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }} onClick={() => setIsNewTouroModalOpen(true)}>
+              + Cadastrar Novo Touro
+            </button>
+            <button className="btn btn-outline" onClick={() => setIsManualEventModalOpen(true)}>
+              + Criar Novo Evento Manual
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+            <label className="form-label" style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Pesquisar Competidor (Nome ou CPF), Touro ou Cia</label>
+            <input 
+              className="form-input" 
+              value={relSearchQuery} 
+              onChange={e => handleRelationalSearch(e.target.value)} 
+              placeholder="Digite o nome do peão, CPF (apenas números), nome do touro ou nome da Cia..." 
+              style={{ fontSize: '1.1rem', padding: '0.8rem' }}
+            />
+          </div>
+
+          {/* Search Results */}
+          {!selectedCompetidor && !selectedTouro && !selectedCia && relSearchQuery.trim() !== '' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+              
+              {/* Competidores Results */}
+              <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--primary)', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem' }}>
+                  Competidores ({relSearchResultCompetidores.length})
+                </h3>
+                {relSearchResultCompetidores.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {relSearchResultCompetidores.map(c => (
+                      <div 
+                        key={c.id} 
+                        onClick={() => handleSelectCompetidor(c)}
+                        style={{ padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', cursor: 'pointer', border: '1px solid transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+                      >
+                        <strong>{c.nome}</strong>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          CPF: {c.cpf || 'Não informado'} | Cidade: {c.cidade || 'Não informada'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p style={{ color: 'var(--text-muted)' }}>Nenhum competidor encontrado.</p>}
+              </div>
+
+              {/* Touros Results */}
+              <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--primary)', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem' }}>
+                  Touros ({relSearchResultTouros.length})
+                </h3>
+                {relSearchResultTouros.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {relSearchResultTouros.map(t => (
+                      <div 
+                        key={t.id} 
+                        onClick={() => handleSelectTouro(t)}
+                        style={{ padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', cursor: 'pointer', border: '1px solid transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+                      >
+                        <strong>{t.nome}</strong>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          Cia: {t.cia} | Lado: {t.lado || 'Não informado'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p style={{ color: 'var(--text-muted)' }}>Nenhum touro encontrado.</p>}
+              </div>
+
+              {/* Cias Results */}
+              <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--primary)', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem' }}>
+                  Cias / Tropeiros ({relSearchResultCias.length})
+                </h3>
+                {relSearchResultCias.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {relSearchResultCias.map(cia => (
+                      <div 
+                        key={cia.id} 
+                        onClick={() => handleSelectCia(cia)}
+                        style={{ padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', cursor: 'pointer', border: '1px solid transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+                      >
+                        <strong>{cia.nome}</strong>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Clique para ver os touros desta Cia</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p style={{ color: 'var(--text-muted)' }}>Nenhuma Cia encontrada.</p>}
+              </div>
+
+            </div>
+          )}
+
+          {/* Selected Competidor Profile View */}
+          {selectedCompetidor && (
+            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1.5rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Ficha do Competidor</span>
+                  <h2 style={{ fontSize: '2.2rem', margin: '0.2rem 0', textTransform: 'uppercase', fontWeight: '900' }}>{selectedCompetidor.nome}</h2>
+                  <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+                    <strong>CPF:</strong> {selectedCompetidor.cpf || 'Não informado'} | <strong>Cidade:</strong> {selectedCompetidor.cidade || 'Não informada'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-outline" onClick={() => openManualRideModal(null, selectedCompetidor.id, null)}>
+                    + Cadastrar Montaria
+                  </button>
+                  <button className="btn btn-outline" onClick={() => setSelectedCompetidor(null)}>
+                    Voltar à Pesquisa
+                  </button>
+                </div>
+              </div>
+
+              {/* Rides History by Event */}
+              <div>
+                <h3 style={{ fontSize: '1.3rem', marginBottom: '1.5rem', textTransform: 'uppercase' }}>Histórico de Eventos e Montarias ({relHistory.length})</h3>
+                {relHistory.length > 0 ? (
+                  (() => {
+                    // Group rides by event
+                    const eventsMap = new Map<number, { event: any, rides: any[] }>();
+                    relHistory.forEach(ride => {
+                      if (!ride.rel_eventos) return;
+                      const evId = ride.rel_eventos.id;
+                      if (!eventsMap.has(evId)) {
+                        eventsMap.set(evId, { event: ride.rel_eventos, rides: [] });
+                      }
+                      eventsMap.get(evId)!.rides.push(ride);
+                    });
+
+                    return Array.from(eventsMap.values()).map(({ event, rides }) => (
+                      <div key={event.id} style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '1.2rem', textTransform: 'uppercase', color: 'var(--primary)' }}>{event.nome}</h4>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Cidade: {event.cidade} | Data: {event.data || 'Não informada'}</span>
+                          </div>
+                          <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', height: 'auto' }} onClick={() => openManualRideModal(event.id, selectedCompetidor.id, null)}>
+                            + Adicionar Montaria
+                          </button>
+                        </div>
+
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                            <thead>
+                              <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                                <th style={{ padding: '0.6rem', borderBottom: '1px solid var(--border-light)' }}>Round</th>
+                                <th style={{ padding: '0.6rem', borderBottom: '1px solid var(--border-light)' }}>Touro / Cia</th>
+                                <th style={{ padding: '0.6rem', borderBottom: '1px solid var(--border-light)' }}>Tempo</th>
+                                <th style={{ padding: '0.6rem', borderBottom: '1px solid var(--border-light)' }}>Notas Juízes (Peão/Touro)</th>
+                                <th style={{ padding: '0.6rem', borderBottom: '1px solid var(--border-light)' }}>Total</th>
+                                <th style={{ padding: '0.6rem', borderBottom: '1px solid var(--border-light)' }}>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rides.map(r => (
+                                <tr key={r.id}>
+                                  <td style={{ padding: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{r.dia}</td>
+                                  <td style={{ padding: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    {r.rel_touros ? (
+                                      <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleSelectTouro(r.rel_touros)}>
+                                        {r.rel_touros.nome}
+                                      </span>
+                                    ) : 'Desconhecido'}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cia: {r.rel_touros?.cia || 'Desconhecida'}</div>
+                                  </td>
+                                  <td style={{ padding: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{r.tempo != null ? `${r.tempo}s` : '-'}</td>
+                                  <td style={{ padding: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    P: {r.j1_peao} / {r.j2_peao} | T: {r.j1_touro} / {r.j2_touro}
+                                  </td>
+                                  <td style={{ padding: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.05)', fontWeight: 'bold' }}>{r.nota_final} pts</td>
+                                  <td style={{ padding: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <span style={{ color: r.status === 'ativa' ? '#10b981' : '#ef4444', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                      {r.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ));
+                  })()
+                ) : (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Este competidor ainda não tem montarias registradas.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Selected Touro Profile View */}
+          {selectedTouro && (
+            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1.5rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Ficha do Touro</span>
+                  <h2 style={{ fontSize: '2.2rem', margin: '0.2rem 0', textTransform: 'uppercase', fontWeight: '900' }}>{selectedTouro.nome}</h2>
+                  <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+                    <strong>CIA / Tropeiro:</strong> {selectedTouro.cia} | <strong>Lado de Pulada:</strong> {selectedTouro.lado || 'Não informado'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-outline" onClick={() => openManualRideModal(null, null, selectedTouro.id)}>
+                    + Cadastrar Montaria
+                  </button>
+                  <button className="btn btn-outline" onClick={() => setSelectedTouro(null)}>
+                    Voltar à Pesquisa
+                  </button>
+                </div>
+              </div>
+
+              {/* Rides History */}
+              <div>
+                <h3 style={{ fontSize: '1.3rem', marginBottom: '1.5rem', textTransform: 'uppercase' }}>Montarias registradas neste Touro ({relHistory.length})</h3>
+                {relHistory.length > 0 ? (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                          <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Evento</th>
+                          <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Competidor</th>
+                          <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Round</th>
+                          <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Tempo</th>
+                          <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Nota Final</th>
+                          <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {relHistory.map(r => (
+                          <tr key={r.id}>
+                            <td style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                              <strong>{r.rel_eventos?.nome || 'Manual'}</strong>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.rel_eventos?.cidade}</div>
+                            </td>
+                            <td style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                              {r.rel_competidores ? (
+                                <span style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => handleSelectCompetidor(r.rel_competidores)}>
+                                  {r.rel_competidores.nome}
+                                </span>
+                              ) : 'Desconhecido'}
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>CPF: {r.rel_competidores?.cpf || '-'}</div>
+                            </td>
+                            <td style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{r.dia}</td>
+                            <td style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{r.tempo != null ? `${r.tempo}s` : '-'}</td>
+                            <td style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', fontWeight: 'bold' }}>{r.nota_final} pts</td>
+                            <td style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                              <span style={{ color: r.status === 'ativa' ? '#10b981' : '#ef4444', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                {r.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Nenhuma montaria registrada neste touro.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Selected Cia View */}
+          {selectedCia && (
+            <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1.5rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Companhia de Rodeio</span>
+                  <h2 style={{ fontSize: '2.2rem', margin: '0.2rem 0', textTransform: 'uppercase', fontWeight: '900' }}>{selectedCia.nome}</h2>
+                </div>
+                <button className="btn btn-outline" onClick={() => setSelectedCia(null)}>
+                  Voltar à Pesquisa
+                </button>
+              </div>
+
+              {/* Bulls List */}
+              <div>
+                <h3 style={{ fontSize: '1.3rem', marginBottom: '1.5rem', textTransform: 'uppercase' }}>Touros Associados ({ciaBulls.length})</h3>
+                {ciaBulls.length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+                    {ciaBulls.map(b => (
+                      <div 
+                        key={b.id} 
+                        onClick={() => handleSelectTouro(b)}
+                        style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
+                      >
+                        <h4 style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase' }}>{b.nome}</h4>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lado: {b.lado || 'Não informado'}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: 'var(--text-muted)' }}>Nenhum touro associado a esta Cia no momento.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* Manual Event Registration Modal */}
+      {isManualEventModalOpen && (
+        <div className="modal-overlay active" style={{ display: 'flex' }}>
+          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%' }}>
+            <button className="close-btn" onClick={() => setIsManualEventModalOpen(false)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', textTransform: 'uppercase' }}>Novo Evento Manual</h2>
+            <form onSubmit={handleCreateManualEvent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Nome do Evento</label>
+                <input 
+                  className="form-input" 
+                  value={manualEventName} 
+                  onChange={e => setManualEventName(e.target.value)} 
+                  placeholder="Ex: RODEIO DE COLORADO"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="form-label">Cidade / Estado</label>
+                <input 
+                  className="form-input" 
+                  value={manualEventCidade} 
+                  onChange={e => setManualEventCidade(e.target.value)} 
+                  placeholder="Ex: COLORADO - PR"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="form-label">Data</label>
+                <input 
+                  className="form-input" 
+                  value={manualEventData} 
+                  onChange={e => setManualEventData(e.target.value)} 
+                  placeholder="Ex: 23/06/2026"
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
+                Criar Evento
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Ride Registration Modal */}
+      {isManualRideModalOpen && (
+        <div className="modal-overlay active" style={{ display: 'flex' }}>
+          <div className="auth-modal" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button className="close-btn" onClick={() => setIsManualRideModalOpen(false)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', textTransform: 'uppercase' }}>Cadastrar Montaria</h2>
+            <form onSubmit={handleCreateManualRide} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              <div>
+                <label className="form-label">Evento</label>
+                <select 
+                  className="form-input" 
+                  value={manualRideEventId || ''} 
+                  onChange={e => setManualRideEventId(Number(e.target.value) || null)}
+                  required
+                >
+                  <option value="">-- Selecione o Evento --</option>
+                  {allRelEvents.map(e => (
+                    <option key={e.id} value={e.id}>{e.nome} ({e.cidade})</option>
+                  ))}
+                </select>
+              </div>
+
+              {!selectedCompetidor && (
+                <div>
+                  <label className="form-label">ID do Competidor</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    value={manualRideCompetidorId || ''} 
+                    onChange={e => setManualRideCompetidorId(Number(e.target.value) || null)} 
+                    required 
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Nome do Touro</label>
+                  <input 
+                    className="form-input" 
+                    value={manualRideTouroNome} 
+                    onChange={e => setManualRideTouroNome(e.target.value)} 
+                    placeholder="Ex: ACESSO NEGADO"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Cia / Tropeiro</label>
+                  <input 
+                    className="form-input" 
+                    value={manualRideCiaNome} 
+                    onChange={e => setManualRideCiaNome(e.target.value)} 
+                    placeholder="Ex: TERCIO MIRANDA"
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Round / Dia</label>
+                  <input 
+                    className="form-input" 
+                    value={rideDia} 
+                    onChange={e => setRideDia(e.target.value)} 
+                    placeholder="Ex: DIA 1"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Tempo (segundos)</label>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    className="form-input" 
+                    value={rideTempo} 
+                    onChange={e => setRideTempo(e.target.value)} 
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Status</label>
+                  <select 
+                    className="form-input" 
+                    value={rideStatus} 
+                    onChange={e => setRideStatus(e.target.value)}
+                  >
+                    <option value="ativa">Parada (8 segundos)</option>
+                    <option value="queda">Queda</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', color: 'var(--primary)', textTransform: 'uppercase' }}>Notas dos Juízes</h4>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label className="form-label">Juiz 1 - Nota Peão</label>
+                    <input type="number" step="0.25" className="form-input" value={rideJ1Peao} onChange={e => setRideJ1Peao(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="form-label">Juiz 1 - Nota Touro</label>
+                    <input type="number" step="0.25" className="form-input" value={rideJ1Touro} onChange={e => setRideJ1Touro(e.target.value)} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label className="form-label">Juiz 2 - Nota Peão</label>
+                    <input type="number" step="0.25" className="form-input" value={rideJ2Peao} onChange={e => setRideJ2Peao(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="form-label">Juiz 2 - Nota Touro</label>
+                    <input type="number" step="0.25" className="form-input" value={rideJ2Touro} onChange={e => setRideJ2Touro(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
+                Salvar Montaria
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Competidor Modal */}
+      {isNewCompetidorModalOpen && (
+        <div className="modal-overlay active" style={{ display: 'flex' }}>
+          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%' }}>
+            <button className="close-btn" onClick={() => setIsNewCompetidorModalOpen(false)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', textTransform: 'uppercase' }}>Novo Competidor</h2>
+            <form onSubmit={handleCreateCompetidor} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Nome Completo</label>
+                <input 
+                  className="form-input" 
+                  value={newCompetidorNome} 
+                  onChange={e => setNewCompetidorNome(e.target.value)} 
+                  placeholder="Ex: ADRIANO MORAES"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="form-label">CPF (Apenas números)</label>
+                <input 
+                  className="form-input" 
+                  value={newCompetidorCpf} 
+                  onChange={e => setNewCompetidorCpf(e.target.value)} 
+                  placeholder="Ex: 12345678901"
+                />
+              </div>
+              <div>
+                <label className="form-label">Cidade de Origem</label>
+                <input 
+                  className="form-input" 
+                  value={newCompetidorCidade} 
+                  onChange={e => setNewCompetidorCidade(e.target.value)} 
+                  placeholder="Ex: QUINTANA - SP"
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
+                Salvar Competidor
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Touro Modal */}
+      {isNewTouroModalOpen && (
+        <div className="modal-overlay active" style={{ display: 'flex' }}>
+          <div className="auth-modal" style={{ maxWidth: '500px', width: '100%' }}>
+            <button className="close-btn" onClick={() => setIsNewTouroModalOpen(false)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', textTransform: 'uppercase' }}>Novo Touro</h2>
+            <form onSubmit={handleCreateTouro} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Nome do Touro</label>
+                <input 
+                  className="form-input" 
+                  value={newTouroNome} 
+                  onChange={e => setNewTouroNome(e.target.value)} 
+                  placeholder="Ex: ACESSO NEGADO"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="form-label">Cia / Proprietário</label>
+                <input 
+                  className="form-input" 
+                  value={newTouroCia} 
+                  onChange={e => setNewTouroCia(e.target.value)} 
+                  placeholder="Ex: TERCIO MIRANDA"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="form-label">Lado Preferido de Giro</label>
+                <select 
+                  className="form-input" 
+                  value={newTouroLado} 
+                  onChange={e => setNewTouroLado(e.target.value)}
+                >
+                  <option value="Esquerdo">Esquerdo</option>
+                  <option value="Direito">Direito</option>
+                  <option value="Indefinido">Indefinido</option>
+                </select>
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
+                Salvar Touro
               </button>
             </form>
           </div>
