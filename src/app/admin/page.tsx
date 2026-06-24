@@ -153,6 +153,7 @@ export default function AdminDashboard() {
   const [isManualRideModalOpen, setIsManualRideModalOpen] = useState(false);
   const [manualRideEventId, setManualRideEventId] = useState<number | null>(null);
   const [manualRideCompetidorId, setManualRideCompetidorId] = useState<number | null>(null);
+  const [manualRideCompetidorNome, setManualRideCompetidorNome] = useState('');
   const [manualRideTouroId, setManualRideTouroId] = useState<number | null>(null);
   
   // Forms for adding/creating a new ride
@@ -1135,6 +1136,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!manualRideEventId) return alert("Selecione um evento.");
     if (!manualRideTouroNome || !manualRideCiaNome) return alert("Preencha Touro e Cia.");
+    if (!selectedCompetidor && !manualRideCompetidorNome) return alert("Preencha o Nome do Competidor.");
 
     try {
       const tName = manualRideTouroNome.trim().toUpperCase();
@@ -1164,9 +1166,21 @@ export default function AdminDashboard() {
       const totTouro = j1t + j2t;
       const notaFin = totPeao + totTouro;
 
+      // Resolve Competidor
+      let cId = selectedCompetidor ? selectedCompetidor.id : manualRideCompetidorId;
+      if (!cId && manualRideCompetidorNome) {
+        const compName = manualRideCompetidorNome.trim().toUpperCase();
+        let { data: compData } = await supabase.from('rel_competidores').select('id').eq('nome', compName).maybeSingle();
+        cId = compData?.id;
+        if (!cId) {
+          const { data: newC } = await supabase.from('rel_competidores').insert({ nome: compName }).select('id').single();
+          cId = newC?.id;
+        }
+      }
+
       const payload = {
         evento_id: manualRideEventId,
-        competidor_id: selectedCompetidor ? selectedCompetidor.id : manualRideCompetidorId,
+        competidor_id: cId || null,
         touro_id: bId || manualRideTouroId || null,
         dia: rideDia || 'DIA 1',
         tempo: tVal,
@@ -1193,6 +1207,7 @@ export default function AdminDashboard() {
 
       setManualRideTouroNome('');
       setManualRideCiaNome('');
+      setManualRideCompetidorNome('');
       setRideTempo('8.0');
       setRideJ1Peao('0');
       setRideJ2Peao('0');
@@ -1286,6 +1301,17 @@ export default function AdminDashboard() {
     setManualRideCompetidorId(compId);
     setManualRideTouroId(bullId);
     
+    if (compId) {
+      const { data: comp } = await supabase.from('rel_competidores').select('*').eq('id', compId).maybeSingle();
+      if (comp) {
+        setManualRideCompetidorNome(comp.nome);
+      } else {
+        setManualRideCompetidorNome('');
+      }
+    } else {
+      setManualRideCompetidorNome('');
+    }
+
     if (bullId) {
       const { data: bull } = await supabase.from('rel_touros').select('*').eq('id', bullId).maybeSingle();
       if (bull) {
@@ -2917,7 +2943,7 @@ export default function AdminDashboard() {
               </div>
 
               {!selectedCompetidor && (
-                <InputGroup label="ID do Competidor" type="number" value={manualRideCompetidorId || ''} onChange={(val: any) => setManualRideCompetidorId(Number(val) || null)} />
+                <InputGroup label="Nome do Competidor" value={manualRideCompetidorNome} onChange={setManualRideCompetidorNome} placeholder="Ex: GABRIEL HENRIQUE" />
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
