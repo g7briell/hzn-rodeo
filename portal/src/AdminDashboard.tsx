@@ -208,13 +208,123 @@ export default function AdminDashboard() {
     }
   };
 
+  const syncRelationalEventToEventosOficiais = async (eventName: string) => {
+    try {
+      const { data: relEv } = await supabase.from('rel_eventos')
+        .select('*')
+        .eq('nome', eventName.trim().toUpperCase())
+        .maybeSingle();
+      if (!relEv) return;
+
+      const { data: rides } = await supabase.from('rel_montarias')
+        .select('*, rel_competidores(*), rel_touros(*)')
+        .eq('evento_id', relEv.id);
+
+      const notas = (rides || []).map(r => ({
+        id: r.id.toString(),
+        dia: r.dia,
+        peao: r.rel_competidores?.nome || 'DESCONHECIDO',
+        cpf: r.rel_competidores?.cpf || '',
+        cidade: r.rel_competidores?.cidade || '',
+        touro: r.rel_touros?.nome || 'DESCONHECIDO',
+        cia: r.rel_touros?.cia || 'DESCONHECIDA',
+        status: r.status,
+        tempo: r.tempo,
+        j1_peao: r.j1_peao,
+        j2_peao: r.j2_peao,
+        j1_touro: r.j1_touro,
+        j2_touro: r.j2_touro,
+        totalPeao: r.total_peao,
+        totalTouro: r.total_touro
+      }));
+
+      const competitorScores = new Map<string, { nome: string, cpf: string, score: number, cidade: string, tempoAcumulado: number }>();
+      notas.forEach(n => {
+        const key = n.cpf ? n.cpf : n.peao;
+        if (!competitorScores.has(key)) {
+          competitorScores.set(key, {
+            nome: n.peao,
+            cpf: n.cpf,
+            score: 0,
+            cidade: n.cidade,
+            tempoAcumulado: 0
+          });
+        }
+        const score = (n.totalPeao || 0) + (n.totalTouro || 0);
+        const isParada = n.tempo >= 8 || n.tempo == null;
+        const entry = competitorScores.get(key)!;
+        entry.score += score;
+        if (isParada) {
+          entry.tempoAcumulado += 8;
+        } else {
+          entry.tempoAcumulado += n.tempo || 0;
+        }
+      });
+
+      const ranking = Array.from(competitorScores.values()).sort((a, b) => b.score - a.score);
+
+      const boiadasMap = new Map<string, Set<string>>();
+      notas.forEach(n => {
+        if (n.cia && n.touro) {
+          if (!boiadasMap.has(n.cia)) {
+            boiadasMap.set(n.cia, new Set());
+          }
+          boiadasMap.get(n.cia)!.add(n.touro);
+        }
+      });
+      const boiadas = Array.from(boiadasMap.entries()).map(([ciaName, tourosSet]) => ({
+        nome: ciaName,
+        lados: {},
+        touros: Array.from(tourosSet)
+      }));
+
+      const { data: existingEvs } = await supabase.from('eventos_oficiais')
+        .select('*')
+        .eq('nome', relEv.nome)
+        .limit(1);
+
+      const existingEv = existingEvs && existingEvs.length > 0 ? existingEvs[0] : null;
+
+      const payload = {
+        nome: relEv.nome,
+        data_inicio: relEv.data || '',
+        data_fim: '',
+        local: relEv.cidade,
+        organizador_email: existingEv ? existingEv.organizador_email : 'admin@rodeoapp.pro',
+        status: 'aprovado',
+        detalhes: {
+          ...(existingEv?.detalhes || {}),
+          notas,
+          ranking,
+          boiadas,
+          portalConfig: {
+            ...(existingEv?.detalhes?.portalConfig || {}),
+            manual: relEv.is_manual
+          }
+        }
+      };
+
+      if (existingEv) {
+        await supabase.from('eventos_oficiais').update(payload).eq('id', existingEv.id);
+      } else {
+        await supabase.from('eventos_oficiais').insert({
+          ...payload,
+          id: self.crypto.randomUUID ? self.crypto.randomUUID() : Math.random().toString(36).substring(2, 15)
+        });
+      }
+    } catch (err) {
+      console.error("Error syncing back to raw events", err);
+    }
+  };
+
   const handleCreateManualEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualEventName || !manualEventCidade) return alert("Preencha nome e cidade.");
     try {
+      const evName = manualEventName.trim().toUpperCase();
       const { error } = await supabase.from('rel_eventos')
         .insert({
-          nome: manualEventName.trim().toUpperCase(),
+          nome: evName,
           cidade: manualEventCidade.trim().toUpperCase(),
           data: manualEventData || new Date().toLocaleDateString('pt-BR'),
           is_manual: true
@@ -223,6 +333,9 @@ export default function AdminDashboard() {
         .single();
       if (error) throw error;
       
+      // Sincroniza para a tabela legado eventos_oficiais
+      await syncRelationalEventToEventosOficiais(evName);
+
       alert("Evento criado com sucesso!");
       setIsManualEventModalOpen(false);
       setManualEventName('');
@@ -288,6 +401,12 @@ export default function AdminDashboard() {
 
       const { error } = await supabase.from('rel_montarias').insert(payload);
       if (error) throw error;
+
+      // Sincroniza de volta para a tabela legado eventos_oficiais
+      const targetEvent = allRelEvents.find(e => e.id === manualRideEventId);
+      if (targetEvent) {
+        await syncRelationalEventToEventosOficiais(targetEvent.nome);
+      }
 
       alert("Montaria adicionada com sucesso!");
       setIsManualRideModalOpen(false);
