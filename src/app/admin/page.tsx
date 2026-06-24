@@ -1209,6 +1209,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteRide = async (rideId: number, eventName?: string) => {
+    if (!window.confirm("Deseja realmente excluir esta montaria? (Se for do painel, será apagada definitivamente)")) return;
+    try {
+      const { error } = await supabase.from('rel_montarias').delete().eq('id', rideId);
+      if (error) throw error;
+      if (eventName) {
+        await syncRelationalEventToEventosOficiais(eventName);
+      }
+      setRelHistory(prev => prev.filter(r => r.id !== rideId));
+      alert("Montaria excluída com sucesso!");
+    } catch (err: any) {
+      alert("Erro ao excluir montaria: " + err.message);
+    }
+  };
+
   const handleCreateCompetidor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCompetidorNome) return alert("Nome é obrigatório.");
@@ -2432,7 +2447,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-      </main>
 
       {/* MODAL DE CONTROLE MASTER */}
       {selectedLicense && (
@@ -2551,10 +2565,10 @@ export default function AdminDashboard() {
 
         {activeTab === "competidores" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-10">Competidores & Animais</h2>
+            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-4 -mt-6">Competidores & Animais</h2>
             
             {/* Action buttons */}
-            <div className="flex gap-4 flex-wrap mb-8">
+            <div className="flex gap-4 flex-wrap mb-6">
               <button onClick={() => setIsNewCompetidorModalOpen(true)} className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-yellow-500/10 active:scale-95 flex items-center gap-2">
                 + CADASTRAR COMPETIDOR
               </button>
@@ -2703,6 +2717,7 @@ export default function AdminDashboard() {
                                   <th className="pb-3">Notas (Peão / Touro)</th>
                                   <th className="pb-3">Total</th>
                                   <th className="pb-3">Status</th>
+                                  <th className="pb-3 text-right">Ações</th>
                                 </tr>
                               </thead>
                               <tbody className="font-bold text-white/80">
@@ -2724,6 +2739,14 @@ export default function AdminDashboard() {
                                     <td className="py-3 text-yellow-500">{r.nota_final} pts</td>
                                     <td className="py-3 uppercase text-[10px]">
                                       <span className={r.status === 'ativa' ? 'text-green-500' : 'text-red-500'}>{r.status}</span>
+                                    </td>
+                                    <td className="py-3 text-right">
+                                      <button 
+                                        onClick={() => handleDeleteRide(r.id, event.nome)}
+                                        className="px-2 py-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 text-[9px] font-black uppercase tracking-wider transition-all"
+                                      >
+                                        Excluir
+                                      </button>
                                     </td>
                                   </tr>
                                 ))}
@@ -2772,6 +2795,7 @@ export default function AdminDashboard() {
                             <th className="pb-3">Tempo</th>
                             <th className="pb-3">Nota Final</th>
                             <th className="pb-3">Status</th>
+                            <th className="pb-3 text-right">Ações</th>
                           </tr>
                         </thead>
                         <tbody className="font-bold text-white/80">
@@ -2794,6 +2818,14 @@ export default function AdminDashboard() {
                               <td className="py-3 text-yellow-500">{r.nota_final} pts</td>
                               <td className="py-3 uppercase text-[10px]">
                                 <span className={r.status === 'ativa' ? 'text-green-500' : 'text-red-500'}>{r.status}</span>
+                              </td>
+                              <td className="py-3 text-right">
+                                <button 
+                                  onClick={() => handleDeleteRide(r.id, r.rel_eventos?.nome)}
+                                  className="px-2 py-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 text-[9px] font-black uppercase tracking-wider transition-all"
+                                >
+                                  Excluir
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -2840,6 +2872,7 @@ export default function AdminDashboard() {
 
           </div>
         )}
+      </main>
 
       {/* Manual Event Registration Modal */}
       {isManualEventModalOpen && (
