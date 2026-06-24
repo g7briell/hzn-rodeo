@@ -2565,7 +2565,7 @@ export default function AdminDashboard() {
 
         {activeTab === "competidores" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-4 -mt-6">Competidores & Animais</h2>
+            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-8 mt-4">Competidores & Animais</h2>
             
             {/* Action buttons */}
             <div className="flex gap-4 flex-wrap mb-6">
