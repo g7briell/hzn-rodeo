@@ -168,6 +168,7 @@ export default function AdminDashboard() {
   // Input states for inserting competitor/bull on-the-fly during manual creation
   const [manualRideTouroNome, setManualRideTouroNome] = useState('');
   const [manualRideCiaNome, setManualRideCiaNome] = useState('');
+  const [manualRideEscaladoNoEvento, setManualRideEscaladoNoEvento] = useState('');
 
   // Editing/Creating new competitors / bulls
   const [isNewCompetidorModalOpen, setIsNewCompetidorModalOpen] = useState(false);
@@ -1142,6 +1143,28 @@ export default function AdminDashboard() {
       const tName = manualRideTouroNome.trim().toUpperCase();
       const cName = manualRideCiaNome.trim().toUpperCase();
 
+      // Update Escalado no Evento in boiadas_oficiais
+      const { data: bData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', cName).maybeSingle();
+      if (bData && bData.lados && typeof bData.lados === 'object') {
+        const ladosObj = { ...bData.lados };
+        if (ladosObj.__meta && ladosObj.__meta.touros_info) {
+          let changed = false;
+          const cleanTName = tName.toLowerCase();
+          for (const key of Object.keys(ladosObj.__meta.touros_info)) {
+            if (key.toLowerCase().trim() === cleanTName) {
+              const currentEscalado = ladosObj.__meta.touros_info[key].escalado_no_evento || '';
+              if (currentEscalado !== manualRideEscaladoNoEvento) {
+                ladosObj.__meta.touros_info[key].escalado_no_evento = manualRideEscaladoNoEvento || undefined;
+                changed = true;
+              }
+            }
+          }
+          if (changed) {
+            await supabase.from('boiadas_oficiais').update({ lados: ladosObj }).eq('id', bData.id);
+          }
+        }
+      }
+
       // Resolve Cia
       const { data: ciaData } = await supabase.from('rel_cias').select('id').eq('nome', cName).maybeSingle();
       if (!ciaData) {
@@ -1207,6 +1230,7 @@ export default function AdminDashboard() {
 
       setManualRideTouroNome('');
       setManualRideCiaNome('');
+      setManualRideEscaladoNoEvento('');
       setManualRideCompetidorNome('');
       setRideTempo('8.0');
       setRideJ1Peao('0');
@@ -1321,6 +1345,7 @@ export default function AdminDashboard() {
     } else {
       setManualRideTouroNome('');
       setManualRideCiaNome('');
+      setManualRideEscaladoNoEvento('');
     }
     
     const { data } = await supabase.from('rel_eventos').select('*').order('nome', { ascending: true });
@@ -2949,6 +2974,20 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <InputGroup label="Nome do Touro" value={manualRideTouroNome} onChange={setManualRideTouroNome} placeholder="Ex: ACESSO NEGADO" />
                 <InputGroup label="Cia / Tropeiro" value={manualRideCiaNome} onChange={setManualRideCiaNome} placeholder="Ex: TERCIO MIRANDA" />
+              </div>
+
+              <div>
+                <label className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Escalado no Evento (Status do Touro)</label>
+                <select 
+                  className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-xs md:text-sm text-white" 
+                  value={manualRideEscaladoNoEvento} 
+                  onChange={e => setManualRideEscaladoNoEvento(e.target.value)}
+                >
+                  <option value="">-- Automático / Nenhum --</option>
+                  {allRelEvents.map(e => (
+                    <option key={e.id} value={e.nome}>{e.nome}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-3 gap-6">

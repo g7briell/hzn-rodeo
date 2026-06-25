@@ -342,19 +342,21 @@ function App() {
       });
     });
 
-    let currentEvent = null;
-    for (const ev of eventosOficiais) {
-      const sorteios = ev.detalhes?.sorteios || [];
-      let foundInEvent = false;
-      for (const s of sorteios) {
-        const bullsInSorteio = s.bulls || [];
-        if (bullsInSorteio.some((b: any) => b.nome && b.nome.toLowerCase().trim() === bullName.toLowerCase().trim())) {
-          currentEvent = ev.nome;
-          foundInEvent = true;
-          break;
+    let currentEvent = details?.escalado_no_evento || null;
+    if (!currentEvent) {
+      for (const ev of eventosOficiais) {
+        const sorteios = ev.detalhes?.sorteios || [];
+        let foundInEvent = false;
+        for (const s of sorteios) {
+          const bullsInSorteio = s.bulls || [];
+          if (bullsInSorteio.some((b: any) => b.nome && b.nome.toLowerCase().trim() === bullName.toLowerCase().trim())) {
+            currentEvent = ev.nome;
+            foundInEvent = true;
+            break;
+          }
         }
+        if (foundInEvent) break;
       }
-      if (foundInEvent) break;
     }
 
     const stats = {
