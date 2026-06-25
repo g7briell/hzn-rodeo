@@ -29,13 +29,7 @@ export async function POST(req: Request) {
       `
     });
 
-    return NextResponse.json({ success: true, data }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }
-    });
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error("Erro ao enviar email OTP:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -43,11 +37,5 @@ export async function POST(req: Request) {
 }
 
 export async function OPTIONS() {
-  return NextResponse.json({}, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
-  });
+  return NextResponse.json({});
 }

@@ -50,13 +50,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json(appSponsors, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
-      }
-    });
+    return NextResponse.json(appSponsors);
   } catch (err: any) {
     console.error("API Get Sponsors Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -91,13 +85,7 @@ export async function POST(req: Request) {
         .eq("id", id);
     }
 
-    return NextResponse.json({ success: true }, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
-      }
-    });
+    return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("API Post Sponsors Impression Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -105,11 +93,5 @@ export async function POST(req: Request) {
 }
 
 export async function OPTIONS() {
-  return new Response(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type"
-    }
-  });
+  return new Response(null);
 }
