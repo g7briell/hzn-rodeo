@@ -1551,7 +1551,7 @@ Instruções importantes:
 
       if (dbError) throw new Error("Erro ao gerar código de segurança.");
 
-      const response = await fetch('/api/send-otp', {
+      const response = await fetch('https://www.rodeoapp.pro/api/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail.toLowerCase().trim(), code })
@@ -3251,7 +3251,7 @@ Instruções importantes:
                           .insert([{ email: loginEmail.toLowerCase().trim(), code: code }]);
                         if (dbError) throw new Error("Erro ao gerar código de segurança.");
 
-                        const response = await fetch('/api/send-otp', {
+                        const response = await fetch('https://www.rodeoapp.pro/api/send-otp', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ email: loginEmail.toLowerCase().trim(), code })
@@ -3988,7 +3988,7 @@ Instruções importantes:
                         .insert([{ email: loginEmail.toLowerCase().trim(), code: code }]);
                       if (dbError) throw new Error("Erro ao gerar código de segurança.");
 
-                      const response = await fetch('/api/send-otp', {
+                      const response = await fetch('https://www.rodeoapp.pro/api/send-otp', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: loginEmail.toLowerCase().trim(), code })
