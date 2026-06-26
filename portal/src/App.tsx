@@ -910,6 +910,7 @@ Instruções importantes:
       const { error } = await supabase
         .from('boiadas_oficiais')
         .insert([{
+          id: crypto.randomUUID(),
           nome: newBoiadaCiaName.trim().toUpperCase(),
           lados: newLados
         }]);

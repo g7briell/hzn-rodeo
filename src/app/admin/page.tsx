@@ -401,6 +401,7 @@ export default function AdminDashboard() {
     touros.forEach(t => lados[t] = "");
 
     const { error } = await supabase.from("boiadas_oficiais").insert([{
+      id: crypto.randomUUID(),
       nome: boiadaName.trim().toUpperCase(),
       lados: lados
     }]);
