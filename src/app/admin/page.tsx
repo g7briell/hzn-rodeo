@@ -48,7 +48,9 @@ import {
   TrendingUp,
   PiggyBank,
   Percent,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Upload
 } from "lucide-react";
 
 const formatSide = (s: any) => {
@@ -440,6 +442,24 @@ export default function AdminDashboard() {
         alert("Erro ao atualizar logo: " + error.message);
       }
     }
+  };
+
+  const handleUpdateBoiadaLogoUpload = (b: any, file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const b64 = reader.result as string;
+      const updatedLados = { ...b.lados };
+      if (!updatedLados.__meta) updatedLados.__meta = { status: 'aprovado' };
+      updatedLados.__meta.logo = b64;
+      const { error } = await supabase.from("boiadas_oficiais").update({ lados: updatedLados }).eq("id", b.id);
+      if (!error) {
+        alert("Logo atualizada com sucesso do seu computador!");
+        fetchBoiadas();
+      } else {
+        alert("Erro ao atualizar logo: " + error.message);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleApproveBoiada = async (id: string, currentLados: any) => {
@@ -1851,8 +1871,22 @@ export default function AdminDashboard() {
                             <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{totalTouros} TOUROS</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => handleUpdateBoiadaLogo(b)} className="p-3 text-white/20 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all" title="Atualizar Logo">
-                              <ImageIcon className="w-5 h-5" />
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              id={`upload-logo-${b.id}`} 
+                              style={{ display: 'none' }} 
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleUpdateBoiadaLogoUpload(b, e.target.files[0]);
+                                }
+                              }} 
+                            />
+                            <button onClick={() => document.getElementById(`upload-logo-${b.id}`)?.click()} className="p-3 text-white/20 hover:text-green-500 hover:bg-green-500/10 rounded-xl transition-all" title="Fazer Upload da Logo (Computador)">
+                              <Upload className="w-5 h-5" />
+                            </button>
+                            <button onClick={() => handleUpdateBoiadaLogo(b)} className="p-3 text-white/20 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all" title="Atualizar Logo por Link (URL)">
+                              <LinkIcon className="w-5 h-5" />
                             </button>
                             <button onClick={() => handleDeleteBoiada(b.id, b.nome)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
                               <Trash2 className="w-5 h-5" />
