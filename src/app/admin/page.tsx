@@ -2994,6 +2994,287 @@ export default function AdminDashboard() {
 
           </div>
         )}
+
+        {/* IA / PDF Tab */}
+        {activeTab === "ai-pdf" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+            <header className="mb-8 md:mb-12">
+              <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">Importador <span className="text-yellow-500">IA</span></h2>
+              <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-2">Faca upload de um PDF e use IA para criar montarias automaticamente</p>
+            </header>
+
+            {aiStep === 'upload' && (
+              <div className="space-y-6">
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-4">
+                  <h3 className="font-black italic uppercase text-yellow-500">1. Upload do PDF</h3>
+                  <label
+                    className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
+                      aiPdfFile ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-white/10 bg-black/20 hover:border-white/30 hover:bg-black/40'
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setAiPdfFile(file);
+                        setAiPdfText('');
+                        try {
+                          const pdfjsLib = await import('pdfjs-dist');
+                          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+                          const arrayBuffer = await file.arrayBuffer();
+                          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                          let fullText = '';
+                          for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const content = await page.getTextContent();
+                            fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
+                          }
+                          setAiPdfText(fullText);
+                        } catch (err: any) {
+                          alert('Erro ao ler PDF: ' + err.message);
+                          setAiPdfFile(null);
+                        }
+                      }}
+                    />
+                    {aiPdfFile ? (
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">📄</div>
+                        <p className="font-black text-yellow-500 text-sm">{aiPdfFile.name}</p>
+                        <p className="text-xs text-white/40 mt-1">{aiPdfText ? `${aiPdfText.length} caracteres extraidos` : 'Extraindo texto...'}</p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">📂</div>
+                        <p className="font-bold text-white/50 text-sm">Clique para selecionar o PDF</p>
+                        <p className="text-xs text-white/30 mt-1">Programacao de rodeio, resultados, etc.</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-4">
+                  <h3 className="font-black italic uppercase text-yellow-500">2. Evento de Destino</h3>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block">EVENTO (para salvar as montarias)</label>
+                    <select
+                      value={aiEventoId ?? ''}
+                      onChange={(e) => setAiEventoId(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-xs text-white"
+                    >
+                      <option value="">Selecione o evento (opcional)</option>
+                      {allRelEvents.map((ev: any) => (
+                        <option key={ev.id} value={ev.id}>{ev.nome} - {ev.cidade}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-4">
+                  <h3 className="font-black italic uppercase text-yellow-500">3. O que voce quer fazer?</h3>
+                  <textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder={'Ex: Pegue todos os touros da CIA Tercio Miranda e crie uma montaria para cada, todos no Dia 1'}
+                    rows={5}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-sm text-white resize-none placeholder:text-white/20"
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {[
+                      'Crie montarias para todos os touros da CIA Tercio Miranda no Dia 1',
+                      'Liste todas as montarias do PDF e crie uma entrada para cada',
+                      'Pegue apenas as montarias do Dia 2 e organize por competidor',
+                    ].map((sugestao) => (
+                      <button
+                        key={sugestao}
+                        onClick={() => setAiPrompt(sugestao)}
+                        className="text-left text-[10px] font-bold text-white/40 hover:text-yellow-500 bg-white/5 hover:bg-yellow-500/10 border border-white/10 hover:border-yellow-500/30 rounded-xl p-3 transition-all"
+                      >
+                        {sugestao}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  disabled={!aiPdfFile || !aiPdfText || !aiPrompt.trim() || aiIsProcessing}
+                  onClick={async () => {
+                    setAiIsProcessing(true);
+                    try {
+                      const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
+                      const res = await fetch('/api/ai-pdf', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          pdfText: aiPdfText,
+                          prompt: aiPrompt,
+                          eventoId: aiEventoId,
+                          eventoNome: selectedEvento?.nome || '',
+                        }),
+                      });
+                      const result = await res.json();
+                      if (!res.ok || result.error) throw new Error(result.error || 'Erro desconhecido');
+                      const withIds = result.montarias.map((m: any, i: number) => ({ ...m, _tempId: i }));
+                      setAiSuggestedRides(withIds);
+                      setAiConfirmed(new Set(withIds.map((_: any, i: number) => i)));
+                      setAiResumo(result.resumo || '');
+                      setAiStep('review');
+                    } catch (err: any) {
+                      alert('Erro ao processar PDF: ' + err.message);
+                    } finally {
+                      setAiIsProcessing(false);
+                    }
+                  }}
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+                >
+                  {aiIsProcessing ? (
+                    <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> PROCESSANDO COM IA...</>
+                  ) : (
+                    <><Zap className="w-5 h-5" /> PROCESSAR COM IA</>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {aiStep === 'review' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black italic uppercase text-white text-xl">{aiSuggestedRides.length} Montarias Encontradas</h3>
+                    {aiResumo && <p className="text-xs text-white/40 mt-1 max-w-xl">{aiResumo}</p>}
+                  </div>
+                  <button
+                    onClick={() => { setAiStep('upload'); setAiSuggestedRides([]); setAiResumo(''); }}
+                    className="text-xs font-black text-white/40 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
+                  >
+                    Voltar
+                  </button>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setAiConfirmed(new Set(aiSuggestedRides.map((_: any, i: number) => i)))}
+                    className="text-xs font-black text-green-400 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
+                  >
+                    Selecionar Todas
+                  </button>
+                  <button
+                    onClick={() => setAiConfirmed(new Set())}
+                    className="text-xs font-black text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
+                  >
+                    Remover Todas
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {aiSuggestedRides.map((ride: any, idx: number) => {
+                    const isSelected = aiConfirmed.has(idx);
+                    return (
+                      <div
+                        key={idx}
+                        className={`border rounded-2xl p-5 flex items-start justify-between gap-4 transition-all cursor-pointer ${
+                          isSelected ? 'bg-green-500/5 border-green-500/30' : 'bg-white/5 border-white/10 opacity-50'
+                        }`}
+                        onClick={() => {
+                          setAiConfirmed(prev => {
+                            const next = new Set(prev);
+                            if (next.has(idx)) next.delete(idx); else next.add(idx);
+                            return next;
+                          });
+                        }}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-black transition-all ${
+                            isSelected ? 'bg-green-500 border-green-500 text-black' : 'bg-transparent border-white/20 text-transparent'
+                          }`}>V</div>
+                          <div>
+                            <div className="font-black text-sm text-white">{ride.competidor_nome || <span className="text-white/30 italic">Competidor nao identificado</span>}</div>
+                            <div className="text-xs font-bold text-white/50 mt-1">
+                              <span className="text-yellow-400">{ride.touro_nome || '-'}</span>
+                              {ride.cia_nome && <span className="text-white/30"> - {ride.cia_nome}</span>}
+                            </div>
+                            <div className="text-[10px] font-black text-white/30 uppercase tracking-widest mt-1">
+                              {ride.dia || 'DIA 1'}{ride.escalado_no_evento && ` - ${ride.escalado_no_evento}`}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[10px] font-black text-white/20 uppercase">#{idx + 1}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  disabled={aiConfirmed.size === 0 || aiIsSaving}
+                  onClick={async () => {
+                    setAiIsSaving(true);
+                    let saved = 0;
+                    let errors = 0;
+                    const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
+                    for (const idx of Array.from(aiConfirmed)) {
+                      const ride = aiSuggestedRides[idx];
+                      try {
+                        let bId = null;
+                        if (ride.touro_nome) {
+                          const { data: tData } = await supabase.from('rel_touros').select('id').ilike('nome', ride.touro_nome).maybeSingle();
+                          bId = tData?.id;
+                          if (!bId) {
+                            const { data: newB } = await supabase.from('rel_touros').insert({ nome: ride.touro_nome, cia: ride.cia_nome || null }).select('id').single();
+                            bId = newB?.id;
+                          }
+                        }
+                        let cId = null;
+                        if (ride.competidor_nome) {
+                          const { data: cData } = await supabase.from('rel_competidores').select('id').ilike('nome', ride.competidor_nome).maybeSingle();
+                          cId = cData?.id;
+                          if (!cId) {
+                            const { data: newC } = await supabase.from('rel_competidores').insert({ nome: ride.competidor_nome }).select('id').single();
+                            cId = newC?.id;
+                          }
+                        }
+                        const payload: any = {
+                          evento_id: aiEventoId || null,
+                          competidor_id: cId || null,
+                          touro_id: bId || null,
+                          dia: ride.dia || 'DIA 1',
+                          tempo: 0, j1_peao: 0, j2_peao: 0, j1_touro: 0, j2_touro: 0,
+                          total_peao: 0, total_touro: 0, nota_final: 0,
+                          status: 'pendente',
+                        };
+                        if (ride.escalado_no_evento) payload.escalado_no_evento = ride.escalado_no_evento;
+                        const { error } = await supabase.from('rel_montarias').insert(payload);
+                        if (error) throw error;
+                        saved++;
+                        if (selectedEvento) await syncRelationalEventToEventosOficiais(selectedEvento.nome).catch(() => {});
+                      } catch {
+                        errors++;
+                      }
+                    }
+                    setAiIsSaving(false);
+                    alert(`${saved} montaria(s) salva(s) com sucesso!${errors > 0 ? ` ${errors} erro(s).` : ''}`);
+                    setAiStep('upload');
+                    setAiPdfFile(null);
+                    setAiPdfText('');
+                    setAiPrompt('');
+                    setAiSuggestedRides([]);
+                    setAiEventoId(null);
+                    setAiConfirmed(new Set());
+                  }}
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+                >
+                  {aiIsSaving ? (
+                    <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> SALVANDO...</>
+                  ) : (
+                    <>SALVAR {aiConfirmed.size} MONTARIA(S) SELECIONADA(S)</>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
       </main>
 
       {/* Manual Event Registration Modal */}
@@ -3248,306 +3529,6 @@ function DashboardCard({ title, icon, items, emptyMsg }: any) {
         )}
       </div>
     </div>
-
-        {/* IA / PDF Tab */}
-        {activeTab === "ai-pdf" && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
-            <header className="mb-8 md:mb-12">
-              <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">Importador <span className="text-yellow-500">IA</span></h2>
-              <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-2">Faça upload de um PDF e use IA para criar montarias automaticamente</p>
-            </header>
-
-            {aiStep === 'upload' && (
-              <div className="space-y-6">
-                {/* PDF Upload */}
-                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-4">
-                  <h3 className="font-black italic uppercase text-yellow-500">1. Upload do PDF</h3>
-                  <label
-                    className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
-                      aiPdfFile ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-white/10 bg-black/20 hover:border-white/30 hover:bg-black/40'
-                    }`}
-                  >
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setAiPdfFile(file);
-                        setAiPdfText('');
-                        // Extract text using PDF.js
-                        try {
-                          const pdfjsLib = await import('pdfjs-dist');
-                          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-                          const arrayBuffer = await file.arrayBuffer();
-                          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                          let fullText = '';
-                          for (let i = 1; i <= pdf.numPages; i++) {
-                            const page = await pdf.getPage(i);
-                            const content = await page.getTextContent();
-                            fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
-                          }
-                          setAiPdfText(fullText);
-                        } catch (err: any) {
-                          alert('Erro ao ler PDF: ' + err.message);
-                          setAiPdfFile(null);
-                        }
-                      }}
-                    />
-                    {aiPdfFile ? (
-                      <div className="text-center">
-                        <div className="text-4xl mb-2">📄</div>
-                        <p className="font-black text-yellow-500 text-sm">{aiPdfFile.name}</p>
-                        <p className="text-xs text-white/40 mt-1">{aiPdfText ? `${aiPdfText.length} caracteres extraídos ✅` : 'Extraindo texto...'}</p>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <div className="text-4xl mb-2">📂</div>
-                        <p className="font-bold text-white/50 text-sm">Clique para selecionar o PDF</p>
-                        <p className="text-xs text-white/30 mt-1">Programação de rodeio, resultados, etc.</p>
-                      </div>
-                    )}
-                  </label>
-                </div>
-
-                {/* Evento selector */}
-                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-4">
-                  <h3 className="font-black italic uppercase text-yellow-500">2. Evento de Destino</h3>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block">EVENTO (para salvar as montarias)</label>
-                    <select
-                      value={aiEventoId ?? ''}
-                      onChange={(e) => setAiEventoId(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-xs text-white"
-                    >
-                      <option value="">Selecione o evento (opcional)</option>
-                      {allRelEvents.map((ev: any) => (
-                        <option key={ev.id} value={ev.id}>{ev.nome} - {ev.cidade}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Prompt */}
-                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-4">
-                  <h3 className="font-black italic uppercase text-yellow-500">3. O que você quer fazer?</h3>
-                  <textarea
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder='Ex: "Pegue todos os touros da CIA Tércio Miranda e crie uma montaria para cada, todos no Dia 1"&#10;Ex: "Liste todas as montarias do documento e organize por competidor"'
-                    rows={5}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-sm text-white resize-none placeholder:text-white/20"
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    {[
-                      'Crie montarias para todos os touros da CIA Tércio Miranda no Dia 1',
-                      'Liste todas as montarias do PDF e crie uma entrada para cada',
-                      'Pegue apenas as montarias do Dia 2 e organize por competidor',
-                    ].map((sugestao) => (
-                      <button
-                        key={sugestao}
-                        onClick={() => setAiPrompt(sugestao)}
-                        className="text-left text-[10px] font-bold text-white/40 hover:text-yellow-500 bg-white/5 hover:bg-yellow-500/10 border border-white/10 hover:border-yellow-500/30 rounded-xl p-3 transition-all"
-                      >
-                        💡 {sugestao}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Process Button */}
-                <button
-                  disabled={!aiPdfFile || !aiPdfText || !aiPrompt.trim() || aiIsProcessing}
-                  onClick={async () => {
-                    setAiIsProcessing(true);
-                    try {
-                      const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
-                      const res = await fetch('/api/ai-pdf', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          pdfText: aiPdfText,
-                          prompt: aiPrompt,
-                          eventoId: aiEventoId,
-                          eventoNome: selectedEvento?.nome || '',
-                        }),
-                      });
-                      const result = await res.json();
-                      if (!res.ok || result.error) throw new Error(result.error || 'Erro desconhecido');
-                      const withIds = result.montarias.map((m: any, i: number) => ({ ...m, _tempId: i }));
-                      setAiSuggestedRides(withIds);
-                      setAiConfirmed(new Set(withIds.map((_: any, i: number) => i)));
-                      setAiResumo(result.resumo || '');
-                      setAiStep('review');
-                    } catch (err: any) {
-                      alert('Erro ao processar PDF: ' + err.message);
-                    } finally {
-                      setAiIsProcessing(false);
-                    }
-                  }}
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
-                >
-                  {aiIsProcessing ? (
-                    <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> PROCESSANDO COM IA...</>
-                  ) : (
-                    <><Zap className="w-5 h-5" /> PROCESSAR COM IA</>  
-                  )}
-                </button>
-              </div>
-            )}
-
-            {aiStep === 'review' && (
-              <div className="space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-black italic uppercase text-white text-xl">{aiSuggestedRides.length} Montarias Encontradas</h3>
-                    {aiResumo && <p className="text-xs text-white/40 mt-1 max-w-xl">{aiResumo}</p>}
-                  </div>
-                  <button
-                    onClick={() => { setAiStep('upload'); setAiSuggestedRides([]); setAiResumo(''); }}
-                    className="text-xs font-black text-white/40 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    ← Voltar
-                  </button>
-                </div>
-
-                {/* Confirm all / remove all */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setAiConfirmed(new Set(aiSuggestedRides.map((_: any, i: number) => i)))}
-                    className="text-xs font-black text-green-400 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    ✅ Selecionar Todas
-                  </button>
-                  <button
-                    onClick={() => setAiConfirmed(new Set())}
-                    className="text-xs font-black text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    ❌ Remover Todas
-                  </button>
-                </div>
-
-                {/* Cards */}
-                <div className="space-y-3">
-                  {aiSuggestedRides.map((ride: any, idx: number) => {
-                    const isSelected = aiConfirmed.has(idx);
-                    return (
-                      <div
-                        key={idx}
-                        className={`border rounded-2xl p-5 flex items-start justify-between gap-4 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-green-500/5 border-green-500/30'
-                            : 'bg-white/5 border-white/10 opacity-50'
-                        }`}
-                        onClick={() => {
-                          setAiConfirmed(prev => {
-                            const next = new Set(prev);
-                            if (next.has(idx)) next.delete(idx); else next.add(idx);
-                            return next;
-                          });
-                        }}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-black transition-all ${
-                            isSelected ? 'bg-green-500 border-green-500 text-black' : 'bg-transparent border-white/20 text-transparent'
-                          }`}>✓</div>
-                          <div>
-                            <div className="font-black text-sm text-white">{ride.competidor_nome || <span className="text-white/30 italic">Competidor não identificado</span>}</div>
-                            <div className="text-xs font-bold text-white/50 mt-1">
-                              🐂 <span className="text-yellow-400">{ride.touro_nome || '—'}</span>
-                              {ride.cia_nome && <span className="text-white/30"> · {ride.cia_nome}</span>}
-                            </div>
-                            <div className="text-[10px] font-black text-white/30 uppercase tracking-widest mt-1">
-                              {ride.dia || 'DIA 1'}
-                              {ride.escalado_no_evento && ` · ${ride.escalado_no_evento}`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-[10px] font-black text-white/20 uppercase">
-                          #{idx + 1}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Save Button */}
-                <button
-                  disabled={aiConfirmed.size === 0 || aiIsSaving}
-                  onClick={async () => {
-                    setAiIsSaving(true);
-                    let saved = 0;
-                    let errors = 0;
-                    const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
-                    for (const idx of Array.from(aiConfirmed)) {
-                      const ride = aiSuggestedRides[idx];
-                      try {
-                        // Resolve or create bull
-                        let bId = null;
-                        if (ride.touro_nome) {
-                          const { data: tData } = await supabase.from('rel_touros').select('id').ilike('nome', ride.touro_nome).maybeSingle();
-                          bId = tData?.id;
-                          if (!bId) {
-                            const { data: newB } = await supabase.from('rel_touros').insert({ nome: ride.touro_nome, cia: ride.cia_nome || null }).select('id').single();
-                            bId = newB?.id;
-                          }
-                        }
-                        // Resolve or create competitor
-                        let cId = null;
-                        if (ride.competidor_nome) {
-                          const { data: cData } = await supabase.from('rel_competidores').select('id').ilike('nome', ride.competidor_nome).maybeSingle();
-                          cId = cData?.id;
-                          if (!cId) {
-                            const { data: newC } = await supabase.from('rel_competidores').insert({ nome: ride.competidor_nome }).select('id').single();
-                            cId = newC?.id;
-                          }
-                        }
-                        const payload: any = {
-                          evento_id: aiEventoId || null,
-                          competidor_id: cId || null,
-                          touro_id: bId || null,
-                          dia: ride.dia || 'DIA 1',
-                          tempo: 0,
-                          j1_peao: 0, j2_peao: 0, j1_touro: 0, j2_touro: 0,
-                          total_peao: 0, total_touro: 0, nota_final: 0,
-                          status: 'pendente',
-                        };
-                        if (ride.escalado_no_evento) payload.escalado_no_evento = ride.escalado_no_evento;
-                        const { error } = await supabase.from('rel_montarias').insert(payload);
-                        if (error) throw error;
-                        saved++;
-                        if (selectedEvento) await syncRelationalEventToEventosOficiais(selectedEvento.nome).catch(() => {});
-                      } catch {
-                        errors++;
-                      }
-                    }
-                    setAiIsSaving(false);
-                    alert(`✅ ${saved} montaria(s) salva(s) com sucesso!${errors > 0 ? `\n⚠️ ${errors} erro(s).` : ''}`);
-                    setAiStep('upload');
-                    setAiPdfFile(null);
-                    setAiPdfText('');
-                    setAiPrompt('');
-                    setAiSuggestedRides([]);
-                    setAiEventoId(null);
-                    setAiConfirmed(new Set());
-                  }}
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
-                >
-                  {aiIsSaving ? (
-                    <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> SALVANDO...</>
-                  ) : (
-                    <>✅ SALVAR {aiConfirmed.size} MONTARIA(S) SELECIONADA(S)</>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-      </main>
-    </div>
   );
 }
 
@@ -3566,3 +3547,4 @@ function InputGroup({ label, placeholder, value, onChange, type = "text", requir
     </div>
   );
 }
+
