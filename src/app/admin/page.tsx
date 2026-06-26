@@ -50,7 +50,8 @@ import {
   Percent,
   Image as ImageIcon,
   Link as LinkIcon,
-  Upload
+  Upload,
+  AlertTriangle
 } from "lucide-react";
 
 const formatSide = (s: any) => {
@@ -192,6 +193,9 @@ export default function AdminDashboard() {
   const [aiStep, setAiStep] = useState<'upload' | 'review'>('upload');
   const [aiSuggestedRides, setAiSuggestedRides] = useState<any[]>([]);
   const [aiResumo, setAiResumo] = useState('');
+  const [isAiMissingDataModalOpen, setIsAiMissingDataModalOpen] = useState(false);
+  const [aiMissingCias, setAiMissingCias] = useState<string[]>([]);
+  const [aiMissingTouros, setAiMissingTouros] = useState<{cia: string, touro: string, ciaId?: string, currentLados?: any}[]>([]);
   const [aiEventoId, setAiEventoId] = useState<number | null>(null);
   const [aiIsSaving, setAiIsSaving] = useState(false);
   const [aiConfirmed, setAiConfirmed] = useState<Set<number>>(new Set());
@@ -237,6 +241,87 @@ export default function AdminDashboard() {
         .then(({ data }) => setAllRelEvents(data || []));
     }
   }, [activeTab]);
+
+  const executeAiSave = async (ciasToCreate: Set<string>, tourosToAdd: Set<string>) => {
+    setAiIsSaving(true);
+    let saved = 0;
+    let errors = 0;
+    const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
+    
+    // First, process the missing CIAs and Bulls according to user confirmation
+    for (const cia of Array.from(ciasToCreate)) {
+      await supabase.from('boiadas_oficiais').insert({ id: crypto.randomUUID(), nome: cia, lados: {} });
+    }
+    
+    for (const touroKey of Array.from(tourosToAdd)) {
+      const [ciaNome, touroNome] = touroKey.split('|||');
+      const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNome).maybeSingle();
+      if (ciaData) {
+        const lados = ciaData.lados || {};
+        lados[touroNome] = "";
+        await supabase.from('boiadas_oficiais').update({ lados }).eq('id', ciaData.id);
+      }
+    }
+
+    for (const idx of Array.from(aiConfirmed)) {
+      const ride = aiSuggestedRides[idx];
+      try {
+        let bId = null;
+        if (ride.touro_nome) {
+          // Resolve rel_touros
+          const { data: tData } = await supabase.from('rel_touros').select('id').ilike('nome', ride.touro_nome).maybeSingle();
+          bId = tData?.id;
+          if (!bId) {
+            const { data: newB } = await supabase.from('rel_touros').insert({ nome: ride.touro_nome, cia: ride.cia_nome || null }).select('id').single();
+            bId = newB?.id;
+          }
+        }
+        
+        let cId = null;
+        if (ride.competidor_nome) {
+          const { data: cData } = await supabase.from('rel_competidores').select('id').ilike('nome', ride.competidor_nome).maybeSingle();
+          cId = cData?.id;
+          if (!cId) {
+            const { data: newC } = await supabase.from('rel_competidores').insert({ nome: ride.competidor_nome }).select('id').single();
+            cId = newC?.id;
+          }
+        }
+        
+        const payload: any = {
+          evento_id: aiEventoId || null,
+          competidor_id: cId || null,
+          touro_id: bId || null,
+          dia: ride.dia || 'DIA 1',
+          tempo: 0, j1_peao: 0, j2_peao: 0, j1_touro: 0, j2_touro: 0,
+          total_peao: 0, total_touro: 0, nota_final: 0,
+          status: 'pendente',
+        };
+        if (ride.escalado_no_evento) payload.escalado_no_evento = ride.escalado_no_evento;
+        
+        const { error } = await supabase.from('rel_montarias').insert(payload);
+        if (error) {
+          console.error("Erro insert rel_montarias:", error);
+          throw error;
+        }
+        
+        saved++;
+        if (selectedEvento) await syncRelationalEventToEventosOficiais(selectedEvento.nome).catch(err => console.error("Erro no sync:", err));
+      } catch (err: any) {
+        console.error("Erro geral na montaria", ride, err);
+        errors++;
+      }
+    }
+    setAiIsSaving(false);
+    alert(`${saved} montaria(s) salva(s) com sucesso!${errors > 0 ? ` ${errors} erro(s).` : ''}`);
+    setAiStep('upload');
+    setAiPdfFile(null);
+    setAiPdfText('');
+    setAiPrompt('');
+    setAiSuggestedRides([]);
+    setAiEventoId(null);
+    setAiConfirmed(new Set());
+    setIsAiMissingDataModalOpen(false);
+  };
 
   useEffect(() => {
     if (session) {
@@ -3217,101 +3302,44 @@ export default function AdminDashboard() {
                   disabled={aiConfirmed.size === 0 || aiIsSaving}
                   onClick={async () => {
                     setAiIsSaving(true);
-                    let saved = 0;
-                    let errors = 0;
-                    const askedCias = new Set();
-                    const askedTouros = new Set();
-                    const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
+                    
+                    const missingCias = new Set<string>();
+                    const missingTouros = new Map<string, {cia: string, touro: string}>();
                     
                     for (const idx of Array.from(aiConfirmed)) {
                       const ride = aiSuggestedRides[idx];
-                      try {
-                        let bId = null;
-                        if (ride.touro_nome) {
-                          const touroNomeUpper = ride.touro_nome.trim().toUpperCase();
-                          const ciaNomeUpper = ride.cia_nome ? ride.cia_nome.trim().toUpperCase() : null;
-                          
-                          // Check boiadas_oficiais for CIA and Bull
-                          if (ciaNomeUpper) {
-                            const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNomeUpper).maybeSingle();
-                            if (!ciaData) {
-                              if (!askedCias.has(ciaNomeUpper)) {
-                                askedCias.add(ciaNomeUpper);
-                                if (window.confirm(`A CIA "${ciaNomeUpper}" nao existe no sistema oficial. Deseja cria-la?`)) {
-                                  const newLados: any = {};
-                                  newLados[touroNomeUpper] = "";
-                                  await supabase.from('boiadas_oficiais').insert({ id: crypto.randomUUID(), nome: ciaNomeUpper, lados: newLados });
-                                  askedTouros.add(`${ciaNomeUpper}_${touroNomeUpper}`); // already added
-                                }
-                              }
-                            } else {
-                              const lados = ciaData.lados || {};
-                              const bullExistsInLados = Object.keys(lados).some(t => t.toUpperCase() === touroNomeUpper);
-                              if (!bullExistsInLados) {
-                                const bullKey = `${ciaNomeUpper}_${touroNomeUpper}`;
-                                if (!askedTouros.has(bullKey)) {
-                                  askedTouros.add(bullKey);
-                                  if (window.confirm(`O touro "${touroNomeUpper}" nao existe na CIA "${ciaNomeUpper}" no sistema oficial. Deseja adiciona-lo?`)) {
-                                    lados[touroNomeUpper] = "";
-                                    await supabase.from('boiadas_oficiais').update({ lados }).eq('id', ciaData.id);
-                                  }
-                                }
-                              }
-                            }
-                          }
-
-                          // Resolve rel_touros
-                          const { data: tData } = await supabase.from('rel_touros').select('id').ilike('nome', ride.touro_nome).maybeSingle();
-                          bId = tData?.id;
-                          if (!bId) {
-                            const { data: newB } = await supabase.from('rel_touros').insert({ nome: ride.touro_nome, cia: ride.cia_nome || null }).select('id').single();
-                            bId = newB?.id;
+                      if (ride.touro_nome && ride.cia_nome) {
+                        const touroNomeUpper = ride.touro_nome.trim().toUpperCase();
+                        const ciaNomeUpper = ride.cia_nome.trim().toUpperCase();
+                        
+                        // Check if CIA exists
+                        const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNomeUpper).maybeSingle();
+                        if (!ciaData) {
+                          missingCias.add(ciaNomeUpper);
+                          // If CIA is missing, the bull will also be missing for it, but we handle it during CIA creation
+                          const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
+                          missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
+                        } else {
+                          // CIA exists, check if bull exists in it
+                          const lados = ciaData.lados || {};
+                          const bullExistsInLados = Object.keys(lados).some(t => t.toUpperCase() === touroNomeUpper);
+                          if (!bullExistsInLados) {
+                            const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
+                            missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
                           }
                         }
-                        
-                        let cId = null;
-                        if (ride.competidor_nome) {
-                          const { data: cData } = await supabase.from('rel_competidores').select('id').ilike('nome', ride.competidor_nome).maybeSingle();
-                          cId = cData?.id;
-                          if (!cId) {
-                            const { data: newC } = await supabase.from('rel_competidores').insert({ nome: ride.competidor_nome }).select('id').single();
-                            cId = newC?.id;
-                          }
-                        }
-                        
-                        const payload: any = {
-                          evento_id: aiEventoId || null,
-                          competidor_id: cId || null,
-                          touro_id: bId || null,
-                          dia: ride.dia || 'DIA 1',
-                          tempo: 0, j1_peao: 0, j2_peao: 0, j1_touro: 0, j2_touro: 0,
-                          total_peao: 0, total_touro: 0, nota_final: 0,
-                          status: 'pendente',
-                        };
-                        if (ride.escalado_no_evento) payload.escalado_no_evento = ride.escalado_no_evento;
-                        
-                        const { error } = await supabase.from('rel_montarias').insert(payload);
-                        if (error) {
-                          console.error("Erro insert rel_montarias:", error);
-                          throw error;
-                        }
-                        
-                        saved++;
-                        if (selectedEvento) await syncRelationalEventToEventosOficiais(selectedEvento.nome).catch(err => console.error("Erro no sync:", err));
-                      } catch (err: any) {
-                        console.error("Erro geral na montaria", ride, err);
-                        errors++;
                       }
                     }
-                    setAiIsSaving(false);
-                    alert(`${saved} montaria(s) salva(s) com sucesso!${errors > 0 ? ` ${errors} erro(s).` : ''}`);
-                    setAiStep('upload');
-                    setAiPdfFile(null);
-                    setAiPdfText('');
-                    setAiPrompt('');
-                    setAiSuggestedRides([]);
-                    setAiEventoId(null);
-                    setAiConfirmed(new Set());
+                    
+                    if (missingCias.size > 0 || missingTouros.size > 0) {
+                      setAiMissingCias(Array.from(missingCias));
+                      setAiMissingTouros(Array.from(missingTouros.values()));
+                      setIsAiMissingDataModalOpen(true);
+                      setAiIsSaving(false);
+                    } else {
+                      // Nothing missing, save directly
+                      await executeAiSave(new Set(), new Set());
+                    }
                   }}
                   className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
                 >
@@ -3540,6 +3568,86 @@ export default function AdminDashboard() {
                 {isSavingExpense ? 'Salvando...' : 'Confirmar Despesa'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI Missing Data Review Modal */}
+      {isAiMissingDataModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-2xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto flex flex-col max-h-[90vh]">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl z-10" onClick={() => setIsAiMissingDataModalOpen(false)}>×</button>
+            
+            <div className="flex items-center gap-3 mb-6 shrink-0">
+              <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 shadow-inner">
+                <AlertTriangle className="w-6 h-6 text-yellow-500" />
+              </div>
+              <div>
+                <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Dados <span className="text-yellow-500">Ausentes</span></h2>
+                <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-1">Revise os registros que serão criados automaticamente</p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-8">
+              {aiMissingCias.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-3 border-b border-white/10 pb-2">
+                    CIAs Faltantes ({aiMissingCias.length})
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {aiMissingCias.map((cia, idx) => (
+                      <div key={idx} className="bg-black/40 border border-white/5 p-3 rounded-xl flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                        <span className="text-xs font-bold text-white truncate">{cia}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiMissingTouros.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-3 border-b border-white/10 pb-2 mt-4">
+                    Touros Faltantes ({aiMissingTouros.length})
+                  </h3>
+                  <div className="grid grid-cols-1 gap-2">
+                    {aiMissingTouros.map((item, idx) => (
+                      <div key={idx} className="bg-black/40 border border-white/5 p-3 rounded-xl flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-white uppercase tracking-wider">{item.touro}</span>
+                          <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.1em]">Na CIA: {item.cia}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-white/10 flex gap-4 shrink-0">
+              <button 
+                onClick={() => setIsAiMissingDataModalOpen(false)}
+                className="flex-1 bg-white/5 hover:bg-white/10 text-white py-5 rounded-2xl font-black text-xs md:text-sm uppercase tracking-widest transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  const ciasToCreate = new Set(aiMissingCias);
+                  const tourosToAdd = new Set(aiMissingTouros.map(t => `${t.cia}|||${t.touro}`));
+                  executeAiSave(ciasToCreate, tourosToAdd);
+                }}
+                disabled={aiIsSaving}
+                className="flex-[2] bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black py-5 rounded-2xl font-black text-xs md:text-sm uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 flex justify-center items-center gap-2"
+              >
+                {aiIsSaving ? (
+                  <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> SALVANDO...</>
+                ) : (
+                  'ADICIONAR TUDO E SALVAR'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
