@@ -1849,6 +1849,7 @@ export default function AdminDashboard() {
                           <div>
                             <div className="font-black uppercase text-sm mb-1">{b.nome}</div>
                             <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{totalTouros} TOUROS</div>
+                          </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => handleUpdateBoiadaLogo(b)} className="p-3 text-white/20 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all" title="Atualizar Logo">
                               <ImageIcon className="w-5 h-5" />
