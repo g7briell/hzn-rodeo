@@ -232,6 +232,13 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    if (activeTab === 'ai-pdf') {
+      supabase.from('rel_eventos').select('*').order('nome', { ascending: true })
+        .then(({ data }) => setAllRelEvents(data || []));
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     if (session) {
       fetchLicenses();
       fetchBoiadas();
@@ -3212,12 +3219,48 @@ export default function AdminDashboard() {
                     setAiIsSaving(true);
                     let saved = 0;
                     let errors = 0;
+                    const askedCias = new Set();
+                    const askedTouros = new Set();
                     const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
+                    
                     for (const idx of Array.from(aiConfirmed)) {
                       const ride = aiSuggestedRides[idx];
                       try {
                         let bId = null;
                         if (ride.touro_nome) {
+                          const touroNomeUpper = ride.touro_nome.trim().toUpperCase();
+                          const ciaNomeUpper = ride.cia_nome ? ride.cia_nome.trim().toUpperCase() : null;
+                          
+                          // Check boiadas_oficiais for CIA and Bull
+                          if (ciaNomeUpper) {
+                            const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNomeUpper).maybeSingle();
+                            if (!ciaData) {
+                              if (!askedCias.has(ciaNomeUpper)) {
+                                askedCias.add(ciaNomeUpper);
+                                if (window.confirm(`A CIA "${ciaNomeUpper}" nao existe no sistema oficial. Deseja cria-la?`)) {
+                                  const newLados: any = {};
+                                  newLados[touroNomeUpper] = "";
+                                  await supabase.from('boiadas_oficiais').insert({ id: crypto.randomUUID(), nome: ciaNomeUpper, lados: newLados });
+                                  askedTouros.add(`${ciaNomeUpper}_${touroNomeUpper}`); // already added
+                                }
+                              }
+                            } else {
+                              const lados = ciaData.lados || {};
+                              const bullExistsInLados = Object.keys(lados).some(t => t.toUpperCase() === touroNomeUpper);
+                              if (!bullExistsInLados) {
+                                const bullKey = `${ciaNomeUpper}_${touroNomeUpper}`;
+                                if (!askedTouros.has(bullKey)) {
+                                  askedTouros.add(bullKey);
+                                  if (window.confirm(`O touro "${touroNomeUpper}" nao existe na CIA "${ciaNomeUpper}" no sistema oficial. Deseja adiciona-lo?`)) {
+                                    lados[touroNomeUpper] = "";
+                                    await supabase.from('boiadas_oficiais').update({ lados }).eq('id', ciaData.id);
+                                  }
+                                }
+                              }
+                            }
+                          }
+
+                          // Resolve rel_touros
                           const { data: tData } = await supabase.from('rel_touros').select('id').ilike('nome', ride.touro_nome).maybeSingle();
                           bId = tData?.id;
                           if (!bId) {
@@ -3225,6 +3268,7 @@ export default function AdminDashboard() {
                             bId = newB?.id;
                           }
                         }
+                        
                         let cId = null;
                         if (ride.competidor_nome) {
                           const { data: cData } = await supabase.from('rel_competidores').select('id').ilike('nome', ride.competidor_nome).maybeSingle();
@@ -3234,6 +3278,7 @@ export default function AdminDashboard() {
                             cId = newC?.id;
                           }
                         }
+                        
                         const payload: any = {
                           evento_id: aiEventoId || null,
                           competidor_id: cId || null,
@@ -3244,11 +3289,17 @@ export default function AdminDashboard() {
                           status: 'pendente',
                         };
                         if (ride.escalado_no_evento) payload.escalado_no_evento = ride.escalado_no_evento;
+                        
                         const { error } = await supabase.from('rel_montarias').insert(payload);
-                        if (error) throw error;
+                        if (error) {
+                          console.error("Erro insert rel_montarias:", error);
+                          throw error;
+                        }
+                        
                         saved++;
-                        if (selectedEvento) await syncRelationalEventToEventosOficiais(selectedEvento.nome).catch(() => {});
-                      } catch {
+                        if (selectedEvento) await syncRelationalEventToEventosOficiais(selectedEvento.nome).catch(err => console.error("Erro no sync:", err));
+                      } catch (err: any) {
+                        console.error("Erro geral na montaria", ride, err);
                         errors++;
                       }
                     }
