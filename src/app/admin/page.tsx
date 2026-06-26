@@ -188,10 +188,11 @@ export default function AdminDashboard() {
   // AI / PDF States
   const [aiPdfFile, setAiPdfFile] = useState<File | null>(null);
   const [aiPdfText, setAiPdfText] = useState('');
-  const [aiPrompt, setAiPrompt] = useState('');
   const [aiIsProcessing, setAiIsProcessing] = useState(false);
-  const [aiStep, setAiStep] = useState<'upload' | 'review'>('upload');
+  const [aiStep, setAiStep] = useState<'upload' | 'chat'>('upload');
   const [aiSuggestedRides, setAiSuggestedRides] = useState<any[]>([]);
+  const [aiChatHistory, setAiChatHistory] = useState<{role: 'user'|'assistant', content: string}[]>([]);
+  const [aiChatInput, setAiChatInput] = useState('');
   const [aiResumo, setAiResumo] = useState('');
   const [isAiMissingDataModalOpen, setIsAiMissingDataModalOpen] = useState(false);
   const [aiMissingCias, setAiMissingCias] = useState<string[]>([]);
@@ -316,7 +317,8 @@ export default function AdminDashboard() {
     setAiStep('upload');
     setAiPdfFile(null);
     setAiPdfText('');
-    setAiPrompt('');
+    setAiChatInput('');
+    setAiChatHistory([]);
     setAiSuggestedRides([]);
     setAiEventoId(null);
     setAiConfirmed(new Set());
@@ -3164,191 +3166,232 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] space-y-4">
-                  <h3 className="font-black italic uppercase text-yellow-500">3. O que voce quer fazer?</h3>
-                  <textarea
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder={'Ex: Pegue todos os touros da CIA Tercio Miranda e crie uma montaria para cada, todos no Dia 1'}
-                    rows={5}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-sm text-white resize-none placeholder:text-white/20"
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    {[
-                      'Crie montarias para todos os touros da CIA Tercio Miranda no Dia 1',
-                      'Liste todas as montarias do PDF e crie uma entrada para cada',
-                      'Pegue apenas as montarias do Dia 2 e organize por competidor',
-                    ].map((sugestao) => (
-                      <button
-                        key={sugestao}
-                        onClick={() => setAiPrompt(sugestao)}
-                        className="text-left text-[10px] font-bold text-white/40 hover:text-yellow-500 bg-white/5 hover:bg-yellow-500/10 border border-white/10 hover:border-yellow-500/30 rounded-xl p-3 transition-all"
-                      >
-                        {sugestao}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <button
-                  disabled={!aiPdfFile || !aiPdfText || !aiPrompt.trim() || aiIsProcessing}
-                  onClick={async () => {
-                    setAiIsProcessing(true);
-                    try {
-                      const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
-                      const res = await fetch('/api/ai-pdf', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          pdfText: aiPdfText,
-                          prompt: aiPrompt,
-                          eventoId: aiEventoId,
-                          eventoNome: selectedEvento?.nome || '',
-                        }),
-                      });
-                      const result = await res.json();
-                      if (!res.ok || result.error) throw new Error(result.error || 'Erro desconhecido');
-                      const withIds = result.montarias.map((m: any, i: number) => ({ ...m, _tempId: i }));
-                      setAiSuggestedRides(withIds);
-                      setAiConfirmed(new Set(withIds.map((_: any, i: number) => i)));
-                      setAiResumo(result.resumo || '');
-                      setAiStep('review');
-                    } catch (err: any) {
-                      alert('Erro ao processar PDF: ' + err.message);
-                    } finally {
-                      setAiIsProcessing(false);
-                    }
+                  disabled={!aiPdfFile || !aiPdfText}
+                  onClick={() => {
+                    setAiChatHistory([{
+                      role: 'assistant',
+                      content: 'Documento recebido! Me diga, o que você quer fazer com esse arquivo? (Ex: Gerar lista de montarias, extrair notas...)'
+                    }]);
+                    setAiStep('chat');
                   }}
                   className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
                 >
-                  {aiIsProcessing ? (
-                    <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> PROCESSANDO COM IA...</>
-                  ) : (
-                    <><Zap className="w-5 h-5" /> PROCESSAR COM IA</>
-                  )}
+                  ABRIR CHAT COM A IA
                 </button>
               </div>
             )}
 
-            {aiStep === 'review' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-black italic uppercase text-white text-xl">{aiSuggestedRides.length} Montarias Encontradas</h3>
-                    {aiResumo && <p className="text-xs text-white/40 mt-1 max-w-xl">{aiResumo}</p>}
+            {aiStep === 'chat' && (
+              <div className="flex flex-col xl:flex-row gap-6 items-start">
+                {/* Janela de Chat */}
+                <div className="w-full xl:w-1/2 flex flex-col bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden h-[600px]">
+                  <div className="p-5 border-b border-white/10 bg-black/40 flex justify-between items-center shrink-0">
+                    <div>
+                      <h3 className="font-black italic uppercase text-yellow-500">Assistente IA</h3>
+                      <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{aiPdfFile?.name}</p>
+                    </div>
+                    <button
+                      onClick={() => setAiStep('upload')}
+                      className="text-[10px] font-black text-white/40 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-all uppercase"
+                    >
+                      Voltar
+                    </button>
                   </div>
-                  <button
-                    onClick={() => { setAiStep('upload'); setAiSuggestedRides([]); setAiResumo(''); }}
-                    className="text-xs font-black text-white/40 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    Voltar
-                  </button>
-                </div>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setAiConfirmed(new Set(aiSuggestedRides.map((_: any, i: number) => i)))}
-                    className="text-xs font-black text-green-400 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    Selecionar Todas
-                  </button>
-                  <button
-                    onClick={() => setAiConfirmed(new Set())}
-                    className="text-xs font-black text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    Remover Todas
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {aiSuggestedRides.map((ride: any, idx: number) => {
-                    const isSelected = aiConfirmed.has(idx);
-                    return (
-                      <div
-                        key={idx}
-                        className={`border rounded-2xl p-5 flex items-start justify-between gap-4 transition-all cursor-pointer ${
-                          isSelected ? 'bg-green-500/5 border-green-500/30' : 'bg-white/5 border-white/10 opacity-50'
-                        }`}
-                        onClick={() => {
-                          setAiConfirmed(prev => {
-                            const next = new Set(prev);
-                            if (next.has(idx)) next.delete(idx); else next.add(idx);
-                            return next;
-                          });
-                        }}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-black transition-all ${
-                            isSelected ? 'bg-green-500 border-green-500 text-black' : 'bg-transparent border-white/20 text-transparent'
-                          }`}>V</div>
-                          <div>
-                            <div className="font-black text-sm text-white">{ride.competidor_nome || <span className="text-white/30 italic">Competidor nao identificado</span>}</div>
-                            <div className="text-xs font-bold text-white/50 mt-1">
-                              <span className="text-yellow-400">{ride.touro_nome || '-'}</span>
-                              {ride.cia_nome && <span className="text-white/30"> - {ride.cia_nome}</span>}
-                            </div>
-                            <div className="text-[10px] font-black text-white/30 uppercase tracking-widest mt-1">
-                              {ride.dia || 'DIA 1'}{ride.escalado_no_evento && ` - ${ride.escalado_no_evento}`}
-                            </div>
-                          </div>
+                  <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                    {aiChatHistory.map((msg, idx) => (
+                      <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-2xl p-4 text-sm font-medium leading-relaxed ${
+                          msg.role === 'user' ? 'bg-yellow-500 text-black rounded-br-sm' : 'bg-white/10 text-white border border-white/5 rounded-bl-sm'
+                        }`}>
+                          {msg.content}
                         </div>
-                        <div className="text-[10px] font-black text-white/20 uppercase">#{idx + 1}</div>
                       </div>
-                    );
-                  })}
+                    ))}
+                    {aiIsProcessing && (
+                      <div className="flex justify-start">
+                        <div className="bg-white/5 border border-white/5 rounded-2xl rounded-bl-sm p-4 flex gap-2 items-center">
+                          <span className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></span>
+                          <span className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
+                          <span className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 border-t border-white/10 bg-black/40 shrink-0">
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!aiChatInput.trim() || aiIsProcessing) return;
+
+                      const userMsg = aiChatInput.trim();
+                      setAiChatInput('');
+                      
+                      const updatedHistory = [...aiChatHistory, { role: 'user' as const, content: userMsg }];
+                      setAiChatHistory(updatedHistory);
+                      setAiIsProcessing(true);
+
+                      try {
+                        const selectedEvento = allRelEvents.find((ev: any) => ev.id === aiEventoId);
+                        const res = await fetch('/api/ai-pdf', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            pdfText: aiPdfText,
+                            messages: updatedHistory,
+                            eventoId: aiEventoId,
+                            eventoNome: selectedEvento?.nome || '',
+                          }),
+                        });
+                        
+                        const result = await res.json();
+                        if (!res.ok || result.error) throw new Error(result.error || 'Erro na API');
+
+                        setAiChatHistory([...updatedHistory, { role: 'assistant', content: result.resposta_chat || 'Processado.' }]);
+
+                        if (result.tipo_de_dados === 'montarias' && Array.isArray(result.dados)) {
+                          const withIds = result.dados.map((m: any, i: number) => ({ ...m, _tempId: i }));
+                          setAiSuggestedRides(withIds);
+                          setAiConfirmed(new Set(withIds.map((_: any, i: number) => i)));
+                        }
+                      } catch (err: any) {
+                        setAiChatHistory(prev => [...prev, { role: 'assistant', content: `❌ Erro: ${err.message}` }]);
+                      } finally {
+                        setAiIsProcessing(false);
+                      }
+                    }} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={aiChatInput}
+                        onChange={(e) => setAiChatInput(e.target.value)}
+                        placeholder="Digite o que deseja fazer..."
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-sm text-white placeholder:text-white/20"
+                        disabled={aiIsProcessing}
+                      />
+                      <button 
+                        type="submit" 
+                        disabled={!aiChatInput.trim() || aiIsProcessing}
+                        className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black px-6 rounded-xl font-black text-sm transition-all"
+                      >
+                        Enviar
+                      </button>
+                    </form>
+                  </div>
                 </div>
 
-                <button
-                  disabled={aiConfirmed.size === 0 || aiIsSaving}
-                  onClick={async () => {
-                    setAiIsSaving(true);
-                    
-                    const missingCias = new Set<string>();
-                    const missingTouros = new Map<string, {cia: string, touro: string}>();
-                    
-                    for (const idx of Array.from(aiConfirmed)) {
-                      const ride = aiSuggestedRides[idx];
-                      if (ride.touro_nome && ride.cia_nome) {
-                        const touroNomeUpper = ride.touro_nome.trim().toUpperCase();
-                        const ciaNomeUpper = ride.cia_nome.trim().toUpperCase();
+                {/* Tabela de Revisão */}
+                {aiSuggestedRides.length > 0 && (
+                  <div className="w-full xl:w-1/2 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-black italic uppercase text-white text-xl">{aiSuggestedRides.length} Montarias Encontradas</h3>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setAiConfirmed(new Set(aiSuggestedRides.map((_: any, i: number) => i)))}
+                        className="text-xs font-black text-green-400 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
+                      >
+                        Selecionar Todas
+                      </button>
+                      <button
+                        onClick={() => setAiConfirmed(new Set())}
+                        className="text-xs font-black text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-widest"
+                      >
+                        Remover Todas
+                      </button>
+                    </div>
+
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                      {aiSuggestedRides.map((ride: any, idx: number) => {
+                        const isSelected = aiConfirmed.has(idx);
+                        return (
+                          <div
+                            key={idx}
+                            className={`border rounded-2xl p-5 flex items-start justify-between gap-4 transition-all cursor-pointer ${
+                              isSelected ? 'bg-green-500/5 border-green-500/30' : 'bg-white/5 border-white/10 opacity-50'
+                            }`}
+                            onClick={() => {
+                              setAiConfirmed(prev => {
+                                const next = new Set(prev);
+                                if (next.has(idx)) next.delete(idx); else next.add(idx);
+                                return next;
+                              });
+                            }}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-black transition-all shrink-0 ${
+                                isSelected ? 'bg-green-500 border-green-500 text-black' : 'bg-transparent border-white/20 text-transparent'
+                              }`}>V</div>
+                              <div>
+                                <div className="font-black text-sm text-white">{ride.competidor_nome || <span className="text-white/30 italic">Competidor não identificado</span>}</div>
+                                <div className="text-xs font-bold text-white/50 mt-1">
+                                  <span className="text-yellow-400">{ride.touro_nome || '-'}</span>
+                                  {ride.cia_nome && <span className="text-white/30"> - {ride.cia_nome}</span>}
+                                </div>
+                                <div className="text-[10px] font-black text-white/30 uppercase tracking-widest mt-1">
+                                  {ride.dia || 'DIA 1'}{ride.escalado_no_evento && ` - ${ride.escalado_no_evento}`}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-[10px] font-black text-white/20 uppercase shrink-0">#{idx + 1}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      disabled={aiConfirmed.size === 0 || aiIsSaving}
+                      onClick={async () => {
+                        setAiIsSaving(true);
                         
-                        // Check if CIA exists
-                        const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNomeUpper).maybeSingle();
-                        if (!ciaData) {
-                          missingCias.add(ciaNomeUpper);
-                          // If CIA is missing, the bull will also be missing for it, but we handle it during CIA creation
-                          const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
-                          missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
-                        } else {
-                          // CIA exists, check if bull exists in it
-                          const lados = ciaData.lados || {};
-                          const bullExistsInLados = Object.keys(lados).some(t => t.toUpperCase() === touroNomeUpper);
-                          if (!bullExistsInLados) {
-                            const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
-                            missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
+                        const missingCias = new Set<string>();
+                        const missingTouros = new Map<string, {cia: string, touro: string}>();
+                        
+                        for (const idx of Array.from(aiConfirmed)) {
+                          const ride = aiSuggestedRides[idx];
+                          if (ride.touro_nome && ride.cia_nome) {
+                            const touroNomeUpper = ride.touro_nome.trim().toUpperCase();
+                            const ciaNomeUpper = ride.cia_nome.trim().toUpperCase();
+                            
+                            // Check se CIA existe
+                            const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNomeUpper).maybeSingle();
+                            if (!ciaData) {
+                              missingCias.add(ciaNomeUpper);
+                              const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
+                              missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
+                            } else {
+                              const lados = ciaData.lados || {};
+                              const bullExistsInLados = Object.keys(lados).some(t => t.toUpperCase() === touroNomeUpper);
+                              if (!bullExistsInLados) {
+                                const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
+                                missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
+                              }
+                            }
                           }
                         }
-                      }
-                    }
-                    
-                    if (missingCias.size > 0 || missingTouros.size > 0) {
-                      setAiMissingCias(Array.from(missingCias));
-                      setAiMissingTouros(Array.from(missingTouros.values()));
-                      setIsAiMissingDataModalOpen(true);
-                      setAiIsSaving(false);
-                    } else {
-                      // Nothing missing, save directly
-                      await executeAiSave(new Set(), new Set());
-                    }
-                  }}
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
-                >
-                  {aiIsSaving ? (
-                    <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> SALVANDO...</>
-                  ) : (
-                    <>SALVAR {aiConfirmed.size} MONTARIA(S) SELECIONADA(S)</>
-                  )}
-                </button>
+                        
+                        if (missingCias.size > 0 || missingTouros.size > 0) {
+                          setAiMissingCias(Array.from(missingCias));
+                          setAiMissingTouros(Array.from(missingTouros.values()));
+                          setIsAiMissingDataModalOpen(true);
+                          setAiIsSaving(false);
+                        } else {
+                          await executeAiSave(new Set(), new Set());
+                        }
+                      }}
+                      className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+                    >
+                      {aiIsSaving ? (
+                        <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> SALVANDO...</>
+                      ) : (
+                        <>SALVAR {aiConfirmed.size} MONTARIA(S) SELECIONADA(S)</>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

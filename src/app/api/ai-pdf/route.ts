@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { pdfText, prompt, eventoId, eventoNome } = await req.json();
+    const { pdfText, messages, eventoId, eventoNome } = await req.json();
 
-    if (!pdfText || !prompt) {
+    if (!pdfText || !messages || !Array.isArray(messages)) {
       return NextResponse.json(
-        { error: "pdfText and prompt are required" },
+        { error: "pdfText and messages array are required" },
         { status: 400 }
       );
     }
@@ -19,32 +19,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const systemPrompt = `Voce eh um assistente especialista em rodeio brasileiro.
-Voce recebera o texto extraido de um PDF de programacao de rodeio e um pedido do usuario.
-Sua tarefa eh extrair as informacoes solicitadas e retornar um JSON estruturado.
+    const systemPrompt = `Você é um assistente especialista em rodeio brasileiro do sistema HZN.
+O usuário fará o upload de um arquivo PDF (texto fornecido abaixo) e conversará com você sobre ele.
+Você DEVE SEMPRE responder em um JSON válido. Nunca responda fora do JSON. Não use blocos de código (como \`\`\`json). Apenas o JSON puro.
 
-Retorne APENAS um JSON valido no seguinte formato (sem markdown, sem explicacoes, apenas o JSON puro):
+FORMATO DE RESPOSTA OBRIGATÓRIO:
 {
-  "montarias": [
-    {
-      "competidor_nome": "NOME DO COMPETIDOR EM MAIUSCULAS",
-      "touro_nome": "NOME DO TOURO EM MAIUSCULAS",
-      "cia_nome": "NOME DA CIA EM MAIUSCULAS",
-      "dia": "DIA 1",
-      "escalado_no_evento": "NOME DO EVENTO SE MENCIONADO"
-    }
-  ],
-  "resumo": "Breve resumo do que foi extraido"
+  "resposta_chat": "A sua resposta em linguagem natural para o usuário. Seja claro e amigável.",
+  "tipo_de_dados": "montarias" | null,
+  "dados": [ ... ] | null
 }
 
-Regras:
-- Todos os nomes em MAIUSCULAS
-- dia deve ser "DIA 1", "DIA 2", etc
-- Se nao conseguir identificar algum campo, use null
-- Nao invente informacoes que nao estao no PDF
-- Se nao encontrar montarias, retorne montarias: []`;
+REGRA PARA "montarias":
+Se o usuário pedir para gerar a lista de montarias ou sorteio, e o PDF tiver os dados necessários, extraia e preencha o array "dados" assim:
+"dados": [
+  {
+    "competidor_nome": "NOME DO COMPETIDOR EM MAIÚSCULAS",
+    "touro_nome": "NOME DO TOURO EM MAIÚSCULAS (se não tiver, deixe null)",
+    "cia_nome": "NOME DA CIA EM MAIÚSCULAS (se não tiver, deixe null)",
+    "dia": "DIA 1"
+  }
+]
+E mude "tipo_de_dados" para "montarias".
 
-    const userMessage = `PEDIDO DO USUARIO: ${prompt}\n\nTEXTO DO PDF:\n${pdfText.substring(0, 12000)}`;
+Se você tiver alguma dúvida, se o PDF for de outra coisa (como planilha de médias sem sorteio) ou se faltarem dados importantes, deixe "tipo_de_dados": null e "dados": null, e use o campo "resposta_chat" para perguntar ao usuário o que ele deseja fazer ou explicar o problema.
+
+TEXTO DO PDF ENVIADO PELO USUÁRIO:
+====================================
+${pdfText.substring(0, 15000)}
+====================================
+`;
+
+    // Map frontend messages to Groq format
+    const formattedMessages = [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m: any) => ({
+        role: m.role,
+        content: m.content,
+      }))
+    ];
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -56,11 +69,8 @@ Regras:
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-          temperature: 0.1,
+          messages: formattedMessages,
+          temperature: 0.2,
           max_tokens: 4000,
         }),
       }
@@ -80,7 +90,7 @@ Regras:
     let parsedResult;
     try {
       const cleaned = rawContent
-        .replace(/```json\n?/g, "")
+        .replace(/```json\n?/gi, "")
         .replace(/```\n?/g, "")
         .trim();
       parsedResult = JSON.parse(cleaned);
@@ -111,8 +121,9 @@ Regras:
 
     return NextResponse.json({
       success: true,
-      montarias: parsedResult.montarias || [],
-      resumo: parsedResult.resumo || "",
+      resposta_chat: parsedResult.resposta_chat || "",
+      tipo_de_dados: parsedResult.tipo_de_dados || null,
+      dados: parsedResult.dados || null,
       eventoId,
       eventoNome,
     });
