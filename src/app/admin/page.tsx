@@ -47,7 +47,8 @@ import {
   DollarSign,
   TrendingUp,
   PiggyBank,
-  Percent
+  Percent,
+  Image as ImageIcon
 } from "lucide-react";
 
 const formatSide = (s: any) => {
@@ -418,9 +419,25 @@ export default function AdminDashboard() {
       const { error } = await supabase.from("boiadas_oficiais").delete().eq("id", id);
       if (!error) {
         fetchBoiadas();
-        alert("Boiada excluída!");
       } else {
-        alert("Erro ao excluir: " + error.message);
+        alert("Erro ao excluir boiada: " + error.message);
+      }
+    }
+  };
+
+  const handleUpdateBoiadaLogo = async (b: any) => {
+    const currentLogo = b.lados?.__meta?.logo || '';
+    const newLogo = window.prompt(`URL da Logo para ${b.nome}:`, currentLogo);
+    if (newLogo !== null) {
+      const updatedLados = { ...b.lados };
+      if (!updatedLados.__meta) updatedLados.__meta = { status: 'aprovado' };
+      updatedLados.__meta.logo = newLogo.trim();
+      const { error } = await supabase.from("boiadas_oficiais").update({ lados: updatedLados }).eq("id", b.id);
+      if (!error) {
+        alert("Logo atualizada com sucesso!");
+        fetchBoiadas();
+      } else {
+        alert("Erro ao atualizar logo: " + error.message);
       }
     }
   };
@@ -1832,10 +1849,14 @@ export default function AdminDashboard() {
                           <div>
                             <div className="font-black uppercase text-sm mb-1">{b.nome}</div>
                             <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{totalTouros} TOUROS</div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleUpdateBoiadaLogo(b)} className="p-3 text-white/20 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all" title="Atualizar Logo">
+                              <ImageIcon className="w-5 h-5" />
+                            </button>
+                            <button onClick={() => handleDeleteBoiada(b.id, b.nome)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
+                              <Trash2 className="w-5 h-5" />
+                            </button>
                           </div>
-                          <button onClick={() => handleDeleteBoiada(b.id, b.nome)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
-                            <Trash2 className="w-5 h-5" />
-                          </button>
                         </div>
                       )
                     })

@@ -2711,10 +2711,7 @@ Instruções importantes:
     return (
       <div style={{ width: '100vw', overflowX: 'hidden' }}>
         <header className="public-header">
-          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} /></div>
-          <div className="header-buttons">
-            <button className="btn btn-primary" onClick={() => navigateTo('/')}>Ir para o Portal</button>
-          </div>
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "25px", maxWidth: "100%", objectFit: "contain" }} /></div>
         </header>
 
         <div className="profile-container" style={{ minHeight: '70vh', padding: '2rem 0', maxWidth: '100%' }}>
@@ -2722,8 +2719,13 @@ Instruções importantes:
             <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center', marginTop: '4rem' }}>Carregando Boiada...</div>
           ) : publicBoiada ? (
             <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', padding: '0 1rem' }}>
-              <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                <h1 style={{ fontSize: '3rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>{publicBoiada.nome}</h1>
+              <div style={{ textAlign: 'center', marginBottom: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  {publicBoiada.lados?.__meta?.logo && (
+                    <img src={publicBoiada.lados.__meta.logo} alt="Logo da CIA" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }} />
+                  )}
+                  <h1 style={{ fontSize: '3rem', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>{publicBoiada.nome}</h1>
+                </div>
                 <div style={{ display: 'inline-block', marginTop: '1rem' }}>
                   <span className="badge badge-rodeoapp" style={{ fontSize: '1rem', padding: '0.5rem 1.5rem' }}>Boiada Oficial</span>
                 </div>
