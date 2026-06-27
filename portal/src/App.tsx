@@ -6656,7 +6656,7 @@ Instruções importantes:
                         <iframe 
                           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
                           src={`https://www.youtube.com/embed/${(() => {
-                            if (!selectedLive?.link_live) return '';
+                            if (!selectedLive?.link_live || typeof selectedLive.link_live !== 'string') return '';
                             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
                             const match = selectedLive.link_live.match(regExp);
                             return (match && match[2].length === 11) ? match[2] : '';
@@ -6710,7 +6710,7 @@ Instruções importantes:
                           </div>
                         ) : (
                           liveChatMessages.map(m => {
-                            const isMsgAdmin = liveAdmins.includes(m.email?.toLowerCase());
+                            const isMsgAdmin = typeof m.email === 'string' && liveAdmins.includes(m.email.toLowerCase());
                             return (
                               <div key={m.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', opacity: m.is_deleted ? 0.6 : 1 }}>
                                 <img 
@@ -6735,7 +6735,7 @@ Instruções importantes:
                                       {m.nome} {isMsgAdmin && <span style={{ fontSize: '8px', background: '#eab308/10', color: '#eab308', padding: '1px 4px', borderRadius: '4px', marginLeft: '2px' }}>ADMIN</span>}
                                     </span>
                                     <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)' }}>
-                                      {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                      {m.created_at && !isNaN(new Date(m.created_at).getTime()) ? new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
                                     </span>
                                   </div>
                                   <p style={{ margin: 0, fontSize: '13px', color: m.is_deleted ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)', fontStyle: m.is_deleted ? 'italic' : 'normal', wordBreak: 'break-word' }}>
@@ -7254,7 +7254,7 @@ Instruções importantes:
                       <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '12px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{u.nome} ({u.email})</span>
-                          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)' }}>Até: {new Date(u.until).toLocaleTimeString('pt-BR')}</span>
+                          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)' }}>Até: {u.until && !isNaN(new Date(u.until).getTime()) ? new Date(u.until).toLocaleTimeString('pt-BR') : ''}</span>
                         </div>
                         <button 
                           onClick={() => handleModerateUser(u.email, u.nome, 'untimeout')}
