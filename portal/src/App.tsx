@@ -5779,7 +5779,8 @@ Instruções importantes:
         {/* Main Content Area */}
         <main className="dashboard-main">
           {/* Header */}
-          <header className="dashboard-header">
+          {!selectedLive && (
+            <header className="dashboard-header">
             <div className="header-search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -5810,6 +5811,7 @@ Instruções importantes:
               />
             </div>
           </header>
+          )}
 
           {/* Dynamic Tabs Content */}
           <div className="dashboard-content">
@@ -6617,14 +6619,15 @@ Instruções importantes:
                     
                     {/* Left: Video Player */}
                     <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                         <button 
                           onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
-                          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                          style={{ background: 'transparent', border: 'none', color: '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          ← Voltar
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                         </button>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', margin: 0 }}>{selectedLive.titulo}</h3>
+                        <img src="/header_logo.png" alt="RodeoApp" style={{ height: '30px', objectFit: 'contain' }} />
+                        <div style={{ width: '40px' }}></div>
                       </div>
                       
                       {/* Video Embed */}
@@ -6799,7 +6802,8 @@ Instruções importantes:
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="mobile-bottom-nav">
+        {!selectedLive && (
+          <nav className="mobile-bottom-nav">
           <button className={`mobile-nav-item ${currentTab === 'home' ? 'active' : ''}`} onClick={() => { setCurrentTab('home'); setSearchTerm(''); }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Home
@@ -6834,6 +6838,7 @@ Instruções importantes:
             AoVivo
           </button>
         </nav>
+        )}
       </div>
 
       {/* ==================================== */}
