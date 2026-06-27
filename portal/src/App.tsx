@@ -6649,10 +6649,10 @@ Instruções importantes:
                     </div>
 
                     {/* Right: Realtime Chat */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: isMobile ? '500px' : '650px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ flex: isMobile ? 'none' : 1, display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '650px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
                       
                       {/* Chat Header */}
-                      <div style={{ padding: '1rem 1.5rem', background: '#0e0e0e', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem', background: '#0e0e0e', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#eab308' }}>Chat Ao Vivo</h4>
                           <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>
@@ -6683,7 +6683,7 @@ Instruções importantes:
                       </div>
 
                       {/* Chat Messages */}
-                      <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {liveChatMessages.length === 0 ? (
                           <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 'bold' }}>
                             Diga olá no chat! 👋
@@ -6738,7 +6738,7 @@ Instruções importantes:
                       </div>
 
                       {/* Chat Input */}
-                      <div style={{ padding: '1.25rem', background: '#0e0e0e', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ padding: isMobile ? '1rem' : '1.25rem', background: '#0e0e0e', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                         {isUserBanned ? (
                           <div style={{ textAlign: 'center', color: '#ef4444', fontSize: '12px', fontWeight: 'bold', padding: '8px' }}>
                             🚫 Você está banido deste chat.
