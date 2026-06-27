@@ -1419,30 +1419,6 @@ Instruções importantes:
     return () => window.removeEventListener('popstate', handleRouting);
   }, []);
 
-  // Presence online counts for live list
-  useEffect(() => {
-    if (lives.length > 0) {
-      const newChannels: any[] = [];
-
-      lives.forEach(live => {
-        const channelName = `live_chat_${live.id}`;
-        const channel = supabase.channel(channelName);
-
-        channel.on('presence', { event: 'sync' }, () => {
-          const state = channel.presenceState();
-          const count = Object.keys(state).length;
-          setLiveOnlineCounts(prev => ({ ...prev, [live.id]: count }));
-        });
-
-        channel.subscribe();
-        newChannels.push(channel);
-      });
-
-      return () => {
-        newChannels.forEach(c => supabase.removeChannel(c));
-      };
-    }
-  }, [lives]);
 
   // Selected Live Chat & Moderation setup
   useEffect(() => {
