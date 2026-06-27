@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "npm i @rolldown/binding-linux-x64-gnu @rolldown/binding-linux-x64-musl --no-save"
+    "prebuild": "npm i @rolldown/binding-linux-x64-gnu @rolldown/binding-linux-x64-musl --no-save --ignore-scripts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",
