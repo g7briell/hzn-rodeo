@@ -81,7 +81,7 @@ ${pdfText ? pdfText.substring(0, 15000) : 'Nenhum PDF enviado.'}
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "llama-3.1-8b-instant",
           messages: formattedMessages,
           temperature: 0.2,
           max_tokens: 4000,
