@@ -1865,7 +1865,7 @@ Instruções importantes:
   const fetchChatAdminsList = async () => {
     const { data, error } = await supabase.from('chat_admins').select('email');
     if (!error && data) {
-      setLiveAdmins(data.map(d => d.email.toLowerCase()));
+      setLiveAdmins(data.map(d => typeof d.email === 'string' ? d.email.toLowerCase() : '').filter(Boolean));
     }
   };
 
@@ -6656,10 +6656,14 @@ Instruções importantes:
                         <iframe 
                           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
                           src={`https://www.youtube.com/embed/${(() => {
-                            if (!selectedLive?.link_live || typeof selectedLive.link_live !== 'string') return '';
-                            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                            const match = selectedLive.link_live.match(regExp);
-                            return (match && match[2].length === 11) ? match[2] : '';
+                            try {
+                              if (!selectedLive?.link_live || typeof selectedLive.link_live !== 'string') return '';
+                              const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                              const match = selectedLive.link_live.match(regExp);
+                              return (match && match[2] && match[2].length === 11) ? match[2] : '';
+                            } catch(e) {
+                              return '';
+                            }
                           })()}?autoplay=1`}
                           title={selectedLive.titulo}
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
