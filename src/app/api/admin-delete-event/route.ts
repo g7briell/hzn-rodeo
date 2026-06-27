@@ -15,8 +15,16 @@ export async function POST(req: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Get the event name first
+    const { data: eventData } = await supabase.from('eventos_oficiais').select('nome').eq('id', id).single();
+    
     const { error } = await supabase.from('eventos_oficiais').delete().eq('id', id);
     if (error) throw error;
+    
+    // If we had a name, try to delete the mirrored event in rel_eventos
+    if (eventData && eventData.nome) {
+      await supabase.from('rel_eventos').delete().ilike('nome', eventData.nome);
+    }
     
     return NextResponse.json({ success: true });
   } catch (error: any) {

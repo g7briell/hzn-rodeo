@@ -3153,16 +3153,37 @@ export default function AdminDashboard() {
                   <h3 className="font-black italic uppercase text-yellow-500">2. Evento de Destino</h3>
                   <div className="space-y-2">
                     <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block">EVENTO (para salvar as montarias)</label>
-                    <select
-                      value={aiEventoId ?? ''}
-                      onChange={(e) => setAiEventoId(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-xs text-white"
-                    >
-                      <option value="">Selecione o evento (opcional)</option>
-                      {allRelEvents.map((ev: any) => (
-                        <option key={ev.id} value={ev.id}>{ev.nome} - {ev.cidade}</option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2">
+                      <select
+                        value={aiEventoId ?? ''}
+                        onChange={(e) => setAiEventoId(e.target.value ? Number(e.target.value) : null)}
+                        className="flex-1 w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 font-bold text-xs text-white"
+                      >
+                        <option value="">Selecione o evento (opcional)</option>
+                        {allRelEvents.map((ev: any) => (
+                          <option key={ev.id} value={ev.id}>{ev.nome} - {ev.cidade}</option>
+                        ))}
+                      </select>
+                      {aiEventoId && (
+                        <button 
+                          onClick={async () => {
+                            if (window.confirm("Deseja realmente apagar esse evento dessa lista? (Nao apagara do painel principal)")) {
+                               const { error } = await supabase.from('rel_eventos').delete().eq('id', aiEventoId);
+                               if (!error) {
+                                 setAllRelEvents(prev => prev.filter(e => e.id !== aiEventoId));
+                                 setAiEventoId(null);
+                               } else {
+                                 alert("Erro ao excluir: " + error.message);
+                               }
+                            }
+                          }}
+                          className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 px-5 rounded-2xl transition-all flex items-center justify-center shrink-0"
+                          title="Remover evento fantasma"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
