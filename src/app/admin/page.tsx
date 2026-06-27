@@ -3375,7 +3375,7 @@ export default function AdminDashboard() {
                             setIsAiModalOpen(false);
                             const { competidor_nome, touro_nome, cia_nome } = result.dados;
                             
-                            openManualRideModal(aiEventoId, null, null);
+                            await openManualRideModal(aiEventoId, null, null);
                             
                             if (competidor_nome) setManualRideCompetidorNome(competidor_nome);
                             if (touro_nome) setManualRideTouroNome(touro_nome);

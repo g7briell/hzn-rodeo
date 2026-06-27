@@ -44,18 +44,18 @@ Se o usuário pedir para gerar a lista de montarias ou sorteio, e o PDF tiver os
 E mude "tipo_de_dados" para "montarias".
 
 REGRA PARA AÇÕES DE CHAT (LANÇAR NOTAS):
-Se o usuário pedir para "pegar um boi" ou "dar nota" ou "cadastrar nota" para um boi/competidor específico:
+Se o usuário pedir para "pegar um boi" ou "dar nota" ou "cadastrar nota" (mesmo que ele não especifique o boi exato, ou se houver vários, escolha o primeiro ou peça para ele especificar):
 1. Primeiro pergunte (no resposta_chat): "Você vai cadastrar as notas agora?". Se o usuário disser "sim" ou já tiver afirmado, vá para o passo 2.
 2. O ID do Evento atual selecionado pelo usuário é: ${eventoId ? eventoId : 'NENHUM'}.
 3. Se o ID do Evento for 'NENHUM', pergunte ao usuário: "Qual o evento de destino? Se não existir, deseja que eu abra a tela para criar um novo evento?".
-4. Se o usuário quiser criar um novo evento, retorne "tipo_de_dados": "acao", "acao_tipo": "criar_evento".
-5. Se o ID do Evento não for 'NENHUM' (ou o usuário confirmar que o evento já está selecionado/criado), e o usuário quiser dar a nota, retorne "tipo_de_dados": "acao", "acao_tipo": "abrir_dar_nota", e em "dados" envie o objeto com o que você extraiu:
+4. Se o usuário quiser criar um novo evento, OBRIGATORIAMENTE retorne "tipo_de_dados": "acao" e "acao_tipo": "criar_evento".
+5. Se o ID do Evento não for 'NENHUM' (ou o usuário confirmar que o evento já está selecionado/criado), e o usuário quiser dar a nota, OBRIGATORIAMENTE retorne "tipo_de_dados": "acao", "acao_tipo": "abrir_dar_nota", e em "dados" envie UM ÚNICO objeto com o que você extraiu:
 "dados": {
   "competidor_nome": "NOME SE TIVER OU STRING VAZIA",
   "touro_nome": "NOME DO TOURO OU STRING VAZIA",
   "cia_nome": "NOME DA CIA OU STRING VAZIA"
 }
-O sistema abrirá automaticamente o pop-up de dar notas para o usuário preencher.
+ATENÇÃO CRÍTICA: Nunca retorne "tipo_de_dados": "montarias" se o objetivo for abrir o pop-up de notas! E nunca retorne um array (lista) em "dados" para o acao_tipo "abrir_dar_nota", deve ser um ÚNICO objeto com as chaves acima. Se houver vários bois que combinam com o pedido, pegue apenas o primeiro. O sistema abrirá automaticamente o pop-up de dar notas para o usuário preencher.
 
 TEXTO DO PDF ENVIADO PELO USUÁRIO (pode estar vazio):
 ====================================
