@@ -3279,11 +3279,12 @@ export default function AdminDashboard() {
                 </div>
 
                 <button
-                  disabled={!aiPdfFile || !aiPdfText}
                   onClick={() => {
                     setAiChatHistory([{
                       role: 'assistant',
-                      content: 'Documento recebido! Me diga, o que você quer fazer com esse arquivo? (Ex: Gerar lista de montarias, extrair notas...)'
+                      content: aiPdfFile 
+                        ? 'Documento recebido! Me diga, o que você quer fazer com esse arquivo? (Ex: Gerar lista de montarias, extrair notas...)'
+                        : 'Olá! Sou seu assistente virtual. Me diga o que você precisa fazer (Ex: Cadastrar nota para o boi X, criar evento, etc).'
                     }]);
                     setAiStep('chat');
                   }}
@@ -3366,6 +3367,20 @@ export default function AdminDashboard() {
                           const withIds = result.dados.map((m: any, i: number) => ({ ...m, _tempId: i }));
                           setAiSuggestedRides(withIds);
                           setAiConfirmed(new Set(withIds.map((_: any, i: number) => i)));
+                        } else if (result.tipo_de_dados === 'acao') {
+                          if (result.acao_tipo === 'criar_evento') {
+                            setIsAiModalOpen(false);
+                            setIsCreateEventModalOpen(true);
+                          } else if (result.acao_tipo === 'abrir_dar_nota' && result.dados) {
+                            setIsAiModalOpen(false);
+                            const { competidor_nome, touro_nome, cia_nome } = result.dados;
+                            
+                            openManualRideModal(aiEventoId, null, null);
+                            
+                            if (competidor_nome) setManualRideCompetidorNome(competidor_nome);
+                            if (touro_nome) setManualRideTouroNome(touro_nome);
+                            if (cia_nome) setManualRideCiaNome(cia_nome);
+                          }
                         }
                       } catch (err: any) {
                         setAiChatHistory(prev => [...prev, { role: 'assistant', content: `❌ Erro: ${err.message}` }]);

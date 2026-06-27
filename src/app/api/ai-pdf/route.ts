@@ -4,9 +4,9 @@ export async function POST(req: NextRequest) {
   try {
     const { pdfText, messages, eventoId, eventoNome } = await req.json();
 
-    if (!pdfText || !messages || !Array.isArray(messages)) {
+    if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
-        { error: "pdfText and messages array are required" },
+        { error: "messages array is required" },
         { status: 400 }
       );
     }
@@ -20,14 +20,15 @@ export async function POST(req: NextRequest) {
     }
 
     const systemPrompt = `Você é um assistente especialista em rodeio brasileiro do sistema HZN.
-O usuário fará o upload de um arquivo PDF (texto fornecido abaixo) e conversará com você sobre ele.
+O usuário pode ou não ter feito upload de um arquivo PDF.
 Você DEVE SEMPRE responder em um JSON válido. Nunca responda fora do JSON. Não use blocos de código (como \`\`\`json). Apenas o JSON puro.
 
 FORMATO DE RESPOSTA OBRIGATÓRIO:
 {
   "resposta_chat": "A sua resposta em linguagem natural para o usuário. Seja claro e amigável.",
-  "tipo_de_dados": "montarias" | null,
-  "dados": [ ... ] | null
+  "tipo_de_dados": "montarias" | "acao" | null,
+  "acao_tipo": "criar_evento" | "abrir_dar_nota" | null,
+  "dados": [ ... ] | { ... } | null
 }
 
 REGRA PARA "montarias":
@@ -42,11 +43,23 @@ Se o usuário pedir para gerar a lista de montarias ou sorteio, e o PDF tiver os
 ]
 E mude "tipo_de_dados" para "montarias".
 
-Se você tiver alguma dúvida, se o PDF for de outra coisa (como planilha de médias sem sorteio) ou se faltarem dados importantes, deixe "tipo_de_dados": null e "dados": null, e use o campo "resposta_chat" para perguntar ao usuário o que ele deseja fazer ou explicar o problema.
+REGRA PARA AÇÕES DE CHAT (LANÇAR NOTAS):
+Se o usuário pedir para "pegar um boi" ou "dar nota" ou "cadastrar nota" para um boi/competidor específico:
+1. Primeiro pergunte (no resposta_chat): "Você vai cadastrar as notas agora?". Se o usuário disser "sim" ou já tiver afirmado, vá para o passo 2.
+2. O ID do Evento atual selecionado pelo usuário é: ${eventoId ? eventoId : 'NENHUM'}.
+3. Se o ID do Evento for 'NENHUM', pergunte ao usuário: "Qual o evento de destino? Se não existir, deseja que eu abra a tela para criar um novo evento?".
+4. Se o usuário quiser criar um novo evento, retorne "tipo_de_dados": "acao", "acao_tipo": "criar_evento".
+5. Se o ID do Evento não for 'NENHUM' (ou o usuário confirmar que o evento já está selecionado/criado), e o usuário quiser dar a nota, retorne "tipo_de_dados": "acao", "acao_tipo": "abrir_dar_nota", e em "dados" envie o objeto com o que você extraiu:
+"dados": {
+  "competidor_nome": "NOME SE TIVER OU STRING VAZIA",
+  "touro_nome": "NOME DO TOURO OU STRING VAZIA",
+  "cia_nome": "NOME DA CIA OU STRING VAZIA"
+}
+O sistema abrirá automaticamente o pop-up de dar notas para o usuário preencher.
 
-TEXTO DO PDF ENVIADO PELO USUÁRIO:
+TEXTO DO PDF ENVIADO PELO USUÁRIO (pode estar vazio):
 ====================================
-${pdfText.substring(0, 15000)}
+${pdfText ? pdfText.substring(0, 15000) : 'Nenhum PDF enviado.'}
 ====================================
 `;
 
