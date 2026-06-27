@@ -77,8 +77,24 @@ ${pdfText ? pdfText : 'Nenhum PDF enviado.'}
     const historyText = messages.map((m: any) => `${m.role === 'assistant' ? 'IA' : 'Usuário'}: ${m.content}`).join("\n\n");
     const prompt = `Aqui está o histórico da conversa e a última mensagem do usuário:\n\n${historyText}\n\nLembre-se de retornar APENAS JSON válido seguindo a estrutura fornecida no system prompt.`;
 
-    const result = await model.generateContent(prompt);
-    const rawContent = result.response.text();
+    let rawContent = "";
+    try {
+      const result = await model.generateContent(prompt);
+      rawContent = result.response.text();
+    } catch (apiErr: any) {
+      console.error("Gemini direct error, fetching available models list...", apiErr);
+      try {
+        const modelsList = await genAI.listModels();
+        const availableNames = modelsList.models.map(m => m.name);
+        return NextResponse.json({
+          error: `Erro na API do Gemini: ${apiErr.message}. Modelos disponíveis para sua chave: ${availableNames.join(", ")}`
+        }, { status: 500 });
+      } catch (listErr: any) {
+        return NextResponse.json({
+          error: `Erro na API do Gemini: ${apiErr.message}. Falha adicional ao listar modelos disponíveis: ${listErr.message}`
+        }, { status: 500 });
+      }
+    }
 
     let parsedResult;
     try {
