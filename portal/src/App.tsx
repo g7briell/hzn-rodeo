@@ -6656,6 +6656,7 @@ Instruções importantes:
                         <iframe 
                           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
                           src={`https://www.youtube.com/embed/${(() => {
+                            if (!selectedLive?.link_live) return '';
                             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
                             const match = selectedLive.link_live.match(regExp);
                             return (match && match[2].length === 11) ? match[2] : '';
