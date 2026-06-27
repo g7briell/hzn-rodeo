@@ -1,0 +1,10 @@
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm install --no-package-lock && npm install --no-package-lock @rolldown/binding-linux-x64-gnu"]
+
+[phases.build]
+cmds = ["npm run build"]
