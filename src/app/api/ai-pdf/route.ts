@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,10 +12,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GROQ_API_KEY not configured in environment variables" },
+        { error: "GEMINI_API_KEY not configured in environment variables" },
         { status: 500 }
       );
     }
@@ -59,46 +60,25 @@ ATENÇÃO CRÍTICA: Nunca retorne "tipo_de_dados": "montarias" se o objetivo for
 
 TEXTO DO PDF ENVIADO PELO USUÁRIO (pode estar vazio):
 ====================================
-${pdfText ? pdfText.substring(0, 15000) : 'Nenhum PDF enviado.'}
+${pdfText ? pdfText : 'Nenhum PDF enviado.'}
 ====================================
 `;
 
-    // Map frontend messages to Groq format
-    const formattedMessages = [
-      { role: "system", content: systemPrompt },
-      ...messages.map((m: any) => ({
-        role: m.role,
-        content: m.content,
-      }))
-    ];
-
-    const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: formattedMessages,
-          temperature: 0.2,
-          max_tokens: 4000,
-        }),
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        responseMimeType: "application/json",
       }
-    );
+    });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      return NextResponse.json(
-        { error: `Groq API error: ${errorData}` },
-        { status: 500 }
-      );
-    }
+    // Extract history
+    const historyText = messages.map((m: any) => `${m.role === 'assistant' ? 'IA' : 'Usuário'}: ${m.content}`).join("\n\n");
+    const prompt = `Aqui está o histórico da conversa e a última mensagem do usuário:\n\n${historyText}\n\nLembre-se de retornar APENAS JSON válido seguindo a estrutura fornecida no system prompt.`;
 
-    const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content || "";
+    const result = await model.generateContent(prompt);
+    const rawContent = result.response.text();
 
     let parsedResult;
     try {
@@ -136,6 +116,7 @@ ${pdfText ? pdfText.substring(0, 15000) : 'Nenhum PDF enviado.'}
       success: true,
       resposta_chat: parsedResult.resposta_chat || "",
       tipo_de_dados: parsedResult.tipo_de_dados || null,
+      acao_tipo: parsedResult.acao_tipo || null,
       dados: parsedResult.dados || null,
       eventoId,
       eventoNome,
