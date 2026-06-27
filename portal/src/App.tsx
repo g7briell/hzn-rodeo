@@ -77,7 +77,7 @@ function App() {
   const isAdmin = user?.email === 'g7briellrms@gmail.com';
   const [userBio, setUserBio] = useState('');
   const [userFoto, setUserFoto] = useState('');
-  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada' | 'dashboard'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada' | 'dashboard' | 'aovivo'>('home');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
@@ -118,6 +118,25 @@ function App() {
   const [isCreatingBoiada, setIsCreatingBoiada] = useState(false);
   const [bulkBullsText, setBulkBullsText] = useState('');
   const [newBoiadaCiaName, setNewBoiadaCiaName] = useState('');
+
+  // Ao Vivo States
+  const [lives, setLives] = useState<any[]>([]);
+  const [selectedLive, setSelectedLive] = useState<any>(null);
+  const [liveChatMessages, setLiveChatMessages] = useState<any[]>([]);
+  const [liveChatInput, setLiveChatInput] = useState('');
+  const [liveOnlineCounts, setLiveOnlineCounts] = useState<{[key: number]: number}>({});
+  const [isChatLocked, setIsChatLocked] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
+  const [liveAdmins, setLiveAdmins] = useState<string[]>([]);
+  const [isModerationModalOpen, setIsModerationModalOpen] = useState(false);
+  const [bannedUsersList, setBannedUsersList] = useState<any[]>([]);
+  const [timeoutUsersList, setTimeoutUsersList] = useState<any[]>([]);
+  const [liveChatChannel, setLiveChatChannel] = useState<any>(null);
+  const [lastMessageTime, setLastMessageTime] = useState(0);
+  const [spamMessageTracker, setSpamMessageTracker] = useState<{text: string, count: number}>({ text: '', count: 0 });
+  const [isUserBanned, setIsUserBanned] = useState(false);
+  const [userTimeoutUntil, setUserTimeoutUntil] = useState<Date | null>(null);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
 
   // AI News States
   const [showNewsModal, setShowNewsModal] = useState(false);
@@ -675,6 +694,16 @@ function App() {
     }
   };
 
+  const fetchLives = async () => {
+    try {
+      const { data, error } = await supabase.from('transmissoes_aovivo').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      if (data) setLives(data);
+    } catch (err) {
+      console.error('Erro ao buscar transmissões ao vivo:', err);
+    }
+  };
+
   const handleGenerateNews = async () => {
     if (!isAdmin) return alert("Apenas o Administrador do portal pode gerar notícias com IA.");
     if (!newsRound) return alert("Selecione o Round / Dia.");
@@ -1047,7 +1076,8 @@ Instruções importantes:
         fetchEventosOficiais(),
         fetchPatrocinios(),
         checkSession(),
-        fetchAllProfiles()
+        fetchAllProfiles(),
+        fetchLives()
       ];
 
       try {
@@ -1388,6 +1418,456 @@ Instruções importantes:
     window.addEventListener('popstate', handleRouting);
     return () => window.removeEventListener('popstate', handleRouting);
   }, []);
+
+  // Presence online counts for live list
+  useEffect(() => {
+    if (lives.length > 0) {
+      const newChannels: any[] = [];
+
+      lives.forEach(live => {
+        const channelName = `live_chat_${live.id}`;
+        const channel = supabase.channel(channelName);
+
+        channel.on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState();
+          const count = Object.keys(state).length;
+          setLiveOnlineCounts(prev => ({ ...prev, [live.id]: count }));
+        });
+
+        channel.subscribe();
+        newChannels.push(channel);
+      });
+
+      return () => {
+        newChannels.forEach(c => supabase.removeChannel(c));
+      };
+    }
+  }, [lives]);
+
+  // Selected Live Chat & Moderation setup
+  useEffect(() => {
+    if (!selectedLive) {
+      if (liveChatChannel) {
+        supabase.removeChannel(liveChatChannel);
+        setLiveChatChannel(null);
+      }
+      return;
+    }
+
+    const liveId = selectedLive.id;
+
+    const loadHistory = async () => {
+      const { data, error } = await supabase
+        .from('chat_mensagens')
+        .select('*')
+        .eq('live_id', liveId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (!error && data) {
+        setLiveChatMessages(data);
+      }
+    };
+    loadHistory();
+
+    const checkModeratorStatus = async () => {
+      if (!user?.email) return;
+      
+      if (user.email.toLowerCase() === 'g7briellrms@gmail.com') {
+        setIsModerator(true);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('chat_admins')
+        .select('id')
+        .eq('email', user.email.toLowerCase())
+        .maybeSingle();
+      
+      if (!error && data) {
+        setIsModerator(true);
+      } else {
+        setIsModerator(false);
+      }
+    };
+    checkModeratorStatus();
+
+    const fetchChatConfig = async () => {
+      const { data, error } = await supabase
+        .from('chat_config')
+        .select('locked')
+        .eq('live_id', liveId)
+        .maybeSingle();
+      if (!error && data) {
+        setIsChatLocked(data.locked);
+      } else {
+        setIsChatLocked(false);
+      }
+    };
+    fetchChatConfig();
+
+    const checkUserRestrictions = async () => {
+      if (!user?.email) return;
+      const { data, error } = await supabase
+        .from('chat_moderation')
+        .select('*')
+        .eq('live_id', liveId)
+        .eq('email', user.email.toLowerCase())
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        const activeBan = data.find(m => m.tipo === 'ban');
+        if (activeBan) {
+          setIsUserBanned(true);
+          return;
+        }
+
+        const activeTimeout = data.find(m => m.tipo === 'timeout' && new Date(m.until) > new Date());
+        if (activeTimeout) {
+          setUserTimeoutUntil(new Date(activeTimeout.until));
+        } else {
+          setUserTimeoutUntil(null);
+        }
+      }
+    };
+    checkUserRestrictions();
+
+    const channelName = `live_chat_${liveId}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        presence: {
+          key: user?.email || `anon_${Math.random().toString(36).substring(2, 7)}`
+        }
+      }
+    });
+
+    channel
+      .on('broadcast', { event: 'new_message' }, ({ payload }) => {
+        setLiveChatMessages(prev => {
+          if (prev.some(m => m.id === payload.id)) return prev;
+          return [...prev, payload];
+        });
+      })
+      .on('broadcast', { event: 'message_deleted' }, ({ payload }) => {
+        setLiveChatMessages(prev => prev.map(m => m.id === payload.id ? { ...m, texto: '(mensagem apagada por um administrador)', is_deleted: true } : m));
+      })
+      .on('broadcast', { event: 'chat_lock_changed' }, ({ payload }) => {
+        setIsChatLocked(payload.locked);
+      })
+      .on('broadcast', { event: 'user_moderated' }, ({ payload }) => {
+        if (user?.email && payload.email.toLowerCase() === user.email.toLowerCase()) {
+          if (payload.tipo === 'ban') {
+            setIsUserBanned(true);
+          } else if (payload.tipo === 'timeout') {
+            if (payload.until) {
+              setUserTimeoutUntil(new Date(payload.until));
+            } else {
+              setUserTimeoutUntil(null);
+            }
+          }
+        }
+      })
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const count = Object.keys(state).length;
+        setLiveOnlineCounts(prev => ({ ...prev, [liveId]: count }));
+      });
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        const profileName = userProfile?.nome || user?.email?.split('@')[0] || 'Espectador';
+        const profilePhoto = userProfile?.foto || '';
+        await channel.track({
+          online_at: new Date().toISOString(),
+          email: user?.email || 'anonimo',
+          nome: profileName,
+          foto: profilePhoto
+        });
+      }
+    });
+
+    setLiveChatChannel(channel);
+
+    fetchChatAdminsList();
+    fetchModeratedUsers();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedLive, user, userProfile]);
+
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLive || !liveChatInput.trim() || !user) return;
+
+    if (isUserBanned) {
+      alert("Você está banido deste chat.");
+      return;
+    }
+
+    if (userTimeoutUntil && new Date() < userTimeoutUntil) {
+      const secondsLeft = Math.ceil((userTimeoutUntil.getTime() - new Date().getTime()) / 1000);
+      alert(`Você está em timeout. Aguarde mais ${secondsLeft} segundos.`);
+      return;
+    }
+
+    if (isChatLocked && !isModerator) {
+      alert("O chat está bloqueado temporariamente apenas para administradores.");
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastMessageTime < 2000 && !isModerator) {
+      alert("Aguarde 2 segundos entre as mensagens.");
+      return;
+    }
+
+    const text = liveChatInput.trim();
+    setLiveChatInput('');
+    setLastMessageTime(now);
+
+    if (!isModerator) {
+      let nextCount = 1;
+      if (spamMessageTracker.text === text) {
+        nextCount = spamMessageTracker.count + 1;
+      }
+      setSpamMessageTracker({ text, count: nextCount });
+
+      if (nextCount >= 5) {
+        const { data: pastTimeouts } = await supabase
+          .from('chat_moderation')
+          .select('id')
+          .eq('live_id', selectedLive.id)
+          .eq('email', user.email.toLowerCase())
+          .eq('tipo', 'timeout');
+        
+        const offensesCount = pastTimeouts ? pastTimeouts.length : 0;
+        let minutes = 1;
+        if (offensesCount === 1) minutes = 5;
+        else if (offensesCount === 2) minutes = 60;
+        else if (offensesCount >= 3) minutes = 1440;
+
+        const timeoutUntil = new Date(Date.now() + minutes * 60 * 1000);
+        
+        await supabase.from('chat_moderation').insert({
+          live_id: selectedLive.id,
+          email: user.email.toLowerCase(),
+          nome: userProfile?.nome || user.email.split('@')[0],
+          tipo: 'timeout',
+          until: timeoutUntil.toISOString()
+        });
+
+        setUserTimeoutUntil(timeoutUntil);
+        setSpamMessageTracker({ text: '', count: 0 });
+
+        if (liveChatChannel) {
+          liveChatChannel.send({
+            type: 'broadcast',
+            event: 'user_moderated',
+            payload: {
+              email: user.email.toLowerCase(),
+              tipo: 'timeout',
+              until: timeoutUntil.toISOString()
+            }
+          });
+        }
+
+        alert(`Você foi colocado em timeout por ${minutes} minuto(s) devido a spam.`);
+        return;
+      }
+    }
+
+    try {
+      const profileName = userProfile?.nome || user.email.split('@')[0];
+      const profilePhoto = userProfile?.foto || '';
+
+      const { data, error } = await supabase.from('chat_mensagens').insert({
+        live_id: selectedLive.id,
+        email: user.email.toLowerCase(),
+        nome: profileName,
+        foto: profilePhoto,
+        texto: text
+      }).select('*').single();
+
+      if (error) throw error;
+
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'new_message',
+          payload: data
+        });
+      }
+
+      setLiveChatMessages(prev => [...prev, data]);
+    } catch (err: any) {
+      console.error("Erro ao enviar mensagem:", err);
+    }
+  };
+
+  const handleDeleteChatMessage = async (msgId: number) => {
+    if (!isModerator || !selectedLive) return;
+    if (!window.confirm("Deseja realmente apagar esta mensagem?")) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_mensagens')
+        .update({ texto: '(mensagem apagada por um administrador)', is_deleted: true })
+        .eq('id', msgId);
+
+      if (error) throw error;
+
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'message_deleted',
+          payload: { id: msgId }
+        });
+      }
+
+      setLiveChatMessages(prev => prev.map(m => m.id === msgId ? { ...m, texto: '(mensagem apagada por um administrador)', is_deleted: true } : m));
+    } catch (err: any) {
+      alert("Erro ao deletar mensagem: " + err.message);
+    }
+  };
+
+  const handleModerateUser = async (userEmail: string, userName: string, tipo: 'ban' | 'timeout' | 'unban' | 'untimeout', durationMinutes?: number) => {
+    if (!isModerator || !selectedLive) return;
+
+    try {
+      if (tipo === 'unban') {
+        const { error } = await supabase
+          .from('chat_moderation')
+          .delete()
+          .eq('live_id', selectedLive.id)
+          .eq('email', userEmail.toLowerCase())
+          .eq('tipo', 'ban');
+        if (error) throw error;
+        alert(`Banimento de ${userName} removido.`);
+      } else if (tipo === 'untimeout') {
+        const { error } = await supabase
+          .from('chat_moderation')
+          .delete()
+          .eq('live_id', selectedLive.id)
+          .eq('email', userEmail.toLowerCase())
+          .eq('tipo', 'timeout');
+        if (error) throw error;
+        
+        if (liveChatChannel) {
+          liveChatChannel.send({
+            type: 'broadcast',
+            event: 'user_moderated',
+            payload: { email: userEmail, tipo: 'timeout', until: null }
+          });
+        }
+        alert(`Timeout de ${userName} removido.`);
+      } else if (tipo === 'ban') {
+        const { error } = await supabase.from('chat_moderation').insert({
+          live_id: selectedLive.id,
+          email: userEmail.toLowerCase(),
+          nome: userName,
+          tipo: 'ban'
+        });
+        if (error) throw error;
+
+        if (liveChatChannel) {
+          liveChatChannel.send({
+            type: 'broadcast',
+            event: 'user_moderated',
+            payload: { email: userEmail, tipo: 'ban' }
+          });
+        }
+        alert(`${userName} foi banido.`);
+      } else if (tipo === 'timeout' && durationMinutes) {
+        const timeoutUntil = new Date(Date.now() + durationMinutes * 60 * 1000);
+        const { error } = await supabase.from('chat_moderation').insert({
+          live_id: selectedLive.id,
+          email: userEmail.toLowerCase(),
+          nome: userName,
+          tipo: 'timeout',
+          until: timeoutUntil.toISOString()
+        });
+        if (error) throw error;
+
+        if (liveChatChannel) {
+          liveChatChannel.send({
+            type: 'broadcast',
+            event: 'user_moderated',
+            payload: { email: userEmail, tipo: 'timeout', until: timeoutUntil.toISOString() }
+          });
+        }
+        alert(`${userName} recebeu um timeout de ${durationMinutes} minutos.`);
+      }
+
+      fetchModeratedUsers();
+    } catch (err: any) {
+      alert("Erro na moderação: " + err.message);
+    }
+  };
+
+  const fetchModeratedUsers = async () => {
+    if (!selectedLive) return;
+    const { data, error } = await supabase
+      .from('chat_moderation')
+      .select('*')
+      .eq('live_id', selectedLive.id);
+
+    if (!error && data) {
+      setBannedUsersList(data.filter(m => m.tipo === 'ban'));
+      setTimeoutUsersList(data.filter(m => m.tipo === 'timeout' && new Date(m.until) > new Date()));
+    }
+  };
+
+  const handleToggleChatLock = async () => {
+    if (!isModerator || !selectedLive) return;
+    const nextState = !isChatLocked;
+
+    try {
+      const { error } = await supabase
+        .from('chat_config')
+        .upsert({ live_id: selectedLive.id, locked: nextState });
+
+      if (error) throw error;
+
+      setIsChatLocked(nextState);
+
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'chat_lock_changed',
+          payload: { locked: nextState }
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao travar/destravar chat: " + err.message);
+    }
+  };
+
+  const handleAddChatAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmail.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_admins')
+        .insert({ email: newAdminEmail.trim().toLowerCase() });
+
+      if (error) throw error;
+
+      alert(`Administrador ${newAdminEmail} adicionado com sucesso!`);
+      setNewAdminEmail('');
+      
+      fetchChatAdminsList();
+    } catch (err: any) {
+      alert("Erro ao adicionar administrador: " + err.message);
+    }
+  };
+
+  const fetchChatAdminsList = async () => {
+    const { data, error } = await supabase.from('chat_admins').select('email');
+    if (!error && data) {
+      setLiveAdmins(data.map(d => d.email.toLowerCase()));
+    }
+  };
 
   useEffect(() => {
     if (publicNewsId && publicNews) {
@@ -5296,6 +5776,18 @@ Instruções importantes:
               </svg>
               My Profile
             </button>
+
+            <button 
+              className={`menu-item ${currentTab === 'aovivo' ? 'active' : ''}`} 
+              onClick={() => { setCurrentTab('aovivo'); setSelectedLive(null); setLiveChatMessages([]); setSearchTerm(''); }}
+              style={{ position: 'relative' }}
+            >
+              <span className="relative flex h-2 w-2 mr-2" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              AoVivo
+            </button>
           </nav>
 
           <div className="sidebar-footer">
@@ -6082,6 +6574,246 @@ Instruções importantes:
               </div>
             )}
 
+            {/* AO VIVO TAB */}
+            {currentTab === 'aovivo' && (
+              <div className="fade-in">
+                {!selectedLive ? (
+                  <div className="aovivo-list-container" style={{ padding: '2rem 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+                      <span className="relative flex h-3.5 w-3.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500"></span>
+                      </span>
+                      <h2 className="section-title" style={{ margin: 0, textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900 }}>Rodeio Ao Vivo</h2>
+                    </div>
+
+                    {lives.length === 0 ? (
+                      <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                        <svg style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.2)', marginBottom: '1rem' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" /><line x1="7" y1="2" x2="7" y2="22" /><line x1="17" y1="2" x2="17" y2="22" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="2" y1="7" x2="7" y2="7" /><line x1="2" y1="17" x2="7" y2="17" /><line x1="17" y1="17" x2="22" y2="17" /><line x1="17" y1="7" x2="22" y2="7" /></svg>
+                        <p style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>Nenhuma transmissão ao vivo no momento.</p>
+                      </div>
+                    ) : (
+                      <div className="aovivo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
+                        {lives.map(l => {
+                          const onlineCount = liveOnlineCounts[l.id] || 0;
+                          return (
+                            <div 
+                              key={l.id} 
+                              className="aovivo-card" 
+                              onClick={() => setSelectedLive(l)}
+                              style={{ 
+                                background: '#0e0e0e', 
+                                border: '1px solid rgba(255,255,255,0.08)', 
+                                borderRadius: '32px', 
+                                overflow: 'hidden', 
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease'
+                              }}
+                            >
+                              <div style={{ position: 'relative', height: '200px', width: '100%', overflow: 'hidden' }}>
+                                <img 
+                                  src={l.capa_url || '/maiorqualidade.jpg'} 
+                                  alt={l.titulo} 
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                />
+                                <div style={{ position: 'absolute', top: '16px', right: '16px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 900, padding: '4px 12px', borderRadius: '100px', letterSpacing: '0.1em', animation: 'pulse 2s infinite' }}>
+                                  AO VIVO
+                                </div>
+                              </div>
+                              <div style={{ padding: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', margin: '0 0 1rem 0', color: '#fff' }}>{l.titulo}</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{ display: 'inline-block', width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%' }}></span>
+                                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)' }}>
+                                    {onlineCount} {onlineCount === 1 ? 'espectador' : 'espectadores'} online
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // LIVE STREAM DETAILS & CHAT
+                  <div className="live-detail-container" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '2rem', padding: '1rem 0' }}>
+                    
+                    {/* Left: Video Player */}
+                    <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                        <button 
+                          onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
+                          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          ← Voltar
+                        </button>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', margin: 0 }}>{selectedLive.titulo}</h3>
+                      </div>
+                      
+                      {/* Video Embed */}
+                      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '24px', background: '#000', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <iframe 
+                          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                          src={`https://www.youtube.com/embed/${(() => {
+                            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                            const match = selectedLive.link_live.match(regExp);
+                            return (match && match[2].length === 11) ? match[2] : '';
+                          })()}?autoplay=1`}
+                          title={selectedLive.titulo}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        ></iframe>
+                      </div>
+                    </div>
+
+                    {/* Right: Realtime Chat */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: isMobile ? '500px' : '650px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
+                      
+                      {/* Chat Header */}
+                      <div style={{ padding: '1rem 1.5rem', background: '#0e0e0e', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#eab308' }}>Chat Ao Vivo</h4>
+                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>
+                            {liveOnlineCounts[selectedLive.id] || 0} online
+                          </span>
+                        </div>
+                        {isModerator && (
+                          <button 
+                            onClick={() => setIsModerationModalOpen(true)}
+                            style={{ 
+                              background: '#eab308', 
+                              border: 'none', 
+                              color: '#000', 
+                              padding: '8px 16px', 
+                              borderRadius: '12px', 
+                              fontSize: '10px', 
+                              fontWeight: 900, 
+                              textTransform: 'uppercase',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            🛡️ Moderação
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Chat Messages */}
+                      <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {liveChatMessages.length === 0 ? (
+                          <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 'bold' }}>
+                            Diga olá no chat! 👋
+                          </div>
+                        ) : (
+                          liveChatMessages.map(m => {
+                            const isMsgAdmin = liveAdmins.includes(m.email?.toLowerCase());
+                            return (
+                              <div key={m.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', opacity: m.is_deleted ? 0.6 : 1 }}>
+                                <img 
+                                  src={m.foto || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
+                                  alt={m.nome} 
+                                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: isMsgAdmin ? '2px solid #eab308' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} 
+                                  onClick={() => {
+                                    if (isModerator && m.email !== user?.email) {
+                                      if (window.confirm(`Moderar usuário ${m.nome} (${m.email})?`)) {
+                                        const action = window.prompt("Escolha a ação:\n1. Dar Timeout de 1 minuto\n2. Dar Timeout de 5 minutos\n3. Dar Timeout de 1 hora\n4. Banir permanentemente\nDigite o número da ação:");
+                                        if (action === '1') handleModerateUser(m.email, m.nome, 'timeout', 1);
+                                        else if (action === '2') handleModerateUser(m.email, m.nome, 'timeout', 5);
+                                        else if (action === '3') handleModerateUser(m.email, m.nome, 'timeout', 60);
+                                        else if (action === '4') handleModerateUser(m.email, m.nome, 'ban');
+                                      }
+                                    }
+                                  }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2px' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 900, color: isMsgAdmin ? '#eab308' : 'rgba(255,255,255,0.8)' }}>
+                                      {m.nome} {isMsgAdmin && <span style={{ fontSize: '8px', background: '#eab308/10', color: '#eab308', padding: '1px 4px', borderRadius: '4px', marginLeft: '2px' }}>ADMIN</span>}
+                                    </span>
+                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)' }}>
+                                      {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <p style={{ margin: 0, fontSize: '13px', color: m.is_deleted ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)', fontStyle: m.is_deleted ? 'italic' : 'normal', wordBreak: 'break-word' }}>
+                                    {m.texto}
+                                  </p>
+                                </div>
+                                {isModerator && !m.is_deleted && (
+                                  <button 
+                                    onClick={() => handleDeleteChatMessage(m.id)}
+                                    style={{ background: 'transparent', border: 'none', color: 'rgba(239, 68, 68, 0.4)', cursor: 'pointer', fontSize: '12px', padding: '4px' }}
+                                    title="Apagar mensagem"
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Chat Input */}
+                      <div style={{ padding: '1.25rem', background: '#0e0e0e', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                        {isUserBanned ? (
+                          <div style={{ textAlign: 'center', color: '#ef4444', fontSize: '12px', fontWeight: 'bold', padding: '8px' }}>
+                            🚫 Você está banido deste chat.
+                          </div>
+                        ) : userTimeoutUntil && new Date() < userTimeoutUntil ? (
+                          <div style={{ textAlign: 'center', color: '#f59e0b', fontSize: '11px', fontWeight: 'bold', padding: '8px' }}>
+                            ⏳ Chat bloqueado temporariamente por spam.
+                          </div>
+                        ) : isChatLocked && !isModerator ? (
+                          <div style={{ textAlign: 'center', color: '#f59e0b', fontSize: '11px', fontWeight: 'bold', padding: '8px' }}>
+                            🔒 Chat travado apenas para administradores.
+                          </div>
+                        ) : (
+                          <form onSubmit={handleSendChatMessage} style={{ display: 'flex', gap: '0.75rem' }}>
+                            <input 
+                              type="text" 
+                              value={liveChatInput}
+                              onChange={e => setLiveChatInput(e.target.value)}
+                              placeholder={isChatLocked ? "Chat travado para admins..." : "Envie uma mensagem..."}
+                              disabled={isChatLocked && !isModerator}
+                              style={{ 
+                                flex: 1, 
+                                background: 'rgba(255,255,255,0.03)', 
+                                border: '1px solid rgba(255,255,255,0.08)', 
+                                borderRadius: '16px', 
+                                padding: '10px 16px', 
+                                color: '#fff', 
+                                fontSize: '13px', 
+                                outline: 'none' 
+                              }} 
+                            />
+                            <button 
+                              type="submit"
+                              style={{ 
+                                background: '#eab308', 
+                                border: 'none', 
+                                color: '#000', 
+                                padding: '10px 20px', 
+                                borderRadius: '16px', 
+                                fontSize: '13px', 
+                                fontWeight: 900, 
+                                cursor: 'pointer' 
+                              }}
+                            >
+                              Enviar
+                            </button>
+                          </form>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </main>
 
@@ -6112,6 +6844,13 @@ Instruções importantes:
           <button className={`mobile-nav-item ${currentTab === 'profile' ? 'active' : ''}`} onClick={() => { setCurrentTab('profile'); setSearchTerm(''); }}>
             <svg viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
             Perfil
+          </button>
+          <button className={`mobile-nav-item ${currentTab === 'aovivo' ? 'active' : ''}`} onClick={() => { setCurrentTab('aovivo'); setSelectedLive(null); setLiveChatMessages([]); setSearchTerm(''); }}>
+            <span className="relative flex h-2.5 w-2.5 mb-1" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            AoVivo
           </button>
         </nav>
       </div>
@@ -6428,6 +7167,106 @@ Instruções importantes:
               >
                 {isGeneratingNews ? 'Gerando...' : 'Gerar com IA'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE MODERAÇÃO DE CHAT */}
+      {isModerationModalOpen && selectedLive && (
+        <div className="modal-overlay active" style={{ zIndex: 9999 }}>
+          <div className="auth-modal" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button className="close-btn" onClick={() => setIsModerationModalOpen(false)}>×</button>
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', textTransform: 'uppercase', fontStyle: 'italic', fontWeight: 900, color: '#eab308' }}>
+              Painel de Moderação
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              
+              {/* Lock Chat Control */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase' }}>Configuração do Chat</h3>
+                <button 
+                  onClick={handleToggleChatLock}
+                  style={{ 
+                    width: '100%', 
+                    background: isChatLocked ? '#ef4444' : '#22c55e', 
+                    color: '#fff', 
+                    padding: '12px', 
+                    borderRadius: '16px', 
+                    fontWeight: 'bold', 
+                    border: 'none', 
+                    cursor: 'pointer' 
+                  }}
+                >
+                  {isChatLocked ? "🔒 DESTRAVAR CHAT" : "🔓 TRAVAR CHAT (Apenas Admins)"}
+                </button>
+              </div>
+
+              {/* Add Admin */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase' }}>Adicionar Administrador de Chat</h3>
+                <form onSubmit={handleAddChatAdmin} style={{ display: 'flex', gap: '0.75rem' }}>
+                  <input 
+                    type="email" 
+                    value={newAdminEmail} 
+                    onChange={e => setNewAdminEmail(e.target.value)} 
+                    placeholder="E-mail do novo admin"
+                    style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', color: '#fff', fontSize: '13px' }}
+                  />
+                  <button type="submit" style={{ background: '#eab308', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Adicionar
+                  </button>
+                </form>
+              </div>
+
+              {/* Banned Users */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', color: '#ef4444' }}>Usuários Banidos</h3>
+                {bannedUsersList.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Nenhum usuário banido.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {bannedUsersList.map(u => (
+                      <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '12px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{u.nome} ({u.email})</span>
+                        <button 
+                          onClick={() => handleModerateUser(u.email, u.nome, 'unban')}
+                          style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '4px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Desbanir
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Timeout Users */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', color: '#f59e0b' }}>Usuários em Timeout</h3>
+                {timeoutUsersList.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Nenhum usuário em timeout ativo.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {timeoutUsersList.map(u => (
+                      <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{u.nome} ({u.email})</span>
+                          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)' }}>Até: {new Date(u.until).toLocaleTimeString('pt-BR')}</span>
+                        </div>
+                        <button 
+                          onClick={() => handleModerateUser(u.email, u.nome, 'untimeout')}
+                          style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '4px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>

@@ -201,6 +201,14 @@ export default function AdminDashboard() {
   const [aiIsSaving, setAiIsSaving] = useState(false);
   const [aiConfirmed, setAiConfirmed] = useState<Set<number>>(new Set());
 
+  // Live / Ao Vivo States
+  const [lives, setLives] = useState<any[]>([]);
+  const [isAddLiveModalOpen, setIsAddLiveModalOpen] = useState(false);
+  const [liveTitle, setLiveTitle] = useState('');
+  const [liveLink, setLiveLink] = useState('');
+  const [liveCapaUrl, setLiveCapaUrl] = useState('');
+  const [isSavingLive, setIsSavingLive] = useState(false);
+
   useEffect(() => {
     if (selectedLicense) {
       setTempDays(selectedLicense.dias_validos || 0);
@@ -332,12 +340,14 @@ export default function AdminDashboard() {
       fetchEventos();
       fetchPatrocinios();
       fetchDespesas();
+      fetchLives();
       const interval = setInterval(() => {
         fetchLicenses();
         fetchBoiadas();
         fetchEventos();
         fetchPatrocinios();
         fetchDespesas();
+        fetchLives();
       }, 15000);
       return () => clearInterval(interval);
     }
@@ -387,6 +397,64 @@ export default function AdminDashboard() {
     setAuthStep("email");
     setEmail("");
     setOtp("");
+  };
+
+  async function fetchLives() {
+    const { data, error } = await supabase.from("transmissoes_aovivo").select("*").order("created_at", { ascending: false });
+    if (error) console.error("Erro ao carregar transmissões ao vivo:", error);
+    if (data) setLives(data);
+  }
+
+  const handleDeleteLive = async (id: number) => {
+    if (!window.confirm("Deseja realmente apagar esta transmissão ao vivo?")) return;
+    const { error } = await supabase.from("transmissoes_aovivo").delete().eq("id", id);
+    if (error) {
+      alert("Erro ao apagar transmissão: " + error.message);
+    } else {
+      fetchLives();
+    }
+  };
+
+  const handleSaveLive = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!liveTitle || !liveLink) return alert("Preencha o título e o link.");
+    
+    setIsSavingLive(true);
+    try {
+      let finalCapa = liveCapaUrl;
+      
+      // If no custom cover uploaded, fetch from YouTube video id
+      if (!finalCapa) {
+        const getYouTubeId = (url: string) => {
+          const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+          const match = url.match(regExp);
+          return (match && match[2].length === 11) ? match[2] : null;
+        };
+        const ytId = getYouTubeId(liveLink);
+        if (ytId) {
+          finalCapa = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+        }
+      }
+
+      const { error } = await supabase.from("transmissoes_aovivo").insert({
+        titulo: liveTitle,
+        link_live: liveLink,
+        capa_url: finalCapa
+      });
+
+      if (error) throw error;
+
+      alert("Transmissão ao vivo adicionada com sucesso!");
+      setIsAddLiveModalOpen(false);
+      setLiveTitle('');
+      setLiveLink('');
+      setLiveCapaUrl('');
+      fetchLives();
+    } catch (err: any) {
+      alert("Erro ao salvar transmissão: " + err.message);
+    } finally {
+      setIsSavingLive(false);
+    }
   };
 
   async function fetchLicenses() {
@@ -1626,6 +1694,17 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<DollarSign className="w-4 h-4" />} label="Patrocinadores" active={activeTab === "patrocinios"} onClick={() => setActiveTab("patrocinios")} />
           <TopNavBtn icon={<ShieldCheck className="w-4 h-4" />} label="Competidores" active={activeTab === "competidores"} onClick={() => setActiveTab("competidores")} />
           <TopNavBtn icon={<Zap className="w-4 h-4" />} label="IA / PDF" active={activeTab === "ai-pdf"} onClick={() => setActiveTab("ai-pdf")} />
+          <TopNavBtn 
+            icon={
+              <span className="relative flex h-2 w-2 mr-0.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+            } 
+            label="AoVivo" 
+            active={activeTab === "aovivo"} 
+            onClick={() => setActiveTab("aovivo")} 
+          />
         </div>
 
         <div className="flex items-center gap-4">
@@ -1656,6 +1735,18 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<DollarSign className="w-5 h-5" />} label="PATROCINADORES" active={activeTab === "patrocinios"} onClick={() => { setActiveTab("patrocinios"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<ShieldCheck className="w-5 h-5" />} label="COMPETIDORES" active={activeTab === "competidores"} onClick={() => { setActiveTab("competidores"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<Zap className="w-5 h-5" />} label="IA / PDF" active={activeTab === "ai-pdf"} onClick={() => { setActiveTab("ai-pdf"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn 
+            icon={
+              <span className="relative flex h-2.5 w-2.5 mr-0.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+              </span>
+            } 
+            label="AoVivo" 
+            active={activeTab === "aovivo"} 
+            onClick={() => { setActiveTab("aovivo"); setIsSidebarOpen(false); }} 
+            fullWidth 
+          />
         </div>
       </div>
 
@@ -3418,6 +3509,59 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {activeTab === "aovivo" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">Transmissões <span className="text-yellow-500">Ao Vivo</span></h2>
+                <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-2">Gerencie as lives que aparecem no portal do usuário</p>
+              </div>
+              <button
+                onClick={() => setIsAddLiveModalOpen(true)}
+                className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+              >
+                Adicionar Live
+              </button>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {lives.map((l) => (
+                <div key={l.id} className="group bg-[#0c0c0c] border border-white/10 rounded-[2rem] overflow-hidden hover:border-yellow-500/50 hover:bg-white/5 transition-all duration-500 shadow-2xl relative">
+                  <div className="absolute top-4 right-4 z-10 bg-red-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">
+                    AO VIVO
+                  </div>
+                  {l.capa_url ? (
+                     <div className="h-48 w-full overflow-hidden relative border-b border-white/10">
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10" />
+                       <img src={l.capa_url} alt={l.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
+                     </div>
+                   ) : (
+                     <div className="h-48 w-full bg-black/50 border-b border-white/5 flex items-center justify-center relative overflow-hidden">
+                       <Tv className="w-16 h-16 text-white/10" />
+                     </div>
+                   )}
+                  
+                  <div className="p-6 md:p-8 space-y-4">
+                    <h3 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white group-hover:text-yellow-500 transition-colors">
+                      {l.titulo}
+                    </h3>
+                    <p className="text-white/40 font-bold text-[10px] uppercase tracking-widest break-all">
+                      {l.link_live}
+                    </p>
+                    
+                    <button
+                      onClick={() => handleDeleteLive(l.id)}
+                      className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors"
+                    >
+                      Remover Live
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </main>
 
       {/* Manual Event Registration Modal */}
@@ -3433,6 +3577,49 @@ export default function AdminDashboard() {
               
               <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95">
                 Criar Evento
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Adicionar Live */}
+      {isAddLiveModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsAddLiveModalOpen(false)}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Nova Transmissão ao Vivo</h2>
+            <form onSubmit={handleSaveLive} className="space-y-6">
+              <InputGroup label="Título da Live" value={liveTitle} onChange={setLiveTitle} placeholder="Ex: Rodeio de Barretos - Ao Vivo" />
+              <InputGroup label="Link da Live (YouTube)" value={liveLink} onChange={setLiveLink} placeholder="Ex: https://www.youtube.com/watch?v=..." />
+              
+              <div>
+                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Imagem de Capa (Opcional)</label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={e => handlePhotoUpload(e, (b64) => setLiveCapaUrl(b64))}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none text-xs text-white" 
+                />
+                <p className="text-[9px] text-white/30 mt-1 uppercase tracking-wider">Se não enviar uma imagem, o sistema puxará automaticamente a capa do vídeo do YouTube.</p>
+              </div>
+
+              {liveCapaUrl && (
+                <div className="mt-4 rounded-xl overflow-hidden border border-white/10 h-32 w-full">
+                  <img src={liveCapaUrl} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+              
+              <button 
+                type="submit" 
+                disabled={isSavingLive}
+                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-2"
+              >
+                {isSavingLive ? (
+                  <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> Salvando...</>
+                ) : (
+                  "Criar Transmissão"
+                )}
               </button>
             </form>
           </div>
