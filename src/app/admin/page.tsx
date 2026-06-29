@@ -216,6 +216,8 @@ export default function AdminDashboard() {
   const [liveTemperatura, setLiveTemperatura] = useState('');
   const [livePrevisaoChuva, setLivePrevisaoChuva] = useState('');
   const [liveClima, setLiveClima] = useState('');
+  const [liveLatitude, setLiveLatitude] = useState<number | null>(null);
+  const [liveLongitude, setLiveLongitude] = useState<number | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
 
   useEffect(() => {
@@ -460,6 +462,8 @@ export default function AdminDashboard() {
       setLiveTemperatura(`${tempVal}°C`);
       setLivePrevisaoChuva(`${rainProbVal}%`);
       setLiveClima(condition);
+      setLiveLatitude(latitude);
+      setLiveLongitude(longitude);
     } catch (error: any) {
       alert("Erro ao buscar previsão: " + error.message);
     } finally {
@@ -495,7 +499,9 @@ export default function AdminDashboard() {
         cidade: liveCidade,
         temperatura: liveTemperatura,
         previsao_chuva: livePrevisaoChuva,
-        clima: liveClima
+        clima: liveClima,
+        latitude: liveLatitude || null,
+        longitude: liveLongitude || null
       });
 
       if (error) throw error;
@@ -509,6 +515,8 @@ export default function AdminDashboard() {
       setLiveTemperatura('');
       setLivePrevisaoChuva('');
       setLiveClima('');
+      setLiveLatitude(null);
+      setLiveLongitude(null);
       fetchLives();
     } catch (err: any) {
       alert("Erro ao salvar transmissão: " + err.message);
