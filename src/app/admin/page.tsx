@@ -198,6 +198,9 @@ export default function AdminDashboard() {
   const [aiMissingCias, setAiMissingCias] = useState<string[]>([]);
   const [aiMissingTouros, setAiMissingTouros] = useState<{cia: string, touro: string, ciaId?: string, currentLados?: any}[]>([]);
   const [aiEventoId, setAiEventoId] = useState<number | null>(null);
+  const [bulkScoringRides, setBulkScoringRides] = useState<any[]>([]);
+  const [bulkScoringIndex, setBulkScoringIndex] = useState<number>(-1);
+  const [isBulkScoringActive, setIsBulkScoringActive] = useState(false);
   const [aiIsSaving, setAiIsSaving] = useState(false);
   const [aiConfirmed, setAiConfirmed] = useState<Set<number>>(new Set());
 
@@ -1437,23 +1440,59 @@ export default function AdminDashboard() {
         await syncRelationalEventToEventosOficiais(targetEvent.nome);
       }
 
-      alert("Montaria adicionada com sucesso!");
-      setIsManualRideModalOpen(false);
+      if (isBulkScoringActive) {
+        const nextIndex = bulkScoringIndex + 1;
+        if (nextIndex < bulkScoringRides.length) {
+          setBulkScoringIndex(nextIndex);
+          const nextRide = bulkScoringRides[nextIndex];
+          
+          setManualRideCompetidorNome(nextRide.competidor_nome || '');
+          setManualRideTouroNome(nextRide.touro_nome || '');
+          setManualRideCiaNome(nextRide.cia_nome || '');
+          setManualRideEscaladoNoEvento(nextRide.escalado_no_evento || '');
+          setRideDia(nextRide.dia || 'DIA 1');
+          
+          setRideTempo('8.0');
+          setRideJ1Peao('0');
+          setRideJ2Peao('0');
+          setRideJ1Touro('0');
+          setRideJ2Touro('0');
+          setRideStatus('ativa');
+        } else {
+          alert("Todas as montarias em lote foram salvas com sucesso!");
+          setIsManualRideModalOpen(false);
+          setIsBulkScoringActive(false);
+          setBulkScoringRides([]);
+          setBulkScoringIndex(-1);
+          
+          setAiStep('upload');
+          setAiPdfFile(null);
+          setAiPdfText('');
+          setAiChatInput('');
+          setAiChatHistory([]);
+          setAiSuggestedRides([]);
+          setAiEventoId(null);
+          setAiConfirmed(new Set());
+        }
+      } else {
+        alert("Montaria adicionada com sucesso!");
+        setIsManualRideModalOpen(false);
 
-      setManualRideTouroNome('');
-      setManualRideCiaNome('');
-      setManualRideEscaladoNoEvento('');
-      setManualRideCompetidorNome('');
-      setRideTempo('8.0');
-      setRideJ1Peao('0');
-      setRideJ2Peao('0');
-      setRideJ1Touro('0');
-      setRideJ2Touro('0');
+        setManualRideTouroNome('');
+        setManualRideCiaNome('');
+        setManualRideEscaladoNoEvento('');
+        setManualRideCompetidorNome('');
+        setRideTempo('8.0');
+        setRideJ1Peao('0');
+        setRideJ2Peao('0');
+        setRideJ1Touro('0');
+        setRideJ2Touro('0');
 
-      if (selectedCompetidor) {
-        handleSelectCompetidor(selectedCompetidor);
-      } else if (selectedTouro) {
-        handleSelectTouro(selectedTouro);
+        if (selectedCompetidor) {
+          handleSelectCompetidor(selectedCompetidor);
+        } else if (selectedTouro) {
+          handleSelectTouro(selectedTouro);
+        }
       }
     } catch (err: any) {
       alert("Erro ao salvar montaria: " + err.message);
@@ -1571,6 +1610,42 @@ export default function AdminDashboard() {
     setAllRelEvents(data || []);
     
     setIsManualRideModalOpen(true);
+  };
+
+  const startBulkScoring = async (rides: any[]) => {
+    if (rides.length === 0) return;
+    setBulkScoringRides(rides);
+    setBulkScoringIndex(0);
+    setIsBulkScoringActive(true);
+
+    const firstRide = rides[0];
+    
+    setManualRideEventId(aiEventoId);
+    setManualRideCompetidorId(null);
+    setManualRideCompetidorNome(firstRide.competidor_nome || '');
+    setManualRideTouroId(null);
+    setManualRideTouroNome(firstRide.touro_nome || '');
+    setManualRideCiaNome(firstRide.cia_nome || '');
+    setManualRideEscaladoNoEvento(firstRide.escalado_no_evento || '');
+    setRideDia(firstRide.dia || 'DIA 1');
+    setRideTempo('8.0');
+    setRideJ1Peao('0');
+    setRideJ2Peao('0');
+    setRideJ1Touro('0');
+    setRideJ2Touro('0');
+    setRideStatus('ativa');
+
+    const { data } = await supabase.from('rel_eventos').select('*').order('nome', { ascending: true });
+    setAllRelEvents(data || []);
+
+    setIsManualRideModalOpen(true);
+  };
+
+  const handleCloseManualRideModal = () => {
+    setIsManualRideModalOpen(false);
+    setIsBulkScoringActive(false);
+    setBulkScoringRides([]);
+    setBulkScoringIndex(-1);
   };
   // Finance and Sponsorship calculations
   const totalEntradas = patrocinios.reduce((acc, p) => acc + (Number(p.valor_contrato) || 0), 0);
@@ -3477,54 +3552,66 @@ export default function AdminDashboard() {
                       })}
                     </div>
 
-                    <button
-                      disabled={aiConfirmed.size === 0 || aiIsSaving}
-                      onClick={async () => {
-                        setAiIsSaving(true);
-                        
-                        const missingCias = new Set<string>();
-                        const missingTouros = new Map<string, {cia: string, touro: string}>();
-                        
-                        for (const idx of Array.from(aiConfirmed)) {
-                          const ride = aiSuggestedRides[idx];
-                          if (ride.touro_nome && ride.cia_nome) {
-                            const touroNomeUpper = ride.touro_nome.trim().toUpperCase();
-                            const ciaNomeUpper = ride.cia_nome.trim().toUpperCase();
-                            
-                            // Check se CIA existe
-                            const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNomeUpper).maybeSingle();
-                            if (!ciaData) {
-                              missingCias.add(ciaNomeUpper);
-                              const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
-                              missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
-                            } else {
-                              const lados = ciaData.lados || {};
-                              const bullExistsInLados = Object.keys(lados).some(t => t.toUpperCase() === touroNomeUpper);
-                              if (!bullExistsInLados) {
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <button
+                        disabled={aiConfirmed.size === 0 || aiIsSaving}
+                        onClick={async () => {
+                          setAiIsSaving(true);
+                          
+                          const missingCias = new Set<string>();
+                          const missingTouros = new Map<string, {cia: string, touro: string}>();
+                          
+                          for (const idx of Array.from(aiConfirmed)) {
+                            const ride = aiSuggestedRides[idx];
+                            if (ride.touro_nome && ride.cia_nome) {
+                              const touroNomeUpper = ride.touro_nome.trim().toUpperCase();
+                              const ciaNomeUpper = ride.cia_nome.trim().toUpperCase();
+                              
+                              const { data: ciaData } = await supabase.from('boiadas_oficiais').select('id, lados').ilike('nome', ciaNomeUpper).maybeSingle();
+                              if (!ciaData) {
+                                missingCias.add(ciaNomeUpper);
                                 const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
                                 missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
+                              } else {
+                                const lados = ciaData.lados || {};
+                                const bullExistsInLados = Object.keys(lados).some(t => t.toUpperCase() === touroNomeUpper);
+                                if (!bullExistsInLados) {
+                                  const bullKey = `${ciaNomeUpper}|||${touroNomeUpper}`;
+                                  missingTouros.set(bullKey, { cia: ciaNomeUpper, touro: touroNomeUpper });
+                                }
                               }
                             }
                           }
-                        }
-                        
-                        if (missingCias.size > 0 || missingTouros.size > 0) {
-                          setAiMissingCias(Array.from(missingCias));
-                          setAiMissingTouros(Array.from(missingTouros.values()));
-                          setIsAiMissingDataModalOpen(true);
-                          setAiIsSaving(false);
-                        } else {
-                          await executeAiSave(new Set(), new Set());
-                        }
-                      }}
-                      className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
-                    >
-                      {aiIsSaving ? (
-                        <><div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> SALVANDO...</>
-                      ) : (
-                        <>SALVAR {aiConfirmed.size} MONTARIA(S) SELECIONADA(S)</>
-                      )}
-                    </button>
+                          
+                          if (missingCias.size > 0 || missingTouros.size > 0) {
+                            setAiMissingCias(Array.from(missingCias));
+                            setAiMissingTouros(Array.from(missingTouros.values()));
+                            setIsAiMissingDataModalOpen(true);
+                            setAiIsSaving(false);
+                          } else {
+                            await executeAiSave(new Set(), new Set());
+                          }
+                        }}
+                        className="flex-1 bg-[#151515] hover:bg-[#202020] border border-white/10 text-white/80 py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {aiIsSaving ? (
+                          <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> SALVANDO...</>
+                        ) : (
+                          <>SALVAR COMO PENDENTE ({aiConfirmed.size})</>
+                        )}
+                      </button>
+
+                      <button
+                        disabled={aiConfirmed.size === 0 || aiIsSaving}
+                        onClick={() => {
+                          const ridesToScore = Array.from(aiConfirmed).map(idx => aiSuggestedRides[idx]);
+                          startBulkScoring(ridesToScore);
+                        }}
+                        className="flex-1 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+                      >
+                        LANÇAR NOTAS EM LOTE ({aiConfirmed.size})
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -3653,8 +3740,10 @@ export default function AdminDashboard() {
       {isManualRideModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
           <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
-            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsManualRideModalOpen(false)}>×</button>
-            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Cadastrar Montaria</h2>
+            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={handleCloseManualRideModal}>×</button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">
+              {isBulkScoringActive ? `Lançar Nota (${bulkScoringIndex + 1} / ${bulkScoringRides.length})` : "Cadastrar Montaria"}
+            </h2>
             <form onSubmit={handleCreateManualRide} className="space-y-6">
               
               <div>
