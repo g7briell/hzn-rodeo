@@ -65,60 +65,82 @@ ${pdfText ? pdfText : 'Nenhum PDF enviado.'}
 `;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Helper to get a supported Gemini model name
-    async function getSupportedModel(): Promise<string> {
-      // First try the most recent stable model name
-      const preferred = ["gemini-1.5-flash", "gemini-1.0-pro", "gemini-pro"];
+
+    // Helper to get all generative models in a robust order of preference
+    async function getModelsToTry(): Promise<string[]> {
+      const preferredOrder = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-1.0-pro"
+      ];
       try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
         const data = await response.json();
-        if (!data.models) return preferred[0];
+        if (!data.models) return preferredOrder.map(m => m.startsWith("models/") ? m : `models/${m}`);
+        
         const available = data.models.map((m: any) => m.name);
-        for (const name of preferred) {
-          if (available.includes(name)) return name;
+        const clean = (name: string) => name.replace(/^models\//, "");
+
+        const orderedList: string[] = [];
+        // First add the preferred ones if they are in the available list
+        for (const pref of preferredOrder) {
+          const matched = available.find((av: string) => clean(av) === pref);
+          if (matched) {
+            orderedList.push(matched);
+          }
         }
-        // Fallback to the first model that supports generateContent
-        const withGenerate = data.models.find((m: any) => m.supportedGenerationMethods?.includes("generateContent"));
-        return withGenerate?.name || preferred[0];
+        // Then add any other available models that support generateContent
+        for (const m of data.models) {
+          if (m.supportedGenerationMethods?.includes("generateContent") && !orderedList.includes(m.name)) {
+            orderedList.push(m.name);
+          }
+        }
+        
+        return orderedList.length > 0 ? orderedList : preferredOrder.map(m => `models/${m}`);
       } catch (e) {
         console.error("Failed to fetch available Gemini models", e);
-        // If fetching fails, just use the most common name
-        return preferred[0];
+        return preferredOrder.map(m => `models/${m}`);
       }
     }
-
-    const selectedModel = await getSupportedModel();
-    const model = genAI.getGenerativeModel({
-      model: selectedModel,
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        responseMimeType: "application/json",
-      }
-    });
 
     // Extract history
     const historyText = messages.map((m: any) => `${m.role === 'assistant' ? 'IA' : 'Usuário'}: ${m.content}`).join("\n\n");
     const prompt = `Aqui está o histórico da conversa e a última mensagem do usuário:\n\n${historyText}\n\nLembre-se de retornar APENAS JSON válido seguindo a estrutura fornecida no system prompt.`;
 
+    const modelsToTry = await getModelsToTry();
     let rawContent = "";
-    try {
-      const result = await model.generateContent(prompt);
-      rawContent = result.response.text();
-    } catch (apiErr: any) {
-      console.error("Gemini API error", apiErr);
-      // Attempt to retrieve the list of available models via raw HTTP request
+    let lastError: any = null;
+
+    for (const modelName of modelsToTry) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
-        const data = await response.json();
-        const availableNames = data.models?.map((m: any) => m.name) || [];
-        return NextResponse.json({
-          error: `Erro na API do Gemini: ${apiErr.message}. Modelos disponíveis para sua chave: ${availableNames.join(", ")}`
-        }, { status: 500 });
-      } catch (listErr: any) {
-        return NextResponse.json({
-          error: `Erro na API do Gemini: ${apiErr.message}. Falha adicional ao buscar modelos disponíveis: ${listErr.message}`
-        }, { status: 500 });
+        console.log(`Tentando obter resposta com o modelo: ${modelName}`);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemPrompt,
+          generationConfig: {
+            responseMimeType: "application/json",
+          }
+        });
+        const result = await model.generateContent(prompt);
+        rawContent = result.response.text();
+        if (rawContent) {
+          console.log(`Sucesso com o modelo: ${modelName}`);
+          break; // Success!
+        }
+      } catch (err: any) {
+        console.warn(`Falha com o modelo ${modelName}:`, err.message || err);
+        lastError = err;
       }
+    }
+
+    if (!rawContent) {
+      console.error("Todos os modelos do Gemini falharam.", lastError);
+      return NextResponse.json({
+        error: `Erro na API do Gemini após tentar múltiplos modelos. Último erro: ${lastError?.message || lastError}. Modelos tentados: ${modelsToTry.join(", ")}`
+      }, { status: 500 });
     }
 
     let parsedResult;
