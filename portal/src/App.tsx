@@ -7227,7 +7227,7 @@ Instruções importantes:
                                 borderRadius: '16px', 
                                 padding: '10px 16px', 
                                 color: '#fff', 
-                                fontSize: '13px', 
+                                fontSize: '16px', 
                                 outline: 'none' 
                               }} 
                             />
