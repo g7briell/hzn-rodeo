@@ -122,6 +122,37 @@ function App() {
   // Ao Vivo States
   const [lives, setLives] = useState<any[]>([]);
   const [selectedLive, setSelectedLive] = useState<any>(null);
+  const [activeAlertIndex, setActiveAlertIndex] = useState(0);
+  const [newAlertText, setNewAlertText] = useState('');
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOpt1, setPollOpt1] = useState('');
+  const [pollOpt2, setPollOpt2] = useState('');
+  const [pollOpt3, setPollOpt3] = useState('');
+  const [pollOpt4, setPollOpt4] = useState('');
+  const [hasVoted, setHasVoted] = useState(false);
+  const [votedOptionIndex, setVotedOptionIndex] = useState<number | null>(null);
+
+  // Rotation timer for important alerts cycling banner
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveAlertIndex(prev => prev + 1);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Check if user has voted in the current active poll
+  useEffect(() => {
+    if (selectedLive?.id) {
+      const voted = localStorage.getItem(`voted_poll_${selectedLive.id}`);
+      if (voted !== null) {
+        setHasVoted(true);
+        setVotedOptionIndex(parseInt(voted, 10));
+      } else {
+        setHasVoted(false);
+        setVotedOptionIndex(null);
+      }
+    }
+  }, [selectedLive?.id, selectedLive?.enquete]);
   const [liveChatMessages, setLiveChatMessages] = useState<any[]>([]);
   const [liveChatInput, setLiveChatInput] = useState('');
   const [liveOnlineCounts, setLiveOnlineCounts] = useState<{[key: number]: number}>({});
@@ -1432,6 +1463,22 @@ Instruções importantes:
 
     const liveId = selectedLive.id;
 
+    const fetchLatestLiveDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('transmissoes_aovivo')
+          .select('*')
+          .eq('id', liveId)
+          .single();
+        if (!error && data) {
+          setSelectedLive(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar detalhes atualizados da live:", err);
+      }
+    };
+    fetchLatestLiveDetails();
+
     const loadHistory = async () => {
       const { data, error } = await supabase
         .from('chat_mensagens')
@@ -1542,6 +1589,12 @@ Instruções importantes:
           }
         }
       })
+      .on('broadcast', { event: 'poll_updated' }, ({ payload }) => {
+        setSelectedLive(prev => prev ? { ...prev, enquete: payload.enquete } : prev);
+      })
+      .on('broadcast', { event: 'alerts_updated' }, ({ payload }) => {
+        setSelectedLive(prev => prev ? { ...prev, alertas: payload.alertas } : prev);
+      })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const count = Object.keys(state).length;
@@ -1569,7 +1622,7 @@ Instruções importantes:
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedLive, user, userProfile]);
+  }, [selectedLive?.id, user?.email, userProfile]);
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1790,6 +1843,184 @@ Instruções importantes:
     if (!error && data) {
       setBannedUsersList(data.filter(m => m.tipo === 'ban'));
       setTimeoutUsersList(data.filter(m => m.tipo === 'timeout' && new Date(m.until) > new Date()));
+    }
+  };
+
+  const handleVote = async (optionIdx: number) => {
+    if (!selectedLive) return;
+    try {
+      const { data: latestLive, error: fetchErr } = await supabase
+        .from('transmissoes_aovivo')
+        .select('enquete')
+        .eq('id', selectedLive.id)
+        .single();
+      if (fetchErr || !latestLive?.enquete) return;
+
+      const updatedEnquete = { ...latestLive.enquete };
+      if (!updatedEnquete.votos) {
+        updatedEnquete.votos = updatedEnquete.opcoes.map(() => 0);
+      }
+      updatedEnquete.votos[optionIdx] = (updatedEnquete.votos[optionIdx] || 0) + 1;
+
+      const { error: updateErr } = await supabase
+        .from('transmissoes_aovivo')
+        .update({ enquete: updatedEnquete })
+        .eq('id', selectedLive.id);
+      if (updateErr) throw updateErr;
+
+      localStorage.setItem(`voted_poll_${selectedLive.id}`, optionIdx.toString());
+      setSelectedLive(prev => prev ? { ...prev, enquete: updatedEnquete } : prev);
+
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'poll_updated',
+          payload: { enquete: updatedEnquete }
+        });
+      }
+    } catch (err: any) {
+      console.error("Erro ao votar:", err);
+    }
+  };
+
+  const handleAddAlert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAlertText.trim() || !selectedLive) return;
+    try {
+      const updatedAlerts = [...(selectedLive.alertas || []), newAlertText.trim()];
+      const { error } = await supabase
+        .from('transmissoes_aovivo')
+        .update({ alertas: updatedAlerts })
+        .eq('id', selectedLive.id);
+      if (error) throw error;
+      
+      setSelectedLive(prev => prev ? { ...prev, alertas: updatedAlerts } : prev);
+      setNewAlertText('');
+      
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'alerts_updated',
+          payload: { alertas: updatedAlerts }
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao adicionar alerta: " + err.message);
+    }
+  };
+
+  const handleRemoveAlert = async (idx: number) => {
+    if (!selectedLive) return;
+    try {
+      const updatedAlerts = (selectedLive.alertas || []).filter((_: any, i: number) => i !== idx);
+      const { error } = await supabase
+        .from('transmissoes_aovivo')
+        .update({ alertas: updatedAlerts })
+        .eq('id', selectedLive.id);
+      if (error) throw error;
+      
+      setSelectedLive(prev => prev ? { ...prev, alertas: updatedAlerts } : prev);
+      
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'alerts_updated',
+          payload: { alertas: updatedAlerts }
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao remover alerta: " + err.message);
+    }
+  };
+
+  const handleLaunchPoll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLive) return;
+    if (!pollQuestion.trim() || !pollOpt1.trim() || !pollOpt2.trim()) {
+      return alert("A enquete precisa de uma pergunta e pelo menos 2 opções.");
+    }
+    try {
+      const options = [pollOpt1.trim(), pollOpt2.trim()];
+      if (pollOpt3.trim()) options.push(pollOpt3.trim());
+      if (pollOpt4.trim()) options.push(pollOpt4.trim());
+      
+      const newEnquete = {
+        pergunta: pollQuestion.trim(),
+        opcoes: options,
+        votos: options.map(() => 0),
+        ativa: true
+      };
+      
+      const { error } = await supabase
+        .from('transmissoes_aovivo')
+        .update({ enquete: newEnquete })
+        .eq('id', selectedLive.id);
+      if (error) throw error;
+      
+      setSelectedLive(prev => prev ? { ...prev, enquete: newEnquete } : prev);
+      
+      setPollQuestion('');
+      setPollOpt1('');
+      setPollOpt2('');
+      setPollOpt3('');
+      setPollOpt4('');
+
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'poll_updated',
+          payload: { enquete: newEnquete }
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao lançar enquete: " + err.message);
+    }
+  };
+
+  const handleClosePoll = async () => {
+    if (!selectedLive || !selectedLive.enquete) return;
+    try {
+      const updatedEnquete = { ...selectedLive.enquete, ativa: false };
+      const { error } = await supabase
+        .from('transmissoes_aovivo')
+        .update({ enquete: updatedEnquete })
+        .eq('id', selectedLive.id);
+      if (error) throw error;
+      
+      setSelectedLive(prev => prev ? { ...prev, enquete: updatedEnquete } : prev);
+      
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'poll_updated',
+          payload: { enquete: updatedEnquete }
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao desativar enquete: " + err.message);
+    }
+  };
+
+  const handleClearPoll = async () => {
+    if (!selectedLive) return;
+    try {
+      const { error } = await supabase
+        .from('transmissoes_aovivo')
+        .update({ enquete: null })
+        .eq('id', selectedLive.id);
+      if (error) throw error;
+      
+      setSelectedLive(prev => prev ? { ...prev, enquete: null } : prev);
+      
+      if (liveChatChannel) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'poll_updated',
+          payload: { enquete: null }
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao excluir enquete: " + err.message);
     }
   };
 
@@ -5814,7 +6045,7 @@ Instruções importantes:
           )}
 
           {/* Dynamic Tabs Content */}
-          <div className="dashboard-content">
+          <div className="dashboard-content" style={currentTab === 'aovivo' && selectedLive ? { maxWidth: '1600px', width: '95%' } : undefined}>
             
             {/* HOME CUSTOM PANEL TAB */}
             {currentTab === 'home' && (
@@ -6618,7 +6849,7 @@ Instruções importantes:
                   <div className="live-detail-container" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '2rem', padding: '1rem 0' }}>
                     
                     {/* Left: Video Player */}
-                    <div style={{ flex: isMobile ? 1.5 : 2.2, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ flex: isMobile ? 1.5 : 3.2, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       {isMobile && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                           <button 
@@ -6680,6 +6911,50 @@ Instruções importantes:
                         )}
                       </div>
 
+                      {/* Important Announcements Cycling Banner */}
+                      {selectedLive.alertas && selectedLive.alertas.length > 0 && (
+                        <div style={{
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          borderRadius: '24px',
+                          padding: '1rem 1.5rem',
+                          marginTop: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          overflow: 'hidden'
+                        }}>
+                          <span style={{ 
+                            color: '#fff', 
+                            fontWeight: 900, 
+                            fontSize: '10px', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '1px', 
+                            background: '#ef4444', 
+                            padding: '4px 10px', 
+                            borderRadius: '8px', 
+                            whiteSpace: 'nowrap',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <span>⚠️</span> AVISO IMPORTANTE
+                          </span>
+                          <div style={{ 
+                            flex: 1, 
+                            color: '#fff', 
+                            fontSize: '13px', 
+                            fontWeight: 'bold',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            animation: selectedLive.alertas.length > 1 ? 'fadeIn 0.5s ease-in-out' : 'none'
+                          }}>
+                            {selectedLive.alertas[activeAlertIndex % selectedLive.alertas.length]}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Weather Info Section */}
                       {selectedLive.cidade && (
                         <div style={{ 
@@ -6734,6 +7009,100 @@ Instruções importantes:
                                   <span style={{ fontSize: '13px', fontWeight: 'black', color: '#eab308' }}>{selectedLive.clima}</span>
                                 </div>
                               </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Interactive Poll Section */}
+                      {selectedLive.enquete && (
+                        <div style={{ 
+                          background: 'rgba(255, 255, 255, 0.02)', 
+                          border: '1px solid rgba(255, 255, 255, 0.06)', 
+                          borderRadius: '24px', 
+                          padding: '1.5rem', 
+                          marginTop: '0.75rem' 
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                            <span style={{ 
+                              background: selectedLive.enquete.ativa ? '#eab308' : 'rgba(255,255,255,0.1)', 
+                              color: selectedLive.enquete.ativa ? '#000' : 'rgba(255,255,255,0.6)', 
+                              fontSize: '9px', 
+                              fontWeight: 950, 
+                              padding: '2px 8px', 
+                              borderRadius: '6px', 
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}>
+                              {selectedLive.enquete.ativa ? "Enquete" : "Enquete Encerrada"}
+                            </span>
+                            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>
+                              {selectedLive.enquete.pergunta}
+                            </h4>
+                          </div>
+                          
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {hasVoted || !selectedLive.enquete.ativa ? (
+                              selectedLive.enquete.opcoes.map((opt, idx) => {
+                                const votes = selectedLive.enquete.votos[idx] || 0;
+                                const total = selectedLive.enquete.votos.reduce((a, b) => a + b, 0) || 1;
+                                const percent = Math.round((votes / total) * 100);
+                                const isUserChoice = votedOptionIndex === idx;
+                                return (
+                                  <div 
+                                    key={idx} 
+                                    style={{ 
+                                      position: 'relative', 
+                                      background: 'rgba(255,255,255,0.02)', 
+                                      borderRadius: '16px', 
+                                      padding: '12px 16px', 
+                                      border: isUserChoice ? '1px solid #eab308' : '1px solid rgba(255,255,255,0.06)', 
+                                      overflow: 'hidden' 
+                                    }}
+                                  >
+                                    <div style={{ 
+                                      position: 'absolute', 
+                                      top: 0, 
+                                      left: 0, 
+                                      bottom: 0, 
+                                      width: `${percent}%`, 
+                                      background: 'rgba(234, 179, 8, 0.08)', 
+                                      transition: 'width 0.5s ease-out' 
+                                    }}></div>
+                                    <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>
+                                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        {opt}
+                                        {isUserChoice && <span style={{ color: '#eab308', fontSize: '14px' }}>✓</span>}
+                                      </span>
+                                      <span style={{ color: '#eab308', fontWeight: 900 }}>{percent}% ({votes} {votes === 1 ? 'voto' : 'votos'})</span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              selectedLive.enquete.opcoes.map((opt, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleVote(idx)}
+                                  style={{
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '16px',
+                                    padding: '14px',
+                                    color: '#fff',
+                                    fontWeight: 'bold',
+                                    fontSize: '13px',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    outline: 'none'
+                                  }}
+                                  onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                  onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                                >
+                                  {opt}
+                                </button>
+                              ))
                             )}
                           </div>
                         </div>
@@ -7339,6 +7708,137 @@ Instruções importantes:
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+
+              {/* Important Announcements (Alerts) Control */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', color: '#ef4444' }}>Avisos Importantes</h3>
+                
+                <form onSubmit={handleAddAlert} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <input 
+                    type="text" 
+                    value={newAlertText} 
+                    onChange={e => setNewAlertText(e.target.value)} 
+                    placeholder="Ex: Rodeio inicia às 21h com atraso."
+                    style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', color: '#fff', fontSize: '13px' }}
+                  />
+                  <button type="submit" style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Adicionar
+                  </button>
+                </form>
+
+                {(!selectedLive.alertas || selectedLive.alertas.length === 0) ? (
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Nenhum aviso ativo.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {selectedLive.alertas.map((alertText, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '12px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>{alertText}</span>
+                        <button 
+                          type="button"
+                          onClick={() => handleRemoveAlert(idx)}
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px' }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Polls Control */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', color: '#eab308' }}>Gerenciar Enquete</h3>
+                
+                {selectedLive.enquete ? (
+                  <div>
+                    <div style={{ marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.5rem' }}>
+                      <span style={{ background: selectedLive.enquete.ativa ? '#22c55e' : '#ef4444', color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', marginRight: '6px' }}>
+                        {selectedLive.enquete.ativa ? 'Ativa' : 'Encerrada'}
+                      </span>
+                      <strong style={{ fontSize: '14px', color: '#fff' }}>{selectedLive.enquete.pergunta}</strong>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                      {selectedLive.enquete.opcoes.map((opt, idx) => {
+                        const votes = selectedLive.enquete.votos[idx] || 0;
+                        const total = selectedLive.enquete.votos.reduce((a, b) => a + b, 0) || 1;
+                        const percent = Math.round((votes / total) * 100);
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+                            <span>{opt}</span>
+                            <strong>{percent}% ({votes} {votes === 1 ? 'voto' : 'votos'})</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      {selectedLive.enquete.ativa ? (
+                        <button 
+                          type="button"
+                          onClick={handleClosePoll}
+                          style={{ flex: 1, background: '#f59e0b', color: '#000', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Encerrar Votação
+                        </button>
+                      ) : (
+                        <button 
+                          type="button"
+                          onClick={handleClearPoll}
+                          style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Excluir Enquete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleLaunchPoll} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <input 
+                      type="text" 
+                      value={pollQuestion} 
+                      onChange={e => setPollQuestion(e.target.value)} 
+                      placeholder="Pergunta da Enquete"
+                      required
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', color: '#fff', fontSize: '13px' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={pollOpt1} 
+                      onChange={e => setPollOpt1(e.target.value)} 
+                      placeholder="Opção 1"
+                      required
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', color: '#fff', fontSize: '13px' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={pollOpt2} 
+                      onChange={e => setPollOpt2(e.target.value)} 
+                      placeholder="Opção 2"
+                      required
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', color: '#fff', fontSize: '13px' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={pollOpt3} 
+                      onChange={e => setPollOpt3(e.target.value)} 
+                      placeholder="Opção 3 (Opcional)"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', color: '#fff', fontSize: '13px' }}
+                    />
+                    <input 
+                      type="text" 
+                      value={pollOpt4} 
+                      onChange={e => setPollOpt4(e.target.value)} 
+                      placeholder="Opção 4 (Opcional)"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', color: '#fff', fontSize: '13px' }}
+                    />
+                    <button type="submit" style={{ background: '#eab308', color: '#000', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem' }}>
+                      Lançar Enquete
+                    </button>
+                  </form>
                 )}
               </div>
 
