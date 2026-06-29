@@ -51,7 +51,8 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Upload,
-  AlertTriangle
+  AlertTriangle,
+  Tv
 } from "lucide-react";
 
 const formatSide = (s: any) => {
@@ -211,6 +212,11 @@ export default function AdminDashboard() {
   const [liveLink, setLiveLink] = useState('');
   const [liveCapaUrl, setLiveCapaUrl] = useState('');
   const [isSavingLive, setIsSavingLive] = useState(false);
+  const [liveCidade, setLiveCidade] = useState('');
+  const [liveTemperatura, setLiveTemperatura] = useState('');
+  const [livePrevisaoChuva, setLivePrevisaoChuva] = useState('');
+  const [liveClima, setLiveClima] = useState('');
+  const [isFetchingWeather, setIsFetchingWeather] = useState(false);
 
   useEffect(() => {
     if (selectedLicense) {
@@ -418,6 +424,49 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleFetchWeather = async () => {
+    if (!liveCidade.trim()) return alert("Digite o nome da cidade primeiro.");
+    setIsFetchingWeather(true);
+    try {
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(liveCidade)}&count=1&language=pt`;
+      const geoRes = await fetch(geoUrl);
+      const geoData = await geoRes.json();
+      if (!geoData.results || geoData.results.length === 0) {
+        alert("Cidade não encontrada. Verifique a ortografia.");
+        return;
+      }
+      const city = geoData.results[0];
+      const { latitude, longitude, name, admin1 } = city;
+      
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation,weather_code&daily=precipitation_probability_max&timezone=auto`;
+      const weatherRes = await fetch(weatherUrl);
+      const weatherData = await weatherRes.json();
+
+      const tempVal = Math.round(weatherData.current.temperature_2m);
+      const rainProbVal = weatherData.daily.precipitation_probability_max[0];
+      const code = weatherData.current.weather_code;
+
+      let condition = "Ensolarado";
+      if (code === 0 || code === 1) condition = "Ensolarado";
+      else if (code === 2) condition = "Parcialmente Nublado";
+      else if (code === 3) condition = "Encoberto";
+      else if (code >= 45 && code <= 48) condition = "Neblina";
+      else if (code >= 51 && code <= 55) condition = "Chuvisco";
+      else if (code >= 61 && code <= 65) condition = "Chuva";
+      else if (code >= 80 && code <= 82) condition = "Pancadas de Chuva";
+      else if (code >= 95 && code <= 99) condition = "Tempestade";
+
+      setLiveCidade(`${name} - ${admin1 || ''}`);
+      setLiveTemperatura(`${tempVal}°C`);
+      setLivePrevisaoChuva(`${rainProbVal}%`);
+      setLiveClima(condition);
+    } catch (error: any) {
+      alert("Erro ao buscar previsão: " + error.message);
+    } finally {
+      setIsFetchingWeather(false);
+    }
+  };
+
   const handleSaveLive = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!liveTitle || !liveLink) return alert("Preencha o título e o link.");
@@ -442,7 +491,11 @@ export default function AdminDashboard() {
       const { error } = await supabase.from("transmissoes_aovivo").insert({
         titulo: liveTitle,
         link_live: liveLink,
-        capa_url: finalCapa
+        capa_url: finalCapa,
+        cidade: liveCidade,
+        temperatura: liveTemperatura,
+        previsao_chuva: livePrevisaoChuva,
+        clima: liveClima
       });
 
       if (error) throw error;
@@ -452,6 +505,10 @@ export default function AdminDashboard() {
       setLiveTitle('');
       setLiveLink('');
       setLiveCapaUrl('');
+      setLiveCidade('');
+      setLiveTemperatura('');
+      setLivePrevisaoChuva('');
+      setLiveClima('');
       fetchLives();
     } catch (err: any) {
       alert("Erro ao salvar transmissão: " + err.message);
@@ -3703,6 +3760,51 @@ export default function AdminDashboard() {
               <InputGroup label="Título da Live" value={liveTitle} onChange={setLiveTitle} placeholder="Ex: Rodeio de Barretos - Ao Vivo" />
               <InputGroup label="Link da Live (YouTube)" value={liveLink} onChange={setLiveLink} placeholder="Ex: https://www.youtube.com/watch?v=..." />
               
+              {/* Weather Fields */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <InputGroup 
+                    label="Cidade do Evento" 
+                    value={liveCidade} 
+                    onChange={setLiveCidade} 
+                    placeholder="Ex: Barretos - SP" 
+                    required={false} 
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleFetchWeather}
+                  disabled={isFetchingWeather}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 px-4 py-4 rounded-2xl text-xs font-black h-[54px] mb-0"
+                >
+                  {isFetchingWeather ? "Buscando..." : "Buscar Clima"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <InputGroup 
+                  label="Temp." 
+                  value={liveTemperatura} 
+                  onChange={setLiveTemperatura} 
+                  placeholder="Ex: 22°C" 
+                  required={false} 
+                />
+                <InputGroup 
+                  label="Chuva" 
+                  value={livePrevisaoChuva} 
+                  onChange={setLivePrevisaoChuva} 
+                  placeholder="Ex: 10%" 
+                  required={false} 
+                />
+                <InputGroup 
+                  label="Clima" 
+                  value={liveClima} 
+                  onChange={setLiveClima} 
+                  placeholder="Ex: Ensolarado" 
+                  required={false} 
+                />
+              </div>
+
               <div>
                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Imagem de Capa (Opcional)</label>
                 <input 

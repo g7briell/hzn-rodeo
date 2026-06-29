@@ -6618,7 +6618,7 @@ Instruções importantes:
                   <div className="live-detail-container" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '2rem', padding: '1rem 0' }}>
                     
                     {/* Left: Video Player */}
-                    <div style={{ flex: isMobile ? 1.5 : 2.8, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ flex: isMobile ? 1.5 : 2.2, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       {isMobile && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                           <button 
@@ -6652,11 +6652,11 @@ Instruções importantes:
                         ></iframe>
                       </div>
 
-                      {!isMobile && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                          <h3 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#fff', margin: 0 }}>
-                            {selectedLive.titulo}
-                          </h3>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#fff', margin: 0 }}>
+                          {selectedLive.titulo}
+                        </h3>
+                        {!isMobile && (
                           <button 
                             onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
                             style={{ 
@@ -6677,12 +6677,71 @@ Instruções importantes:
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                             Voltar
                           </button>
+                        )}
+                      </div>
+
+                      {/* Weather Info Section */}
+                      {selectedLive.cidade && (
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: isMobile ? 'flex-start' : 'center', 
+                          flexDirection: isMobile ? 'column' : 'row',
+                          gap: isMobile ? '0.75rem' : '1.5rem', 
+                          background: 'rgba(255,255,255,0.03)', 
+                          border: '1px solid rgba(255,255,255,0.06)', 
+                          borderRadius: '24px', 
+                          padding: '1rem 1.5rem', 
+                          marginTop: '0.75rem' 
+                        }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.1em' }}>Cidade do Evento</span>
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{selectedLive.cidade}</span>
+                          </div>
+                          
+                          {/* Divider */}
+                          {!isMobile && <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)' }}></div>}
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
+                            {selectedLive.temperatura && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '18px' }}>🌡️</span>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 900 }}>Temp</span>
+                                  <span style={{ fontSize: '13px', fontWeight: 'black', color: '#fff' }}>{selectedLive.temperatura}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLive.previsao_chuva && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '18px' }}>🌧️</span>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 900 }}>Chuva</span>
+                                  <span style={{ fontSize: '13px', fontWeight: 'black', color: '#fff' }}>{selectedLive.previsao_chuva}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLive.clima && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '18px' }}>
+                                  {selectedLive.clima.toLowerCase().includes('chuva') || selectedLive.clima.toLowerCase().includes('chuvisco') ? '🌧️' : 
+                                   selectedLive.clima.toLowerCase().includes('nublado') || selectedLive.clima.toLowerCase().includes('encoberto') ? '☁️' : 
+                                   selectedLive.clima.toLowerCase().includes('tempestade') ? '⛈️' : '☀️'}
+                                </span>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 900 }}>Clima</span>
+                                  <span style={{ fontSize: '13px', fontWeight: 'black', color: '#eab308' }}>{selectedLive.clima}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
  
                     {/* Right: Realtime Chat */}
-                    <div style={{ flex: isMobile ? 'none' : 1, display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '700px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ flex: isMobile ? 'none' : 1, minWidth: isMobile ? 'none' : '380px', display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '700px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
                       
                       {/* Chat Header */}
                       <div style={{ padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem', background: '#0e0e0e', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
