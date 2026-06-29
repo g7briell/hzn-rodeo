@@ -3369,10 +3369,8 @@ export default function AdminDashboard() {
                           setAiConfirmed(new Set(withIds.map((_: any, i: number) => i)));
                         } else if (result.tipo_de_dados === 'acao') {
                           if (result.acao_tipo === 'criar_evento') {
-                            setIsAiModalOpen(false);
-                            setIsCreateEventModalOpen(true);
+                            setIsManualEventModalOpen(true);
                           } else if (result.acao_tipo === 'abrir_dar_nota' && result.dados) {
-                            setIsAiModalOpen(false);
                             const { competidor_nome, touro_nome, cia_nome } = result.dados;
                             
                             await openManualRideModal(aiEventoId, null, null);
