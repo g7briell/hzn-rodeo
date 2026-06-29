@@ -50,13 +50,13 @@ Se o usuário pedir para "pegar um boi" ou "dar nota" ou "cadastrar nota" (mesmo
 2. O ID do Evento atual selecionado pelo usuário é: ${eventoId ? eventoId : 'NENHUM'}.
 3. Se o ID do Evento for 'NENHUM', pergunte ao usuário: "Qual o evento de destino? Se não existir, deseja que eu abra a tela para criar um novo evento?".
 4. Se o usuário quiser criar um novo evento, OBRIGATORIAMENTE retorne "tipo_de_dados": "acao" e "acao_tipo": "criar_evento".
-5. Se o ID do Evento não for 'NENHUM' (ou o usuário confirmar que o evento já está selecionado/criado), e o usuário quiser dar a nota, OBRIGATORIAMENTE retorne "tipo_de_dados": "acao", "acao_tipo": "abrir_dar_nota", e em "dados" envie UM ÚNICO objeto com o que você extraiu:
+5. Se o ID do Evento não for 'NENHUM' (ou o usuário confirmar que o evento já está selecionado/criado), e o usuário quiser dar a nota, OBRIGATORIAMENTE retorne "tipo_de_dados": "acao", "acao_tipo": "abrir_dar_nota", e em "dados" envie UM ÚNICO objeto com os dados extraídos ou cruzados:
 "dados": {
-  "competidor_nome": "NOME SE TIVER OU STRING VAZIA",
-  "touro_nome": "NOME DO TOURO OU STRING VAZIA",
-  "cia_nome": "NOME DA CIA OU STRING VAZIA"
+  "competidor_nome": "NOME DO COMPETIDOR ASSOCIADO AO TOURO NO PDF (busque no texto do PDF qual competidor monta esse touro para preencher aqui)",
+  "touro_nome": "NOME DO TOURO EM MAIÚSCULAS",
+  "cia_nome": "NOME DA CIA EM MAIÚSCULAS"
 }
-ATENÇÃO CRÍTICA: Nunca retorne "tipo_de_dados": "montarias" se o objetivo for abrir o pop-up de notas! E nunca retorne um array (lista) em "dados" para o acao_tipo "abrir_dar_nota", deve ser um ÚNICO objeto com as chaves acima. Se houver vários bois que combinam com o pedido, pegue apenas o primeiro. O sistema abrirá automaticamente o pop-up de dar notas para o usuário preencher.
+ATENÇÃO CRÍTICA: Se o usuário pedir para dar nota ou abrir o popup de notas para um touro específico, você DEVE buscar no texto do PDF enviado qual competidor está escalado para montar este touro e preencher o "competidor_nome" automaticamente com o nome dele. Nunca retorne "tipo_de_dados": "montarias" se o objetivo for abrir o pop-up de notas! E nunca retorne um array (lista) em "dados" para o acao_tipo "abrir_dar_nota", deve ser um ÚNICO objeto com as chaves acima. Se houver vários bois que combinam com o pedido, pegue apenas o primeiro. O sistema abrirá automaticamente o pop-up de dar notas para o usuário preencher.
 
 TEXTO DO PDF ENVIADO PELO USUÁRIO (pode estar vazio):
 ====================================

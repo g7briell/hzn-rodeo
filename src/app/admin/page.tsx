@@ -1532,7 +1532,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const openManualRideModal = async (eventId: number | null, compId: number | null, bullId: number | null) => {
+  const openManualRideModal = async (
+    eventId: number | null, 
+    compId: number | null, 
+    bullId: number | null,
+    prefilledCompetidorNome?: string,
+    prefilledTouroNome?: string,
+    prefilledCiaNome?: string
+  ) => {
     setManualRideEventId(eventId);
     setManualRideCompetidorId(compId);
     setManualRideTouroId(bullId);
@@ -1542,10 +1549,10 @@ export default function AdminDashboard() {
       if (comp) {
         setManualRideCompetidorNome(comp.nome);
       } else {
-        setManualRideCompetidorNome('');
+        setManualRideCompetidorNome(prefilledCompetidorNome || '');
       }
     } else {
-      setManualRideCompetidorNome('');
+      setManualRideCompetidorNome(prefilledCompetidorNome || '');
     }
 
     if (bullId) {
@@ -1555,8 +1562,8 @@ export default function AdminDashboard() {
         setManualRideCiaNome(bull.cia);
       }
     } else {
-      setManualRideTouroNome('');
-      setManualRideCiaNome('');
+      setManualRideTouroNome(prefilledTouroNome || '');
+      setManualRideCiaNome(prefilledCiaNome || '');
       setManualRideEscaladoNoEvento('');
     }
     
@@ -3373,11 +3380,14 @@ export default function AdminDashboard() {
                           } else if (result.acao_tipo === 'abrir_dar_nota' && result.dados) {
                             const { competidor_nome, touro_nome, cia_nome } = result.dados;
                             
-                            await openManualRideModal(aiEventoId, null, null);
-                            
-                            if (competidor_nome) setManualRideCompetidorNome(competidor_nome);
-                            if (touro_nome) setManualRideTouroNome(touro_nome);
-                            if (cia_nome) setManualRideCiaNome(cia_nome);
+                            await openManualRideModal(
+                              aiEventoId, 
+                              null, 
+                              null, 
+                              competidor_nome || '', 
+                              touro_nome || '', 
+                              cia_nome || ''
+                            );
                           }
                         }
                       } catch (err: any) {
