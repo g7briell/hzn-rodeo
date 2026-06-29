@@ -6618,17 +6618,19 @@ Instruções importantes:
                   <div className="live-detail-container" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '2rem', padding: '1rem 0' }}>
                     
                     {/* Left: Video Player */}
-                    <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <button 
-                          onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
-                          style={{ background: 'transparent', border: 'none', color: '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        </button>
-                        <img src="/header_logo.png" alt="RodeoApp" style={{ height: '30px', objectFit: 'contain' }} />
-                        <div style={{ width: '40px' }}></div>
-                      </div>
+                    <div style={{ flex: isMobile ? 1.5 : 2.8, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {isMobile && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                          <button 
+                            onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
+                            style={{ background: 'transparent', border: 'none', color: '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                          </button>
+                          <img src="/header_logo.png" alt="RodeoApp" style={{ height: '30px', objectFit: 'contain' }} />
+                          <div style={{ width: '40px' }}></div>
+                        </div>
+                      )}
                       
                       {/* Video Embed */}
                       <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '24px', background: '#000', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -6649,10 +6651,38 @@ Instruções importantes:
                           allowFullScreen
                         ></iframe>
                       </div>
-                    </div>
 
+                      {!isMobile && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                          <h3 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#fff', margin: 0 }}>
+                            {selectedLive.titulo}
+                          </h3>
+                          <button 
+                            onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
+                            style={{ 
+                              background: 'rgba(255,255,255,0.05)', 
+                              border: '1px solid rgba(255,255,255,0.1)', 
+                              color: '#fff', 
+                              padding: '8px 16px', 
+                              borderRadius: '12px', 
+                              cursor: 'pointer', 
+                              fontSize: '12px', 
+                              fontWeight: 'bold',
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '6px',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            Voltar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+ 
                     {/* Right: Realtime Chat */}
-                    <div style={{ flex: isMobile ? 'none' : 1, display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '650px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ flex: isMobile ? 'none' : 1, display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '700px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
                       
                       {/* Chat Header */}
                       <div style={{ padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem', background: '#0e0e0e', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
