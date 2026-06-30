@@ -1170,7 +1170,7 @@ Instruções importantes:
       const isAuth = localStorage.getItem('hzn_portal_authenticated') === 'true';
       
       if (event === 'SIGNED_IN' && !isAuth) {
-        const isSignupFlow = registerStep === 'otp' || authMode === 'register';
+        const isSignupFlow = registerStep === 'otp';
         if (isSignupFlow) {
           localStorage.setItem('hzn_portal_authenticated', 'true');
           setUser(session?.user ?? null);
@@ -2179,6 +2179,15 @@ Instruções importantes:
       // Após verificação OTP, o usuário está confirmado e temos o user.id real
       // Salvar perfil agora se ainda não foi salvo (caso user era null no signUp)
       if (otpData?.user) {
+        localStorage.setItem('hzn_portal_authenticated', 'true');
+        setUser(otpData.user);
+        if (otpData.user.email) {
+          fetchUserProfile(otpData.user.email);
+          fetchBoiadas();
+          fetchTropeiroBoiada(otpData.user.email);
+          setCurrentTab('home');
+        }
+
         const { data: existingProfile } = await supabase
           .from('perfis_portal')
           .select('id')
