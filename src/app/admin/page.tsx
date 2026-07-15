@@ -80,6 +80,10 @@ export default function AdminDashboard() {
   const [tourosTexto, setTourosTexto] = useState("");
   const [loading, setLoading] = useState(false);
   
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [isSavingGeminiKey, setIsSavingGeminiKey] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -259,8 +263,29 @@ export default function AdminDashboard() {
     if (activeTab === 'ai-pdf') {
       supabase.from('rel_eventos').select('*').order('nome', { ascending: true })
         .then(({ data }) => setAllRelEvents(data || []));
+
+      supabase.from('portal_configs').select('*')
+        .then(({ data }) => {
+          const geminiKey = data?.find((c: any) => c.key === 'gemini_api_key')?.value || '';
+          setGeminiApiKey(geminiKey);
+        });
     }
   }, [activeTab]);
+
+  const handleSaveGeminiKey = async () => {
+    setIsSavingGeminiKey(true);
+    try {
+      const { error } = await supabase
+        .from('portal_configs')
+        .upsert({ key: 'gemini_api_key', value: geminiApiKey, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      alert("Chave API do Gemini salva com sucesso para todos os usuários!");
+    } catch (err: any) {
+      alert("Erro ao salvar chave: " + err.message);
+    } finally {
+      setIsSavingGeminiKey(false);
+    }
+  };
 
   const executeAiSave = async (ciasToCreate: Set<string>, tourosToAdd: Set<string>) => {
     setAiIsSaving(true);
@@ -3334,6 +3359,51 @@ export default function AdminDashboard() {
               <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">Importador <span className="text-yellow-500">IA</span></h2>
               <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-2">Faca upload de um PDF e use IA para criar montarias automaticamente</p>
             </header>
+
+            {/* Gemini API Key Configuration Section */}
+            <div className="bg-white/5 border border-white/10 p-6 rounded-[2rem] mb-8 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20 text-yellow-500">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div>
+                  <h3 className="font-black italic uppercase text-yellow-500 text-lg">Configuração da API do Google (Gemini)</h3>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Essa chave é usada no portal.rodeoapp.pro para gerar notícias automaticamente por IA</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-3 items-end">
+                <div className="w-full relative">
+                  <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-1">Chave de API do Gemini</label>
+                  <input
+                    type={showGeminiKey ? "text" : "password"}
+                    value={geminiApiKey}
+                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                    placeholder="Cole a chave API do Google AI Studio (AIzaSy...)"
+                    className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-2xl text-white placeholder-white/20 focus:outline-none focus:border-yellow-500/50 text-sm font-bold pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGeminiKey(!showGeminiKey)}
+                    className="absolute right-3 top-[32px] text-white/40 hover:text-white"
+                  >
+                    {showGeminiKey ? (
+                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    ) : (
+                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    )}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSavingGeminiKey}
+                  onClick={handleSaveGeminiKey}
+                  className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-500/50 text-black font-black italic uppercase rounded-2xl transition-all text-xs tracking-wider whitespace-nowrap h-[46px]"
+                >
+                  {isSavingGeminiKey ? "Salvando..." : "Salvar Chave"}
+                </button>
+              </div>
+            </div>
 
             {aiStep === 'upload' && (
               <div className="space-y-6">

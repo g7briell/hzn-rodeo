@@ -756,9 +756,26 @@ function App() {
     if (!isAdmin) return alert("Apenas o Administrador do portal pode gerar notícias com IA.");
     if (!newsRound) return alert("Selecione o Round / Dia.");
     
-    let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('hzn_gemini_api_key');
+    let apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
-      const inputKey = prompt("Chave de API do Gemini não encontrada no ambiente. Por favor, cole a sua chave API do Google AI Studio para prosseguir:");
+      try {
+        const { data: configData } = await supabase
+          .from('portal_configs')
+          .select('value')
+          .eq('key', 'gemini_api_key')
+          .maybeSingle();
+        apiKey = configData?.value || '';
+      } catch (err) {
+        console.error('Erro ao buscar chave API do Gemini no Supabase:', err);
+      }
+    }
+    
+    if (!apiKey) {
+      apiKey = localStorage.getItem('hzn_gemini_api_key') || '';
+    }
+    
+    if (!apiKey) {
+      const inputKey = prompt("Chave de API do Gemini não configurada globalmente no painel admin. Por favor, cole a sua chave API temporária do Google AI Studio para prosseguir:");
       if (!inputKey) return;
       localStorage.setItem('hzn_gemini_api_key', inputKey.trim());
       apiKey = inputKey.trim();
