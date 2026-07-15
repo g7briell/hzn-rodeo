@@ -1426,16 +1426,28 @@ Instruções importantes:
           setIsPublicBoiadaLoading(true);
           
           try {
-            const queryPattern = '%' + slug.replace(/-/g, '%') + '%';
-            const { data } = await supabase
+            const { data: headers, error: headerError } = await supabase
               .from('boiadas_oficiais')
-              .select('*')
-              .ilike('nome', queryPattern);
+              .select('id, nome');
             
-            const match = data?.find(b => slugify(b.nome) === slug && (!b.lados?.__meta || b.lados.__meta.status !== 'pendente'));
-            if (match) {
-              setPublicBoiada(match);
-              setLoadingBoiadaLogo(match.lados?.__meta?.logo || null);
+            if (headerError) throw headerError;
+            
+            const matchedHeader = headers?.find(b => slugify(b.nome) === slug);
+            if (matchedHeader) {
+              const { data: fullData, error: fullError } = await supabase
+                .from('boiadas_oficiais')
+                .select('*')
+                .eq('id', matchedHeader.id)
+                .maybeSingle();
+                
+              if (fullError) throw fullError;
+              
+              if (fullData && (!fullData.lados?.__meta || fullData.lados.__meta.status !== 'pendente')) {
+                setPublicBoiada(fullData);
+                setLoadingBoiadaLogo(fullData.lados?.__meta?.logo || null);
+              } else {
+                setPublicBoiada(null);
+              }
             } else {
               setPublicBoiada(null);
             }
