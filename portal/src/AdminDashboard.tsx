@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import BoiadaVisualEditor from './BoiadaVisualEditor';
 import { toPng } from 'html-to-image';
@@ -16,6 +16,12 @@ export default function AdminDashboard() {
   const [artShowEventLogo, setArtShowEventLogo] = useState<boolean>(true);
   const [isGeneratingArt, setIsGeneratingArt] = useState<boolean>(false);
   const [artFont, setArtFont] = useState<string>('Montserrat');
+  const [generatorType, setGeneratorType] = useState<'html' | 'psd'>('html');
+  const [artCredits, setArtCredits] = useState<string>('');
+  const [artShowCredits, setArtShowCredits] = useState<boolean>(true);
+  
+  const photopeaActionRef = useRef<'preview' | 'download'>('download');
+  const [artPsdPreviewUrl, setArtPsdPreviewUrl] = useState<string>('');
 
   // PSD states
   const [psdTemplateBase64, setPsdTemplateBase64] = useState<string>('');
@@ -26,6 +32,7 @@ export default function AdminDashboard() {
       const { data } = await supabase.from('portal_configs').select('*').eq('key', 'art_psd_template').maybeSingle();
       if (data?.value) {
         setPsdTemplateBase64(data.value);
+        setGeneratorType('psd');
       }
     } catch (err) {
       console.error('Erro ao buscar template PSD:', err);
@@ -46,6 +53,7 @@ export default function AdminDashboard() {
             .upsert({ key: 'art_psd_template', value: base64, updated_at: new Date().toISOString() });
           if (error) throw error;
           setPsdTemplateBase64(base64);
+          setGeneratorType('psd');
           alert('Template PSD enviado e salvo com sucesso no banco de dados!');
         } catch (err: any) {
           alert('Erro ao salvar template PSD: ' + err.message);
@@ -57,7 +65,7 @@ export default function AdminDashboard() {
     reader.readAsDataURL(file);
   };
 
-  const handleDownloadArt = async () => {
+  const handleRunPhotopea = (action: 'preview' | 'download') => {
     if (!psdTemplateBase64) {
       return alert('Por favor, faça o upload de um arquivo de modelo .psd primeiro.');
     }
@@ -67,6 +75,7 @@ export default function AdminDashboard() {
       return alert('Editor do Photopea não carregado corretamente.');
     }
     
+    photopeaActionRef.current = action;
     setIsGeneratingArt(true);
     
     // Build photopea ExtendScript
@@ -106,7 +115,24 @@ export default function AdminDashboard() {
       `;
     }
 
-    // 3. Smart Object or Layer "Fundo"
+    // 3. Text Layer "Creditos"
+    if (artShowCredits && artCredits) {
+      script += `
+        try {
+          var credL = doc.artLayers.getByName("Creditos");
+          credL.textItem.contents = ${JSON.stringify(artCredits)};
+          credL.visible = true;
+        } catch(e) {}
+      `;
+    } else {
+      script += `
+        try {
+          doc.artLayers.getByName("Creditos").visible = false;
+        } catch(e) {}
+      `;
+    }
+
+    // 4. Smart Object or Layer "Fundo"
     if (artBgImage) {
       script += `
         try {
@@ -127,7 +153,7 @@ export default function AdminDashboard() {
       `;
     }
 
-    // 4. Smart Object or Layer "LogoEvento"
+    // 5. Smart Object or Layer "LogoEvento"
     if (artShowEventLogo && artEventLogo) {
       script += `
         try {
@@ -153,7 +179,7 @@ export default function AdminDashboard() {
       `;
     }
 
-    // 5. Smart Object or Layer "LogoRodeoApp"
+    // 6. Smart Object or Layer "LogoRodeoApp"
     const headerLogoUrl = window.location.origin + '/header_logo.png';
     script += `
       try {
@@ -172,7 +198,7 @@ export default function AdminDashboard() {
       } catch(e) {}
     `;
 
-    // 6. Active Sponsors distribution in group "Patrocinadores"
+    // 7. Active Sponsors distribution in group "Patrocinadores"
     const activeSponsors = patrocinios
       .filter((p: any) => p.status === 'ativo')
       .map((p: any) => p.detalhes?.splash_app?.logo_url || p.logo_url);
@@ -225,7 +251,7 @@ export default function AdminDashboard() {
     }
 
     // Save PNG and close
-    script += 'app.activeDocument.saveToOE("png");\\n';
+    script += 'app.activeDocument.saveToOE("png");\n';
 
     const payload = {
       files: [
@@ -239,6 +265,33 @@ export default function AdminDashboard() {
     };
 
     iframe.contentWindow.postMessage(JSON.stringify(payload), '*');
+  };
+
+  const handleDownloadHtmlArt = async () => {
+    const node = document.getElementById('instagram-art-canvas');
+    if (!node) return;
+    setIsGeneratingArt(true);
+    try {
+      const dataUrl = await toPng(node, {
+        width: 1080,
+        height: 1350,
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left',
+          width: '1080px',
+          height: '1350px'
+        }
+      });
+      const link = document.createElement('a');
+      link.download = `arte-rodeo-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Erro ao gerar imagem:', error);
+      alert('Erro ao gerar imagem HTML. Tente novamente.');
+    } finally {
+      setIsGeneratingArt(false);
+    }
   };
   
   const [users, setUsers] = useState<any[]>([]);
@@ -338,10 +391,16 @@ export default function AdminDashboard() {
       if (e.data instanceof ArrayBuffer) {
         const blob = new Blob([e.data], { type: 'image/png' });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `arte-rodeo-${Date.now()}.png`;
-        link.href = url;
-        link.click();
+        
+        if (photopeaActionRef.current === 'download') {
+          const link = document.createElement('a');
+          link.download = `arte-rodeo-${Date.now()}.png`;
+          link.href = url;
+          link.click();
+        } else {
+          // Action is 'preview'
+          setArtPsdPreviewUrl(url);
+        }
         setIsGeneratingArt(false);
       }
     };
@@ -2400,6 +2459,18 @@ export default function AdminDashboard() {
                 </p>
                 {isUploadingPsd && <span style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>Enviando template...</span>}
               </div>
+
+              <div>
+                <label className="form-label">Tipo de Gerador</label>
+                <select 
+                  className="form-input" 
+                  value={generatorType} 
+                  onChange={e => setGeneratorType(e.target.value as 'html' | 'psd')}
+                >
+                  <option value="html">Gerador HTML (Integrado, Rápido)</option>
+                  <option value="psd" disabled={!psdTemplateBase64}>Gerador Photoshop PSD (Usa o arquivo .psd enviado)</option>
+                </select>
+              </div>
               
               <hr style={{ border: 'none', borderTop: '1px solid var(--border-light)', margin: '0.5rem 0' }} />
               
@@ -2434,22 +2505,39 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="form-label">Fonte da Arte</label>
-                <select 
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Créditos da Foto</span>
+                  <input type="checkbox" checked={artShowCredits} onChange={e => setArtShowCredits(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                </label>
+                <input 
+                  type="text" 
                   className="form-input" 
-                  value={artFont} 
-                  onChange={e => setArtFont(e.target.value)}
-                >
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Inter">Inter</option>
-                  <option value="Outfit">Outfit</option>
-                  <option value="Articulat CF">Articulat CF</option>
-                  <option value="Arial Black">Arial Black</option>
-                </select>
+                  value={artCredits} 
+                  onChange={e => setArtCredits(e.target.value)} 
+                  disabled={!artShowCredits}
+                  placeholder="Ex: Foto por: @nomedofotografo"
+                />
               </div>
 
+              {generatorType === 'html' && (
+                <div>
+                  <label className="form-label">Fonte da Arte</label>
+                  <select 
+                    className="form-input" 
+                    value={artFont} 
+                    onChange={e => setArtFont(e.target.value)}
+                  >
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Inter">Inter</option>
+                    <option value="Outfit">Outfit</option>
+                    <option value="Articulat CF">Articulat CF</option>
+                    <option value="Arial Black">Arial Black</option>
+                  </select>
+                </div>
+              )}
+
               <div>
-                <label className="form-label">Imagem de Fundo (Inspiração/Modelo)</label>
+                <label className="form-label">Imagem de Fundo (Montaria)</label>
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -2482,19 +2570,42 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              <button 
-                onClick={handleDownloadArt} 
-                className="btn btn-primary" 
-                style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-                disabled={isGeneratingArt}
-              >
-                {isGeneratingArt ? 'Gerando Imagem...' : 'Baixar Arte (Instagram)'}
-              </button>
+              {generatorType === 'psd' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <button 
+                    onClick={() => handleRunPhotopea('preview')} 
+                    className="btn btn-outline" 
+                    style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', borderColor: 'var(--primary)', color: 'var(--primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                    disabled={isGeneratingArt}
+                  >
+                    {isGeneratingArt && photopeaActionRef.current === 'preview' ? 'Renderizando PSD...' : '🔄 Visualizar Arte no PSD'}
+                  </button>
+                  <button 
+                    onClick={() => handleRunPhotopea('download')} 
+                    className="btn btn-primary" 
+                    style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                    disabled={isGeneratingArt}
+                  >
+                    {isGeneratingArt && photopeaActionRef.current === 'download' ? 'Gerando Imagem...' : '📥 Baixar Arte PSD'}
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={handleDownloadHtmlArt} 
+                  className="btn btn-primary" 
+                  style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                  disabled={isGeneratingArt}
+                >
+                  {isGeneratingArt ? 'Gerando Imagem...' : 'Baixar Arte HTML'}
+                </button>
+              )}
             </div>
 
             {/* Preview Container */}
             <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-              <h3 style={{ textTransform: 'uppercase', margin: 0, fontSize: '1.1rem', color: 'var(--text-muted)' }}>Pré-visualização (4:5 Feed)</h3>
+              <h3 style={{ textTransform: 'uppercase', margin: 0, fontSize: '1.1rem', color: 'var(--text-muted)' }}>
+                {generatorType === 'psd' && artPsdPreviewUrl ? 'Pré-visualização do PSD Real' : 'Pré-visualização da Arte'}
+              </h3>
               
               {/* Scaled viewport wrapper */}
               <div style={{
@@ -2508,185 +2619,243 @@ export default function AdminDashboard() {
                 background: '#151515'
               }}>
                 
-                {/* 1080x1350 Canvas Node scaled down by 0.37037 */}
-                <div 
-                  id="instagram-art-canvas"
-                  style={{
-                    width: '1080px',
-                    height: '1350px',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    transform: 'scale(0.37037)',
-                    transformOrigin: 'top left',
-                    background: '#151515',
-                    backgroundImage: artBgImage ? `url(${artBgImage})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    fontFamily: "'Inter', sans-serif",
-                    color: 'white',
-                    userSelect: 'none'
-                  }}
-                >
-                  
-                  {/* Top Left Title/Subtitle */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '120px',
-                    left: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: '12px',
-                    zIndex: 5
-                  }}>
-                    {artShowTitle && artTitle && (
+                {generatorType === 'psd' && artPsdPreviewUrl ? (
+                  /* Render actual PSD generated PNG */
+                  <img 
+                    src={artPsdPreviewUrl} 
+                    alt="PSD Render Preview" 
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                  />
+                ) : (
+                  /* HTML Preview Node */
+                  <div 
+                    id="instagram-art-canvas"
+                    style={{
+                      width: '1080px',
+                      height: '1350px',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      transform: 'scale(0.37037)',
+                      transformOrigin: 'top left',
+                      background: '#151515',
+                      backgroundImage: artBgImage ? `url(${artBgImage})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      fontFamily: "'Inter', sans-serif",
+                      color: 'white',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {generatorType === 'psd' && (
                       <div style={{
-                        background: 'white',
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        right: '10px',
+                        background: 'rgba(234, 179, 8, 0.9)',
                         color: 'black',
-                        padding: '16px 45px 16px 60px',
-                        fontSize: '78px',
-                        fontWeight: 900,
-                        lineHeight: 1.1,
-                        letterSpacing: '-0.06em',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                        fontFamily: artFont === 'Articulat CF' ? "'Articulat CF - Heavy', 'Articulat CF', 'Arial Black', sans-serif" : `'${artFont}', sans-serif`
+                        padding: '10px',
+                        fontSize: '22px',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        borderRadius: '6px',
+                        zIndex: 99
                       }}>
-                        {artTitle}
+                        ⚠️ Prévia aproximada. Clique em "Visualizar Arte no PSD" para renderizar o Photoshop.
                       </div>
                     )}
-                    {artShowSubtitle && artSubtitle && (
-                      <div style={{
-                        background: 'black',
-                        color: 'white',
-                        padding: '12px 30px 12px 60px',
-                        fontSize: '36px',
-                        fontWeight: 500,
-                        lineHeight: 1,
-                        letterSpacing: '-0.02em',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderLeft: 'none',
-                        fontFamily: artFont === 'Articulat CF' ? "'Articulat CF - Normal', 'Articulat CF', 'Arial', sans-serif" : `'${artFont}', sans-serif`
-                      }}>
-                        {artSubtitle}
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Top Right Event Logo */}
-                  {artShowEventLogo && artEventLogo && (
+                    {/* Top Left Title/Subtitle */}
                     <div style={{
                       position: 'absolute',
-                      top: '70px',
-                      right: '60px',
-                      width: '260px',
-                      height: '260px',
-                      borderRadius: '50%',
-                      background: 'radial-gradient(circle, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0) 70%)',
+                      top: '120px',
+                      left: 0,
                       display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: '12px',
                       zIndex: 5
                     }}>
-                      <img 
-                        src={artEventLogo} 
-                        style={{
-                          width: '180px',
-                          height: '180px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
-                        }} 
-                      />
-                    </div>
-                  )}
-
-                  {/* Bottom shadow & overlays */}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '520px',
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.85) 45%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0) 100%)',
-                    zIndex: 3
-                  }} />
-
-                  {/* Brand name and sponsors list */}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '50px',
-                    left: 0,
-                    right: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '30px',
-                    zIndex: 4,
-                    width: '100%'
-                  }}>
-                    
-                    {/* RODEOAPP.PRO Logo */}
-                    <div style={{
-                      height: '30px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <img 
-                        src="/header_logo.png" 
-                        style={{
-                          height: '30px',
-                          objectFit: 'contain'
-                        }} 
-                      />
-                    </div>
-
-                    {/* Sponsor logos row */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      gap: '45px',
-                      flexWrap: 'wrap',
-                      width: '100%',
-                      padding: '0 60px'
-                    }}>
-                      {patrocinios.filter(p => p.status === 'ativo').length > 0 ? (
-                        patrocinios.filter(p => p.status === 'ativo').map((p, idx) => (
-                          <img 
-                            key={idx}
-                            src={p.detalhes?.splash_app?.logo_url || p.logo_url} 
-                            style={{
-                              maxHeight: '65px',
-                              maxWidth: '160px',
-                              objectFit: 'contain',
-                              filter: 'brightness(0) invert(1)'
-                            }} 
-                          />
-                        ))
-                      ) : (
-                        <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                          Nenhum Patrocinador Ativo
+                      {artShowTitle && artTitle && (
+                        <div style={{
+                          background: 'white',
+                          color: 'black',
+                          padding: '16px 45px 16px 60px',
+                          fontSize: '78px',
+                          fontWeight: 900,
+                          lineHeight: 1.1,
+                          letterSpacing: '-0.06em',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                          fontFamily: artFont === 'Articulat CF' ? "'Articulat CF - Heavy', 'Articulat CF', 'Arial Black', sans-serif" : `'${artFont}', sans-serif`
+                        }}>
+                          {artTitle}
+                        </div>
+                      )}
+                      {artShowSubtitle && artSubtitle && (
+                        <div style={{
+                          background: 'black',
+                          color: 'white',
+                          padding: '12px 30px 12px 60px',
+                          fontSize: '36px',
+                          fontWeight: 500,
+                          lineHeight: 1,
+                          letterSpacing: '-0.02em',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderLeft: 'none',
+                          fontFamily: artFont === 'Articulat CF' ? "'Articulat CF - Normal', 'Articulat CF', 'Arial', sans-serif" : `'${artFont}', sans-serif`
+                        }}>
+                          {artSubtitle}
                         </div>
                       )}
                     </div>
 
-                  </div>
+                    {/* Top Right Event Logo */}
+                    {artShowEventLogo && artEventLogo && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '70px',
+                        right: '60px',
+                        width: '260px',
+                        height: '260px',
+                        borderRadius: generatorType === 'psd' ? '50%' : '12px',
+                        background: 'radial-gradient(circle, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0) 70%)',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 5
+                      }}>
+                        <img 
+                          src={artEventLogo} 
+                          style={{
+                            width: '180px',
+                            height: '180px',
+                            borderRadius: generatorType === 'psd' ? '50%' : '0px',
+                            objectFit: 'contain',
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                          }} 
+                        />
+                      </div>
+                    )}
 
-                </div>
+                    {/* Rotated Credits Text */}
+                    {artShowCredits && artCredits && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: '20px',
+                        transform: 'translateY(-50%) rotate(-90deg)',
+                        transformOrigin: 'center right',
+                        color: 'rgba(255, 255, 255, 0.55)',
+                        fontSize: '20px',
+                        fontWeight: 500,
+                        letterSpacing: '0.05em',
+                        zIndex: 10,
+                        whiteSpace: 'nowrap',
+                        fontFamily: artFont === 'Articulat CF' ? "'Articulat CF - Normal', 'Articulat CF', sans-serif" : `'${artFont}', sans-serif`
+                      }}>
+                        {artCredits}
+                      </div>
+                    )}
+
+                    {/* Bottom shadow & overlays */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: '520px',
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.85) 45%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0) 100%)',
+                      zIndex: 3
+                    }} />
+
+                    {/* Brand name and sponsors list */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '50px',
+                      left: 0,
+                      right: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '30px',
+                      zIndex: 4,
+                      width: '100%'
+                    }}>
+                      
+                      {/* RODEOAPP.PRO Logo */}
+                      <div style={{
+                        height: '30px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <img 
+                          src="/header_logo.png" 
+                          style={{
+                            height: '30px',
+                            objectFit: 'contain'
+                          }} 
+                        />
+                      </div>
+
+                      {/* Sponsor logos row */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '45px',
+                        flexWrap: 'wrap',
+                        width: '100%',
+                        padding: '0 60px'
+                      }}>
+                        {patrocinios.filter(p => p.status === 'ativo').length > 0 ? (
+                          patrocinios.filter(p => p.status === 'ativo').map((p, idx) => (
+                            <img 
+                              key={idx}
+                              src={p.detalhes?.splash_app?.logo_url || p.logo_url} 
+                              style={{
+                                maxHeight: '65px',
+                                maxWidth: '160px',
+                                objectFit: 'contain',
+                                filter: 'brightness(0) invert(1)'
+                              }} 
+                            />
+                          ))
+                        ) : (
+                          <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            Nenhum Patrocinador Ativo
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+
+                  </div>
+                )}
 
               </div>
+
+              {generatorType === 'psd' && artPsdPreviewUrl && (
+                <button 
+                  className="btn btn-outline" 
+                  style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} 
+                  onClick={() => setArtPsdPreviewUrl('')}
+                >
+                  Voltar para Prévia HTML
+                </button>
+              )}
 
             </div>
 
           </div>
           {/* Hidden Photopea IFrame for headless PSD processing */}
+          {/* Off-screen absolute wrapper avoids browser freezing/suspending display:none frames */}
           <iframe 
             id="photopea-iframe"
             src="https://www.photopea.com"
-            style={{ display: 'none', width: 0, height: 0, border: 'none' }}
+            style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '800px', height: '600px', border: 'none' }}
           />
         </div>
       )}
