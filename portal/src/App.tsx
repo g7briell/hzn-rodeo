@@ -3095,6 +3095,7 @@ Instruções importantes:
             );
           })()}
           </div>
+          </div>
         ) : (
           <div style={{ textAlign: 'center', marginTop: '4rem' }}>
             <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#ff4444' }}>Evento Não Encontrado</h2>
@@ -3102,7 +3103,6 @@ Instruções importantes:
             <button className="btn btn-primary" onClick={() => navigateTo('/')}>Voltar ao Início</button>
           </div>
         )}
-        </div>
 
         {showNewsModal && selectedEvent && (
           <div className="modal-overlay active" onClick={() => !isGeneratingNews && setShowNewsModal(false)}>
