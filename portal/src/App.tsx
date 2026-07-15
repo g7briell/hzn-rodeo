@@ -354,6 +354,10 @@ function App() {
       .replace(/[^a-z0-9-]/g, '');
   };
 
+  const getConsonantPattern = (slug: string) => {
+    return '%' + slug.toLowerCase().replace(/[aeiouy]/g, '%').split('').filter((c, i, a) => c !== '%' || a[i-1] !== '%').join('') + '%';
+  };
+
   const navigateTo = (path: string) => {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -1316,7 +1320,7 @@ Instruções importantes:
           setPublicNews(null);
           setIsPublicProfileLoading(true);
           try {
-            const queryPattern = '%' + slug.split('').join('%') + '%';
+            const queryPattern = getConsonantPattern(slug);
             
             // Try fetching with the 'link' column (it may not exist if user didn't create it yet)
             let match = null;
@@ -1426,30 +1430,18 @@ Instruções importantes:
           setIsPublicBoiadaLoading(true);
           
           try {
-            const { data: headers, error: headerError } = await supabase
+            const queryPattern = getConsonantPattern(slug);
+            const { data, error } = await supabase
               .from('boiadas_oficiais')
-              .select('id, nome, logo:lados->__meta->>logo');
+              .select('*')
+              .ilike('nome', queryPattern);
             
-            if (headerError) throw headerError;
+            if (error) throw error;
             
-            const matchedHeader = headers?.find(b => slugify(b.nome) === slug);
-            if (matchedHeader) {
-              setLoadingBoiadaLogo(matchedHeader.logo || null);
-              
-              const { data: fullData, error: fullError } = await supabase
-                .from('boiadas_oficiais')
-                .select('*')
-                .eq('id', matchedHeader.id)
-                .maybeSingle();
-                
-              if (fullError) throw fullError;
-              
-              if (fullData && (!fullData.lados?.__meta || fullData.lados.__meta.status !== 'pendente')) {
-                setPublicBoiada(fullData);
-                setLoadingBoiadaLogo(fullData.lados?.__meta?.logo || null);
-              } else {
-                setPublicBoiada(null);
-              }
+            const match = data?.find(b => slugify(b.nome) === slug && (!b.lados?.__meta || b.lados.__meta.status !== 'pendente'));
+            if (match) {
+              setPublicBoiada(match);
+              setLoadingBoiadaLogo(match.lados?.__meta?.logo || null);
             } else {
               setPublicBoiada(null);
             }
@@ -1473,10 +1465,12 @@ Instruções importantes:
           setPublicNews(null);
           setIsPublicEventLoading(true);
           try {
+            const queryPattern = getConsonantPattern(slug);
             const { data } = await supabase
               .from('eventos_oficiais')
               .select('*')
-              .eq('status', 'aprovado');
+              .eq('status', 'aprovado')
+              .ilike('nome', queryPattern);
             
             const match = data?.find(ev => slugify(ev.nome) === slug);
             setSelectedEvent(match || null);
