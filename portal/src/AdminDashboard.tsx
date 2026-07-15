@@ -17,31 +17,228 @@ export default function AdminDashboard() {
   const [isGeneratingArt, setIsGeneratingArt] = useState<boolean>(false);
   const [artFont, setArtFont] = useState<string>('Montserrat');
 
-  const handleDownloadArt = async () => {
-    const node = document.getElementById('instagram-art-canvas');
-    if (!node) return;
-    setIsGeneratingArt(true);
+  // PSD states
+  const [psdTemplateBase64, setPsdTemplateBase64] = useState<string>('');
+  const [isUploadingPsd, setIsUploadingPsd] = useState<boolean>(false);
+
+  const fetchPsdTemplate = async () => {
     try {
-      const dataUrl = await toPng(node, {
-        width: 1080,
-        height: 1350,
-        style: {
-          transform: 'scale(1)',
-          transformOrigin: 'top left',
-          width: '1080px',
-          height: '1350px'
-        }
-      });
-      const link = document.createElement('a');
-      link.download = `arte-rodeo-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
-    } catch (error) {
-      console.error('Erro ao gerar imagem:', error);
-      alert('Erro ao gerar imagem. Tente novamente.');
-    } finally {
-      setIsGeneratingArt(false);
+      const { data } = await supabase.from('portal_configs').select('*').eq('key', 'art_psd_template').maybeSingle();
+      if (data?.value) {
+        setPsdTemplateBase64(data.value);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar template PSD:', err);
     }
+  };
+
+  const handlePsdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingPsd(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      if (typeof reader.result === 'string') {
+        const base64 = reader.result;
+        try {
+          const { error } = await supabase
+            .from('portal_configs')
+            .upsert({ key: 'art_psd_template', value: base64, updated_at: new Date().toISOString() });
+          if (error) throw error;
+          setPsdTemplateBase64(base64);
+          alert('Template PSD enviado e salvo com sucesso no banco de dados!');
+        } catch (err: any) {
+          alert('Erro ao salvar template PSD: ' + err.message);
+        } finally {
+          setIsUploadingPsd(false);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDownloadArt = async () => {
+    if (!psdTemplateBase64) {
+      return alert('Por favor, faça o upload de um arquivo de modelo .psd primeiro.');
+    }
+    
+    const iframe = document.getElementById('photopea-iframe') as HTMLIFrameElement;
+    if (!iframe || !iframe.contentWindow) {
+      return alert('Editor do Photopea não carregado corretamente.');
+    }
+    
+    setIsGeneratingArt(true);
+    
+    // Build photopea ExtendScript
+    let script = `var doc = app.activeDocument;\n`;
+    
+    // 1. Text Layer "Titulo"
+    if (artShowTitle && artTitle) {
+      script += `
+        try {
+          var titleL = doc.artLayers.getByName("Titulo");
+          titleL.textItem.contents = ${JSON.stringify(artTitle)};
+          titleL.visible = true;
+        } catch(e) {}
+      `;
+    } else {
+      script += `
+        try {
+          doc.artLayers.getByName("Titulo").visible = false;
+        } catch(e) {}
+      `;
+    }
+
+    // 2. Text Layer "Subtitulo"
+    if (artShowSubtitle && artSubtitle) {
+      script += `
+        try {
+          var subL = doc.artLayers.getByName("Subtitulo");
+          subL.textItem.contents = ${JSON.stringify(artSubtitle)};
+          subL.visible = true;
+        } catch(e) {}
+      `;
+    } else {
+      script += `
+        try {
+          doc.artLayers.getByName("Subtitulo").visible = false;
+        } catch(e) {}
+      `;
+    }
+
+    // 3. Smart Object or Layer "Fundo"
+    if (artBgImage) {
+      script += `
+        try {
+          var fLayer = doc.artLayers.getByName("Fundo");
+          doc.activeLayer = fLayer;
+          if (fLayer.kind == LayerKind.SMARTOBJECT || fLayer.isSmartObject) {
+            app.runMenuItem(stringIDToTypeID("placedLayerEditContents"));
+            var smDoc = app.activeDocument;
+            app.open(${JSON.stringify(artBgImage)}, null, true);
+            smDoc.close(SaveOptions.SAVECHANGES);
+          } else {
+            fLayer.visible = false;
+            app.open(${JSON.stringify(artBgImage)}, null, true);
+            app.activeDocument.activeLayer.name = "Fundo";
+            app.activeDocument.activeLayer.move(doc, ElementPlacement.PLACEATEND);
+          }
+        } catch(e) {}
+      `;
+    }
+
+    // 4. Smart Object or Layer "LogoEvento"
+    if (artShowEventLogo && artEventLogo) {
+      script += `
+        try {
+          var lLayer = doc.artLayers.getByName("LogoEvento");
+          doc.activeLayer = lLayer;
+          if (lLayer.kind == LayerKind.SMARTOBJECT || lLayer.isSmartObject) {
+            app.runMenuItem(stringIDToTypeID("placedLayerEditContents"));
+            var smDoc = app.activeDocument;
+            app.open(${JSON.stringify(artEventLogo)}, null, true);
+            smDoc.close(SaveOptions.SAVECHANGES);
+          } else {
+            lLayer.visible = false;
+            app.open(${JSON.stringify(artEventLogo)}, null, true);
+            app.activeDocument.activeLayer.name = "LogoEvento";
+          }
+        } catch(e) {}
+      `;
+    } else {
+      script += `
+        try {
+          doc.artLayers.getByName("LogoEvento").visible = false;
+        } catch(e) {}
+      `;
+    }
+
+    // 5. Smart Object or Layer "LogoRodeoApp"
+    const headerLogoUrl = window.location.origin + '/header_logo.png';
+    script += `
+      try {
+        var rLayer = doc.artLayers.getByName("LogoRodeoApp");
+        doc.activeLayer = rLayer;
+        if (rLayer.kind == LayerKind.SMARTOBJECT || rLayer.isSmartObject) {
+          app.runMenuItem(stringIDToTypeID("placedLayerEditContents"));
+          var smDoc = app.activeDocument;
+          app.open(${JSON.stringify(headerLogoUrl)}, null, true);
+          smDoc.close(SaveOptions.SAVECHANGES);
+        } else {
+          rLayer.visible = false;
+          app.open(${JSON.stringify(headerLogoUrl)}, null, true);
+          app.activeDocument.activeLayer.name = "LogoRodeoApp";
+        }
+      } catch(e) {}
+    `;
+
+    // 6. Active Sponsors distribution in group "Patrocinadores"
+    const activeSponsors = patrocinios
+      .filter((p: any) => p.status === 'ativo')
+      .map((p: any) => p.detalhes?.splash_app?.logo_url || p.logo_url);
+    
+    if (activeSponsors.length > 0) {
+      script += `
+        try {
+          var patGroup;
+          try {
+            patGroup = doc.layerSets.getByName("Patrocinadores");
+            while(patGroup.layers.length > 0) {
+              patGroup.layers[0].remove();
+            }
+          } catch(e) {
+            try {
+              doc.artLayers.getByName("Patrocinadores").remove();
+            } catch(ex) {}
+            patGroup = doc.layerSets.add();
+            patGroup.name = "Patrocinadores";
+          }
+          
+          var sponsors = ${JSON.stringify(activeSponsors)};
+          var numSponsors = sponsors.length;
+          var spacing = 180;
+          var startX = 540 - ((numSponsors - 1) * spacing) / 2;
+          var bottomY = 1200;
+          
+          for (var i = 0; i < numSponsors; i++) {
+            app.open(sponsors[i], null, true);
+            var sponsorLayer = doc.activeLayer;
+            sponsorLayer.name = "Sponsor_" + i;
+            sponsorLayer.move(patGroup, ElementPlacement.INSIDE);
+            
+            var bounds = sponsorLayer.bounds;
+            var layerW = bounds[2] - bounds[0];
+            var layerH = bounds[3] - bounds[1];
+            
+            var targetX = startX + i * spacing;
+            var deltaX = targetX - (bounds[0] + layerW/2);
+            var deltaY = bottomY - (bounds[1] + layerH/2);
+            sponsorLayer.translate(deltaX, deltaY);
+            
+            var scaleFactor = Math.min(140 / layerW, 55 / layerH);
+            if (scaleFactor < 1) {
+              sponsorLayer.resize(scaleFactor * 100, scaleFactor * 100, AnchorPosition.MIDDLECENTER);
+            }
+          }
+        } catch(e) {}
+      `;
+    }
+
+    // Save PNG and close
+    script += 'app.activeDocument.saveToOE("png");\\n';
+
+    const payload = {
+      files: [
+        psdTemplateBase64
+      ],
+      script: script,
+      environment: {
+        theme: 1,
+        localsave: false
+      }
+    };
+
+    iframe.contentWindow.postMessage(JSON.stringify(payload), '*');
   };
   
   const [users, setUsers] = useState<any[]>([]);
@@ -135,6 +332,23 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchPsdTemplate();
+
+    const handlePhotopeaMessage = (e: MessageEvent) => {
+      if (e.data instanceof ArrayBuffer) {
+        const blob = new Blob([e.data], { type: 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `arte-rodeo-${Date.now()}.png`;
+        link.href = url;
+        link.click();
+        setIsGeneratingArt(false);
+      }
+    };
+    window.addEventListener('message', handlePhotopeaMessage);
+    return () => {
+      window.removeEventListener('message', handlePhotopeaMessage);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
@@ -2174,6 +2388,22 @@ export default function AdminDashboard() {
               <h3 style={{ textTransform: 'uppercase', margin: 0, color: 'var(--accent)', fontSize: '1.3rem' }}>Configurações da Arte</h3>
               
               <div>
+                <label className="form-label" style={{ fontWeight: 'bold', color: 'var(--primary)' }}>Modelo Photoshop (.PSD)</label>
+                <input 
+                  type="file" 
+                  accept=".psd" 
+                  className="form-input"
+                  onChange={handlePsdUpload} 
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  {psdTemplateBase64 ? '✅ Template PSD salvo no banco.' : '⚠️ Nenhum template enviado.'}
+                </p>
+                {isUploadingPsd && <span style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>Enviando template...</span>}
+              </div>
+              
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border-light)', margin: '0.5rem 0' }} />
+              
+              <div>
                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Título</span>
                   <input type="checkbox" checked={artShowTitle} onChange={e => setArtShowTitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
@@ -2452,6 +2682,12 @@ export default function AdminDashboard() {
             </div>
 
           </div>
+          {/* Hidden Photopea IFrame for headless PSD processing */}
+          <iframe 
+            id="photopea-iframe"
+            src="https://www.photopea.com"
+            style={{ display: 'none', width: 0, height: 0, border: 'none' }}
+          />
         </div>
       )}
 
