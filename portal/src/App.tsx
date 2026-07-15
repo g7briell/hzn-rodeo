@@ -1428,12 +1428,14 @@ Instruções importantes:
           try {
             const { data: headers, error: headerError } = await supabase
               .from('boiadas_oficiais')
-              .select('id, nome');
+              .select('id, nome, logo:lados->__meta->>logo');
             
             if (headerError) throw headerError;
             
             const matchedHeader = headers?.find(b => slugify(b.nome) === slug);
             if (matchedHeader) {
+              setLoadingBoiadaLogo(matchedHeader.logo || null);
+              
               const { data: fullData, error: fullError } = await supabase
                 .from('boiadas_oficiais')
                 .select('*')
