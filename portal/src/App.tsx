@@ -183,6 +183,7 @@ function App() {
 
   // Public Boiada States
   const [publicBoiadaSlug, setPublicBoiadaSlug] = useState<string | null>(null);
+  const [loadingBoiadaLogo, setLoadingBoiadaLogo] = useState<string | null>(null);
 
   // Favorites State
   const [favorites, setFavorites] = useState<{ eventos: string[], competitors: string[], cias: string[] }>({
@@ -1413,16 +1414,34 @@ Instruções importantes:
           setPublicProfile(null);
           setSelectedEvent(null);
           setPublicNews(null);
+          
+          let initialLogo = null;
+          if (boiadas && boiadas.length > 0) {
+            const preMatch = boiadas.find(b => slugify(b.nome) === slug);
+            if (preMatch) {
+              initialLogo = preMatch.lados?.__meta?.logo || null;
+            }
+          }
+          setLoadingBoiadaLogo(initialLogo);
           setIsPublicBoiadaLoading(true);
+          
           try {
+            const queryPattern = '%' + slug.split('').join('%') + '%';
             const { data } = await supabase
               .from('boiadas_oficiais')
-              .select('*');
+              .select('*')
+              .ilike('nome', queryPattern);
             
             const match = data?.find(b => slugify(b.nome) === slug && (!b.lados?.__meta || b.lados.__meta.status !== 'pendente'));
-            setPublicBoiada(match || null);
+            if (match) {
+              setPublicBoiada(match);
+              setLoadingBoiadaLogo(match.lados?.__meta?.logo || null);
+            } else {
+              setPublicBoiada(null);
+            }
           } catch (err) {
             console.error(err);
+            setPublicBoiada(null);
           } finally {
             setIsPublicBoiadaLoading(false);
           }
@@ -1433,6 +1452,7 @@ Instruções importantes:
           setPublicEventSlug(slug);
           setPublicProfileSlug(null);
           setPublicBoiadaSlug(null);
+          setLoadingBoiadaLogo(null);
           setPublicNewsId(null);
           setPublicProfile(null);
           setPublicBoiada(null);
@@ -1458,6 +1478,7 @@ Instruções importantes:
           setPublicNewsId(id);
           setPublicProfileSlug(null);
           setPublicBoiadaSlug(null);
+          setLoadingBoiadaLogo(null);
           setPublicEventSlug(null);
           setPublicProfile(null);
           setPublicBoiada(null);
@@ -1487,6 +1508,7 @@ Instruções importantes:
         setPublicProfileSlug(null);
         setPublicProfile(null);
         setPublicBoiadaSlug(null);
+        setLoadingBoiadaLogo(null);
         setPublicBoiada(null);
         setPublicEventSlug(null);
         setSelectedEvent(null);
@@ -3486,13 +3508,42 @@ Instruções importantes:
   if (publicBoiadaSlug) {
     return (
       <div style={{ width: '100vw', overflowX: 'hidden' }}>
+        <style>{`
+          @keyframes fadeInUpStaggered {
+            from {
+              opacity: 0;
+              transform: translateY(24px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .bull-card-staggered {
+            opacity: 0;
+            animation: fadeInUpStaggered 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+          @keyframes loadingPulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.04); }
+          }
+        `}</style>
         <header className="public-header">
           <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}><img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "25px", maxWidth: "100%", objectFit: "contain" }} /></div>
         </header>
 
         <div className="profile-container" style={{ minHeight: '70vh', padding: '2rem 0', maxWidth: '100%' }}>
           {isPublicBoiadaLoading ? (
-            <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center', marginTop: '4rem' }}>Carregando Boiada...</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1.5rem' }}>
+              {loadingBoiadaLogo ? (
+                <img src={loadingBoiadaLogo} alt="Logo Carregando" style={{ width: '120px', height: '120px', objectFit: 'contain', borderRadius: '24px', animation: 'loadingPulse 1.5s infinite ease-in-out', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)' }} />
+              ) : (
+                <div style={{ width: '120px', height: '120px', borderRadius: '24px', background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'loadingPulse 1.5s infinite ease-in-out' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+              )}
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.2rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', animation: 'loadingPulse 1.5s infinite ease-in-out' }}>Carregando Plantel...</div>
+            </div>
           ) : publicBoiada ? (
             <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', padding: '0 1rem' }}>
               <div style={{ textAlign: 'center', marginBottom: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -3512,13 +3563,30 @@ Instruções importantes:
               </h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
-                {Object.keys(publicBoiada.lados || {}).filter(k => k !== '__meta').map(bullName => {
+                {Object.keys(publicBoiada.lados || {}).filter(k => k !== '__meta').map((bullName, idx) => {
                   const side = publicBoiada.lados[bullName];
                   const details = publicBoiada.lados?.__meta?.touros_info?.[bullName] || {};
                   const hasVideo = !!details.video_url && getYoutubeId(details.video_url);
                   
                   return (
-                    <div key={bullName} onClick={() => handleBullClick(bullName, details, publicBoiada.nome)} style={{ position: 'relative', height: '350px', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', border: '2px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                    <div 
+                      key={bullName} 
+                      onClick={() => handleBullClick(bullName, details, publicBoiada.nome)} 
+                      className="bull-card-staggered"
+                      style={{ 
+                        position: 'relative', 
+                        height: '350px', 
+                        borderRadius: '20px', 
+                        overflow: 'hidden', 
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        justifyContent: 'flex-end', 
+                        border: '2px solid rgba(255,255,255,0.1)', 
+                        cursor: 'pointer',
+                        animationDelay: `${idx * 80}ms`
+                      }}
+                    >
                       <img 
                         src={details.foto || "/tourosfoto.jpg"} 
                         alt="Foto do Touro" 
