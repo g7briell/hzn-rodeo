@@ -238,6 +238,7 @@ function App() {
   };
 
   const [publicEventSlug, setPublicEventSlug] = useState<string | null>(null);
+  const [isPublicEventLoading, setIsPublicEventLoading] = useState(false);
   const [publicNewsId, setPublicNewsId] = useState<string | null>(null);
   const [publicNews, setPublicNews] = useState<any>(null);
   const [currentArticleAd, setCurrentArticleAd] = useState<any>(null);
@@ -574,8 +575,18 @@ function App() {
             eventosOficiais.forEach(ev => {
               if (!ev.detalhes?.ranking) return;
               
-              // Primeiro ordena o ranking (mesma lógica do modal)
-              const sortedRanking = [...ev.detalhes.ranking].sort((a: any, b: any) => {
+              const sortedRanking = [...ev.detalhes.ranking].map((p: any) => {
+                const peaoNotas = (ev.detalhes.notas || []).filter((n: any) => n.peao === p.nome && (n.status === 'ativa' || n.status === 'nota_baixa'));
+                let total = p.score || 0;
+                if (peaoNotas.length > 0) {
+                  let sum = 0;
+                  peaoNotas.forEach((n: any) => {
+                    if (n.totalPeao > 0 && n.tempo >= 8) sum += (n.totalPeao + n.totalTouro);
+                  });
+                  total = sum;
+                }
+                return { ...p, score: total };
+              }).sort((a: any, b: any) => {
                 if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
                 return (b.tempoAcumulado || 0) - (a.tempoAcumulado || 0);
               });
@@ -589,11 +600,12 @@ function App() {
                 return false;
               });
 
-              if (rankIndex !== undefined && rankIndex >= 0) {
+              if (rankIndex !== -1) {
                 historico.push({
                   eventoNome: ev.nome,
                   cidade: ev.local || ev.cidade,
-                  posicao: rankIndex + 1
+                  posicao: rankIndex + 1,
+                  slug: slugify(ev.nome)
                 });
               }
             });
@@ -1296,7 +1308,11 @@ Instruções importantes:
         if (slug) {
           setPublicProfileSlug(slug);
           setPublicBoiadaSlug(null);
-            setPublicEventSlug(null);
+          setPublicEventSlug(null);
+          setPublicNewsId(null);
+          setPublicBoiada(null);
+          setSelectedEvent(null);
+          setPublicNews(null);
           setIsPublicProfileLoading(true);
           try {
             const queryPattern = '%' + slug.split('').join('%') + '%';
@@ -1392,6 +1408,11 @@ Instruções importantes:
         if (slug) {
           setPublicBoiadaSlug(slug);
           setPublicProfileSlug(null);
+          setPublicEventSlug(null);
+          setPublicNewsId(null);
+          setPublicProfile(null);
+          setSelectedEvent(null);
+          setPublicNews(null);
           setIsPublicBoiadaLoading(true);
           try {
             const { data } = await supabase
@@ -1406,6 +1427,31 @@ Instruções importantes:
             setIsPublicBoiadaLoading(false);
           }
         }
+      } else if (path.startsWith('/evento/')) {
+        const slug = path.replace('/evento/', '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+        if (slug) {
+          setPublicEventSlug(slug);
+          setPublicProfileSlug(null);
+          setPublicBoiadaSlug(null);
+          setPublicNewsId(null);
+          setPublicProfile(null);
+          setPublicBoiada(null);
+          setPublicNews(null);
+          setIsPublicEventLoading(true);
+          try {
+            const { data } = await supabase
+              .from('eventos_oficiais')
+              .select('*')
+              .eq('status', 'aprovado');
+            
+            const match = data?.find(ev => slugify(ev.nome) === slug);
+            setSelectedEvent(match || null);
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setIsPublicEventLoading(false);
+          }
+        }
       } else if (path.startsWith('/noticia/')) {
         const id = path.replace('/noticia/', '');
         if (id) {
@@ -1413,6 +1459,9 @@ Instruções importantes:
           setPublicProfileSlug(null);
           setPublicBoiadaSlug(null);
           setPublicEventSlug(null);
+          setPublicProfile(null);
+          setPublicBoiada(null);
+          setSelectedEvent(null);
           try {
             const { data } = await supabase
               .from('eventos_oficiais')
@@ -1428,10 +1477,10 @@ Instruções importantes:
                 foundEvent = ev;
               }
             });
-            setPublicNews(foundNews ? { article: foundNews, event: foundEvent } : null);
+            setPublicNews(foundNews ? { article: foundNews, event: foundEvent } : { error: true });
           } catch (err) {
             console.error(err);
-            setPublicNews(null);
+            setPublicNews({ error: true });
           }
         }
       } else {
@@ -1440,6 +1489,7 @@ Instruções importantes:
         setPublicBoiadaSlug(null);
         setPublicBoiada(null);
         setPublicEventSlug(null);
+        setSelectedEvent(null);
         setPublicNewsId(null);
         setPublicNews(null);
       }
@@ -2314,7 +2364,7 @@ Instruções importantes:
   };
 
 
-    if (publicEventSlug && selectedEvent) {
+    if (publicEventSlug) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto', width: '100vw', overflowX: 'hidden' }}>
         <header className="public-header">
@@ -2324,7 +2374,10 @@ Instruções importantes:
           </div>
         </header>
 
-        <div className="event-detail-view fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', marginTop: '2rem' }}>
+        {isPublicEventLoading ? (
+          <div style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center', marginTop: '4rem' }}>Carregando Evento...</div>
+        ) : selectedEvent ? (
+          <div className="event-detail-view fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', marginTop: '2rem' }}>
           <div className="event-header-banner" style={{ background: 'rgba(255,255,255,0.02)', padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem' }}>
             {selectedEvent.detalhes?.logo ? (
               <img src={selectedEvent.detalhes.logo} alt={selectedEvent.nome} style={{ width: '120px', height: '120px', objectFit: 'contain', borderRadius: '24px', background: 'rgba(0,0,0,0.4)', padding: '12px', border: '1px solid rgba(255,255,255,0.1)' }} />
@@ -3041,7 +3094,14 @@ Instruções importantes:
               </div>
             );
           })()}
-        </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', marginTop: '4rem' }}>
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#ff4444' }}>Evento Não Encontrado</h2>
+            <p className="text-muted" style={{ marginBottom: '2rem' }}>O evento solicitado não existe ou ainda não foi aprovado pelo sistema.</p>
+            <button className="btn btn-primary" onClick={() => navigateTo('/')}>Voltar ao Início</button>
+          </div>
+        )}
         </div>
 
         {showNewsModal && selectedEvent && (
@@ -3139,18 +3199,37 @@ Instruções importantes:
       // Calculate event history for all profiles regardless of their cargo
       const cleanCpf = publicProfile.cpf ? publicProfile.cpf.replace(/\D/g, '') : '';
       eventosOficiais.forEach(ev => {
-        const rankIndex = ev.detalhes?.ranking?.findIndex((r: any) => {
-          const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
-          if (cleanCpf && rCpf) return rCpf === cleanCpf;
-          return slugify(r.nome) === slugify(publicProfile.nome);
-        });
-        if (rankIndex !== undefined && rankIndex >= 0) {
-          historico.push({
-            eventoNome: ev.nome,
-            cidade: ev.local || ev.cidade,
-            posicao: rankIndex + 1,
-            slug: slugify(ev.nome)
+        if (ev.detalhes?.ranking) {
+          const rankingSorted = ev.detalhes.ranking.map((p: any) => {
+            const peaoNotas = (ev.detalhes.notas || []).filter((n: any) => n.peao === p.nome && (n.status === 'ativa' || n.status === 'nota_baixa'));
+            let total = p.score || 0;
+            if (peaoNotas.length > 0) {
+              let sum = 0;
+              peaoNotas.forEach((n: any) => {
+                if (n.totalPeao > 0 && n.tempo >= 8) sum += (n.totalPeao + n.totalTouro);
+              });
+              total = sum;
+            }
+            return { ...p, score: total };
+          }).sort((a: any, b: any) => {
+            if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+            return (b.tempoAcumulado || 0) - (a.tempoAcumulado || 0);
           });
+
+          const rankIndex = rankingSorted.findIndex((r: any) => {
+            const rCpf = r.cpf ? r.cpf.replace(/\D/g, '') : '';
+            if (cleanCpf && rCpf) return rCpf === cleanCpf;
+            return slugify(r.nome) === slugify(publicProfile.nome);
+          });
+
+          if (rankIndex !== -1) {
+            historico.push({
+              eventoNome: ev.nome,
+              cidade: ev.local || ev.cidade,
+              posicao: rankIndex + 1,
+              slug: slugify(ev.nome)
+            });
+          }
         }
       });
 
@@ -3595,6 +3674,215 @@ Instruções importantes:
     return nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
            cidade.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  if (publicNewsId) {
+    const article = publicNews?.article;
+    const event = publicNews?.event;
+    const randomAd = currentArticleAd;
+
+    let paragraphs: string[] = [];
+    let firstHalf: string[] = [];
+    let secondHalf: string[] = [];
+
+    if (article) {
+      let rawConteudo = article.conteudo || '';
+      if (typeof rawConteudo === 'string') {
+        rawConteudo = rawConteudo.replace(/\\n/g, '\n');
+      }
+      
+      paragraphs = rawConteudo
+        .split('\n')
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0);
+        
+      if (paragraphs.length === 1 && paragraphs[0].length > 500) {
+        const sentences = paragraphs[0].match(/[^.!?]+[.!?]+/g) || [paragraphs[0]];
+        paragraphs = [];
+        let currentParagraph = '';
+        for (const sentence of sentences) {
+          currentParagraph += sentence.trim() + ' ';
+          if (currentParagraph.length > 400) {
+            paragraphs.push(currentParagraph.trim());
+            currentParagraph = '';
+          }
+        }
+        if (currentParagraph.trim().length > 0) {
+          paragraphs.push(currentParagraph.trim());
+        }
+      }
+
+      const half = Math.ceil(paragraphs.length / 2);
+      firstHalf = paragraphs.slice(0, half);
+      secondHalf = paragraphs.slice(half);
+    }
+
+    return (
+      <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', color: '#1e293b', fontFamily: '"Outfit", sans-serif' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
+          <div style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}>
+            <img src="/header_logo.png" alt="RodeoApp" style={{ height: '35px', filter: 'invert(1) brightness(0.2)' }} />
+          </div>
+          <button className="btn btn-outline" style={{ borderColor: '#cbd5e1', color: '#1e293b' }} onClick={() => navigateTo('/')}>
+            &larr; Voltar ao Portal
+          </button>
+        </header>
+
+        {!publicNews ? (
+          <div style={{ color: '#64748b', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center', marginTop: '6rem' }}>Carregando Notícia...</div>
+        ) : publicNews.error ? (
+          <div style={{ textAlign: 'center', marginTop: '6rem' }}>
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: '#ff4444' }}>Notícia Não Encontrada</h2>
+            <p style={{ color: '#64748b', marginBottom: '2rem' }}>A notícia solicitada não existe ou foi removida.</p>
+            <button className="btn btn-outline" onClick={() => navigateTo('/')}>Voltar ao Início</button>
+          </div>
+        ) : (
+          <main style={{ maxWidth: '800px', margin: '3rem auto 0 auto', padding: '0 2rem 6rem 2rem' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <span style={{ color: '#E11D48', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>
+                {event ? `EVENTOS • ${event.nome}` : 'NOTÍCIAS'}
+              </span>
+            </div>
+
+            <h1 style={{ fontSize: '3rem', fontWeight: 900, lineHeight: '1.15', color: '#0f172a', marginBottom: '1.5rem', textTransform: 'none', fontStyle: 'normal', letterSpacing: '-1px' }}>
+              {article.titulo}
+            </h1>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.5rem', marginBottom: '2rem', color: '#64748b', fontSize: '0.85rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#E11D48', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                RA
+              </div>
+              <div>
+                <div style={{ fontWeight: 'bold', color: '#334155' }}>Redação RodeoApp</div>
+                <div>Publicado em {new Date(article.created_at || Date.now()).toLocaleDateString('pt-BR')} às {new Date(article.created_at || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+              </div>
+            </div>
+
+            {thinBylineAd && (
+              <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
+                <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Publicidade
+                </span>
+                <a href={thinBylineAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', width: '100%' }}>
+                  <img 
+                    src={thinBylineAd.logo_url} 
+                    alt="Patrocinador" 
+                    style={{ width: '100%', maxHeight: '90px', objectFit: 'contain', borderRadius: '6px', border: '1px solid #e2e8f0' }} 
+                  />
+                </a>
+              </div>
+            )}
+
+            <div style={{ fontSize: '1.15rem', lineHeight: '1.8', color: '#334155', fontFamily: '"Inter", sans-serif', position: 'relative' }}>
+              {gridMainAd && (
+                <div style={{
+                  float: 'right',
+                  width: '320px',
+                  marginLeft: '1.5rem',
+                  marginBottom: '1.5rem',
+                  padding: '8px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  backgroundColor: '#f8fafc',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                  fontFamily: '"Outfit", sans-serif',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <a href={gridMainAd.click_url} target="_blank" rel="noopener noreferrer" style={{ width: '100%', display: 'block', position: 'relative' }}>
+                        <img src={gridMainAd.logo_url} alt={gridMainAd.nome} style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '8px' }} />
+                      </a>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px 0 4px', borderTop: '1px solid #f1f5f9' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#0f172a' }}>{gridMainAd.nome}</span>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Anúncio</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {firstHalf.map((p: string, idx: number) => {
+                const isQuote = p.startsWith('"') || p.endsWith('"');
+                if (isQuote) {
+                  return (
+                    <div key={idx} style={{ margin: '2.5rem 0', clear: 'both' }}>
+                      <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
+                      <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
+                        {p}
+                      </blockquote>
+                      <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '1.5rem auto 0 auto' }} />
+                    </div>
+                  );
+                }
+                return (
+                  <p key={idx} style={{ marginBottom: '1.5rem' }}>
+                    {p}
+                  </p>
+                );
+              })}
+
+              {randomAd && (
+                <div style={{ margin: '3rem 0', textAlign: 'center', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '1.5rem 0', clear: 'both' }}>
+                  <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800, marginBottom: '1rem' }}>
+                    Continua depois da publicidade
+                  </span>
+                  <a href={randomAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', maxWidth: '100%' }}>
+                    <img 
+                      src={randomAd.logo_url} 
+                      alt="Publicidade" 
+                      style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                    />
+                  </a>
+                </div>
+              )}
+
+              {secondHalf.map((p: string, idx: number) => {
+                const isQuote = p.startsWith('"') || p.endsWith('"');
+                if (isQuote) {
+                  return (
+                    <div key={idx} style={{ margin: '2.5rem 0', clear: 'both' }}>
+                      <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
+                      <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
+                        {p}
+                      </blockquote>
+                      <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '1.5rem auto 0 auto' }} />
+                    </div>
+                  );
+                }
+                return (
+                  <p key={idx} style={{ marginBottom: '1.5rem' }}>
+                    {p}
+                  </p>
+                );
+              })}
+            </div>
+
+            {aboveIaAd && (
+              <div style={{ marginTop: '4rem', textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '2rem' }}>
+                <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Anúncio Patrocinado
+                </span>
+                <a href={aboveIaAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', width: '100%' }}>
+                  <img 
+                    src={aboveIaAd.logo_url} 
+                    alt="Patrocinador" 
+                    style={{ width: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e2e8f0' }} 
+                  />
+                </a>
+              </div>
+            )}
+
+            <div style={{ marginTop: '5rem', borderTop: '1px solid #e2e8f0', paddingTop: '2.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', lineHeight: '1.6', fontFamily: '"Outfit", sans-serif' }}>
+              <p style={{ margin: 0, fontWeight: 'bold' }}>
+                ⚠️ Notícias geradas por IA podem conter erros. Contate o administrador se acaso quiser remover a matéria!
+              </p>
+            </div>
+          </main>
+        )}
+      </div>
+    );
+  }
 
   if (!user) {
     // Patrocinadores ativos do tipo app (Splash do app — para "Oferecimento" na landing)
@@ -5576,216 +5864,7 @@ Instruções importantes:
     );
   }
 
-  if (publicNewsId && publicNews) {
-    const article = publicNews.article;
-    const event = publicNews.event;
-    
-    // Find active news portal sponsorships
-    const randomAd = currentArticleAd;
 
-    // Process article content into paragraphs
-    let rawConteudo = article.conteudo || '';
-    if (typeof rawConteudo === 'string') {
-      rawConteudo = rawConteudo.replace(/\\n/g, '\n');
-    }
-    
-    let paragraphs = rawConteudo
-      .split('\n')
-      .map((p: string) => p.trim())
-      .filter((p: string) => p.length > 0);
-      
-    // If it's just one huge block of text (no newlines), artificially split it into paragraphs by sentences
-    if (paragraphs.length === 1 && paragraphs[0].length > 500) {
-      const sentences = paragraphs[0].match(/[^.!?]+[.!?]+/g) || [paragraphs[0]];
-      paragraphs = [];
-      let currentParagraph = '';
-      for (const sentence of sentences) {
-        currentParagraph += sentence.trim() + ' ';
-        if (currentParagraph.length > 400) { // Approx 3-4 sentences per paragraph
-          paragraphs.push(currentParagraph.trim());
-          currentParagraph = '';
-        }
-      }
-      if (currentParagraph.trim().length > 0) {
-        paragraphs.push(currentParagraph.trim());
-      }
-    }
-
-    const half = Math.ceil(paragraphs.length / 2);
-    const firstHalf = paragraphs.slice(0, half);
-    const secondHalf = paragraphs.slice(half);
-
-    return (
-      <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', color: '#1e293b', fontFamily: '"Outfit", sans-serif' }}>
-        {/* Navigation Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
-          <div style={{ cursor: 'pointer' }} onClick={() => navigateTo('/')}>
-            <img src="/header_logo.png" alt="RodeoApp" style={{ height: '35px', filter: 'invert(1) brightness(0.2)' }} />
-          </div>
-          <button className="btn btn-outline" style={{ borderColor: '#cbd5e1', color: '#1e293b' }} onClick={() => navigateTo('/')}>
-            &larr; Voltar ao Portal
-          </button>
-        </header>
-
-        {/* Article Container */}
-        <main style={{ maxWidth: '800px', margin: '3rem auto 0 auto', padding: '0 2rem 6rem 2rem' }}>
-          {/* Metadata */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <span style={{ color: '#E11D48', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>
-              {event ? `EVENTOS • ${event.nome}` : 'NOTÍCIAS'}
-            </span>
-          </div>
-
-          {/* Headline */}
-          <h1 style={{ fontSize: '3rem', fontWeight: 900, lineHeight: '1.15', color: '#0f172a', marginBottom: '1.5rem', textTransform: 'none', fontStyle: 'normal', letterSpacing: '-1px' }}>
-            {article.titulo}
-          </h1>
-
-          {/* Byline / Date */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.5rem', marginBottom: '2rem', color: '#64748b', fontSize: '0.85rem' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#E11D48', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-              RA
-            </div>
-            <div>
-              <div style={{ fontWeight: 'bold', color: '#334155' }}>Redação RodeoApp</div>
-              <div>Publicado em {new Date(article.created_at || Date.now()).toLocaleDateString('pt-BR')} às {new Date(article.created_at || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
-            </div>
-          </div>
-
-          {/* Thin ad below byline */}
-          {thinBylineAd && (
-            <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
-              <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Publicidade
-              </span>
-              <a href={thinBylineAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', width: '100%' }}>
-                <img 
-                  src={thinBylineAd.logo_url} 
-                  alt="Patrocinador" 
-                  style={{ width: '100%', maxHeight: '90px', objectFit: 'contain', borderRadius: '6px', border: '1px solid #e2e8f0' }} 
-                />
-              </a>
-            </div>
-          )}
-
-          {/* Content */}
-          <div style={{ fontSize: '1.15rem', lineHeight: '1.8', color: '#334155', fontFamily: '"Inter", sans-serif', position: 'relative' }}>
-            {/* Embedded Float-Right Grid Ad (AliExpress-style product grid) */}
-            {gridMainAd && (
-              <div style={{
-                float: 'right',
-                width: '320px',
-                marginLeft: '1.5rem',
-                marginBottom: '1.5rem',
-                padding: '8px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                backgroundColor: '#f8fafc',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-                fontFamily: '"Outfit", sans-serif',
-                boxSizing: 'border-box'
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {/* Main Large Square Ad */}
-                    <a href={gridMainAd.click_url} target="_blank" rel="noopener noreferrer" style={{ width: '100%', display: 'block', position: 'relative' }}>
-                      <img src={gridMainAd.logo_url} alt={gridMainAd.nome} style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '8px' }} />
-                    </a>
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px 0 4px', borderTop: '1px solid #f1f5f9' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#0f172a' }}>{gridMainAd.nome}</span>
-                    <span style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Anúncio</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Render First Half of paragraphs */}
-            {firstHalf.map((p: string, idx: number) => {
-              const isQuote = p.startsWith('"') || p.endsWith('"');
-              if (isQuote) {
-                return (
-                  <div key={idx} style={{ margin: '2.5rem 0', clear: 'both' }}>
-                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
-                    <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
-                      {p}
-                    </blockquote>
-                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '1.5rem auto 0 auto' }} />
-                  </div>
-                );
-              }
-              return (
-                <p key={idx} style={{ marginBottom: '1.5rem' }}>
-                  {p}
-                </p>
-              );
-            })}
-
-            {/* ADVERTISEMENT SLOT */}
-            {randomAd && (
-              <div style={{ margin: '3rem 0', textAlign: 'center', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '1.5rem 0', clear: 'both' }}>
-                <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800, marginBottom: '1rem' }}>
-                  Continua depois da publicidade
-                </span>
-                <a href={randomAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', maxWidth: '100%' }}>
-                  <img 
-                    src={randomAd.logo_url} 
-                    alt="Publicidade" 
-                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
-                  />
-                </a>
-              </div>
-            )}
-
-            {/* Render Second Half of paragraphs */}
-            {secondHalf.map((p: string, idx: number) => {
-              const isQuote = p.startsWith('"') || p.endsWith('"');
-              if (isQuote) {
-                return (
-                  <div key={idx} style={{ margin: '2.5rem 0', clear: 'both' }}>
-                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '0 auto 1.5rem auto' }} />
-                    <blockquote style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: '#0f172a', fontFamily: '"Outfit", sans-serif', margin: '0 auto', maxWidth: '650px', lineHeight: '1.5', fontStyle: 'italic' }}>
-                      {p}
-                    </blockquote>
-                    <hr style={{ border: 0, borderTop: '2px solid #E11D48', width: '80px', margin: '1.5rem auto 0 auto' }} />
-                  </div>
-                );
-              }
-              return (
-                <p key={idx} style={{ marginBottom: '1.5rem' }}>
-                  {p}
-                </p>
-              );
-            })}
-          </div>
-
-          {/* Ad above IA disclaimer */}
-          {aboveIaAd && (
-            <div style={{ marginTop: '4rem', textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '2rem' }}>
-              <span style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Anúncio Patrocinado
-              </span>
-              <a href={aboveIaAd.click_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', width: '100%' }}>
-                <img 
-                  src={aboveIaAd.logo_url} 
-                  alt="Patrocinador" 
-                  style={{ width: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e2e8f0' }} 
-                />
-              </a>
-            </div>
-          )}
-
-          {/* Footer note */}
-          <div style={{ marginTop: '5rem', borderTop: '1px solid #e2e8f0', paddingTop: '2.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', lineHeight: '1.6', fontFamily: '"Outfit", sans-serif' }}>
-            <p style={{ margin: 0, fontWeight: 'bold' }}>
-              ⚠️ Notícias geradas por IA podem conter erros. Contate o administrador se acaso quiser remover a matéria!
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   // Explore and feed lists
 
