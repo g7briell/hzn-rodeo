@@ -2280,24 +2280,11 @@ export default function AdminDashboard() {
                   }}
                 >
                   
-                  {/* Top Header Logo Placeholder (Header Logo) */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '40px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '100%',
-                    textAlign: 'center',
-                    zIndex: 2
-                  }}>
-                    <img src="/splash_logo.png" style={{ height: '70px', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  </div>
-
                   {/* Top Left Title/Subtitle */}
                   <div style={{
                     position: 'absolute',
                     top: '120px',
-                    left: '60px',
+                    left: 0,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
@@ -2308,14 +2295,14 @@ export default function AdminDashboard() {
                       <div style={{
                         background: 'white',
                         color: 'black',
-                        padding: '16px 45px',
+                        padding: '16px 45px 16px 60px',
                         fontSize: '78px',
                         fontWeight: 900,
                         textTransform: 'uppercase',
-                        lineHeight: 1,
-                        letterSpacing: '-0.02em',
+                        lineHeight: 1.1,
+                        letterSpacing: '-0.06em',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                        fontFamily: "'Arial Black', sans-serif"
+                        fontFamily: "'Articulat CF - Heavy', 'Articulat CF', 'Arial Black', sans-serif"
                       }}>
                         {artTitle}
                       </div>
@@ -2324,14 +2311,16 @@ export default function AdminDashboard() {
                       <div style={{
                         background: 'black',
                         color: 'white',
-                        padding: '10px 30px',
+                        padding: '12px 30px 12px 60px',
                         fontSize: '36px',
-                        fontWeight: 700,
+                        fontWeight: 500,
                         textTransform: 'uppercase',
                         lineHeight: 1,
-                        letterSpacing: '0.05em',
+                        letterSpacing: '-0.02em',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                        border: '1px solid rgba(255,255,255,0.1)'
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderLeft: 'none',
+                        fontFamily: "'Articulat CF - Normal', 'Articulat CF', 'Arial', sans-serif"
                       }}>
                         {artSubtitle}
                       </div>
@@ -2342,15 +2331,22 @@ export default function AdminDashboard() {
                   {artShowEventLogo && artEventLogo && (
                     <div style={{
                       position: 'absolute',
-                      top: '120px',
+                      top: '70px',
                       right: '60px',
+                      width: '260px',
+                      height: '260px',
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0) 70%)',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
                       zIndex: 5
                     }}>
                       <img 
                         src={artEventLogo} 
                         style={{
-                          width: '160px',
-                          height: '160px',
+                          width: '180px',
+                          height: '180px',
                           borderRadius: '50%',
                           objectFit: 'cover',
                           border: '6px solid white',
@@ -2387,15 +2383,18 @@ export default function AdminDashboard() {
                     
                     {/* RODEOAPP.PRO Logo */}
                     <div style={{
-                      fontSize: '36px',
-                      fontWeight: 900,
-                      fontStyle: 'italic',
-                      letterSpacing: '0.15em',
-                      textTransform: 'uppercase',
-                      color: 'white',
-                      fontFamily: "'Trebuchet MS', sans-serif"
+                      height: '45px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}>
-                      RODEO<span style={{ color: '#eab308' }}>APP.PRO</span>
+                      <img 
+                        src="/header_logo.png" 
+                        style={{
+                          height: '45px',
+                          objectFit: 'contain'
+                        }} 
+                      />
                     </div>
 
                     {/* Sponsor logos row */}
@@ -2408,8 +2407,8 @@ export default function AdminDashboard() {
                       width: '100%',
                       padding: '0 60px'
                     }}>
-                      {patrocinios.filter(p => p.status === 'ativo' && p.tipo === 'app').length > 0 ? (
-                        patrocinios.filter(p => p.status === 'ativo' && p.tipo === 'app').map((p, idx) => (
+                      {patrocinios.filter(p => p.status === 'ativo').length > 0 ? (
+                        patrocinios.filter(p => p.status === 'ativo').map((p, idx) => (
                           <img 
                             key={idx}
                             src={p.logo_url} 
@@ -2423,7 +2422,7 @@ export default function AdminDashboard() {
                         ))
                       ) : (
                         <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                          Nenhum Patrocinador Ativo (App)
+                          Nenhum Patrocinador Ativo
                         </div>
                       )}
                     </div>
