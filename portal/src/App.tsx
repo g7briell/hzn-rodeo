@@ -3543,13 +3543,9 @@ Instruções importantes:
         <div className="profile-container" style={{ minHeight: '70vh', padding: '2rem 0', maxWidth: '100%' }}>
           {isPublicBoiadaLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1.5rem' }}>
-              {loadingBoiadaLogo ? (
-                <img src={loadingBoiadaLogo} alt="Logo Carregando" style={{ width: '120px', height: '120px', objectFit: 'contain', borderRadius: '24px', animation: 'loadingPulse 1.5s infinite ease-in-out', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)' }} />
-              ) : (
-                <div style={{ width: '120px', height: '120px', borderRadius: '24px', background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'loadingPulse 1.5s infinite ease-in-out' }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                </div>
-              )}
+              <div style={{ width: '120px', height: '120px', borderRadius: '24px', background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'loadingPulse 1.5s infinite ease-in-out' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
               <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.2rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', animation: 'loadingPulse 1.5s infinite ease-in-out' }}>Carregando Plantel...</div>
             </div>
           ) : publicBoiada ? (
