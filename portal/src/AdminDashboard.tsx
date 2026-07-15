@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [artEventLogo, setArtEventLogo] = useState<string>('');
   const [artShowEventLogo, setArtShowEventLogo] = useState<boolean>(true);
   const [isGeneratingArt, setIsGeneratingArt] = useState<boolean>(false);
+  const [artFont, setArtFont] = useState<string>('Montserrat');
 
   const handleDownloadArt = async () => {
     const node = document.getElementById('instagram-art-canvas');
@@ -2163,6 +2164,9 @@ export default function AdminDashboard() {
 
       {activeTab === 'artes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,700;0,800;0,900;1,900&display=swap');
+          `}</style>
           <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
             
             {/* Form Controls */}
@@ -2197,6 +2201,21 @@ export default function AdminDashboard() {
                   disabled={!artShowSubtitle}
                   placeholder="Ex: 1º Round"
                 />
+              </div>
+
+              <div>
+                <label className="form-label">Fonte da Arte</label>
+                <select 
+                  className="form-input" 
+                  value={artFont} 
+                  onChange={e => setArtFont(e.target.value)}
+                >
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Inter">Inter</option>
+                  <option value="Outfit">Outfit</option>
+                  <option value="Articulat CF">Articulat CF</option>
+                  <option value="Arial Black">Arial Black</option>
+                </select>
               </div>
 
               <div>
@@ -2298,11 +2317,10 @@ export default function AdminDashboard() {
                         padding: '16px 45px 16px 60px',
                         fontSize: '78px',
                         fontWeight: 900,
-                        textTransform: 'uppercase',
                         lineHeight: 1.1,
                         letterSpacing: '-0.06em',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                        fontFamily: "'Articulat CF - Heavy', 'Articulat CF', 'Arial Black', sans-serif"
+                        fontFamily: artFont === 'Articulat CF' ? "'Articulat CF - Heavy', 'Articulat CF', 'Arial Black', sans-serif" : `'${artFont}', sans-serif`
                       }}>
                         {artTitle}
                       </div>
@@ -2314,13 +2332,12 @@ export default function AdminDashboard() {
                         padding: '12px 30px 12px 60px',
                         fontSize: '36px',
                         fontWeight: 500,
-                        textTransform: 'uppercase',
                         lineHeight: 1,
                         letterSpacing: '-0.02em',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                         border: '1px solid rgba(255,255,255,0.1)',
                         borderLeft: 'none',
-                        fontFamily: "'Articulat CF - Normal', 'Articulat CF', 'Arial', sans-serif"
+                        fontFamily: artFont === 'Articulat CF' ? "'Articulat CF - Normal', 'Articulat CF', 'Arial', sans-serif" : `'${artFont}', sans-serif`
                       }}>
                         {artSubtitle}
                       </div>
@@ -2349,7 +2366,6 @@ export default function AdminDashboard() {
                           height: '180px',
                           borderRadius: '50%',
                           objectFit: 'cover',
-                          border: '6px solid white',
                           boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
                         }} 
                       />
@@ -2383,7 +2399,7 @@ export default function AdminDashboard() {
                     
                     {/* RODEOAPP.PRO Logo */}
                     <div style={{
-                      height: '45px',
+                      height: '30px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -2391,7 +2407,7 @@ export default function AdminDashboard() {
                       <img 
                         src="/header_logo.png" 
                         style={{
-                          height: '45px',
+                          height: '30px',
                           objectFit: 'contain'
                         }} 
                       />
@@ -2411,7 +2427,7 @@ export default function AdminDashboard() {
                         patrocinios.filter(p => p.status === 'ativo').map((p, idx) => (
                           <img 
                             key={idx}
-                            src={p.logo_url} 
+                            src={p.detalhes?.splash_app?.logo_url || p.logo_url} 
                             style={{
                               maxHeight: '65px',
                               maxWidth: '160px',
