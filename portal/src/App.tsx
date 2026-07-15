@@ -1426,7 +1426,7 @@ Instruções importantes:
           setIsPublicBoiadaLoading(true);
           
           try {
-            const queryPattern = '%' + slug.split('').join('%') + '%';
+            const queryPattern = '%' + slug.replace(/-/g, '%') + '%';
             const { data } = await supabase
               .from('boiadas_oficiais')
               .select('*')
