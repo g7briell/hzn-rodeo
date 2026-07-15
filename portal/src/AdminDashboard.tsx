@@ -1,9 +1,47 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import BoiadaVisualEditor from './BoiadaVisualEditor';
+import { toPng } from 'html-to-image';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias' | 'patrocinios' | 'competidores'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'boiadas' | 'noticias' | 'patrocinios' | 'competidores' | 'artes'>('overview');
+  
+  // Artes tab states
+  const [artBgImage, setArtBgImage] = useState<string>('');
+  const [artTitle, setArtTitle] = useState<string>('Maior Nota');
+  const [artShowTitle, setArtShowTitle] = useState<boolean>(true);
+  const [artSubtitle, setArtSubtitle] = useState<string>('1º Round');
+  const [artShowSubtitle, setArtShowSubtitle] = useState<boolean>(true);
+  const [artEventLogo, setArtEventLogo] = useState<string>('');
+  const [artShowEventLogo, setArtShowEventLogo] = useState<boolean>(true);
+  const [isGeneratingArt, setIsGeneratingArt] = useState<boolean>(false);
+
+  const handleDownloadArt = async () => {
+    const node = document.getElementById('instagram-art-canvas');
+    if (!node) return;
+    setIsGeneratingArt(true);
+    try {
+      const dataUrl = await toPng(node, {
+        width: 1080,
+        height: 1350,
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left',
+          width: '1080px',
+          height: '1350px'
+        }
+      });
+      const link = document.createElement('a');
+      link.download = `arte-rodeo-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Erro ao gerar imagem:', error);
+      alert('Erro ao gerar imagem. Tente novamente.');
+    } finally {
+      setIsGeneratingArt(false);
+    }
+  };
   
   const [users, setUsers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -812,6 +850,9 @@ export default function AdminDashboard() {
         </button>
         <button className={`btn ${activeTab === 'competidores' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('competidores')}>
           Competidores & Animais
+        </button>
+        <button className={`btn ${activeTab === 'artes' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('artes')}>
+          Artes Instagram
         </button>
       </div>
 
@@ -2116,6 +2157,285 @@ export default function AdminDashboard() {
                 Salvar Touro
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'artes' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+            
+            {/* Form Controls */}
+            <div style={{ flex: '1 1 400px', background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <h3 style={{ textTransform: 'uppercase', margin: 0, color: 'var(--accent)', fontSize: '1.3rem' }}>Configurações da Arte</h3>
+              
+              <div>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Título</span>
+                  <input type="checkbox" checked={artShowTitle} onChange={e => setArtShowTitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                </label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={artTitle} 
+                  onChange={e => setArtTitle(e.target.value)} 
+                  disabled={!artShowTitle}
+                  placeholder="Ex: Maior Nota"
+                />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Subtítulo</span>
+                  <input type="checkbox" checked={artShowSubtitle} onChange={e => setArtShowSubtitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                </label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={artSubtitle} 
+                  onChange={e => setArtSubtitle(e.target.value)} 
+                  disabled={!artShowSubtitle}
+                  placeholder="Ex: 1º Round"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Imagem de Fundo (Inspiração/Modelo)</label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="form-input"
+                  onChange={e => handlePhotoUpload(e, (b64) => setArtBgImage(b64))} 
+                />
+                {artBgImage && (
+                  <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setArtBgImage('')}>
+                    Remover Fundo
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Logo da Festa / Evento</span>
+                  <input type="checkbox" checked={artShowEventLogo} onChange={e => setArtShowEventLogo(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="form-input"
+                  disabled={!artShowEventLogo}
+                  onChange={e => handlePhotoUpload(e, (b64) => setArtEventLogo(b64))} 
+                />
+                {artEventLogo && artShowEventLogo && (
+                  <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setArtEventLogo('')}>
+                    Remover Logo
+                  </button>
+                )}
+              </div>
+
+              <button 
+                onClick={handleDownloadArt} 
+                className="btn btn-primary" 
+                style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                disabled={isGeneratingArt}
+              >
+                {isGeneratingArt ? 'Gerando Imagem...' : 'Baixar Arte (Instagram)'}
+              </button>
+            </div>
+
+            {/* Preview Container */}
+            <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+              <h3 style={{ textTransform: 'uppercase', margin: 0, fontSize: '1.1rem', color: 'var(--text-muted)' }}>Pré-visualização (4:5 Feed)</h3>
+              
+              {/* Scaled viewport wrapper */}
+              <div style={{
+                width: '400px',
+                height: '500px',
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                background: '#151515'
+              }}>
+                
+                {/* 1080x1350 Canvas Node scaled down by 0.37037 */}
+                <div 
+                  id="instagram-art-canvas"
+                  style={{
+                    width: '1080px',
+                    height: '1350px',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    transform: 'scale(0.37037)',
+                    transformOrigin: 'top left',
+                    background: '#151515',
+                    backgroundImage: artBgImage ? `url(${artBgImage})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    fontFamily: "'Inter', sans-serif",
+                    color: 'white',
+                    userSelect: 'none'
+                  }}
+                >
+                  
+                  {/* Top Header Logo Placeholder (Header Logo) */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '40px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '100%',
+                    textAlign: 'center',
+                    zIndex: 2
+                  }}>
+                    <img src="/splash_logo.png" style={{ height: '70px', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  </div>
+
+                  {/* Top Left Title/Subtitle */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '120px',
+                    left: '60px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    zIndex: 5
+                  }}>
+                    {artShowTitle && artTitle && (
+                      <div style={{
+                        background: 'white',
+                        color: 'black',
+                        padding: '16px 45px',
+                        fontSize: '78px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        lineHeight: 1,
+                        letterSpacing: '-0.02em',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                        fontFamily: "'Arial Black', sans-serif"
+                      }}>
+                        {artTitle}
+                      </div>
+                    )}
+                    {artShowSubtitle && artSubtitle && (
+                      <div style={{
+                        background: 'black',
+                        color: 'white',
+                        padding: '10px 30px',
+                        fontSize: '36px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        lineHeight: 1,
+                        letterSpacing: '0.05em',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                      }}>
+                        {artSubtitle}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Top Right Event Logo */}
+                  {artShowEventLogo && artEventLogo && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '120px',
+                      right: '60px',
+                      zIndex: 5
+                    }}>
+                      <img 
+                        src={artEventLogo} 
+                        style={{
+                          width: '160px',
+                          height: '160px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '6px solid white',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                        }} 
+                      />
+                    </div>
+                  )}
+
+                  {/* Bottom shadow & overlays */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '520px',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.85) 45%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0) 100%)',
+                    zIndex: 3
+                  }} />
+
+                  {/* Brand name and sponsors list */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '50px',
+                    left: 0,
+                    right: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '30px',
+                    zIndex: 4,
+                    width: '100%'
+                  }}>
+                    
+                    {/* RODEOAPP.PRO Logo */}
+                    <div style={{
+                      fontSize: '36px',
+                      fontWeight: 900,
+                      fontStyle: 'italic',
+                      letterSpacing: '0.15em',
+                      textTransform: 'uppercase',
+                      color: 'white',
+                      fontFamily: "'Trebuchet MS', sans-serif"
+                    }}>
+                      RODEO<span style={{ color: '#eab308' }}>APP.PRO</span>
+                    </div>
+
+                    {/* Sponsor logos row */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '45px',
+                      flexWrap: 'wrap',
+                      width: '100%',
+                      padding: '0 60px'
+                    }}>
+                      {patrocinios.filter(p => p.status === 'ativo' && p.tipo === 'app').length > 0 ? (
+                        patrocinios.filter(p => p.status === 'ativo' && p.tipo === 'app').map((p, idx) => (
+                          <img 
+                            key={idx}
+                            src={p.logo_url} 
+                            style={{
+                              maxHeight: '65px',
+                              maxWidth: '160px',
+                              objectFit: 'contain',
+                              filter: 'brightness(0) invert(1)'
+                            }} 
+                          />
+                        ))
+                      ) : (
+                        <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                          Nenhum Patrocinador Ativo (App)
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
           </div>
         </div>
       )}
