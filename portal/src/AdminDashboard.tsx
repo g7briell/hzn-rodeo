@@ -20,6 +20,29 @@ export default function AdminDashboard() {
   const [artCredits, setArtCredits] = useState<string>('');
   const [artShowCredits, setArtShowCredits] = useState<boolean>(true);
 
+  // Layout fine-tuning transformations
+  const [bgX, setBgX] = useState<number>(0);
+  const [bgY, setBgY] = useState<number>(0);
+  const [bgScale, setBgScale] = useState<number>(1);
+  const [textX, setTextX] = useState<number>(0);
+  const [textY, setTextY] = useState<number>(0);
+  const [textScale, setTextScale] = useState<number>(1);
+  const [logoX, setLogoX] = useState<number>(0);
+  const [logoY, setLogoY] = useState<number>(0);
+  const [logoScale, setLogoScale] = useState<number>(1);
+
+  const handleResetLayout = () => {
+    setBgX(0);
+    setBgY(0);
+    setBgScale(1);
+    setTextX(0);
+    setTextY(0);
+    setTextScale(1);
+    setLogoX(0);
+    setLogoY(0);
+    setLogoScale(1);
+  };
+
   const handleDownloadHtmlArt = async () => {
     const node = document.getElementById('instagram-art-canvas');
     if (!node) return;
@@ -2339,6 +2362,83 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
+                    <h4 style={{ textTransform: 'uppercase', color: 'var(--accent)', fontSize: '0.95rem', marginTop: '1rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.25rem' }}>
+                      Ajuste de Posições e Tamanho
+                    </h4>
+
+                    {/* Background adjustments */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Foto de Fundo:</span>
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Zoom (Escala): {bgScale.toFixed(2)}x</span>
+                        </label>
+                        <input type="range" min="0.5" max="3" step="0.05" value={bgScale} onChange={e => setBgScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {bgX}px</label>
+                          <input type="range" min="-500" max="500" step="5" value={bgX} onChange={e => setBgX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {bgY}px</label>
+                          <input type="range" min="-500" max="500" step="5" value={bgY} onChange={e => setBgY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Titles adjustments */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Textos (Títulos):</span>
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Tamanho (Escala): {textScale.toFixed(2)}x</span>
+                        </label>
+                        <input type="range" min="0.5" max="2" step="0.05" value={textScale} onChange={e => setTextScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {textX}px</label>
+                          <input type="range" min="-200" max="500" step="5" value={textX} onChange={e => setTextX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {textY}px</label>
+                          <input type="range" min="-300" max="500" step="5" value={textY} onChange={e => setTextY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Event Logo adjustments */}
+                    {artShowEventLogo && artEventLogo && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Logo do Evento:</span>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Tamanho (Escala): {logoScale.toFixed(2)}x</span>
+                          </label>
+                          <input type="range" min="0.3" max="2" step="0.05" value={logoScale} onChange={e => setLogoScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {logoX}px</label>
+                            <input type="range" min="-500" max="200" step="5" value={logoX} onChange={e => setLogoX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                          </div>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {logoY}px</label>
+                            <input type="range" min="-200" max="500" step="5" value={logoY} onChange={e => setLogoY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <button 
+                      onClick={handleResetLayout} 
+                      className="btn btn-outline" 
+                      style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', color: '#999', borderColor: '#444' }}
+                    >
+                      Resetar Posições
+                    </button>
+
                     <button 
                       onClick={handleDownloadHtmlArt} 
                       className="btn btn-primary" 
@@ -2377,14 +2477,30 @@ export default function AdminDashboard() {
                           transform: 'scale(0.37037)',
                           transformOrigin: 'top left',
                           background: '#151515',
-                          backgroundImage: artBgImage ? `url(${artBgImage})` : 'none',
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
                           fontFamily: "'Inter', sans-serif",
                           color: 'white',
-                          userSelect: 'none'
+                          userSelect: 'none',
+                          overflow: 'hidden'
                         }}
                       >
+                        {/* Background Image Layer */}
+                        {artBgImage && (
+                          <img 
+                            src={artBgImage} 
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '1080px',
+                              height: '1350px',
+                              objectFit: 'cover',
+                              transform: `translate(${bgX}px, ${bgY}px) scale(${bgScale})`,
+                              transformOrigin: 'center center',
+                              zIndex: 1
+                            }}
+                          />
+                        )}
+
                         {/* Top Left Title/Subtitle */}
                         <div style={{
                           position: 'absolute',
@@ -2394,7 +2510,9 @@ export default function AdminDashboard() {
                           flexDirection: 'column',
                           alignItems: 'flex-start',
                           gap: '12px',
-                          zIndex: 5
+                          zIndex: 5,
+                          transform: `translate(${textX}px, ${textY}px) scale(${textScale})`,
+                          transformOrigin: 'top left'
                         }}>
                           {artShowTitle && artTitle && (
                             <div style={{
@@ -2455,7 +2573,9 @@ export default function AdminDashboard() {
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            zIndex: 5
+                            zIndex: 5,
+                            transform: `translate(${logoX}px, ${logoY}px) scale(${logoScale})`,
+                            transformOrigin: 'center center'
                           }}>
                             <img 
                               src={artEventLogo} 
