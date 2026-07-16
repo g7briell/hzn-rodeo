@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const [isGeneratingArt, setIsGeneratingArt] = useState<boolean>(false);
   const [artFont, setArtFont] = useState<string>('Montserrat');
   const [artCredits, setArtCredits] = useState<string>('');
+  const [artShowCredits, setArtShowCredits] = useState<boolean>(true);
   const [artShowSponsors, setArtShowSponsors] = useState<boolean>(true);
   const [isAccordionContentOpen, setIsAccordionContentOpen] = useState<boolean>(true);
   const [isAccordionLayoutOpen, setIsAccordionLayoutOpen] = useState<boolean>(false);
