@@ -2430,6 +2430,20 @@ export default function AdminDashboard() {
                           )}
                         </div>
 
+                        {/* Top right corner dark gradient overlay */}
+                        {artShowEventLogo && artEventLogo && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            width: '560px',
+                            height: '560px',
+                            background: 'radial-gradient(circle at top right, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0) 75%)',
+                            zIndex: 4,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
+
                         {/* Top Right Event Logo */}
                         {artShowEventLogo && artEventLogo && (
                           <div style={{
@@ -2438,7 +2452,6 @@ export default function AdminDashboard() {
                             right: '60px',
                             width: '260px',
                             height: '260px',
-                            background: 'radial-gradient(circle, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0) 70%)',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
