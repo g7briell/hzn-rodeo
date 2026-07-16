@@ -18,7 +18,9 @@ export default function AdminDashboard() {
   const [isGeneratingArt, setIsGeneratingArt] = useState<boolean>(false);
   const [artFont, setArtFont] = useState<string>('Montserrat');
   const [artCredits, setArtCredits] = useState<string>('');
-  const [artShowCredits, setArtShowCredits] = useState<boolean>(true);
+  const [artShowSponsors, setArtShowSponsors] = useState<boolean>(true);
+  const [isAccordionContentOpen, setIsAccordionContentOpen] = useState<boolean>(true);
+  const [isAccordionLayoutOpen, setIsAccordionLayoutOpen] = useState<boolean>(false);
 
   // Layout fine-tuning transformations
   const [bgX, setBgX] = useState<number>(0);
@@ -2268,181 +2270,234 @@ export default function AdminDashboard() {
                   <div style={{ flex: '1 1 400px', background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <h3 style={{ textTransform: 'uppercase', margin: 0, color: 'var(--accent)', fontSize: '1.3rem' }}>Configurações da Arte</h3>
                     
-                    <div>
-                      <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Título</span>
-                        <input type="checkbox" checked={artShowTitle} onChange={e => setArtShowTitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
-                      </label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={artTitle} 
-                        onChange={e => setArtTitle(e.target.value)} 
-                        disabled={!artShowTitle}
-                        placeholder="Ex: Maior Nota"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Subtítulo</span>
-                        <input type="checkbox" checked={artShowSubtitle} onChange={e => setArtShowSubtitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
-                      </label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={artSubtitle} 
-                        onChange={e => setArtSubtitle(e.target.value)} 
-                        disabled={!artShowSubtitle}
-                        placeholder="Ex: 1º Round"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Créditos da Foto</span>
-                        <input type="checkbox" checked={artShowCredits} onChange={e => setArtShowCredits(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
-                      </label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={artCredits} 
-                        onChange={e => setArtCredits(e.target.value)} 
-                        disabled={!artShowCredits}
-                        placeholder="Ex: Foto por: @nomedofotografo"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label">Fonte da Arte</label>
-                      <select 
-                        className="form-input" 
-                        value={artFont} 
-                        onChange={e => setArtFont(e.target.value)}
+                    {/* Bloco 1: Conteúdo, Imagens e Patrocinadores */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div 
+                        onClick={() => setIsAccordionContentOpen(!isAccordionContentOpen)}
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
                       >
-                        <option value="Montserrat">Montserrat</option>
-                        <option value="Inter">Inter</option>
-                        <option value="Outfit">Outfit</option>
-                        <option value="Articulat CF">Articulat CF</option>
-                        <option value="Arial Black">Arial Black</option>
-                      </select>
-                    </div>
+                        <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          📝 1. Conteúdo & Imagens
+                        </span>
+                        <span style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>
+                          {isAccordionContentOpen ? '▼' : '▶'}
+                        </span>
+                      </div>
 
-                    <div>
-                      <label className="form-label">Imagem de Fundo (Montaria)</label>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        className="form-input"
-                        onChange={e => handlePhotoUpload(e, (b64) => setArtBgImage(b64))} 
-                      />
-                      {artBgImage && (
-                        <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setArtBgImage('')}>
-                          Remover Fundo
-                        </button>
+                      {isAccordionContentOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>Título</span>
+                              <input type="checkbox" checked={artShowTitle} onChange={e => setArtShowTitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              value={artTitle} 
+                              onChange={e => setArtTitle(e.target.value)} 
+                              disabled={!artShowTitle}
+                              placeholder="Ex: Maior Nota"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>Subtítulo</span>
+                              <input type="checkbox" checked={artShowSubtitle} onChange={e => setArtShowSubtitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              value={artSubtitle} 
+                              onChange={e => setArtSubtitle(e.target.value)} 
+                              disabled={!artShowSubtitle}
+                              placeholder="Ex: 1º Round"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>Créditos da Foto</span>
+                              <input type="checkbox" checked={artShowCredits} onChange={e => setArtShowCredits(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              value={artCredits} 
+                              onChange={e => setArtCredits(e.target.value)} 
+                              disabled={!artShowCredits}
+                              placeholder="Ex: Foto por: @nomedofotografo"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="form-label">Fonte da Arte</label>
+                            <select 
+                              className="form-input" 
+                              value={artFont} 
+                              onChange={e => setArtFont(e.target.value)}
+                            >
+                              <option value="Montserrat">Montserrat</option>
+                              <option value="Inter">Inter</option>
+                              <option value="Outfit">Outfit</option>
+                              <option value="Articulat CF">Articulat CF</option>
+                              <option value="Arial Black">Arial Black</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="form-label">Imagem de Fundo (Montaria)</label>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="form-input"
+                              onChange={e => handlePhotoUpload(e, (b64) => setArtBgImage(b64))} 
+                            />
+                            {artBgImage && (
+                              <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setArtBgImage('')}>
+                                Remover Fundo
+                              </button>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>Logo da Festa / Evento</span>
+                              <input type="checkbox" checked={artShowEventLogo} onChange={e => setArtShowEventLogo(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="form-input"
+                              disabled={!artShowEventLogo}
+                              onChange={e => handlePhotoUpload(e, (b64) => setArtEventLogo(b64))} 
+                            />
+                            {artEventLogo && artShowEventLogo && (
+                              <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setArtEventLogo('')}>
+                                Remover Logo
+                              </button>
+                            )}
+                          </div>
+
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: 0, cursor: 'pointer' }}>
+                              <span style={{ fontWeight: 500, color: 'var(--text-light)' }}>Exibir Patrocinadores no Rodapé</span>
+                              <input type="checkbox" checked={artShowSponsors} onChange={e => setArtShowSponsors(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    <div>
-                      <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Logo da Festa / Evento</span>
-                        <input type="checkbox" checked={artShowEventLogo} onChange={e => setArtShowEventLogo(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
-                      </label>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        className="form-input"
-                        disabled={!artShowEventLogo}
-                        onChange={e => handlePhotoUpload(e, (b64) => setArtEventLogo(b64))} 
-                      />
-                      {artEventLogo && artShowEventLogo && (
-                        <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setArtEventLogo('')}>
-                          Remover Logo
-                        </button>
+                    {/* Bloco 2: Ajuste de Posições e Tamanho */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div 
+                        onClick={() => setIsAccordionLayoutOpen(!isAccordionLayoutOpen)}
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          📐 2. Ajustes de Posições & Tamanho
+                        </span>
+                        <span style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>
+                          {isAccordionLayoutOpen ? '▼' : '▶'}
+                        </span>
+                      </div>
+
+                      {isAccordionLayoutOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          {/* Background adjustments */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Foto de Fundo:</span>
+                            <div>
+                              <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Zoom (Escala): {bgScale.toFixed(2)}x</span>
+                              </label>
+                              <input type="range" min="0.5" max="3" step="0.05" value={bgScale} onChange={e => setBgScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {bgX}px</label>
+                                <input type="range" min="-500" max="500" step="5" value={bgX} onChange={e => setBgX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {bgY}px</label>
+                                <input type="range" min="-500" max="500" step="5" value={bgY} onChange={e => setBgY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Titles adjustments */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Textos (Títulos):</span>
+                            <div>
+                              <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Tamanho (Escala): {textScale.toFixed(2)}x</span>
+                              </label>
+                              <input type="range" min="0.5" max="2" step="0.05" value={textScale} onChange={e => setTextScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {textX}px</label>
+                                <input type="range" min="-200" max="500" step="5" value={textX} onChange={e => setTextX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {textY}px</label>
+                                <input type="range" min="-300" max="500" step="5" value={textY} onChange={e => setTextY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Event Logo adjustments */}
+                          {artShowEventLogo && artEventLogo && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
+                              <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Logo do Evento:</span>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>Tamanho (Escala): {logoScale.toFixed(2)}x</span>
+                                </label>
+                                <input type="range" min="0.3" max="2" step="0.05" value={logoScale} onChange={e => setLogoScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                <div>
+                                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {logoX}px</label>
+                                  <input type="range" min="-500" max="200" step="5" value={logoX} onChange={e => setLogoX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                                </div>
+                                <div>
+                                  <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {logoY}px</label>
+                                  <input type="range" min="-200" max="500" step="5" value={logoY} onChange={e => setLogoY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <button 
+                            onClick={handleResetLayout} 
+                            className="btn btn-outline" 
+                            style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', color: '#999', borderColor: '#444' }}
+                          >
+                            Resetar Posições
+                          </button>
+                        </div>
                       )}
                     </div>
-
-                    <h4 style={{ textTransform: 'uppercase', color: 'var(--accent)', fontSize: '0.95rem', marginTop: '1rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.25rem' }}>
-                      Ajuste de Posições e Tamanho
-                    </h4>
-
-                    {/* Background adjustments */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Foto de Fundo:</span>
-                      <div>
-                        <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Zoom (Escala): {bgScale.toFixed(2)}x</span>
-                        </label>
-                        <input type="range" min="0.5" max="3" step="0.05" value={bgScale} onChange={e => setBgScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {bgX}px</label>
-                          <input type="range" min="-500" max="500" step="5" value={bgX} onChange={e => setBgX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                        </div>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {bgY}px</label>
-                          <input type="range" min="-500" max="500" step="5" value={bgY} onChange={e => setBgY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Titles adjustments */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Textos (Títulos):</span>
-                      <div>
-                        <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Tamanho (Escala): {textScale.toFixed(2)}x</span>
-                        </label>
-                        <input type="range" min="0.5" max="2" step="0.05" value={textScale} onChange={e => setTextScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {textX}px</label>
-                          <input type="range" min="-200" max="500" step="5" value={textX} onChange={e => setTextX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                        </div>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {textY}px</label>
-                          <input type="range" min="-300" max="500" step="5" value={textY} onChange={e => setTextY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Event Logo adjustments */}
-                    {artShowEventLogo && artEventLogo && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Logo do Evento:</span>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Tamanho (Escala): {logoScale.toFixed(2)}x</span>
-                          </label>
-                          <input type="range" min="0.3" max="2" step="0.05" value={logoScale} onChange={e => setLogoScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                          <div>
-                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover X: {logoX}px</label>
-                            <input type="range" min="-500" max="200" step="5" value={logoX} onChange={e => setLogoX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                          </div>
-                          <div>
-                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Mover Y: {logoY}px</label>
-                            <input type="range" min="-200" max="500" step="5" value={logoY} onChange={e => setLogoY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <button 
-                      onClick={handleResetLayout} 
-                      className="btn btn-outline" 
-                      style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', color: '#999', borderColor: '#444' }}
-                    >
-                      Resetar Posições
-                    </button>
 
                     <button 
                       onClick={handleDownloadHtmlArt} 
                       className="btn btn-primary" 
-                      style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                      style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
                       disabled={isGeneratingArt}
                     >
                       {isGeneratingArt ? 'Gerando Imagem...' : 'Baixar Arte (Instagram)'}
@@ -2616,7 +2671,7 @@ export default function AdminDashboard() {
                           bottom: 0,
                           left: 0,
                           right: 0,
-                          height: '520px',
+                          height: artShowSponsors ? '520px' : '380px',
                           background: 'linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.85) 45%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0) 100%)',
                           zIndex: 3
                         }} />
@@ -2624,7 +2679,7 @@ export default function AdminDashboard() {
                         {/* Brand name and sponsors list */}
                         <div style={{
                           position: 'absolute',
-                          bottom: '50px',
+                          bottom: artShowSponsors ? '50px' : '65px',
                           left: 0,
                           right: 0,
                           display: 'flex',
@@ -2652,34 +2707,36 @@ export default function AdminDashboard() {
                           </div>
 
                           {/* Sponsor logos row */}
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            gap: '45px',
-                            flexWrap: 'wrap',
-                            width: '100%',
-                            padding: '0 60px'
-                          }}>
-                            {patrocinios.filter(p => p.status === 'ativo').length > 0 ? (
-                              patrocinios.filter(p => p.status === 'ativo').map((p, idx) => (
-                                <img 
-                                  key={idx}
-                                  src={p.detalhes?.splash_app?.logo_url || p.logo_url} 
-                                  style={{
-                                    maxHeight: '65px',
-                                    maxWidth: '160px',
-                                    objectFit: 'contain',
-                                    filter: 'brightness(0) invert(1)'
-                                  }} 
-                                />
-                              ))
-                            ) : (
-                              <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Nenhum Patrocinador Ativo
-                              </div>
-                            )}
-                          </div>
+                          {artShowSponsors && (
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              gap: '45px',
+                              flexWrap: 'wrap',
+                              width: '100%',
+                              padding: '0 60px'
+                            }}>
+                              {patrocinios.filter(p => p.status === 'ativo').length > 0 ? (
+                                patrocinios.filter(p => p.status === 'ativo').map((p, idx) => (
+                                  <img 
+                                    key={idx}
+                                    src={p.detalhes?.splash_app?.logo_url || p.logo_url} 
+                                    style={{
+                                      maxHeight: '65px',
+                                      maxWidth: '160px',
+                                      objectFit: 'contain',
+                                      filter: 'brightness(0) invert(1)'
+                                    }} 
+                                  />
+                                ))
+                              ) : (
+                                <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                  Nenhum Patrocinador Ativo
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                         </div>
 
