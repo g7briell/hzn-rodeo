@@ -843,70 +843,28 @@ function Dashboard({ evento, pats, boiadas }: { evento: Evento; pats: Patrocinio
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {Object.entries(reridesMap).map(([ciaName, list]) => (
                   <div key={ciaName} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    
-                    {/* Header da CIA */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(167,139,250,0.2)', paddingBottom: '0.5rem' }}>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#a78bfa', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        {ciaName}
-                      </h3>
-                      <span style={{ background: 'rgba(167,139,250,0.1)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '99px', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 700 }}>
-                        {list.length} re-ride{list.length !== 1 ? 's' : ''}
-                      </span>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#a78bfa', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{ciaName}</h3>
+                      <span style={{ background: 'rgba(167,139,250,0.1)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '99px', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 700 }}>{list.length} re-ride{list.length !== 1 ? 's' : ''}</span>
                     </div>
-
-                    {/* Lista de Re-rides */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {list.map((item: any, i: number) => (
-                        <div key={i} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '1rem',
-                          padding: '0.9rem 1.25rem',
-                          background: 'rgba(167,139,250,0.03)',
-                          border: '1px solid rgba(167,139,250,0.1)',
-                          borderRadius: '8px',
-                        }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.9rem 1.25rem', background: 'rgba(167,139,250,0.03)', border: '1px solid rgba(167,139,250,0.1)', borderRadius: '8px' }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
-                              {item.peao || '—'}
-                            </div>
-                            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', marginTop: '2px' }}>
-                              Touro: <span style={{ color: '#d4af37', fontWeight: 600 }}>{item.touro || '—'}</span>{item.dia ? ` · ${item.dia}` : ''}
-                            </div>
+                            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.peao || '—'}</div>
+                            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', marginTop: '2px' }}>Touro: <span style={{ color: '#d4af37', fontWeight: 600 }}>{item.touro || '—'}</span>{item.dia ? ` · ${item.dia}` : ''}</div>
                           </div>
-
                           <Badge color="#a78bfa" bg="rgba(167,139,250,0.1)" text="Re-ride" />
                         </div>
                       ))}
                     </div>
-
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
-
       </main>
-
-      {/* Sponsor Footer (BIGGER Logos) */}
-      {pats.length > 0 && (
-        <footer style={{ background: '#000', borderTop: '1px solid rgba(255,255,255,0.04)', padding: '1.5rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3.5rem', flexWrap: 'wrap', minHeight: '90px' }}>
-          {pats.map((p, i) => {
-            const url = p.detalhes?.splash_app?.logo_url || p.logo_url;
-            if (!url) return null;
-            return (
-              <img
-                key={i}
-                src={url}
-                alt={p.nome}
-                style={{ maxHeight: '52px', maxWidth: '150px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.55 }}
-                onError={(e: any) => { e.target.style.display = 'none'; }}
-              />
-            );
-          })}
-        </footer>
-      )}
     </div>
   );
 }
@@ -916,60 +874,42 @@ function Dashboard({ evento, pats, boiadas }: { evento: Evento; pats: Patrocinio
 function EventList({ eventos, loading, onSelect }: { eventos: Evento[]; loading: boolean; onSelect: (e: Evento) => void }) {
   return (
     <div style={{ minHeight: '100vh', background: '#000', fontFamily: 'Inter, sans-serif', color: '#fff' }}>
-      
-      {/* Header with Natural Color RodeoApp Logo */}
       <header style={{ padding: '2.5rem 3rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div>
           <p style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.28em', textTransform: 'uppercase', marginBottom: '0.45rem' }}>Painel · Tablet</p>
           <h1 style={{ fontSize: '2.1rem', fontWeight: 900, letterSpacing: '-0.04em', background: 'linear-gradient(135deg,#d4af37 0%,#f0d060 50%,#c8941c 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>RODEOAPP</h1>
         </div>
-
-        {/* Original Color Logo */}
         <img src="/header_logo.png" alt="RodeoApp" style={{ height: '46px', objectFit: 'contain', flexShrink: 0 }} />
       </header>
-
       <div style={{ padding: '2.5rem 3rem' }}>
         <p style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.28em', textTransform: 'uppercase', marginBottom: '1.75rem' }}>Selecione um Evento</p>
-
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '7rem', gap: '0.75rem', color: 'rgba(255,255,255,0.2)' }}>
             <div style={{ width: '26px', height: '26px', border: '2px solid rgba(212,175,55,0.12)', borderTopColor: '#d4af37', borderRadius: '50%', animation: 'tSpin 0.7s linear infinite' }} />
             <span style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Carregando...</span>
           </div>
-        ) : eventos.length === 0 ? (
-          <Empty msg="Nenhum evento encontrado." />
-        ) : (
+        ) : eventos.length === 0 ? <Empty msg="Nenhum evento encontrado." /> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
             {eventos.map(ev => {
               const det = typeof ev.detalhes === 'string' ? JSON.parse(ev.detalhes || '{}') : (ev.detalhes || {});
               const notas: any[] = det.notas || [];
               const live = notas.some((n: any) => n.status === 'ativa');
-
               return (
-                <button key={ev.id} onClick={() => onSelect(ev)}
-                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.6rem 1.75rem', cursor: 'pointer', textAlign: 'left', color: '#fff', fontFamily: 'Inter, sans-serif', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', outline: 'none' }}
-                  onMouseEnter={e => { e.currentTarget.style.border = '1px solid rgba(212,175,55,0.3)'; e.currentTarget.style.background = 'rgba(212,175,55,0.03)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.05)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
-                >
+                <button key={ev.id} onClick={() => onSelect(ev)} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.6rem 1.75rem', cursor: 'pointer', textAlign: 'left', color: '#fff', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', outline: 'none' }} onMouseEnter={e => { e.currentTarget.style.border = '1px solid rgba(212,175,55,0.3)'; e.currentTarget.style.background = 'rgba(212,175,55,0.03)'; }} onMouseLeave={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.05)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.65rem' }}>
                     <h3 style={{ fontSize: '0.98rem', fontWeight: 700, lineHeight: 1.3, flex: 1 }}>{ev.nome}</h3>
                     {live && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: '4px', padding: '2px 6px', fontSize: '0.58rem', fontWeight: 700, color: '#22c55e', letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}>
-                        <span style={{ width: '4px', height: '4px', background: '#22c55e', borderRadius: '50%', animation: 'tLive 1.2s ease-in-out infinite', display: 'inline-block' }} />
-                        Live
+                        <span style={{ width: '4px', height: '4px', background: '#22c55e', borderRadius: '50%', animation: 'tLive 1.2s ease-in-out infinite', display: 'inline-block' }} /> Live
                       </span>
                     )}
                   </div>
-
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.78rem' }}>📍 {ev.local || '—'}</span>
                     <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.72rem' }}>📅 {fmtDate(ev.data)}</span>
                   </div>
-
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.72rem' }}>
-                      {notas.length > 0 ? `${notas.length} montaria${notas.length !== 1 ? 's' : ''}` : 'Sem montarias'}
-                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '0.72rem' }}>{notas.length > 0 ? `${notas.length} montaria${notas.length !== 1 ? 's' : ''}` : 'Sem montarias'}</span>
                     <span style={{ color: '#d4af37', fontSize: '0.78rem', fontWeight: 600 }}>Abrir Evento →</span>
                   </div>
                 </button>
@@ -989,6 +929,8 @@ export default function TabletApp() {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [pats, setPats] = useState<Patrocinio[]>([]);
   const [boiadas, setBoiadas] = useState<Boiada[]>([]);
+  const [relTouros, setRelTouros] = useState<any[]>([]);
+  const [relCias, setRelCias] = useState<any[]>([]);
   const [selected, setSelected] = useState<Evento | null>(null);
   const [loading, setLoading] = useState(true);
   const [ss, setSs] = useState(false);
@@ -998,14 +940,18 @@ export default function TabletApp() {
     (async () => {
       setLoading(true);
       try {
-        const [ev, pat, boi] = await Promise.all([
+        const [ev, pat, boi, touros, cias] = await Promise.all([
           supabase.from('eventos_oficiais').select('*').order('created_at', { ascending: false }),
           supabase.from('patrocinios').select('*').eq('status', 'ativo'),
           supabase.from('boiadas_oficiais').select('*'),
+          supabase.from('rel_touros').select('*'),
+          supabase.from('rel_cias').select('*'),
         ]);
         if (ev.data) setEventos(ev.data);
         if (pat.data) setPats(pat.data);
         if (boi.data) setBoiadas(boi.data);
+        if (touros.data) setRelTouros(touros.data);
+        if (cias.data) setRelCias(cias.data);
       } catch (err) {
         console.error('Tablet fetch error:', err);
       } finally { setLoading(false); }
@@ -1050,7 +996,15 @@ export default function TabletApp() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {ss && <Screensaver logos={ssLogos} onWake={handleWake} />}
       {screen === 'events' && <EventList eventos={eventos} loading={loading} onSelect={handleSelect} />}
-      {screen === 'event' && selected && <Dashboard evento={selected} pats={pats} boiadas={boiadas} />}
+      {screen === 'event' && selected && (
+        <Dashboard
+          evento={selected}
+          pats={pats}
+          boiadas={boiadas}
+          relTouros={relTouros}
+          relCias={relCias}
+        />
+      )}
     </>
   );
 }
