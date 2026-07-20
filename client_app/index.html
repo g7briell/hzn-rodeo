@@ -599,6 +599,12 @@
                 <div class="w-14 h-14 bg-pink-500/10 rounded-2xl mb-6 flex items-center justify-center border border-pink-500/20 group-hover:scale-110 transition-transform"><svg class="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
                 <h3 class="font-black text-xl text-white uppercase tracking-tighter">RANKINGS</h3>
             </button>
+            
+            <!-- Botão Importar PDF -->
+            <button id="control-btn-import-pdf" onclick="document.getElementById('modal-import-pdf').classList.remove('hidden')" class="glass p-8 rounded-[2.5rem] border-yellow-500/30 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all group text-left">
+                <div class="w-14 h-14 bg-yellow-500/20 rounded-2xl mb-6 flex items-center justify-center border border-yellow-500/50 group-hover:scale-110 transition-transform"><svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <h3 class="font-black text-xl text-yellow-500 uppercase tracking-tighter">IMPORTAR PDF</h3>
+            </button>
         </div>
     </div>
 
@@ -643,6 +649,10 @@
             <button onclick="document.getElementById('modal-menu-rankings').classList.remove('hidden')" class="glass p-6 rounded-[2rem] border-white/5 hover:border-pink-500/50 hover:bg-pink-500/10 transition-all group text-left">
                 <div class="w-10 h-10 bg-pink-500/10 rounded-xl mb-4 flex items-center justify-center border border-pink-500/20"><svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
                 <h3 class="font-black text-sm text-white uppercase tracking-tighter">RANKINGS</h3>
+            </button>
+            <button onclick="document.getElementById('modal-import-pdf').classList.remove('hidden')" class="glass p-6 rounded-[2rem] border-yellow-500/30 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all group text-left">
+                <div class="w-10 h-10 bg-yellow-500/20 rounded-xl mb-4 flex items-center justify-center border border-yellow-500/50"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <h3 class="font-black text-sm text-yellow-500 uppercase tracking-tighter">IMPORTAR PDF</h3>
             </button>
         </div>
 
@@ -846,6 +856,157 @@
                 <button onclick="document.getElementById('modal-menu-sorteios').classList.add('hidden'); openSorteiosList()" class="col-span-2 mt-4 bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
                     HISTÓRICO DE SORTEIOS
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL IMPORTAR PDF -->
+    <div id="modal-import-pdf" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-8 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-black italic uppercase text-yellow-500 tracking-tighter">IMPORTAR PDF</h2>
+                    <p class="text-slate-500 font-bold uppercase tracking-widest text-sm mt-1">Sorteios ou Súmulas</p>
+                </div>
+                <button onclick="document.getElementById('modal-import-pdf').classList.add('hidden')" class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-slate-500 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div class="p-8 overflow-y-auto flex-1 scroll-custom" id="pdf-wizard-content">
+                <!-- Passo 1: Upload -->
+                <div id="pdf-step-1" class="flex flex-col items-center justify-center py-12">
+                    <div class="w-24 h-24 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <h3 class="text-2xl font-black text-white mb-2 uppercase text-center">Selecione o Arquivo PDF</h3>
+                    <p class="text-slate-400 mb-8 text-center max-w-md">Faça o upload do documento PDF contendo o sorteio ou as notas do evento.</p>
+                    
+                    <label class="cursor-pointer bg-yellow-500 hover:bg-yellow-400 text-black font-black italic uppercase px-8 py-4 rounded-2xl transition-colors shadow-lg shadow-yellow-500/20">
+                        Procurar PDF no Computador
+                        <input type="file" id="pdf-file-input" class="hidden" accept="application/pdf">
+                    </label>
+                </div>
+
+                <!-- Passo 2: Seleção de Dados -->
+                <div id="pdf-step-2" class="hidden flex flex-col">
+                    <h3 class="text-xl font-black text-white mb-6 uppercase">O que você quer importar?</h3>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <label class="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 cursor-pointer hover:border-yellow-500/50 transition-colors">
+                            <input type="checkbox" id="pdf-cb-peoes" class="w-6 h-6 rounded bg-slate-800 border-slate-700 text-yellow-500 focus:ring-yellow-500">
+                            <span class="font-bold text-white uppercase">Peões</span>
+                        </label>
+                        <label class="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 cursor-pointer hover:border-yellow-500/50 transition-colors">
+                            <input type="checkbox" id="pdf-cb-touros" class="w-6 h-6 rounded bg-slate-800 border-slate-700 text-yellow-500 focus:ring-yellow-500">
+                            <span class="font-bold text-white uppercase">Touros</span>
+                        </label>
+                        <label class="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 cursor-pointer hover:border-yellow-500/50 transition-colors">
+                            <input type="checkbox" id="pdf-cb-cias" class="w-6 h-6 rounded bg-slate-800 border-slate-700 text-yellow-500 focus:ring-yellow-500">
+                            <span class="font-bold text-white uppercase">CIAs</span>
+                        </label>
+                        <label class="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 cursor-pointer hover:border-yellow-500/50 transition-colors">
+                            <input type="checkbox" id="pdf-cb-notas" class="w-6 h-6 rounded bg-slate-800 border-slate-700 text-yellow-500 focus:ring-yellow-500">
+                            <span class="font-bold text-white uppercase">Sorteio / Notas</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-between items-center mt-4">
+                        <button id="pdf-btn-toggle-all" class="text-yellow-500 hover:text-yellow-400 font-bold uppercase text-sm">Marcar Tudo</button>
+                        <button id="pdf-btn-process" class="bg-yellow-500 hover:bg-yellow-400 text-black font-black italic uppercase px-8 py-3 rounded-xl transition-colors">Avançar</button>
+                    </div>
+                </div>
+
+                <!-- Passo 3: Escolha do Dia -->
+                <div id="pdf-step-3" class="hidden flex flex-col">
+                    <h3 class="text-xl font-black text-white mb-6 uppercase">Para qual rodada/dia?</h3>
+                    <div class="grid grid-cols-3 gap-4 mb-8">
+                        <button class="pdf-day-btn bg-slate-950 border border-slate-800 p-4 rounded-xl font-bold text-slate-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors uppercase" data-day="dia1">Dia 1</button>
+                        <button class="pdf-day-btn bg-slate-950 border border-slate-800 p-4 rounded-xl font-bold text-slate-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors uppercase" data-day="dia2">Dia 2</button>
+                        <button class="pdf-day-btn bg-slate-950 border border-slate-800 p-4 rounded-xl font-bold text-slate-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors uppercase" data-day="dia3">Dia 3</button>
+                        <button class="pdf-day-btn bg-slate-950 border border-slate-800 p-4 rounded-xl font-bold text-slate-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors uppercase" data-day="dia4">Dia 4</button>
+                        <button class="pdf-day-btn bg-slate-950 border border-slate-800 p-4 rounded-xl font-bold text-slate-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors uppercase" data-day="semifinal">Semi-Final</button>
+                        <button class="pdf-day-btn bg-slate-950 border border-slate-800 p-4 rounded-xl font-bold text-slate-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors uppercase" data-day="final">Final</button>
+                    </div>
+                    <div class="flex justify-between">
+                        <button id="pdf-btn-back-to-2" class="text-slate-400 hover:text-white font-bold uppercase">Voltar</button>
+                        <button id="pdf-btn-confirm-day" disabled class="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black italic uppercase px-8 py-3 rounded-xl transition-colors">Avançar</button>
+                    </div>
+                </div>
+
+                <!-- Passo 4: Conferência e Edição -->
+                <div id="pdf-step-4" class="hidden flex flex-col">
+                    <h3 class="text-xl font-black text-white mb-2 uppercase">Conferir e Editar Notas</h3>
+                    <p class="text-slate-400 mb-6 text-sm">Verifique se a leitura está correta. Você pode alterar nomes e notas diretamente na tabela.</p>
+                    
+                    <div class="overflow-x-auto border border-slate-800 rounded-2xl mb-6">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-black text-xs">
+                                <tr>
+                                    <th class="px-4 py-3">Peão</th>
+                                    <th class="px-4 py-3">Touro</th>
+                                    <th class="px-4 py-3">CIA</th>
+                                    <th class="px-4 py-3 w-32">Status</th>
+                                    <th class="px-4 py-3 w-16">Juiz 1</th>
+                                    <th class="px-4 py-3 w-16">Juiz 2</th>
+                                    <th class="px-4 py-3 w-20">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pdf-preview-table-body" class="divide-y divide-slate-800/50">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <button id="pdf-btn-back-to-3" class="text-slate-400 hover:text-white font-bold uppercase">Voltar</button>
+                        <button id="pdf-btn-save-event" class="bg-emerald-500 hover:bg-emerald-400 text-black font-black italic uppercase px-8 py-3 rounded-xl transition-colors shadow-lg shadow-emerald-500/20">💾 Concluir e Salvar no Evento</button>
+                    </div>
+                </div>
+
+                <!-- Tela de Carregamento -->
+                <div id="pdf-loading" class="hidden flex flex-col items-center justify-center py-12">
+                    <div class="w-16 h-16 border-4 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin mb-6"></div>
+                    <h3 class="text-xl font-black text-white mb-2 uppercase" id="pdf-loading-text">Processando PDF...</h3>
+                    <p class="text-slate-400">Aguarde um momento.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- POPUP DE RESUMO (Desduplicação) -->
+    <div id="modal-pdf-summary" class="fixed inset-0 z-[160] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl scale-95 opacity-0 transition-all duration-300" id="pdf-summary-box">
+            <div class="p-6 border-b border-slate-800">
+                <h3 class="text-xl font-black text-white uppercase text-center">Resumo da Importação</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-sm font-bold text-slate-400 mb-1">
+                        <span class="uppercase">Novos Peões Criados</span>
+                        <span class="text-white bg-slate-800 px-2 py-1 rounded-md" id="pdf-summary-peoes">0</span>
+                    </div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-sm font-bold text-slate-400 mb-1">
+                        <span class="uppercase">Novos Touros Criados</span>
+                        <span class="text-white bg-slate-800 px-2 py-1 rounded-md" id="pdf-summary-touros">0</span>
+                    </div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-sm font-bold text-slate-400 mb-1">
+                        <span class="uppercase">Novas CIAs Criadas</span>
+                        <span class="text-white bg-slate-800 px-2 py-1 rounded-md" id="pdf-summary-cias">0</span>
+                    </div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-sm font-bold text-slate-400 mb-1">
+                        <span class="uppercase">Montarias (Sorteio)</span>
+                        <span class="text-white bg-slate-800 px-2 py-1 rounded-md" id="pdf-summary-montarias">0</span>
+                    </div>
+                </div>
+                <p class="text-xs text-center text-yellow-500 font-bold uppercase mt-4">✓ Registros duplicados foram ignorados.</p>
+            </div>
+            <div class="p-4 border-t border-slate-800 bg-slate-950/50">
+                <button id="pdf-btn-summary-ok" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase py-3 rounded-xl transition-colors">Entendi, Continuar</button>
             </div>
         </div>
     </div>
@@ -1777,6 +1938,8 @@
         </button>
     </div>
 
+<script src="node_modules/pdfjs-dist/build/pdf.min.js"></script>
 <script src="renderer.js"></script>
+<script src="pdf_parser.js"></script>
 </body>
 </html>
