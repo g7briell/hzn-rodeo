@@ -428,51 +428,60 @@ function Dashboard({
   });
   const ranking = Object.values(rmap).sort((a, b) => b.total - a.total).slice(0, 50);
 
-  // Group Touros by CIA
+  // Group Touros by Resolved CIA
   const tourosMap: Record<string, { nome: string; cia: string; saidas: number; foto?: string; video_url?: string }[]> = {};
-  notas.forEach((n: any) => {
+
+  src.forEach((n: any) => {
     if (n.touro) {
-      const ciaName = (n.cia || 'OUTRAS').trim().toUpperCase();
+      const res = resolveBull(n.touro, n.cia, n.foto || n.imagem, n.video_url || n.videoUrl);
+      const ciaName = res.cia;
       if (!tourosMap[ciaName]) tourosMap[ciaName] = [];
       
-      const existing = tourosMap[ciaName].find(t => t.nome.toLowerCase() === n.touro.toLowerCase());
+      const existing = tourosMap[ciaName].find(t => t.nome.toLowerCase() === res.nome.toLowerCase());
       if (existing) {
         existing.saidas += 1;
-        if (!existing.video_url && n.video_url) existing.video_url = n.video_url;
-        if (!existing.foto && n.foto) existing.foto = n.foto;
+        if (!existing.video_url && res.video_url) existing.video_url = res.video_url;
+        if (!existing.foto && res.foto) existing.foto = res.foto;
       } else {
-        // Try finding bull photo/video from boiadas_oficiais
-        let bullFoto = n.foto || '';
-        let bullVideo = n.video_url || '';
-
-        const matchedBoiada = boiadas.find(b => b.nome.toLowerCase().trim() === ciaName.toLowerCase());
-        if (matchedBoiada?.lados) {
-          const info = matchedBoiada.lados?.__meta?.touros_info?.[n.touro] ||
-                       matchedBoiada.lados?.__meta?.touros_info?.[n.touro.toLowerCase()] ||
-                       Object.values(matchedBoiada.lados?.__meta?.touros_info || {}).find((t: any) => t?.nome?.toLowerCase() === n.touro.toLowerCase());
-          if (info) {
-            if (!bullFoto && info.foto) bullFoto = info.foto;
-            if (!bullVideo && info.video_url) bullVideo = info.video_url;
-          }
-        }
-
         tourosMap[ciaName].push({
-          nome: n.touro,
+          nome: res.nome,
           cia: ciaName,
           saidas: 1,
-          foto: bullFoto,
-          video_url: bullVideo
+          foto: res.foto,
+          video_url: res.video_url
         });
       }
     }
   });
 
-  // Group Re-rides by CIA
+  // Also include any touros explicitly defined in det.touros or det.plantel
+  const extraTouros: any[] = det.touros || det.plantel || [];
+  extraTouros.forEach((t: any) => {
+    const bName = typeof t === "string" ? t : (t.nome || t.name || "");
+    if (bName) {
+      const res = resolveBull(bName, typeof t === "object" ? t.cia : "", typeof t === "object" ? (t.foto || t.imagem) : "", typeof t === "object" ? (t.video_url || t.video) : "");
+      const ciaName = res.cia;
+      if (!tourosMap[ciaName]) tourosMap[ciaName] = [];
+      const existing = tourosMap[ciaName].find(x => x.nome.toLowerCase() === res.nome.toLowerCase());
+      if (!existing) {
+        tourosMap[ciaName].push({
+          nome: res.nome,
+          cia: ciaName,
+          saidas: 0,
+          foto: res.foto,
+          video_url: res.video_url
+        });
+      }
+    }
+  });
+
+  // Group Re-rides by Resolved CIA
   const reridesMap: Record<string, any[]> = {};
-  notas.filter((n: any) => n.status === 'reride' || n.reride === true).forEach((n: any) => {
-    const ciaName = (n.cia || 'OUTRAS').trim().toUpperCase();
+  src.filter((n: any) => n.status === "reride" || n.reride === true).forEach((n: any) => {
+    const res = resolveBull(n.touro, n.cia, n.foto, n.video_url);
+    const ciaName = res.cia;
     if (!reridesMap[ciaName]) reridesMap[ciaName] = [];
-    reridesMap[ciaName].push(n);
+    reridesMap[ciaName].push({ ...n, resolvedCia: ciaName });
   });
 
   const MEDAL = ['#d4af37', 'rgba(190,190,210,0.85)', 'rgba(160,100,60,0.85)'];
