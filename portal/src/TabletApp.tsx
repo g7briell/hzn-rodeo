@@ -909,69 +909,115 @@ function Dashboard({
                       </span>
                     </div>
 
-                    {/* Cards dos Touros */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                    {/* Cards dos Touros (Vertical Portrait Style) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.25rem' }}>
                       {tourosList.map((t, i) => (
                         <div key={i} style={{
-                          background: 'rgba(255,255,255,0.02)',
-                          border: '1px solid rgba(255,255,255,0.07)',
-                          borderRadius: '14px',
+                          position: 'relative',
+                          height: '320px',
+                          borderRadius: '16px',
                           overflow: 'hidden',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          background: '#0a0a0a',
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
                           display: 'flex',
                           flexDirection: 'column',
+                          justifyContent: 'flex-end',
                         }}>
-                          {/* Foto Grande do Touro */}
+                          {/* Full Background Photo */}
                           {t.foto ? (
-                            <div style={{ width: '100%', height: '180px', overflow: 'hidden', background: '#050505', position: 'relative' }}>
-                              <img
-                                src={t.foto}
-                                alt={t.nome}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={(e: any) => { e.target.parentNode.style.display = 'none'; }}
-                              />
-                            </div>
+                            <img
+                              src={t.foto}
+                              alt={t.nome}
+                              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e: any) => { e.target.style.display = 'none'; }}
+                            />
                           ) : (
-                            <div style={{ width: '100%', height: '100px', background: 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Sem foto</span>
                             </div>
                           )}
 
-                          {/* Info do Touro (Sem Média) */}
-                          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                              <div>
-                                <div style={{ fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.25 }}>
-                                  {t.nome}
-                                </div>
-                                <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', marginTop: '3px' }}>
-                                  {t.cia}
-                                </div>
-                              </div>
-                              <Badge color="#d4af37" bg="rgba(212,175,55,0.1)" text={`${t.saidas}× saídas`} />
-                            </div>
+                          {/* Dark Gradient Overlay */}
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0.1) 75%, transparent 100%)',
+                            pointerEvents: 'none',
+                          }} />
 
-                            {/* Botão Ver Pulo (Vídeo) */}
+                          {/* Top Left Lado Badge */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '12px',
+                            left: '12px',
+                            background: 'rgba(0,0,0,0.55)',
+                            backdropFilter: 'blur(6px)',
+                            color: '#fff',
+                            padding: '3px 9px',
+                            borderRadius: '5px',
+                            fontSize: '0.62rem',
+                            fontWeight: 800,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            zIndex: 2,
+                          }}>
+                            {t.lado || 'LADO'}
+                          </div>
+
+                          {/* Bottom Text Overlay */}
+                          <div style={{
+                            position: 'relative',
+                            padding: '1.2rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.2rem',
+                            zIndex: 2,
+                          }}>
+                            <h4 style={{
+                              fontSize: '1.25rem',
+                              fontWeight: 900,
+                              textTransform: 'uppercase',
+                              color: '#fff',
+                              letterSpacing: '-0.02em',
+                              lineHeight: 1.1,
+                              textShadow: '0 2px 4px rgba(0,0,0,0.9)',
+                            }}>
+                              {t.nome}
+                            </h4>
+
+                            <p style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                              fontStyle: 'italic',
+                              color: 'rgba(255,255,255,0.7)',
+                              textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+                            }}>
+                              {t.cia}
+                            </p>
+
+                            {/* Red Pill Ver Pulo Button */}
                             {t.video_url && (
                               <button onClick={() => setActiveVideoUrl(t.video_url || null)} style={{
-                                marginTop: 'auto',
-                                background: 'rgba(212,175,55,0.1)',
-                                border: '1px solid rgba(212,175,55,0.3)',
-                                color: '#d4af37',
-                                borderRadius: '8px',
-                                padding: '0.65rem 1rem',
+                                marginTop: '0.65rem',
+                                alignSelf: 'flex-start',
+                                background: '#dc2626',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '99px',
+                                padding: '5px 14px',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
                                 cursor: 'pointer',
-                                fontSize: '0.78rem',
-                                fontWeight: 700,
-                                letterSpacing: '0.05em',
-                                textTransform: 'uppercase',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
+                                gap: '0.35rem',
+                                boxShadow: '0 4px 12px rgba(220,38,38,0.4)',
                                 outline: 'none',
-                                transition: 'all 0.2s',
                               }}>
-                                ▶ Assistir Pulo
+                                ▶ Ver Pulo
                               </button>
                             )}
                           </div>
@@ -1025,6 +1071,25 @@ function Dashboard({
           </div>
         )}
       </main>
+
+      {/* Sponsor Footer */}
+      {pats.length > 0 && (
+        <footer style={{ background: '#000', borderTop: '1px solid rgba(255,255,255,0.04)', padding: '1.5rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3.5rem', flexWrap: 'wrap', minHeight: '90px' }}>
+          {pats.map((p, i) => {
+            const url = p.detalhes?.splash_app?.logo_url || p.logo_url;
+            if (!url) return null;
+            return (
+              <img
+                key={i}
+                src={url}
+                alt={p.nome}
+                style={{ maxHeight: '52px', maxWidth: '150px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.55 }}
+                onError={(e: any) => { e.target.style.display = 'none'; }}
+              />
+            );
+          })}
+        </footer>
+      )}
     </div>
   );
 }
