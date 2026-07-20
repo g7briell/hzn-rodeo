@@ -330,19 +330,65 @@ function parseRodeoPdfText(rawText) {
 
     const ignoreWords = ['SORTEIO', 'RANKING', 'RODEOAPP', 'HORÁRIO', 'RESULTADO', 'CAMPEONATO', 'EVENTO', 'JUIZ', 'PEÃO', 'TOURO', 'CIA', 'BOIADA', 'PONTOS', 'TEMPO', 'STATUS', 'ORDEM', 'CIDADE', 'ESTADO', 'RODEO', 'PEAO'];
 
+    let inReserveSection = false;
+
     const lines = rawText.split('\n');
     lines.forEach((line) => {
         const cleanLine = line.trim();
-        if (!cleanLine || cleanLine.length < 5) return;
+        if (!cleanLine || cleanLine.length < 3) return;
         const upper = cleanLine.toUpperCase();
 
-        if (ignoreWords.some(w => upper.startsWith(w) && cleanLine.length < 30)) return;
+        if (ignoreWords.some(w => upper.startsWith(w) && cleanLine.length < 30)) {
+            if (upper.includes('SORTEIO') || upper.includes('RANKING') || upper.includes('COMPETIDOR')) {
+                inReserveSection = false;
+            }
+            return;
+        }
+
+        // Detect reserve / repete section headers
+        if (upper.includes('REPETE') || upper.includes('RESERVA') || upper.includes('RE-RIDE') || upper.includes('RERIDE')) {
+            if (cleanLine.length < 35 && !upper.includes('CIA') && !upper.includes('-') && !upper.includes('|')) {
+                inReserveSection = true;
+                return;
+            }
+        }
 
         const parts = cleanLine.split(/\s{2,}|\t|\||;/).map(p => p.trim()).filter(Boolean);
         const numMatches = cleanLine.match(/\b\d{1,2}(?:[\.,]\d{1,2})?\b/g) || [];
         const numbers = numMatches.map(n => parseFloat(n.replace(',', '.')));
 
-        if (parts.length >= 2) {
+        if (parts.length >= 1) {
+            const firstPartClean = parts[0].replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
+            const isRepetePrefix = firstPartClean.startsWith('REPETE') || 
+                                   firstPartClean.startsWith('RESERVA') || 
+                                   firstPartClean.startsWith('RE-RIDE') || 
+                                   firstPartClean.startsWith('RERIDE') ||
+                                   firstPartClean.startsWith('RR');
+
+            if (inReserveSection || isRepetePrefix) {
+                // Reserve bull line without rider
+                const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length >= 2);
+                const cleanTextParts = textParts.filter(p => {
+                    const cleanP = p.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
+                    return !cleanP.startsWith('REPETE') && !cleanP.startsWith('RESERVA') && !cleanP.startsWith('RE-RIDE') && !cleanP.startsWith('RERIDE') && cleanP !== 'RR';
+                });
+
+                if (cleanTextParts.length >= 1) {
+                    let touro = cleanTextParts[0].replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
+                    let cia = cleanTextParts[1] ? cleanTextParts[1].trim().toUpperCase() : 'CIA OUTRAS';
+
+                    if (touro && touro.length >= 3 && !ignoreWords.includes(touro)) {
+                        if (cia && cia.length >= 2 && !ignoreWords.includes(cia)) {
+                            ciasSet.add(cia);
+                            tourosMap.set(touro, cia);
+                        } else if (!tourosMap.has(touro)) {
+                            tourosMap.set(touro, 'CIA OUTRAS');
+                        }
+                    }
+                }
+                return;
+            }
+
             const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length > 2);
             let peao = '', touro = '', cia = '', cidade = '';
 
@@ -359,6 +405,19 @@ function parseRodeoPdfText(rawText) {
             peao = peao.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
             touro = touro.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
             cia = cia.trim().toUpperCase();
+
+            // Ignore if peao is actually a repete keyword
+            if (peao.startsWith('REPETE') || peao.startsWith('RESERVA') || peao.startsWith('RE-RIDE') || peao.startsWith('RERIDE')) {
+                if (touro && touro.length >= 3 && !ignoreWords.includes(touro)) {
+                    if (cia && cia.length >= 2 && !ignoreWords.includes(cia)) {
+                        ciasSet.add(cia);
+                        tourosMap.set(touro, cia);
+                    } else if (!tourosMap.has(touro)) {
+                        tourosMap.set(touro, 'CIA OUTRAS');
+                    }
+                }
+                return;
+            }
 
             if (peao && peao.length >= 3 && !ignoreWords.includes(peao)) {
                 peoesSet.add(peao);
