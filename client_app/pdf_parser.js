@@ -97,8 +97,14 @@ if (btnProcess) {
                 if (line.trim()) rawText += line.trim() + '\n';
             }
 
-            pdfLoadingText.textContent = "Extraindo dados...";
-            pdfParsedData = parseRodeoPdfText(rawText);
+            pdfLoadingText.textContent = "Processando com Inteligência Artificial (Gemini)...";
+            const aiResult = await parsePdfWithGemini(rawText);
+            if (aiResult && ((aiResult.montarias && aiResult.montarias.length > 0) || (aiResult.reservas && aiResult.reservas.length > 0))) {
+                pdfParsedData = convertGeminiResultToParsedData(aiResult, rawText);
+            } else {
+                pdfLoadingText.textContent = "Extraindo dados nativamente...";
+                pdfParsedData = parseRodeoPdfText(rawText);
+            }
 
             // Deduplication and DB sync
             pdfLoadingText.textContent = "Verificando banco de dados...";
@@ -345,6 +351,154 @@ function resetPdfWizard() {
     pdfFileInput.value = '';
     currentPdfFile = null;
     pdfParsedData = null;
+}
+
+async function parsePdfWithGemini(rawText) {
+    let apiKey = localStorage.getItem('hzn_gemini_api_key') || localStorage.getItem('gemini_api_key');
+    if (!apiKey) {
+        const inputKey = prompt("Insira a sua Chave de API do Gemini (Google AI Studio) para a Inteligência Artificial ler o PDF com precisão:");
+        if (!inputKey || !inputKey.trim()) return null;
+        apiKey = inputKey.trim();
+        localStorage.setItem('hzn_gemini_api_key', apiKey);
+    }
+
+    const systemPrompt = `Você é um leitor especialista de súmulas e listas de sorteio de rodeios brasileiros.
+Sua função é analisar o texto extraído de um arquivo PDF de rodeio e retornar um JSON estrito contendo:
+1. "montarias": todas as linhas com confrontos (competidor vs touro vs cia vs cidade).
+2. "reservas": todos os touros reservas/repete da seção "Animais Reservas" ou "Touros Reservas" (que NÃO possuem competidor montando).
+
+Retorne APENAS um objeto JSON com essa estrutura idêntica (sem blocos markdown \`\`\`json):
+{
+  "montarias": [
+    {
+      "peao": "EDIMILSON DA SILVA LUZ",
+      "cidade": "VILA RICA-MT",
+      "touro": "VIDA LOCA",
+      "cia": "JP"
+    }
+  ],
+  "reservas": [
+    {
+      "touro": "BERLIN",
+      "cia": "VALE DOS SONHOS"
+    }
+  ]
+}
+
+REGRAS RÍGIDAS:
+- NUNCA coloque touros reservas como nome de peão!
+- Em "montarias", cada item DEVE ter "peao", "cidade", "touro" e "cia".
+- Em "reservas", cada item DEVE ter apenas "touro" e "cia".
+- Todos os nomes devem estar limpos e em MAIÚSCULAS.
+- Ignore números de ordem (1, 2, 28) e letras de lado ('E', 'C').`;
+
+    const modelsToTry = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
+    ];
+
+    for (const model of modelsToTry) {
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [
+                        { role: 'user', parts: [{ text: `${systemPrompt}\n\nTEXTO BRUTO DO PDF:\n${rawText}` }] }
+                    ]
+                })
+            });
+            const data = await response.json();
+            if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+                let text = data.candidates[0].content.parts[0].text;
+                text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+                const parsed = JSON.parse(text);
+                if (parsed && (parsed.montarias || parsed.reservas)) {
+                    return parsed;
+                }
+            }
+        } catch (e) {
+            console.warn(`Tentativa Gemini (${model}) falhou:`, e);
+        }
+    }
+    return null;
+}
+
+function convertGeminiResultToParsedData(aiResult, rawText) {
+    const items = [];
+    const peoesSet = new Set();
+    const tourosMap = new Map();
+    const ciasSet = new Set();
+
+    if (aiResult.montarias && Array.isArray(aiResult.montarias)) {
+        aiResult.montarias.forEach(m => {
+            const peao = (m.peao || '').trim().toUpperCase();
+            const touro = (m.touro || '').trim().toUpperCase();
+            const cia = (m.cia || 'CIA OUTRAS').trim().toUpperCase();
+            const cidade = (m.cidade || '').trim().toUpperCase();
+
+            if (peao && peao.length >= 3) {
+                peoesSet.add(peao);
+                if (touro && touro.length >= 2) {
+                    if (cia && cia.length >= 2) {
+                        ciasSet.add(cia);
+                        tourosMap.set(touro, cia);
+                    } else if (!tourosMap.has(touro)) {
+                        tourosMap.set(touro, 'CIA OUTRAS');
+                    }
+                    items.push({
+                        peao,
+                        cidade,
+                        touro,
+                        cia: cia || tourosMap.get(touro) || 'CIA OUTRAS',
+                        status: 'ativa',
+                        tempo: 8.0,
+                        totalPeao: 0,
+                        totalTouro: 0,
+                        total: 0
+                    });
+                }
+            }
+        });
+    }
+
+    if (aiResult.reservas && Array.isArray(aiResult.reservas)) {
+        aiResult.reservas.forEach(r => {
+            const touro = (r.touro || '').trim().toUpperCase();
+            const cia = (r.cia || 'CIA OUTRAS').trim().toUpperCase();
+            if (touro && touro.length >= 2) {
+                if (cia && cia.length >= 2) {
+                    ciasSet.add(cia);
+                    tourosMap.set(touro, cia);
+                } else if (!tourosMap.has(touro)) {
+                    tourosMap.set(touro, 'CIA OUTRAS');
+                }
+            }
+        });
+    }
+
+    const detectedTouros = [];
+    tourosMap.forEach((cia, nome) => detectedTouros.push({ nome, cia }));
+
+    let suggestedDay = 'DIA 1';
+    const fullUpper = rawText.toUpperCase();
+    if (fullUpper.includes('FINAL')) suggestedDay = 'FINAL';
+    else if (fullUpper.includes('SEMI')) suggestedDay = 'SEMI-FINAL';
+    else if (fullUpper.includes('DIA 4') || fullUpper.includes('ROUND 4')) suggestedDay = 'DIA 4';
+    else if (fullUpper.includes('DIA 3') || fullUpper.includes('ROUND 3')) suggestedDay = 'DIA 3';
+    else if (fullUpper.includes('DIA 2') || fullUpper.includes('ROUND 2')) suggestedDay = 'DIA 2';
+    else if (fullUpper.includes('DIA 1') || fullUpper.includes('ROUND 1')) suggestedDay = 'DIA 1';
+
+    return {
+        rawText,
+        items,
+        detectedPeoes: Array.from(peoesSet),
+        detectedTouros,
+        detectedCias: Array.from(ciasSet),
+        suggestedDay
+    };
 }
 
 function parseRodeoPdfText(rawText) {
