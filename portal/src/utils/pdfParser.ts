@@ -88,6 +88,12 @@ export async function parseRodeoPdf(file: File): Promise<ParsePdfResult> {
   // Known stopwords/headers to ignore
   const ignoreWords = ['SORTEIO', 'RANKING', 'RODEOAPP', 'HORÁRIO', 'RESULTADO', 'CAMPEONATO', 'EVENTO', 'JUIZ', 'PEÃO', 'TOURO', 'CIA', 'BOIADA', 'PONTOS', 'TEMPO', 'STATUS', 'ORDEM', 'CIDADE', 'ESTADO'];
 
+  const reserveKeywords = [
+    'ANIMAIS RESERVAS', 'ANIMAIS RESERVA', 'ANIMAL RESERVA', 'ANIMAL RESERVAS',
+    'TOUROS RESERVAS', 'TOUROS RESERVA', 'TOURO RESERVA', 'TOURO RESERVAS',
+    'RESERVA', 'RESERVAS', 'REPETE', 'REPETES', 'RE-RIDE', 'RERIDE', 'RR'
+  ];
+
   let inReserveSection = false;
 
   lines.forEach((line) => {
@@ -105,8 +111,8 @@ export async function parseRodeoPdf(file: File): Promise<ParsePdfResult> {
     }
 
     // Detect reserve / repete section headers
-    if (upper.includes('REPETE') || upper.includes('RESERVA') || upper.includes('RE-RIDE') || upper.includes('RERIDE')) {
-      if (cleanLine.length < 35 && !upper.includes('CIA') && !upper.includes('-') && !upper.includes('|')) {
+    if (reserveKeywords.some(kw => upper.includes(kw))) {
+      if (cleanLine.length < 45 && !upper.includes('VS') && !upper.includes(' X ') && !upper.includes('|')) {
         inReserveSection = true;
         return;
       }
@@ -118,18 +124,14 @@ export async function parseRodeoPdf(file: File): Promise<ParsePdfResult> {
 
     if (parts.length >= 1) {
       const firstPartClean = parts[0].replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
-      const isRepetePrefix = firstPartClean.startsWith('REPETE') || 
-                             firstPartClean.startsWith('RESERVA') || 
-                             firstPartClean.startsWith('RE-RIDE') || 
-                             firstPartClean.startsWith('RERIDE') ||
-                             firstPartClean.startsWith('RR');
+      const isRepetePrefix = reserveKeywords.some(kw => firstPartClean.startsWith(kw) || upper.startsWith(kw));
 
       if (inReserveSection || isRepetePrefix) {
         // Reserve bull line without rider
         const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length >= 2);
         const cleanTextParts = textParts.filter(p => {
           const cleanP = p.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
-          return !cleanP.startsWith('REPETE') && !cleanP.startsWith('RESERVA') && !cleanP.startsWith('RE-RIDE') && !cleanP.startsWith('RERIDE') && cleanP !== 'RR';
+          return !reserveKeywords.some(kw => cleanP.includes(kw));
         });
 
         if (cleanTextParts.length >= 1) {
@@ -168,8 +170,8 @@ export async function parseRodeoPdf(file: File): Promise<ParsePdfResult> {
       touro = touro.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
       cia = cia.trim().toUpperCase();
 
-      // Ignore if peao is actually a repete keyword
-      if (peao.startsWith('REPETE') || peao.startsWith('RESERVA') || peao.startsWith('RE-RIDE') || peao.startsWith('RERIDE')) {
+      // Ignore if peao is actually a repete / reserve keyword
+      if (reserveKeywords.some(kw => peao.includes(kw))) {
         if (touro && touro.length >= 3 && !ignoreWords.includes(touro)) {
           if (cia && cia.length >= 2 && !ignoreWords.includes(cia)) {
             ciasSet.add(cia);

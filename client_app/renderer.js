@@ -19,6 +19,7 @@ let loginScreen, homeScreen, introScreen, introText, errorMsg, btnActivate, days
 let modalEvento, formEvento, eventControlView, supportBtn, sportSelectScreen, transmissaoScreen;
 
 let currentEvent = null;
+window.getCurrentEvent = () => currentEvent;
 let heartbeatInterval = null;
 let offlineCheckInterval = null;
 let currentExpiryDate = null;
@@ -1431,6 +1432,7 @@ window.openEventControl = async (id) => {
     const eventos = await window.electronAPI.getLocalEvents(email);
     currentEvent = eventos.find(e => e.id === id);
     if (!currentEvent) return;
+    window.currentEvent = currentEvent;
 
     toggleSupportBtn(false);
 
@@ -5402,6 +5404,7 @@ window.openTransmissaoEventControl = async (id) => {
     const eventos = await window.electronAPI.getLocalEvents(email);
     currentEvent = eventos.find(e => e.id === id);
     if (!currentEvent) return;
+    window.currentEvent = currentEvent;
 
     // APLICAR COR DO EVENTO
     applyThemeColor(currentEvent.themeColor || '#EAB308');

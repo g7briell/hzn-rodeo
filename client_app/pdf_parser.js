@@ -196,6 +196,7 @@ function renderPdfPreviewTable() {
 
     pdfParsedData.items.forEach((item, index) => {
         const tr = document.createElement('tr');
+        const defaultTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
         
         tr.innerHTML = `
             <td class="px-4 py-2 border-b border-slate-800">
@@ -213,6 +214,9 @@ function renderPdfPreviewTable() {
                     <option value="queda" ${item.status === 'queda' ? 'selected' : ''}>Queda</option>
                     <option value="reride" ${item.status === 'reride' ? 'selected' : ''}>Re-ride</option>
                 </select>
+            </td>
+            <td class="px-4 py-2 border-b border-slate-800">
+                <input type="number" step="0.1" class="bg-slate-900 border border-slate-700 rounded p-1 w-full text-white text-xs text-center font-bold" value="${defaultTempo}" data-index="${index}" data-field="tempo">
             </td>
             <td class="px-4 py-2 border-b border-slate-800">
                 <input type="number" step="0.25" class="bg-slate-900 border border-slate-700 rounded p-1 w-full text-white text-xs text-center font-bold" value="${item.totalPeao || 0}" data-index="${index}" data-field="totalPeao" onchange="window.updatePdfTotal(${index})">
@@ -248,7 +252,8 @@ window.updatePdfTotal = (index) => {
 
 if (btnSaveEvent) {
     btnSaveEvent.addEventListener('click', async () => {
-        if (!window.currentEvent) {
+        const targetEvent = window.currentEvent || (typeof window.getCurrentEvent === 'function' ? window.getCurrentEvent() : null);
+        if (!targetEvent) {
             alert("Nenhum evento carregado para salvar!");
             return;
         }
@@ -260,17 +265,18 @@ if (btnSaveEvent) {
             const field = input.dataset.field;
             if (pdfParsedData.items[idx]) {
                 let val = input.value;
-                if (field === 'totalPeao' || field === 'totalTouro') val = parseFloat(val) || 0;
+                if (field === 'totalPeao' || field === 'totalTouro' || field === 'tempo') val = parseFloat(val) || 0;
                 pdfParsedData.items[idx][field] = typeof val === 'string' ? val.toUpperCase() : val;
             }
         });
 
         // Generate scoring format
-        if (!window.currentEvent.scores) window.currentEvent.scores = {};
-        if (!window.currentEvent.scores[selectedDay]) window.currentEvent.scores[selectedDay] = [];
+        if (!targetEvent.scores) targetEvent.scores = {};
+        if (!targetEvent.scores[selectedDay]) targetEvent.scores[selectedDay] = [];
         
         pdfParsedData.items.forEach(item => {
-            window.currentEvent.scores[selectedDay].push({
+            const itemTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
+            targetEvent.scores[selectedDay].push({
                 competitorName: item.peao,
                 animalName: item.touro,
                 ciaName: item.cia,
@@ -281,7 +287,7 @@ if (btnSaveEvent) {
                 j2_touro: item.totalTouro ? item.totalTouro / 2 : 0,
                 peao: item.totalPeao || 0,
                 touro: item.totalTouro || 0,
-                tempo: item.status === 'ativa' ? 8.0 : (item.tempo || 0),
+                tempo: itemTempo,
                 total: item.total || 0,
                 id_montaria: "pdf_" + Date.now() + "_" + Math.floor(Math.random() * 1000)
             });
@@ -291,7 +297,7 @@ if (btnSaveEvent) {
         const auth = window.electronAPI.getAuth();
         if (auth) {
             const email = auth.email;
-            await window.electronAPI.saveLocalEvent(email, window.currentEvent);
+            await window.electronAPI.saveLocalEvent(email, targetEvent);
             if (window.renderNotasTable) window.renderNotasTable(); // Refresh UI if function exists
             alert("Notas salvas no evento com sucesso!");
         } else {
@@ -330,6 +336,12 @@ function parseRodeoPdfText(rawText) {
 
     const ignoreWords = ['SORTEIO', 'RANKING', 'RODEOAPP', 'HORÁRIO', 'RESULTADO', 'CAMPEONATO', 'EVENTO', 'JUIZ', 'PEÃO', 'TOURO', 'CIA', 'BOIADA', 'PONTOS', 'TEMPO', 'STATUS', 'ORDEM', 'CIDADE', 'ESTADO', 'RODEO', 'PEAO'];
 
+    const reserveKeywords = [
+        'ANIMAIS RESERVAS', 'ANIMAIS RESERVA', 'ANIMAL RESERVA', 'ANIMAL RESERVAS',
+        'TOUROS RESERVAS', 'TOUROS RESERVA', 'TOURO RESERVA', 'TOURO RESERVAS',
+        'RESERVA', 'RESERVAS', 'REPETE', 'REPETES', 'RE-RIDE', 'RERIDE', 'RR'
+    ];
+
     let inReserveSection = false;
 
     const lines = rawText.split('\n');
@@ -346,8 +358,8 @@ function parseRodeoPdfText(rawText) {
         }
 
         // Detect reserve / repete section headers
-        if (upper.includes('REPETE') || upper.includes('RESERVA') || upper.includes('RE-RIDE') || upper.includes('RERIDE')) {
-            if (cleanLine.length < 35 && !upper.includes('CIA') && !upper.includes('-') && !upper.includes('|')) {
+        if (reserveKeywords.some(kw => upper.includes(kw))) {
+            if (cleanLine.length < 45 && !upper.includes('VS') && !upper.includes(' X ') && !upper.includes('|')) {
                 inReserveSection = true;
                 return;
             }
@@ -359,18 +371,14 @@ function parseRodeoPdfText(rawText) {
 
         if (parts.length >= 1) {
             const firstPartClean = parts[0].replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
-            const isRepetePrefix = firstPartClean.startsWith('REPETE') || 
-                                   firstPartClean.startsWith('RESERVA') || 
-                                   firstPartClean.startsWith('RE-RIDE') || 
-                                   firstPartClean.startsWith('RERIDE') ||
-                                   firstPartClean.startsWith('RR');
+            const isRepetePrefix = reserveKeywords.some(kw => firstPartClean.startsWith(kw) || upper.startsWith(kw));
 
             if (inReserveSection || isRepetePrefix) {
                 // Reserve bull line without rider
                 const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length >= 2);
                 const cleanTextParts = textParts.filter(p => {
                     const cleanP = p.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
-                    return !cleanP.startsWith('REPETE') && !cleanP.startsWith('RESERVA') && !cleanP.startsWith('RE-RIDE') && !cleanP.startsWith('RERIDE') && cleanP !== 'RR';
+                    return !reserveKeywords.some(kw => cleanP.includes(kw));
                 });
 
                 if (cleanTextParts.length >= 1) {
@@ -406,8 +414,8 @@ function parseRodeoPdfText(rawText) {
             touro = touro.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
             cia = cia.trim().toUpperCase();
 
-            // Ignore if peao is actually a repete keyword
-            if (peao.startsWith('REPETE') || peao.startsWith('RESERVA') || peao.startsWith('RE-RIDE') || peao.startsWith('RERIDE')) {
+            // Ignore if peao is actually a repete / reserve keyword
+            if (reserveKeywords.some(kw => peao.includes(kw))) {
                 if (touro && touro.length >= 3 && !ignoreWords.includes(touro)) {
                     if (cia && cia.length >= 2 && !ignoreWords.includes(cia)) {
                         ciasSet.add(cia);
