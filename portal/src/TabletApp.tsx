@@ -253,19 +253,170 @@ function VideoModal({ videoUrl, onClose }: { videoUrl: string; onClose: () => vo
 
 type ViewState = 'menu' | 'sorteio' | 'ranking' | 'touros' | 'rerides';
 
-function Dashboard({ evento, pats, boiadas }: { evento: Evento; pats: Patrocinio[]; boiadas: Boiada[] }) {
+function Dashboard({
+  evento,
+  pats,
+  boiadas,
+  relTouros,
+  relCias
+}: {
+  evento: Evento;
+  pats: Patrocinio[];
+  boiadas: Boiada[];
+  relTouros: any[];
+  relCias: any[];
+}) {
   const [view, setView] = useState<ViewState>('menu');
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
 
   const det = typeof evento.detalhes === 'string' ? JSON.parse(evento.detalhes || '{}') : (evento.detalhes || {});
-  const notas: any[] = det.notas || [];
-  const sorteio: any[] = det.sorteio || [];
-  const src = sorteio.length > 0 ? sorteio : notas;
-  const isLive = notas.some((n: any) => n.status === 'ativa');
+
+  // Extract all montarias/notes from det.notas, det.notes, det.sorteio, AND det.sorteios (plural array)
+  const allMontarias = useRef<any[]>([]);
+  (() => {
+    const list: any[] = [];
+    if (Array.isArray(det.notas)) list.push(...det.notas);
+    if (Array.isArray(det.notes)) list.push(...det.notes);
+    if (Array.isArray(det.sorteio)) list.push(...det.sorteio);
+
+    if (Array.isArray(det.sorteios)) {
+      det.sorteios.forEach((s: any) => {
+        const diaName = s.day || s.dia || 'DIA 1';
+        const riders = s.riders || [];
+        const bulls = s.bulls || [];
+        const assignments = s.assignments || {};
+
+        riders.forEach((r: any, idx: number) => {
+          const bIdx = assignments[idx.toString()] !== undefined ? assignments[idx.toString()] : (assignments[idx] !== undefined ? assignments[idx] : idx);
+          const bObj = bulls[bIdx];
+          const peaoName = typeof r === 'string' ? r : (r?.nome || r?.name || 'DESCONHECIDO');
+          
+          let touroName = '';
+          let ciaName = '';
+          let foto = '';
+          let video_url = '';
+
+          if (typeof bObj === 'string') {
+            touroName = bObj;
+          } else if (typeof bObj === 'object' && bObj !== null) {
+            touroName = bObj.nome || bObj.name || bObj.touro || '';
+            ciaName = bObj.cia || bObj.cia_nome || bObj.boiada || '';
+            foto = bObj.foto || bObj.foto_url || bObj.imagem || '';
+            video_url = bObj.video_url || bObj.video || bObj.videoUrl || '';
+          }
+
+          if (peaoName || touroName) {
+            list.push({
+              id: `sorteio-${diaName}-${idx}`,
+              dia: diaName,
+              peao: peaoName,
+              touro: touroName,
+              cia: ciaName,
+              foto: foto,
+              video_url: video_url,
+              status: r?.status || 'pendente',
+              tempo: r?.tempo,
+              totalPeao: r?.totalPeao,
+              totalTouro: r?.totalTouro,
+            });
+          }
+        });
+      });
+    }
+    allMontarias.current = list;
+  })();
+
+  const src = allMontarias.current;
+  const isLive = src.some((n: any) => n.status === 'ativa');
+
+  // Bull Resolver function
+  const resolveBull = useCallback((touroName: string, rawCia?: string, noteFoto?: string, noteVideo?: string) => {
+    const cleanBull = (touroName || '').trim();
+    let cleanCia = (rawCia || '').trim();
+
+    if (cleanCia.toUpperCase() === 'OUTRAS' || cleanCia.toUpperCase() === 'DESCONHECIDA' || cleanCia.toUpperCase() === 'SEM CIA') {
+      cleanCia = '';
+    }
+
+    let foundCia = cleanCia;
+    let foundFoto = noteFoto || '';
+    let foundVideo = noteVideo || '';
+
+    // 1. Search in det.touros / det.plantel
+    const evTouros: any[] = det.touros || det.plantel || [];
+    const evB = evTouros.find((t: any) => (t.nome || t.name || t.touro || '').trim().toLowerCase() === cleanBull.toLowerCase());
+    if (evB) {
+      if (!foundCia && (evB.cia || evB.cia_nome || evB.boiada)) foundCia = (evB.cia || evB.cia_nome || evB.boiada).trim();
+      if (!foundFoto && (evB.foto || evB.foto_url || evB.imagem)) foundFoto = (evB.foto || evB.foto_url || evB.imagem).trim();
+      if (!foundVideo && (evB.video_url || evB.video || evB.videoUrl)) foundVideo = (evB.video_url || evB.video || evB.videoUrl).trim();
+    }
+
+    // 2. Search in det.sorteios (bulls array inside day sorteios)
+    const evSorteios: any[] = det.sorteios || [];
+    evSorteios.forEach((s: any) => {
+      (s.bulls || []).forEach((b: any) => {
+        if (typeof b === 'object' && b !== null && (b.nome || b.name || b.touro || '').trim().toLowerCase() === cleanBull.toLowerCase()) {
+          if (!foundCia && (b.cia || b.cia_nome || b.boiada)) foundCia = (b.cia || b.cia_nome || b.boiada).trim();
+          if (!foundFoto && (b.foto || b.foto_url || b.imagem)) foundFoto = (b.foto || b.foto_url || b.imagem).trim();
+          if (!foundVideo && (b.video_url || b.video || b.videoUrl)) foundVideo = (b.video_url || b.video || b.videoUrl).trim();
+        }
+      });
+    });
+
+    // 3. Search in relTouros (Supabase rel_touros table)
+    const relB = relTouros.find(r => r.nome && r.nome.trim().toLowerCase() === cleanBull.toLowerCase());
+    if (relB) {
+      if (!foundCia && relB.cia && relB.cia.trim()) foundCia = relB.cia.trim();
+      if (!foundFoto && (relB.foto || relB.foto_url)) foundFoto = relB.foto || relB.foto_url;
+      if (!foundVideo && (relB.video_url || relB.video)) foundVideo = relB.video_url || relB.video;
+    }
+
+    // 4. Search in boiadas (Supabase boiadas_oficiais table)
+    for (const b of boiadas) {
+      if (!b.lados) continue;
+      const bName = b.nome ? b.nome.trim() : '';
+
+      const tourosInfo = b.lados?.__meta?.touros_info || {};
+      const infoKey = Object.keys(tourosInfo).find(k => k.trim().toLowerCase() === cleanBull.toLowerCase());
+      const infoObj = infoKey ? tourosInfo[infoKey] : null;
+
+      const ladosKeys = Object.keys(b.lados || {}).filter(k => k !== '__meta');
+      const keyMatch = ladosKeys.find(k => k.trim().toLowerCase() === cleanBull.toLowerCase());
+
+      if (infoKey || keyMatch) {
+        if (!foundCia && bName) foundCia = bName;
+        if (infoObj) {
+          if (!foundFoto && (infoObj.foto || infoObj.foto_url)) foundFoto = infoObj.foto || infoObj.foto_url;
+          if (!foundVideo && (infoObj.video_url || infoObj.video)) foundVideo = infoObj.video_url || infoObj.video;
+        }
+      }
+    }
+
+    // 5. Fallback for CIA
+    if (!foundCia && det.boiada) foundCia = det.boiada;
+    if (!foundCia && det.cia) foundCia = det.cia;
+
+    if (!foundCia || foundCia.toUpperCase() === 'OUTRAS' || foundCia.toUpperCase() === 'DESCONHECIDA' || foundCia.toUpperCase() === 'SEM CIA') {
+      foundCia = 'CIA DESCONHECIDA';
+    }
+
+    // 6. Check relCias for logo if still no photo
+    if (!foundFoto && foundCia) {
+      const relCia = relCias.find(c => c.nome && c.nome.trim().toLowerCase() === foundCia.toLowerCase());
+      if (relCia && (relCia.logo_url || relCia.foto)) foundFoto = relCia.logo_url || relCia.foto;
+    }
+
+    return {
+      nome: cleanBull,
+      cia: foundCia.toUpperCase(),
+      foto: foundFoto,
+      video_url: foundVideo,
+    };
+  }, [det, relTouros, boiadas, relCias]);
 
   // Ranking calculation
   const rmap: Record<string, { peao: string; total: number; count: number }> = {};
-  notas.forEach((n: any) => {
+  src.forEach((n: any) => {
     if (n.peao) {
       const total = (typeof n.totalPeao === 'number' ? n.totalPeao : 0) + (typeof n.totalTouro === 'number' ? n.totalTouro : 0);
       if (!rmap[n.peao]) rmap[n.peao] = { peao: n.peao, total: 0, count: 0 };
