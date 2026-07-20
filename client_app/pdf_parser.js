@@ -270,9 +270,9 @@ if (btnSaveEvent) {
             }
         });
 
-        // Generate scoring format
+        // 1. Populate targetEvent.scores[selectedDay]
         if (!targetEvent.scores) targetEvent.scores = {};
-        if (!targetEvent.scores[selectedDay]) targetEvent.scores[selectedDay] = [];
+        targetEvent.scores[selectedDay] = [];
         
         pdfParsedData.items.forEach(item => {
             const itemTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
@@ -293,13 +293,41 @@ if (btnSaveEvent) {
             });
         });
 
-        // Save
+        // 2. Populate targetEvent.sorteios for selectedDay
+        targetEvent.sorteios = targetEvent.sorteios || [];
+        const ridersList = pdfParsedData.items.map(i => i.peao);
+        const bullsList = pdfParsedData.items.map(i => ({ nome: i.touro, cia: i.cia }));
+        const assignmentsMap = {};
+        pdfParsedData.items.forEach((_, idx) => {
+            assignmentsMap[idx] = idx;
+        });
+
+        const drawToSave = {
+            day: selectedDay,
+            date: new Date().toLocaleString(),
+            riders: ridersList,
+            bulls: bullsList,
+            assignments: assignmentsMap
+        };
+
+        const existingIdx = targetEvent.sorteios.findIndex(s => s.day.toUpperCase() === selectedDay.toUpperCase());
+        if (existingIdx !== -1) {
+            targetEvent.sorteios[existingIdx] = drawToSave;
+        } else {
+            targetEvent.sorteios.push(drawToSave);
+        }
+
+        // 3. Save to database using updateLocalEvent
         const auth = window.electronAPI.getAuth();
         if (auth) {
             const email = auth.email;
-            await window.electronAPI.saveLocalEvent(email, targetEvent);
-            if (window.renderNotasTable) window.renderNotasTable(); // Refresh UI if function exists
-            alert("Notas salvas no evento com sucesso!");
+            await window.electronAPI.updateLocalEvent(email, targetEvent);
+            
+            if (window.renderNotasTable) window.renderNotasTable();
+            if (window.renderSorteiosList) window.renderSorteiosList();
+            if (window.renderEvents) window.renderEvents();
+            
+            alert("Sorteio e Notas salvos no evento com sucesso!");
         } else {
             alert("Erro: Você não está logado.");
         }
@@ -334,7 +362,7 @@ function parseRodeoPdfText(rawText) {
     const tourosMap = new Map();
     const ciasSet = new Set();
 
-    const ignoreWords = ['SORTEIO', 'RANKING', 'RODEOAPP', 'HORÁRIO', 'RESULTADO', 'CAMPEONATO', 'EVENTO', 'JUIZ', 'PEÃO', 'TOURO', 'CIA', 'BOIADA', 'PONTOS', 'TEMPO', 'STATUS', 'ORDEM', 'CIDADE', 'ESTADO', 'RODEO', 'PEAO'];
+    const ignoreWords = ['SORTEIO', 'RANKING', 'RODEOAPP', 'HORÁRIO', 'RESULTADO', 'CAMPEONATO', 'EVENTO', 'JUIZ', 'PEÃO', 'TOURO', 'CIA', 'BOIADA', 'PONTOS', 'TEMPO', 'STATUS', 'ORDEM', 'CIDADE', 'ESTADO', 'RODEO', 'PEAO', 'COMPETIDOR', 'ANIMAL', 'COMPANHIA', 'LADO', 'Nº', 'NO'];
 
     const reserveKeywords = [
         'ANIMAIS RESERVAS', 'ANIMAIS RESERVA', 'ANIMAL RESERVA', 'ANIMAL RESERVAS',
@@ -350,8 +378,10 @@ function parseRodeoPdfText(rawText) {
         if (!cleanLine || cleanLine.length < 3) return;
         const upper = cleanLine.toUpperCase();
 
-        if (ignoreWords.some(w => upper.startsWith(w) && cleanLine.length < 30)) {
-            if (upper.includes('SORTEIO') || upper.includes('RANKING') || upper.includes('COMPETIDOR')) {
+        if (ignoreWords.some(w => upper === w || upper.startsWith(w + ' ') || upper.startsWith(w + '\t'))) {
+            if (upper.includes('ANIMAIS RESERVAS') || upper.includes('ANIMAIS RESERVA') || upper.includes('REPETE')) {
+                inReserveSection = true;
+            } else if (upper.includes('SORTEIO') || upper.includes('RANKING') || upper.includes('COMPETIDOR')) {
                 inReserveSection = false;
             }
             return;
@@ -375,7 +405,7 @@ function parseRodeoPdfText(rawText) {
 
             if (inReserveSection || isRepetePrefix) {
                 // Reserve bull line without rider
-                const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length >= 2);
+                const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length >= 2 && p.toUpperCase() !== 'E' && p.toUpperCase() !== 'C');
                 const cleanTextParts = textParts.filter(p => {
                     const cleanP = p.replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
                     return !reserveKeywords.some(kw => cleanP.includes(kw));
@@ -385,7 +415,7 @@ function parseRodeoPdfText(rawText) {
                     let touro = cleanTextParts[0].replace(/^\d+[\s\.-]*/, '').trim().toUpperCase();
                     let cia = cleanTextParts[1] ? cleanTextParts[1].trim().toUpperCase() : 'CIA OUTRAS';
 
-                    if (touro && touro.length >= 3 && !ignoreWords.includes(touro)) {
+                    if (touro && touro.length >= 2 && !ignoreWords.includes(touro)) {
                         if (cia && cia.length >= 2 && !ignoreWords.includes(cia)) {
                             ciasSet.add(cia);
                             tourosMap.set(touro, cia);
@@ -397,14 +427,31 @@ function parseRodeoPdfText(rawText) {
                 return;
             }
 
-            const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length > 2);
-            let peao = '', touro = '', cia = '', cidade = '';
+            // Filter out standalone numbers and side letters ('E', 'C' at the end)
+            const textParts = parts.filter(p => !/^\d+$/.test(p) && !/^\d+[\.,]\d+$/.test(p) && p.length >= 2 && p.toUpperCase() !== 'E' && p.toUpperCase() !== 'C');
 
-            if (textParts.length >= 3) {
+            let peao = '';
+            let touro = '';
+            let cia = '';
+            let cidade = '';
+
+            // Check if one of the textParts is a City with state suffix (e.g. VILA RICA-MT, GUAIRA-SP, MIGUELOPOLIS-SP)
+            const cityIdx = textParts.findIndex(p => /-[A-Z]{2}$/i.test(p.trim()));
+
+            if (cityIdx > 0) {
+                peao = textParts.slice(0, cityIdx).join(' ');
+                cidade = textParts[cityIdx];
+                touro = textParts[cityIdx + 1] || '';
+                cia = textParts[cityIdx + 2] || '';
+            } else if (textParts.length >= 4) {
+                peao = textParts[0];
+                cidade = textParts[1];
+                touro = textParts[2];
+                cia = textParts[3];
+            } else if (textParts.length === 3) {
                 peao = textParts[0];
                 touro = textParts[1];
                 cia = textParts[2];
-                if (textParts[3] && textParts[3].includes('-')) cidade = textParts[3];
             } else if (textParts.length === 2) {
                 peao = textParts[0];
                 touro = textParts[1];
@@ -416,7 +463,7 @@ function parseRodeoPdfText(rawText) {
 
             // Ignore if peao is actually a repete / reserve keyword
             if (reserveKeywords.some(kw => peao.includes(kw))) {
-                if (touro && touro.length >= 3 && !ignoreWords.includes(touro)) {
+                if (touro && touro.length >= 2 && !ignoreWords.includes(touro)) {
                     if (cia && cia.length >= 2 && !ignoreWords.includes(cia)) {
                         ciasSet.add(cia);
                         tourosMap.set(touro, cia);
