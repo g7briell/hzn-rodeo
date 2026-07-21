@@ -331,7 +331,7 @@ function Dashboard({
   const src = allMontarias.current;
   const isLive = src.some((n: any) => n.status === 'ativa');
 
-  // Bull Resolver function
+  // Bull Resolver function - Matches BOTH Bull Name AND CIA Name to ensure accuracy when multiple CIAs have bulls with identical names!
   const resolveBull = useCallback((touroName: string, rawCia?: string, noteFoto?: string, noteVideo?: string) => {
     const cleanBull = (touroName || '').trim();
     let cleanCia = (rawCia || '').trim();
@@ -343,54 +343,109 @@ function Dashboard({
     let foundCia = cleanCia;
     let foundFoto = noteFoto || '';
     let foundVideo = noteVideo || '';
+    let foundLado = '';
+
+    const normBull = cleanBull.toLowerCase();
+    const normCia = cleanCia.toLowerCase();
+
+    const ciaMatches = (candidate?: string) => {
+      if (!normCia) return true;
+      if (!candidate) return false;
+      const c = candidate.trim().toLowerCase();
+      return c === normCia || c.includes(normCia) || normCia.includes(c);
+    };
 
     // 1. Search in det.touros / det.plantel
     const evTouros: any[] = det.touros || det.plantel || [];
-    const evB = evTouros.find((t: any) => (t.nome || t.name || t.touro || '').trim().toLowerCase() === cleanBull.toLowerCase());
+    let evB = normCia
+      ? evTouros.find((t: any) => (t.nome || t.name || t.touro || '').trim().toLowerCase() === normBull && ciaMatches(t.cia || t.cia_nome || t.boiada))
+      : null;
+    if (!evB) {
+      evB = evTouros.find((t: any) => (t.nome || t.name || t.touro || '').trim().toLowerCase() === normBull);
+    }
     if (evB) {
       if (!foundCia && (evB.cia || evB.cia_nome || evB.boiada)) foundCia = (evB.cia || evB.cia_nome || evB.boiada).trim();
       if (!foundFoto && (evB.foto || evB.foto_url || evB.imagem)) foundFoto = (evB.foto || evB.foto_url || evB.imagem).trim();
       if (!foundVideo && (evB.video_url || evB.video || evB.videoUrl)) foundVideo = (evB.video_url || evB.video || evB.videoUrl).trim();
+      if (!foundLado && (evB.lado || evB.giro)) foundLado = (evB.lado || evB.giro).trim();
     }
 
     // 2. Search in det.sorteios (bulls array inside day sorteios)
     const evSorteios: any[] = det.sorteios || [];
+    let sorteioB: any = null;
     evSorteios.forEach((s: any) => {
       (s.bulls || []).forEach((b: any) => {
-        if (typeof b === 'object' && b !== null && (b.nome || b.name || b.touro || '').trim().toLowerCase() === cleanBull.toLowerCase()) {
-          if (!foundCia && (b.cia || b.cia_nome || b.boiada)) foundCia = (b.cia || b.cia_nome || b.boiada).trim();
-          if (!foundFoto && (b.foto || b.foto_url || b.imagem)) foundFoto = (b.foto || b.foto_url || b.imagem).trim();
-          if (!foundVideo && (b.video_url || b.video || b.videoUrl)) foundVideo = (b.video_url || b.video || b.videoUrl).trim();
+        if (typeof b === 'object' && b !== null) {
+          const bName = (b.nome || b.name || b.touro || '').trim().toLowerCase();
+          const bCia = (b.cia || b.cia_nome || b.boiada || '').trim();
+          if (bName === normBull) {
+            if (normCia && ciaMatches(bCia)) {
+              sorteioB = b;
+            } else if (!sorteioB && !normCia) {
+              sorteioB = b;
+            }
+          }
         }
       });
     });
+    if (sorteioB) {
+      if (!foundCia && (sorteioB.cia || sorteioB.cia_nome || sorteioB.boiada)) foundCia = (sorteioB.cia || sorteioB.cia_nome || sorteioB.boiada).trim();
+      if (!foundFoto && (sorteioB.foto || sorteioB.foto_url || sorteioB.imagem)) foundFoto = (sorteioB.foto || sorteioB.foto_url || sorteioB.imagem).trim();
+      if (!foundVideo && (sorteioB.video_url || sorteioB.video || sorteioB.videoUrl)) foundVideo = (sorteioB.video_url || sorteioB.video || sorteioB.videoUrl).trim();
+      if (!foundLado && (sorteioB.lado || sorteioB.giro)) foundLado = (sorteioB.lado || sorteioB.giro).trim();
+    }
 
     // 3. Search in relTouros (Supabase rel_touros table)
-    const relB = relTouros.find(r => r.nome && r.nome.trim().toLowerCase() === cleanBull.toLowerCase());
+    // Priority 1: Match BOTH name AND cia!
+    let relB = normCia
+      ? relTouros.find(r => r.nome && r.nome.trim().toLowerCase() === normBull && ciaMatches(r.cia))
+      : null;
+    // Priority 2: Match name only IF no CIA was specified in the query
+    if (!relB && !normCia) {
+      relB = relTouros.find(r => r.nome && r.nome.trim().toLowerCase() === normBull);
+    }
     if (relB) {
       if (!foundCia && relB.cia && relB.cia.trim()) foundCia = relB.cia.trim();
       if (!foundFoto && (relB.foto || relB.foto_url)) foundFoto = relB.foto || relB.foto_url;
       if (!foundVideo && (relB.video_url || relB.video)) foundVideo = relB.video_url || relB.video;
+      if (!foundLado && (relB.lado || relB.giro)) foundLado = relB.lado || relB.giro;
     }
 
     // 4. Search in boiadas (Supabase boiadas_oficiais table)
-    for (const b of boiadas) {
+    // Filter boiadas by matching CIA name first if cleanCia is present
+    let targetBoiadas = boiadas;
+    if (normCia) {
+      const ciaMatchesList = boiadas.filter(b => b.nome && ciaMatches(b.nome));
+      if (ciaMatchesList.length > 0) {
+        targetBoiadas = ciaMatchesList;
+      }
+    }
+
+    for (const b of targetBoiadas) {
       if (!b.lados) continue;
       const bName = b.nome ? b.nome.trim() : '';
 
+      // If normCia was specified, do NOT accept a boiada from a different CIA!
+      if (normCia && !ciaMatches(bName)) continue;
+
       const tourosInfo = b.lados?.__meta?.touros_info || {};
-      const infoKey = Object.keys(tourosInfo).find(k => k.trim().toLowerCase() === cleanBull.toLowerCase());
+      const infoKey = Object.keys(tourosInfo).find(k => k.trim().toLowerCase() === normBull);
       const infoObj = infoKey ? tourosInfo[infoKey] : null;
 
       const ladosKeys = Object.keys(b.lados || {}).filter(k => k !== '__meta');
-      const keyMatch = ladosKeys.find(k => k.trim().toLowerCase() === cleanBull.toLowerCase());
+      const keyMatch = ladosKeys.find(k => k.trim().toLowerCase() === normBull);
 
       if (infoKey || keyMatch) {
         if (!foundCia && bName) foundCia = bName;
         if (infoObj) {
           if (!foundFoto && (infoObj.foto || infoObj.foto_url)) foundFoto = infoObj.foto || infoObj.foto_url;
           if (!foundVideo && (infoObj.video_url || infoObj.video)) foundVideo = infoObj.video_url || infoObj.video;
+          if (!foundLado && (infoObj.lado || infoObj.giro)) foundLado = infoObj.lado || infoObj.giro;
         }
+        if (!foundLado && keyMatch && b.lados[keyMatch]) {
+          foundLado = b.lados[keyMatch];
+        }
+        break;
       }
     }
 
@@ -404,7 +459,7 @@ function Dashboard({
 
     // 6. Check relCias for logo if still no photo
     if (!foundFoto && foundCia) {
-      const relCia = relCias.find(c => c.nome && c.nome.trim().toLowerCase() === foundCia.toLowerCase());
+      const relCia = relCias.find(c => c.nome && ciaMatches(c.nome));
       if (relCia && (relCia.logo_url || relCia.foto)) foundFoto = relCia.logo_url || relCia.foto;
     }
 
@@ -413,6 +468,7 @@ function Dashboard({
       cia: foundCia.toUpperCase(),
       foto: foundFoto,
       video_url: foundVideo,
+      lado: foundLado
     };
   }, [det, relTouros, boiadas, relCias]);
 
@@ -431,7 +487,7 @@ function Dashboard({
   const ranking = Object.values(rmap).sort((a, b) => b.total - a.total).slice(0, 50);
 
   // Group Touros by Resolved CIA
-  const tourosMap: Record<string, { nome: string; cia: string; saidas: number; foto?: string; video_url?: string }[]> = {};
+  const tourosMap: Record<string, { nome: string; cia: string; saidas: number; foto?: string; video_url?: string; lado?: string }[]> = {};
 
   src.forEach((n: any) => {
     if (n.touro) {
@@ -444,13 +500,15 @@ function Dashboard({
         existing.saidas += 1;
         if (!existing.video_url && res.video_url) existing.video_url = res.video_url;
         if (!existing.foto && res.foto) existing.foto = res.foto;
+        if (!existing.lado && res.lado) existing.lado = res.lado;
       } else {
         tourosMap[ciaName].push({
           nome: res.nome,
           cia: ciaName,
           saidas: 1,
           foto: res.foto,
-          video_url: res.video_url
+          video_url: res.video_url,
+          lado: res.lado
         });
       }
     }
@@ -471,7 +529,8 @@ function Dashboard({
           cia: ciaName,
           saidas: 0,
           foto: res.foto,
-          video_url: res.video_url
+          video_url: res.video_url,
+          lado: res.lado
         });
       }
     }

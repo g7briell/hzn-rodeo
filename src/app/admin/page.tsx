@@ -478,11 +478,15 @@ export default function AdminDashboard() {
       try {
         let bId = null;
         if (ride.touro_nome) {
-          // Resolve rel_touros
-          const { data: tData } = await supabase.from('rel_touros').select('id').ilike('nome', ride.touro_nome).maybeSingle();
+          // Resolve rel_touros by BOTH touro_nome AND cia_nome to avoid matching bulls with same name in another CIA
+          let query = supabase.from('rel_touros').select('id').ilike('nome', ride.touro_nome.trim());
+          if (ride.cia_nome && ride.cia_nome.trim()) {
+            query = query.ilike('cia', ride.cia_nome.trim());
+          }
+          const { data: tData } = await query.maybeSingle();
           bId = tData?.id;
           if (!bId) {
-            const { data: newB } = await supabase.from('rel_touros').insert({ nome: ride.touro_nome, cia: ride.cia_nome || null }).select('id').single();
+            const { data: newB } = await supabase.from('rel_touros').insert({ nome: ride.touro_nome.trim(), cia: ride.cia_nome ? ride.cia_nome.trim() : null }).select('id').single();
             bId = newB?.id;
           }
         }
