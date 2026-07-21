@@ -536,11 +536,50 @@ function Dashboard({
           </button>
 
           {tc.abertura_midia_url && (
-            <div style={{ marginBottom: '2rem', maxWidth: '850px', width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', border: '2px solid rgba(212,175,55,0.3)' }}>
+            <div style={{ position: 'relative', marginBottom: '1.5rem', maxWidth: '850px', width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', border: '2px solid rgba(212,175,55,0.4)' }}>
               {tc.abertura_midia_url.endsWith('.mp4') ? (
                 <video src={tc.abertura_midia_url} autoPlay loop controls style={{ width: '100%', maxHeight: '420px', objectFit: 'contain' }} />
               ) : (
                 <img src={tc.abertura_midia_url} alt="Abertura" style={{ width: '100%', maxHeight: '420px', objectFit: 'cover' }} />
+              )}
+
+              {/* Competidores Destaques Overlay on Photo */}
+              {(tc.abertura_competidores_destaque || tc.competidores_destaque)?.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 60%, transparent 100%)',
+                  padding: '1.8rem 1rem 1rem 1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.3em' }}>
+                    ⭐ Competidores em Destaque
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', justifyContent: 'center' }}>
+                    {(tc.abertura_competidores_destaque || tc.competidores_destaque).map((comp: string, i: number) => (
+                      <span key={i} style={{
+                        background: 'linear-gradient(135deg, rgba(212,175,55,0.3) 0%, rgba(200,148,28,0.2) 100%)',
+                        border: '1px solid #d4af37',
+                        color: '#fff',
+                        padding: '4px 14px',
+                        borderRadius: '20px',
+                        fontSize: '0.85rem',
+                        fontWeight: 900,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                        backdropFilter: 'blur(8px)'
+                      }}>
+                        ⭐ {comp}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}

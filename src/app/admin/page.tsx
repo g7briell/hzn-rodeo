@@ -238,6 +238,8 @@ export default function AdminDashboard() {
   const [tabletAberturaSubtitulo, setTabletAberturaSubtitulo] = useState<string>('RODEOAPP');
   const [tabletAberturaMidiaUrl, setTabletAberturaMidiaUrl] = useState<string>('');
   const [tabletAberturaTexto, setTabletAberturaTexto] = useState<string>('');
+  const [tabletAberturaCompetidoresDestaque, setTabletAberturaCompetidoresDestaque] = useState<string[]>([]);
+  const [newTabletCompetidorInput, setNewTabletCompetidorInput] = useState<string>('');
   const [isSavingTabletConfig, setIsSavingTabletConfig] = useState<boolean>(false);
 
   const handleSelectEventForTablet = (ev: any) => {
@@ -252,6 +254,7 @@ export default function AdminDashboard() {
     setTabletAberturaSubtitulo(tc.abertura_subtitulo || ev.nome || 'RODEOAPP');
     setTabletAberturaMidiaUrl(tc.abertura_midia_url || '');
     setTabletAberturaTexto(tc.abertura_texto || '');
+    setTabletAberturaCompetidoresDestaque(tc.abertura_competidores_destaque || tc.competidores_destaque || []);
   };
 
   const handleAddTabletNoticia = () => {
@@ -262,6 +265,16 @@ export default function AdminDashboard() {
 
   const handleRemoveTabletNoticia = (index: number) => {
     setTabletNoticias(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddTabletCompetidor = () => {
+    if (!newTabletCompetidorInput.trim()) return;
+    setTabletAberturaCompetidoresDestaque(prev => [...prev, newTabletCompetidorInput.trim()]);
+    setNewTabletCompetidorInput('');
+  };
+
+  const handleRemoveTabletCompetidor = (index: number) => {
+    setTabletAberturaCompetidoresDestaque(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleToggleTabletDiaDisponivel = (day: string) => {
@@ -290,6 +303,7 @@ export default function AdminDashboard() {
         abertura_subtitulo: tabletAberturaSubtitulo,
         abertura_midia_url: tabletAberturaMidiaUrl,
         abertura_texto: tabletAberturaTexto,
+        abertura_competidores_destaque: tabletAberturaCompetidoresDestaque,
         updated_at: new Date().toISOString()
       };
 
@@ -4150,28 +4164,105 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  {/* Media Upload and Link */}
+                  <div className="space-y-3">
                     <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
-                      URL de Vídeo ou Foto da Abertura (Mídia):
+                      Foto ou Vídeo da Abertura (Link URL ou Arquivo do PC):
                     </label>
-                    <input
-                      type="url"
-                      value={tabletAberturaMidiaUrl}
-                      onChange={e => setTabletAberturaMidiaUrl(e.target.value)}
-                      placeholder="Ex: https://meuservidor.com/video.mp4 ou foto"
-                      className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
-                    />
+                    <div className="flex flex-col md:flex-row gap-3 items-stretch">
+                      <input
+                        type="text"
+                        value={tabletAberturaMidiaUrl}
+                        onChange={e => setTabletAberturaMidiaUrl(e.target.value)}
+                        placeholder="Insira o link da foto/vídeo ou envie um arquivo ao lado ->"
+                        className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
+                      />
+                      <label className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0">
+                        <span>📁 Subir Foto do PC</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => handlePhotoUpload(e, (b64) => setTabletAberturaMidiaUrl(b64))}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Preview Thumbnail */}
+                    {tabletAberturaMidiaUrl && (
+                      <div className="relative rounded-2xl overflow-hidden border border-yellow-500/30 max-h-48 w-full bg-black/60 flex items-center justify-center mt-2">
+                        {tabletAberturaMidiaUrl.endsWith('.mp4') ? (
+                          <video src={tabletAberturaMidiaUrl} controls className="max-h-48 w-full object-contain" />
+                        ) : (
+                          <img src={tabletAberturaMidiaUrl} alt="Preview Abertura" className="max-h-48 w-full object-contain" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setTabletAberturaMidiaUrl('')}
+                          className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase"
+                        >
+                          ✕ Limpar Mídia
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="space-y-2">
+                  {/* Featured Competitors Overlay Selection */}
+                  <div className="space-y-3 pt-3 border-t border-white/10">
+                    <label className="text-[10px] font-black text-yellow-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      ⭐ Competidores em Destaque (Aparecem em cima da foto na Abertura):
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTabletCompetidorInput}
+                        onChange={e => setNewTabletCompetidorInput(e.target.value)}
+                        placeholder="Nome do competidor em destaque (ex: Ramon de Lima)..."
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddTabletCompetidor(); }}
+                        className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddTabletCompetidor}
+                        className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all"
+                      >
+                        + Adicionar
+                      </button>
+                    </div>
+
+                    {tabletAberturaCompetidoresDestaque.length === 0 ? (
+                      <p className="text-xs text-white/30 italic font-bold">Nenhum competidor em destaque adicionado.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {tabletAberturaCompetidoresDestaque.map((comp, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-gradient-to-r from-yellow-500/20 to-yellow-700/20 border border-yellow-500/40 px-3.5 py-1.5 rounded-full text-xs font-black text-yellow-400 flex items-center gap-2 uppercase tracking-wider shadow-lg"
+                          >
+                            <span>⭐ {comp}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTabletCompetidor(idx)}
+                              className="text-white/40 hover:text-red-400 font-bold ml-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Opening Description */}
+                  <div className="space-y-2 pt-3 border-t border-white/10">
                     <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
-                      Texto / Discurso Oficial de Abertura:
+                      Descrição / Discurso Oficial de Abertura (Exibido abaixo da foto):
                     </label>
                     <textarea
                       rows={3}
                       value={tabletAberturaTexto}
                       onChange={e => setTabletAberturaTexto(e.target.value)}
-                      placeholder="Texto de abertura lido pela locução..."
+                      placeholder="Insira a descrição ou discurso lido durante a abertura..."
                       className="w-full bg-black border border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white resize-y"
                     />
                   </div>
