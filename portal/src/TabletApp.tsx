@@ -1365,8 +1365,33 @@ export default function TabletApp() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos_oficiais' }, (payload) => {
         if (payload.new) {
           const updatedEv = payload.new as Evento;
-          setEventos(prev => prev.map(e => e.id === updatedEv.id ? updatedEv : e));
-          setSelected(prev => (prev && prev.id === updatedEv.id ? updatedEv : prev));
+
+          setEventos(prev => {
+            const isMatch = (e: Evento) =>
+              String(e.id) === String(updatedEv.id) ||
+              (e.nome && updatedEv.nome && e.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
+
+            const index = prev.findIndex(isMatch);
+            if (index >= 0) {
+              const copy = [...prev];
+              copy[index] = updatedEv;
+              return copy;
+            } else {
+              return [updatedEv, ...prev];
+            }
+          });
+
+          setSelected(prev => {
+            if (!prev) return prev;
+            const isMatch =
+              String(prev.id) === String(updatedEv.id) ||
+              (prev.nome && updatedEv.nome && prev.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
+
+            if (isMatch) {
+              return updatedEv;
+            }
+            return prev;
+          });
         }
       })
       .subscribe();

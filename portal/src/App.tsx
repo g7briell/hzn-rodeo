@@ -1248,8 +1248,31 @@ Instruções importantes:
       .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos_oficiais' }, (payload) => {
         if (payload.new) {
           const updatedEv = payload.new as EventoOficial;
-          setEventosOficiais(prev => prev.map(e => e.id === updatedEv.id ? updatedEv : e));
-          setSelectedEvent(prev => (prev && prev.id === updatedEv.id ? updatedEv : prev));
+          setEventosOficiais(prev => {
+            const isMatch = (e: EventoOficial) =>
+              String(e.id) === String(updatedEv.id) ||
+              (e.nome && updatedEv.nome && e.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
+
+            const index = prev.findIndex(isMatch);
+            if (index >= 0) {
+              const copy = [...prev];
+              copy[index] = updatedEv;
+              return copy;
+            } else {
+              return [updatedEv, ...prev];
+            }
+          });
+          setSelectedEvent(prev => {
+            if (!prev) return prev;
+            const isMatch =
+              String(prev.id) === String(updatedEv.id) ||
+              (prev.nome && updatedEv.nome && prev.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
+
+            if (isMatch) {
+              return updatedEv;
+            }
+            return prev;
+          });
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transmissoes_aovivo' }, () => {
