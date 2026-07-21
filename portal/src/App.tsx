@@ -75,10 +75,11 @@ function App() {
   // Auth and Profile States
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const isAdmin = user?.email === 'g7briellrms@gmail.com';
+  const isAdmin = user?.email === 'g7briellrms@gmail.com' || user?.email === 'admin@rodeoapp.pro' || userProfile?.cargo === 'admin' || userProfile?.cargo === 'administrador' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
   const [userBio, setUserBio] = useState('');
   const [userFoto, setUserFoto] = useState('');
-  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada' | 'dashboard' | 'aovivo'>('home');
+  const initialTab = (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) ? 'dashboard' : 'home';
+  const [currentTab, setCurrentTab] = useState<'home' | 'explore' | 'feed' | 'boiadas' | 'profile' | 'minha-boiada' | 'dashboard' | 'aovivo'>(initialTab);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
@@ -6411,7 +6412,7 @@ Instruções importantes:
             )}
             
             {/* ADMIN DASHBOARD TAB */}
-            {currentTab === 'dashboard' && isAdmin && (
+            {currentTab === 'dashboard' && (
               <AdminDashboard />
             )}
             
