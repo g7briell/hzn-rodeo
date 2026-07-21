@@ -268,8 +268,10 @@ function Dashboard({
 }) {
   const [view, setView] = useState<ViewState>('menu');
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const [showAberturaModal, setShowAberturaModal] = useState<boolean>(false);
 
   const det = typeof evento.detalhes === 'string' ? JSON.parse(evento.detalhes || '{}') : (evento.detalhes || {});
+  const tc = det.tablet_config || {};
 
   // Extract all montarias/notes from det.notas, det.notes, det.sorteio, AND det.sorteios (plural array)
   const allMontarias = useRef<any[]>([]);
@@ -490,6 +492,84 @@ function Dashboard({
   return (
     <div style={{ minHeight: '100vh', background: '#000', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif', color: '#fff' }}>
       
+      {/* Realtime News Ticker Banner */}
+      {tc.ticker_noticias && (
+        <div style={{ background: 'linear-gradient(135deg, #d4af37 0%, #c8941c 100%)', color: '#000', overflow: 'hidden', whiteSpace: 'nowrap', padding: '6px 0', fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}>
+          <div style={{ display: 'inline-block', animation: 'tMarquee 25s linear infinite' }}>
+            📢 {tc.ticker_noticias} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 📢 {tc.ticker_noticias}
+          </div>
+        </div>
+      )}
+
+      {/* Opening Fullscreen Screen */}
+      {(showAberturaModal || tc.abertura_ativa) && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'radial-gradient(circle at center, #1a1500 0%, #000 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '3rem 2rem',
+          textAlign: 'center'
+        }}>
+          <button
+            onClick={() => setShowAberturaModal(false)}
+            style={{
+              position: 'absolute',
+              top: '25px',
+              right: '25px',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
+              fontSize: '20px',
+              fontWeight: 900,
+              cursor: 'pointer'
+            }}
+          >
+            ✕
+          </button>
+
+          {tc.abertura_midia_url && (
+            <div style={{ marginBottom: '2rem', maxWidth: '850px', width: '100%', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', border: '2px solid rgba(212,175,55,0.3)' }}>
+              {tc.abertura_midia_url.endsWith('.mp4') ? (
+                <video src={tc.abertura_midia_url} autoPlay loop controls style={{ width: '100%', maxHeight: '420px', objectFit: 'contain' }} />
+              ) : (
+                <img src={tc.abertura_midia_url} alt="Abertura" style={{ width: '100%', maxHeight: '420px', objectFit: 'cover' }} />
+              )}
+            </div>
+          )}
+
+          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#d4af37', letterSpacing: '0.35em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+            🎬 {tc.abertura_subtitulo || evento.nome}
+          </span>
+          <h1 style={{ fontSize: '3.2rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.03em', background: 'linear-gradient(135deg,#d4af37 0%,#f0d060 50%,#c8941c 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '1.2rem', textShadow: '0 4px 20px rgba(212,175,55,0.3)' }}>
+            {tc.abertura_titulo || 'ABERTURA OFICIAL'}
+          </h1>
+          {tc.abertura_texto && (
+            <p style={{ maxWidth: '750px', color: 'rgba(255,255,255,0.85)', fontSize: '1.15rem', lineHeight: 1.6, fontStyle: 'italic', marginBottom: '2.5rem' }}>
+              "{tc.abertura_texto}"
+            </p>
+          )}
+
+          {/* Sponsor Logos */}
+          {pats.length > 0 && (
+            <div style={{ marginTop: 'auto', display: 'flex', gap: '2.5rem', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', padding: '1rem', background: 'rgba(0,0,0,0.4)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              {pats.map((p, i) => {
+                const url = p.detalhes?.splash_app?.logo_url || p.logo_url;
+                if (!url) return null;
+                return <img key={i} src={url} alt={p.nome} style={{ maxHeight: '50px', maxWidth: '140px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.7 }} />;
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Modal for Video */}
       {activeVideoUrl && (
         <VideoModal videoUrl={activeVideoUrl} onClose={() => setActiveVideoUrl(null)} />
@@ -536,8 +616,8 @@ function Dashboard({
             </button>
           )}
 
-          <button style={{
-            background: 'transparent',
+          <button onClick={() => setShowAberturaModal(true)} style={{
+            background: tc.abertura_ativa ? '#dc2626' : 'transparent',
             border: '1.5px solid #d4af37',
             color: '#d4af37',
             borderRadius: '6px',
@@ -551,7 +631,7 @@ function Dashboard({
             animation: 'tPulseGold 1.8s ease-in-out infinite',
             outline: 'none',
           }}>
-            Abertura
+            🎬 Abertura {tc.abertura_ativa ? '(Ao Vivo)' : ''}
           </button>
         </div>
       </header>
@@ -1181,6 +1261,21 @@ export default function TabletApp() {
         console.error('Tablet fetch error:', err);
       } finally { setLoading(false); }
     })();
+
+    const channel = supabase
+      .channel('tablet_realtime_events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos_oficiais' }, (payload) => {
+        if (payload.new) {
+          const updatedEv = payload.new as Evento;
+          setEventos(prev => prev.map(e => e.id === updatedEv.id ? updatedEv : e));
+          setSelected(prev => (prev && prev.id === updatedEv.id ? updatedEv : prev));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const resetTimer = useCallback(() => {
