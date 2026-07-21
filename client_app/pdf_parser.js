@@ -382,8 +382,12 @@ if (btnSaveEvent) {
             });
         });
 
-        // Update global reference
-        window.currentEvent = targetEvent;
+        // Update global reference in renderer
+        if (typeof window.setCurrentEvent === 'function') {
+            window.setCurrentEvent(targetEvent);
+        } else {
+            window.currentEvent = targetEvent;
+        }
 
         // 5. Save to database using updateLocalEvent
         const auth = window.electronAPI.getAuth();
@@ -392,12 +396,12 @@ if (btnSaveEvent) {
         if (email) {
             await window.electronAPI.updateLocalEvent(email, targetEvent);
             
-            // Re-render screens
-            if (typeof window.renderNotasTable === 'function') window.renderNotasTable();
-            if (typeof window.renderSorteiosList === 'function') window.renderSorteiosList();
+            // Re-render screens with exact renderer function names
+            if (typeof window.openListPeoes === 'function') window.openListPeoes();
+            if (typeof window.openListBoiadas === 'function') window.openListBoiadas();
+            if (typeof window.openSorteiosList === 'function') window.openSorteiosList();
             if (typeof window.renderEvents === 'function') window.renderEvents();
-            if (typeof window.renderPeoesList === 'function') window.renderPeoesList();
-            if (typeof window.renderBoiadasList === 'function') window.renderBoiadasList();
+            if (typeof window.renderNotasTable === 'function') window.renderNotasTable();
             
             alert("Sorteio, Peões, Boiadas e Notas salvos no evento com sucesso!");
         } else {

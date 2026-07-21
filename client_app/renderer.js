@@ -20,6 +20,7 @@ let modalEvento, formEvento, eventControlView, supportBtn, sportSelectScreen, tr
 
 let currentEvent = null;
 window.getCurrentEvent = () => currentEvent;
+window.setCurrentEvent = (ev) => { currentEvent = ev; window.currentEvent = ev; };
 let heartbeatInterval = null;
 let offlineCheckInterval = null;
 let currentExpiryDate = null;
