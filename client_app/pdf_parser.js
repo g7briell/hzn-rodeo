@@ -366,9 +366,9 @@ if (btnSaveEvent) {
         targetEvent.notas = targetEvent.notas.filter(n => normalizeDayName(n.dia) !== cleanDay);
 
         pdfParsedData.items.forEach(item => {
-            const itemTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
-            const j1_p = item.j1_peao !== undefined ? item.j1_peao : (item.totalPeao ? item.totalPeao / 2 : 0);
-            const j2_p = item.j2_peao !== undefined ? item.j2_peao : (item.totalPeao ? item.totalPeao / 2 : 0);
+            const itemTempo = item.tempo !== undefined ? item.tempo : 8.0;
+            const j1_p = itemTempo < 8.0 ? 0 : (item.j1_peao !== undefined ? item.j1_peao : (item.totalPeao ? item.totalPeao / 2 : 0));
+            const j2_p = itemTempo < 8.0 ? 0 : (item.j2_peao !== undefined ? item.j2_peao : (item.totalPeao ? item.totalPeao / 2 : 0));
             const j1_t = item.j1_touro !== undefined ? item.j1_touro : (item.totalTouro ? item.totalTouro / 2 : 0);
             const j2_t = item.j2_touro !== undefined ? item.j2_touro : (item.totalTouro ? item.totalTouro / 2 : 0);
             const totalPeao = itemTempo < 8.0 ? 0 : (item.totalPeao !== undefined ? item.totalPeao : (j1_p + j2_p));
@@ -383,7 +383,7 @@ if (btnSaveEvent) {
                 cia: item.cia,
                 ciaNome: item.cia,
                 dia: cleanDay,
-                status: item.status || (itemTempo >= 8.0 && calcTotal > 0 ? 'ativa' : 'queda'),
+                status: 'ativa',
                 tempo: itemTempo,
                 j1_peao: j1_p,
                 j2_peao: j2_p,
@@ -393,7 +393,7 @@ if (btnSaveEvent) {
                 touro_score: totalTouro,
                 totalPeao: totalPeao,
                 totalTouro: totalTouro,
-                total: item.total !== undefined ? item.total : calcTotal,
+                total: itemTempo < 8.0 ? 0 : (item.total !== undefined ? item.total : calcTotal),
                 id_montaria: "pdf_" + Date.now() + "_" + Math.floor(Math.random() * 1000)
             });
         });
@@ -420,7 +420,8 @@ if (btnSaveEvent) {
             if (typeof window.openListBoiadas === 'function') window.openListBoiadas();
             if (typeof window.openSorteiosList === 'function') window.openSorteiosList();
             if (typeof window.renderEvents === 'function') window.renderEvents();
-            if (typeof window.renderNotasTable === 'function') window.renderNotasTable();
+            if (typeof window.renderNotasCards === 'function') window.renderNotasCards();
+            if (typeof window.renderRanking === 'function') window.renderRanking();
             
             alert("Sorteio, Peões, Boiadas, Notas e Ranking salvos no evento com sucesso!");
         } else {
@@ -445,12 +446,11 @@ function recalcularRankingPdf(targetEvent) {
             const tempo = parseFloat(curr.tempo) || 0;
             const totalPeao = parseFloat(curr.totalPeao) || parseFloat(curr.peao_score) || 0;
             const totalTouro = parseFloat(curr.totalTouro) || parseFloat(curr.touro_score) || 0;
-            const total = parseFloat(curr.total) || (totalPeao + totalTouro);
 
             if (totalPeao === 0 || tempo < 8.00) {
                 tempoAcumulado += tempo;
             } else {
-                scoreTotal += total;
+                scoreTotal += (totalPeao + totalTouro);
                 tempoAcumulado += tempo;
             }
         });
