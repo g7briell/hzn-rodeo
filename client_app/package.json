@@ -1,6 +1,6 @@
 {
   "name": "hzn-rodeo-client",
-  "version": "1.0.90",
+  "version": "1.0.91",
   "description": "Rodeo System Client App",
   "main": "main.js",
   "scripts": {
@@ -35,7 +35,7 @@
         "provider": "github",
         "owner": "g7briell",
         "repo": "hzn-rodeo",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
     ],
     "win": {

@@ -8,10 +8,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onLicenseRealtimeUpdate: (callback) => ipcRenderer.on('license-realtime-update', (event, data) => callback(data)),
   onLicenseBroadcastSignal: (callback) => ipcRenderer.on('license-broadcast-signal', (event, data) => callback(data)),
   
-  // Persistência local (LocalStorage ainda funciona no renderer, mas vamos manter o padrão)
-  saveAuth: (data) => localStorage.setItem('hzn_auth', JSON.stringify(data)),
-  getAuth: () => JSON.parse(localStorage.getItem('hzn_auth')),
-  clearAuth: () => localStorage.removeItem('hzn_auth'),
+  saveAuth: (data) => {
+    try { localStorage.setItem('hzn_auth', JSON.stringify(data)); } catch (e) {}
+    return ipcRenderer.invoke('save-auth', data);
+  },
+  getAuth: () => {
+    try {
+      const local = localStorage.getItem('hzn_auth');
+      if (local) return JSON.parse(local);
+    } catch (e) {}
+    const fileAuth = ipcRenderer.sendSync('get-auth-sync');
+    if (fileAuth) {
+      try { localStorage.setItem('hzn_auth', JSON.stringify(fileAuth)); } catch (e) {}
+    }
+    return fileAuth;
+  },
+  clearAuth: () => {
+    try { localStorage.removeItem('hzn_auth'); } catch (e) {}
+    return ipcRenderer.invoke('clear-auth');
+  },
   
   setCurrentSport: (sport) => ipcRenderer.invoke('set-current-sport', sport),
   

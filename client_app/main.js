@@ -176,6 +176,42 @@ app.on('window-all-closed', () => {
 });
 
 // IPC Handlers
+const authFilePath = path.join(app.getPath('userData'), 'auth.json');
+
+ipcMain.handle('save-auth', (event, data) => {
+  try {
+    fs.writeFileSync(authFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (e) {
+    console.error("Erro ao salvar auth.json:", e);
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.on('get-auth-sync', (event) => {
+  try {
+    if (fs.existsSync(authFilePath)) {
+      const content = fs.readFileSync(authFilePath, 'utf-8');
+      event.returnValue = JSON.parse(content);
+      return;
+    }
+  } catch (e) {
+    console.error("Erro ao ler auth.json sync:", e);
+  }
+  event.returnValue = null;
+});
+
+ipcMain.handle('clear-auth', () => {
+  try {
+    if (fs.existsSync(authFilePath)) {
+      fs.unlinkSync(authFilePath);
+    }
+  } catch (e) {
+    console.error("Erro ao remover auth.json:", e);
+  }
+  return { success: true };
+});
+
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
