@@ -242,6 +242,44 @@ export default function AdminDashboard() {
   const [newTabletCompetidorInput, setNewTabletCompetidorInput] = useState<string>('');
   const [isSavingTabletConfig, setIsSavingTabletConfig] = useState<boolean>(false);
 
+  const getEventCompetitors = (ev: any): string[] => {
+    if (!ev) return [];
+    const det = ev.detalhes || {};
+    const set = new Set<string>();
+
+    if (Array.isArray(det.sorteios)) {
+      det.sorteios.forEach((s: any) => {
+        const riders = s.riders || s.peoes || s.competidores || s.peoes_lista || [];
+        riders.forEach((r: any) => {
+          const name = typeof r === 'string' ? r : (r?.nome || r?.name || r?.peao);
+          if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+        });
+      });
+    }
+
+    if (det.sorteio) {
+      const riders = Array.isArray(det.sorteio) ? det.sorteio : (det.sorteio.riders || det.sorteio.peoes || det.sorteio.competidores || []);
+      riders.forEach((r: any) => {
+        const name = typeof r === 'string' ? r : (r?.nome || r?.name || r?.peao);
+        if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+      });
+    }
+
+    const montarias = [...(det.notas || []), ...(det.notes || []), ...(det.montarias || [])];
+    montarias.forEach((m: any) => {
+      const name = typeof m === 'string' ? m : (m?.peao || m?.competidor || m?.rider || m?.nome);
+      if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+    });
+
+    const compList = [...(det.competidores || []), ...(det.inscritos || []), ...(det.peoes || [])];
+    compList.forEach((c: any) => {
+      const name = typeof c === 'string' ? c : (c?.nome || c?.name || c?.peao);
+      if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+    });
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  };
+
   const handleSelectEventForTablet = (ev: any) => {
     setSelectedTabletEventId(ev.id);
     const tc = ev.detalhes?.tablet_config || {};
@@ -254,7 +292,17 @@ export default function AdminDashboard() {
     setTabletAberturaSubtitulo(tc.abertura_subtitulo || ev.nome || 'RODEOAPP');
     setTabletAberturaMidiaUrl(tc.abertura_midia_url || '');
     setTabletAberturaTexto(tc.abertura_texto || '');
-    setTabletAberturaCompetidoresDestaque(tc.abertura_competidores_destaque || tc.competidores_destaque || []);
+
+    const savedComps = tc.abertura_competidores_destaque || tc.competidores_destaque;
+    const eventComps = getEventCompetitors(ev);
+
+    if (Array.isArray(savedComps) && savedComps.length > 0) {
+      setTabletAberturaCompetidoresDestaque(savedComps);
+    } else if (eventComps.length > 0) {
+      setTabletAberturaCompetidoresDestaque(eventComps);
+    } else {
+      setTabletAberturaCompetidoresDestaque([]);
+    }
   };
 
   const handleAddTabletNoticia = () => {
@@ -277,13 +325,25 @@ export default function AdminDashboard() {
     setTabletAberturaCompetidoresDestaque(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleToggleTabletDiaDisponivel = (day: string) => {
-    if (tabletDiasDisponiveis.includes(day)) {
-      if (tabletDiasDisponiveis.length === 1) return alert("Ao menos 1 dia deve estar disponível.");
-      setTabletDiasDisponiveis(prev => prev.filter(d => d !== day));
-    } else {
-      setTabletDiasDisponiveis(prev => [...prev, day]);
+  const handlePullAllEventCompetitors = () => {
+    const selectedEv = eventos.find(e => e.id === selectedTabletEventId);
+    if (!selectedEv) return;
+    const eventComps = getEventCompetitors(selectedEv);
+    if (eventComps.length === 0) {
+      alert("Nenhum competidor cadastrado nas montarias/sorteios deste evento.");
+      return;
     }
+    setTabletAberturaCompetidoresDestaque(eventComps);
+  };
+
+  const handleToggleEventCompetidor = (compName: string) => {
+    setTabletAberturaCompetidoresDestaque(prev => {
+      if (prev.includes(compName)) {
+        return prev.filter(c => c !== compName);
+      } else {
+        return [...prev, compName];
+      }
+    });
   };
 
   const handleSaveTabletConfig = async () => {
@@ -4208,49 +4268,131 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Featured Competitors Overlay Selection */}
-                  <div className="space-y-3 pt-3 border-t border-white/10">
-                    <label className="text-[10px] font-black text-yellow-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                      ⭐ Competidores em Destaque (Aparecem em cima da foto na Abertura):
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newTabletCompetidorInput}
-                        onChange={e => setNewTabletCompetidorInput(e.target.value)}
-                        placeholder="Nome do competidor em destaque (ex: Ramon de Lima)..."
-                        onKeyDown={e => { if (e.key === 'Enter') handleAddTabletCompetidor(); }}
-                        className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddTabletCompetidor}
-                        className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all"
-                      >
-                        + Adicionar
-                      </button>
-                    </div>
+                  <div className="space-y-4 pt-4 border-t border-white/10">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <label className="text-xs font-black text-yellow-500 uppercase tracking-widest flex items-center gap-2">
+                          ⭐ Competidores em Destaque (Aparecem em cima da foto na Abertura):
+                        </label>
+                        <p className="text-[11px] text-white/50 font-bold mt-1">
+                          O sistema puxa automaticamente os competidores cadastrados neste evento. Selecione quais aparecerão na abertura ou adicione pessoas específicas (salva-vidas, convidados) abaixo.
+                        </p>
+                      </div>
 
-                    {tabletAberturaCompetidoresDestaque.length === 0 ? (
-                      <p className="text-xs text-white/30 italic font-bold">Nenhum competidor em destaque adicionado.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {tabletAberturaCompetidoresDestaque.map((comp, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-gradient-to-r from-yellow-500/20 to-yellow-700/20 border border-yellow-500/40 px-3.5 py-1.5 rounded-full text-xs font-black text-yellow-400 flex items-center gap-2 uppercase tracking-wider shadow-lg"
-                          >
-                            <span>⭐ {comp}</span>
+                      {selectedTabletEventId && (() => {
+                        const selectedEv = eventos.find(e => e.id === selectedTabletEventId);
+                        const eventComps = getEventCompetitors(selectedEv);
+                        return (
+                          <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
-                              onClick={() => handleRemoveTabletCompetidor(idx)}
-                              className="text-white/40 hover:text-red-400 font-bold ml-1"
+                              onClick={handlePullAllEventCompetitors}
+                              className="bg-yellow-500/20 hover:bg-yellow-500 hover:text-black border border-yellow-500/40 text-yellow-400 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg"
                             >
-                              ✕
+                              ⚡ Puxar Todos ({eventComps.length})
                             </button>
+                            {tabletAberturaCompetidoresDestaque.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setTabletAberturaCompetidoresDestaque([])}
+                                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all"
+                              >
+                                🗑️ Limpar
+                              </button>
+                            )}
                           </div>
-                        ))}
+                        );
+                      })()}
+                    </div>
+
+                    {/* Quick Selection List from Event Competitors */}
+                    {selectedTabletEventId && (() => {
+                      const selectedEv = eventos.find(e => e.id === selectedTabletEventId);
+                      const eventComps = getEventCompetitors(selectedEv);
+                      if (eventComps.length === 0) return null;
+
+                      return (
+                        <div className="bg-black/40 border border-white/10 p-4 rounded-2xl space-y-2">
+                          <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block">
+                            Competidores Cadastrados neste Evento ({eventComps.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+                            {eventComps.map((comp, idx) => {
+                              const isSelected = tabletAberturaCompetidoresDestaque.includes(comp);
+                              return (
+                                <button
+                                  type="button"
+                                  key={idx}
+                                  onClick={() => handleToggleEventCompetidor(comp)}
+                                  className={`px-3 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
+                                    isSelected
+                                      ? "bg-yellow-500 text-black border-yellow-500 shadow-md shadow-yellow-500/20"
+                                      : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                                  }`}
+                                >
+                                  <span>{isSelected ? "✓" : "+"}</span>
+                                  <span>{comp}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Active Selected List */}
+                    <div>
+                      <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                        Nomes Selecionados para a Tela de Abertura ({tabletAberturaCompetidoresDestaque.length}):
+                      </span>
+                      {tabletAberturaCompetidoresDestaque.length === 0 ? (
+                        <p className="text-xs text-white/30 italic font-bold bg-black/20 p-3 rounded-xl border border-white/5">
+                          Nenhum competidor em destaque selecionado. Clique nos nomes acima ou adicione manualmente abaixo.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {tabletAberturaCompetidoresDestaque.map((comp, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-gradient-to-r from-yellow-500/20 to-yellow-700/20 border border-yellow-500/40 px-3.5 py-1.5 rounded-full text-xs font-black text-yellow-400 flex items-center gap-2 uppercase tracking-wider shadow-lg"
+                            >
+                              <span>⭐ {comp}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTabletCompetidor(idx)}
+                                className="text-white/40 hover:text-red-400 font-bold ml-1"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Manual Input for specific people / salva-vidas */}
+                    <div className="pt-2">
+                      <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">
+                        ➕ Adicionar Pessoa Específica (Salva-Vidas, Locutor, Convidado):
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newTabletCompetidorInput}
+                          onChange={e => setNewTabletCompetidorInput(e.target.value)}
+                          placeholder="Nome da pessoa ou salva-vidas (ex: Salva-Vidas Pirangueiro)..."
+                          onKeyDown={e => { if (e.key === 'Enter') handleAddTabletCompetidor(); }}
+                          className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddTabletCompetidor}
+                          className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all shrink-0"
+                        >
+                          + Adicionar Manual
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Opening Description */}

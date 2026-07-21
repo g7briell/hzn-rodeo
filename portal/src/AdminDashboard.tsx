@@ -18,6 +18,8 @@ export default function AdminDashboard() {
   const [tabletAberturaSubtitulo, setTabletAberturaSubtitulo] = useState<string>('RODEOAPP');
   const [tabletAberturaMidiaUrl, setTabletAberturaMidiaUrl] = useState<string>('');
   const [tabletAberturaTexto, setTabletAberturaTexto] = useState<string>('');
+  const [tabletAberturaCompetidoresDestaque, setTabletAberturaCompetidoresDestaque] = useState<string[]>([]);
+  const [newTabletCompetidorInput, setNewTabletCompetidorInput] = useState<string>('');
   const [isSavingTabletConfig, setIsSavingTabletConfig] = useState<boolean>(false);
 
   // Artes tab states
@@ -87,6 +89,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const getEventCompetitors = (ev: any): string[] => {
+    if (!ev) return [];
+    const det = ev.detalhes || {};
+    const set = new Set<string>();
+
+    if (Array.isArray(det.sorteios)) {
+      det.sorteios.forEach((s: any) => {
+        const riders = s.riders || s.peoes || s.competidores || s.peoes_lista || [];
+        riders.forEach((r: any) => {
+          const name = typeof r === 'string' ? r : (r?.nome || r?.name || r?.peao);
+          if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+        });
+      });
+    }
+
+    if (det.sorteio) {
+      const riders = Array.isArray(det.sorteio) ? det.sorteio : (det.sorteio.riders || det.sorteio.peoes || det.sorteio.competidores || []);
+      riders.forEach((r: any) => {
+        const name = typeof r === 'string' ? r : (r?.nome || r?.name || r?.peao);
+        if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+      });
+    }
+
+    const montarias = [...(det.notas || []), ...(det.notes || []), ...(det.montarias || [])];
+    montarias.forEach((m: any) => {
+      const name = typeof m === 'string' ? m : (m?.peao || m?.competidor || m?.rider || m?.nome);
+      if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+    });
+
+    const compList = [...(det.competidores || []), ...(det.inscritos || []), ...(det.peoes || [])];
+    compList.forEach((c: any) => {
+      const name = typeof c === 'string' ? c : (c?.nome || c?.name || c?.peao);
+      if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+    });
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  };
+
   const handleSelectEventForTablet = (ev: any) => {
     setSelectedTabletEventId(ev.id);
     const tc = ev.detalhes?.tablet_config || {};
@@ -99,6 +139,17 @@ export default function AdminDashboard() {
     setTabletAberturaSubtitulo(tc.abertura_subtitulo || ev.nome || 'RODEOAPP');
     setTabletAberturaMidiaUrl(tc.abertura_midia_url || '');
     setTabletAberturaTexto(tc.abertura_texto || '');
+
+    const savedComps = tc.abertura_competidores_destaque || tc.competidores_destaque;
+    const eventComps = getEventCompetitors(ev);
+
+    if (Array.isArray(savedComps) && savedComps.length > 0) {
+      setTabletAberturaCompetidoresDestaque(savedComps);
+    } else if (eventComps.length > 0) {
+      setTabletAberturaCompetidoresDestaque(eventComps);
+    } else {
+      setTabletAberturaCompetidoresDestaque([]);
+    }
   };
 
   const handleAddTabletNoticia = () => {
@@ -109,6 +160,37 @@ export default function AdminDashboard() {
 
   const handleRemoveTabletNoticia = (index: number) => {
     setTabletNoticias(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddTabletCompetidor = () => {
+    if (!newTabletCompetidorInput.trim()) return;
+    setTabletAberturaCompetidoresDestaque(prev => [...prev, newTabletCompetidorInput.trim()]);
+    setNewTabletCompetidorInput('');
+  };
+
+  const handleRemoveTabletCompetidor = (index: number) => {
+    setTabletAberturaCompetidoresDestaque(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePullAllEventCompetitors = () => {
+    const selectedEv = events.find(e => e.id === selectedTabletEventId);
+    if (!selectedEv) return;
+    const eventComps = getEventCompetitors(selectedEv);
+    if (eventComps.length === 0) {
+      alert("Nenhum competidor cadastrado nas montarias/sorteios deste evento.");
+      return;
+    }
+    setTabletAberturaCompetidoresDestaque(eventComps);
+  };
+
+  const handleToggleEventCompetidor = (compName: string) => {
+    setTabletAberturaCompetidoresDestaque(prev => {
+      if (prev.includes(compName)) {
+        return prev.filter(c => c !== compName);
+      } else {
+        return [...prev, compName];
+      }
+    });
   };
 
   const handleToggleTabletDiaDisponivel = (day: string) => {
@@ -137,6 +219,7 @@ export default function AdminDashboard() {
         abertura_subtitulo: tabletAberturaSubtitulo,
         abertura_midia_url: tabletAberturaMidiaUrl,
         abertura_texto: tabletAberturaTexto,
+        abertura_competidores_destaque: tabletAberturaCompetidoresDestaque,
         updated_at: new Date().toISOString()
       };
 
@@ -3127,6 +3210,143 @@ export default function AdminDashboard() {
                     placeholder="Ex: https://meuservidor.com/video-abertura.mp4 ou foto"
                     style={{ width: '100%', padding: '0.7rem 1rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '0.85rem' }}
                   />
+                </div>
+
+                {/* Featured Competitors Overlay Selection */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: '#d4af37' }}>
+                        ⭐ Competidores em Destaque (Aparecem em cima da foto na Abertura):
+                      </label>
+                      <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
+                        O sistema puxa automaticamente os competidores cadastrados neste evento. Selecione quais aparecerão na abertura ou adicione pessoas específicas (salva-vidas, convidados) abaixo.
+                      </p>
+                    </div>
+
+                    {selectedTabletEventId && (() => {
+                      const selectedEv = events.find(e => e.id === selectedTabletEventId);
+                      const eventComps = getEventCompetitors(selectedEv);
+                      return (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={handlePullAllEventCompetitors}
+                            style={{ background: 'rgba(212,175,55,0.2)', border: '1px solid rgba(212,175,55,0.4)', color: '#d4af37', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' }}
+                          >
+                            ⚡ Puxar Todos ({eventComps.length})
+                          </button>
+                          {tabletAberturaCompetidoresDestaque.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setTabletAberturaCompetidoresDestaque([])}
+                              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' }}
+                            >
+                              🗑️ Limpar
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Quick Selection List from Event Competitors */}
+                  {selectedTabletEventId && (() => {
+                    const selectedEv = events.find(e => e.id === selectedTabletEventId);
+                    const eventComps = getEventCompetitors(selectedEv);
+                    if (eventComps.length === 0) return null;
+
+                    return (
+                      <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                          Competidores Cadastrados neste Evento ({eventComps.length}):
+                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: '140px', overflowY: 'auto' }}>
+                          {eventComps.map((comp, idx) => {
+                            const isSelected = tabletAberturaCompetidoresDestaque.includes(comp);
+                            return (
+                              <button
+                                type="button"
+                                key={idx}
+                                onClick={() => handleToggleEventCompetidor(comp)}
+                                style={{
+                                  padding: '0.3rem 0.7rem',
+                                  borderRadius: '8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 800,
+                                  textTransform: 'uppercase',
+                                  cursor: 'pointer',
+                                  border: isSelected ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.1)',
+                                  background: isSelected ? '#d4af37' : 'rgba(255,255,255,0.05)',
+                                  color: isSelected ? '#000' : 'rgba(255,255,255,0.7)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.3rem'
+                                }}
+                              >
+                                <span>{isSelected ? '✓' : '+'}</span>
+                                <span>{comp}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Active Selected List */}
+                  <div>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem' }}>
+                      Nomes Selecionados para a Tela de Abertura ({tabletAberturaCompetidoresDestaque.length}):
+                    </span>
+                    {tabletAberturaCompetidoresDestaque.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', margin: 0, padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                        Nenhum competidor em destaque selecionado. Clique nos nomes acima ou adicione manualmente abaixo.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {tabletAberturaCompetidoresDestaque.map((comp, idx) => (
+                          <div
+                            key={idx}
+                            style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.4)', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, color: '#f0d060', display: 'flex', alignItems: 'center', gap: '0.4rem', textTransform: 'uppercase' }}
+                          >
+                            <span>⭐ {comp}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTabletCompetidor(idx)}
+                              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: 900, padding: 0 }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Manual Input */}
+                  <div style={{ paddingTop: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: '0.4rem' }}>
+                      ➕ Adicionar Pessoa Específica (Salva-Vidas, Locutor, Convidado):
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={newTabletCompetidorInput}
+                        onChange={e => setNewTabletCompetidorInput(e.target.value)}
+                        placeholder="Nome da pessoa ou salva-vidas (ex: Salva-Vidas Pirangueiro)..."
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddTabletCompetidor(); }}
+                        style={{ flex: 1, padding: '0.6rem 1rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '0.85rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddTabletCompetidor}
+                        style={{ background: 'rgba(212,175,55,0.2)', border: '1px solid rgba(212,175,55,0.4)', color: '#d4af37', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', textTransform: 'uppercase' }}
+                      >
+                        + Adicionar Manual
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
