@@ -137,33 +137,64 @@ async function parsePdfWithGemini(rawText: string): Promise<any> {
     localStorage.setItem('hzn_gemini_api_key', apiKey);
   }
 
-  const systemPrompt = `Você é um leitor especialista de súmulas e listas de sorteio de rodeios brasileiros.
-Sua função é analisar o texto extraído de um arquivo PDF de rodeio e retornar um JSON estrito contendo:
-1. "montarias": todas as linhas com confrontos (competidor vs touro vs cia vs cidade).
-2. "reservas": todos os touros reservas/repete da seção "Animais Reservas" ou "Touros Reservas" (que NÃO possuem competidor montando).
+  const systemPrompt = `Você é um leitor especialista de súmulas, notas e listas de sorteio de rodeios brasileiros.
+Sua função é analisar o texto extraído de um arquivo PDF de rodeio (que pode ser uma Lista de Sorteio OU um Resultado/Súmula de Notas com tempos e notas dos juízes) e retornar um JSON estrito contendo:
+
+1. "tipo_pdf": "SORTEIO" ou "RESULTADO".
+2. "montarias": lista de todos os confrontos/montarias.
+3. "reservas": lista de touros reservas/repete/re-ride da seção "Animais Reservas" ou "Re-Rider".
 
 Retorne APENAS um objeto JSON com essa estrutura idêntica (sem blocos markdown \`\`\`json):
 {
+  "tipo_pdf": "RESULTADO",
   "montarias": [
     {
-      "peao": "EDIMILSON DA SILVA LUZ",
-      "cidade": "VILA RICA-MT",
-      "touro": "VIDA LOCA",
-      "cia": "JP"
+      "peao": "KAYQUE RUAN DA SILVA CRUZ",
+      "cidade": "MIGUELOPOLIS-SP",
+      "touro": "JAGUNÇO",
+      "cia": "OR.2B.BULLS",
+      "tempo": 8.0,
+      "j1_peao": 22.0,
+      "j1_touro": 21.5,
+      "j2_peao": 22.25,
+      "j2_touro": 21.75,
+      "total_peao": 44.25,
+      "total_touro": 43.25,
+      "total": 87.50,
+      "status": "ativa"
+    },
+    {
+      "peao": "MARCIO JUNIO CARVALHO",
+      "cidade": "CASTILHO-SP",
+      "touro": "AFRICANO JR",
+      "cia": "ESTRADEIRO",
+      "tempo": 6.97,
+      "j1_peao": 0.0,
+      "j1_touro": 22.0,
+      "j2_peao": 0.0,
+      "j2_touro": 21.75,
+      "total_peao": 0.0,
+      "total_touro": 43.75,
+      "total": 0.0,
+      "status": "queda"
     }
   ],
   "reservas": [
     {
-      "touro": "BERLIN",
-      "cia": "VALE DOS SONHOS"
+      "peao": "FELIPE DIAS REIS",
+      "touro": "PARANGOLE",
+      "cia": "OR.2B.BULLS"
     }
   ]
 }
 
-REGRAS RÍGIDAS:
-- NUNCA coloque touros reservas como nome de peão!
-- Em "montarias", cada item DEVE ter "peao", "cidade", "touro" e "cia".
-- Em "reservas", cada item DEVE ter apenas "touro" e "cia".
+REGRAS RÍGIDAS DE EXTRAÇÃO:
+- "tempo": se houver coluna de tempo no PDF, extraia o número exato (ex: 8,00 -> 8.0, 6,97 -> 6.97, 5,08 -> 5.08, 3,28 -> 3.28, 0,00 -> 0.0). Se não houver coluna de tempo no PDF (PDF apenas de Sorteio), deixe 8.0.
+- "status":
+    * Se o tempo for 8.0 e houver nota de peão > 0, "status" = "ativa".
+    * Se o tempo for menor que 8.0 e maior que 0 (ex: 6.97, 5.08, 3.28), aconteceu uma QUEDA do peão! Nesse caso, j1_peao = 0, j2_peao = 0, total_peao = 0, total = 0 e "status" = "queda".
+    * Se o total for "Clock" ou tempo 0, "status" = "queda".
+- Extraia os valores individuais dos juízes (j1_peao, j1_touro, j2_peao, j2_touro) e os totais se presentes.
 - Todos os nomes devem estar limpos e em MAIÚSCULAS.
 - Ignore números de ordem (1, 2, 28) e letras de lado ('E', 'C').`;
 
@@ -223,21 +254,87 @@ function convertGeminiResultToParsedData(aiResult: any, rawText: string): ParseP
           } else if (!tourosMap.has(touro)) {
             tourosMap.set(touro, 'CIA OUTRAS');
           }
+
+          let tempo = parseFloat(m.tempo);
+          if (isNaN(tempo)) tempo = (m.status === 'ativa' ? 8.0 : 0);
+
+          const j1_peao = parseFloat(m.j1_peao) || 0;
+          const j1_touro = parseFloat(m.j1_touro) || 0;
+          const j2_peao = parseFloat(m.j2_peao) || 0;
+          const j2_touro = parseFloat(m.j2_touro) || 0;
+
+          let totalPeao = parseFloat(m.total_peao);
+          if (isNaN(totalPeao)) totalPeao = j1_peao + j2_peao;
+
+          let totalTouro = parseFloat(m.total_touro);
+          if (isNaN(totalTouro)) totalTouro = j1_touro + j2_touro;
+
+          if (tempo < 8.0) {
+            totalPeao = 0;
+          }
+
+          let total = parseFloat(m.total);
+          if (isNaN(total)) total = totalPeao + totalTouro;
+          if (tempo < 8.0) total = 0;
+
+          let status = m.status || (tempo >= 8.0 && total > 0 ? 'ativa' : 'queda');
+
           items.push({
             peao,
             cidade,
             touro,
             cia: cia || tourosMap.get(touro) || 'CIA OUTRAS',
-            status: 'ativa',
-            tempo: 8.0,
-            totalPeao: 0,
-            totalTouro: 0,
-            total: 0
+            status,
+            tempo,
+            j1_peao,
+            j2_peao,
+            j1_touro,
+            j2_touro,
+            totalPeao,
+            totalTouro,
+            total
           });
         }
       }
     });
   }
+
+  if (aiResult.reservas && Array.isArray(aiResult.reservas)) {
+    aiResult.reservas.forEach((r: any) => {
+      const touro = (r.touro || '').trim().toUpperCase();
+      const cia = (r.cia || 'CIA OUTRAS').trim().toUpperCase();
+      if (touro && touro.length >= 2) {
+        if (cia && cia.length >= 2) {
+          ciasSet.add(cia);
+          tourosMap.set(touro, cia);
+        } else if (!tourosMap.has(touro)) {
+          tourosMap.set(touro, 'CIA OUTRAS');
+        }
+      }
+    });
+  }
+
+  const detectedTouros: { nome: string; cia: string }[] = [];
+  tourosMap.forEach((cia, nome) => detectedTouros.push({ nome, cia }));
+
+  let suggestedDay = 'DIA 1';
+  const fullUpper = rawText.toUpperCase();
+  if (fullUpper.includes('FINAL')) suggestedDay = 'FINAL';
+  else if (fullUpper.includes('SEMI')) suggestedDay = 'SEMI-FINAL';
+  else if (fullUpper.includes('DIA 4') || fullUpper.includes('ROUND 4') || fullUpper.includes('4º ROUND') || fullUpper.includes('4° ROUND')) suggestedDay = 'DIA 4';
+  else if (fullUpper.includes('DIA 3') || fullUpper.includes('ROUND 3') || fullUpper.includes('3º ROUND') || fullUpper.includes('3° ROUND')) suggestedDay = 'DIA 3';
+  else if (fullUpper.includes('DIA 2') || fullUpper.includes('ROUND 2') || fullUpper.includes('2º ROUND') || fullUpper.includes('2° ROUND')) suggestedDay = 'DIA 2';
+  else if (fullUpper.includes('DIA 1') || fullUpper.includes('ROUND 1') || fullUpper.includes('1º ROUND') || fullUpper.includes('1° ROUND')) suggestedDay = 'DIA 1';
+
+  return {
+    rawText,
+    items,
+    detectedPeoes: Array.from(peoesSet),
+    detectedTouros,
+    detectedCias: Array.from(ciasSet),
+    suggestedDay
+  };
+}
 
   if (aiResult.reservas && Array.isArray(aiResult.reservas)) {
     aiResult.reservas.forEach((r: any) => {
