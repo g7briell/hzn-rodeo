@@ -264,6 +264,8 @@ if (btnSaveEvent) {
             return;
         }
 
+        const cleanDay = normalizeDayName(selectedDay);
+
         // Apply changes from preview table inputs to pdfParsedData
         const inputs = previewTableBody.querySelectorAll('input, select');
         inputs.forEach(input => {
