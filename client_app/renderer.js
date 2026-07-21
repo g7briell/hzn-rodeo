@@ -738,21 +738,40 @@ async function showIntro(htmlText, days, nome, expiry) {
 }
 
 function showLogin() { 
+    activeIntroRunId = null;
+    clearIntroAnimations();
+
+    if (typeof hideAllModalsAndViews === 'function') {
+        hideAllModalsAndViews();
+    }
+
+    const screensToHide = [
+        'home-screen', 'sport-select-screen', 'intro-screen', 'transmissao-screen',
+        'event-control-view', 'transmissao-event-view', 'modal-transmissao-eventos',
+        'modal-tablet-control', 'content-view'
+    ];
+    screensToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
     if (loginScreen) loginScreen.classList.remove('hidden'); 
-    if (homeScreen) homeScreen.classList.add('hidden'); 
-    if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
-    if (introScreen) introScreen.classList.add('hidden');
-    if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
     toggleSupportBtn(false);
 }
 
 function showSportSelection() {
+    const auth = window.electronAPI.getAuth();
+    if (!auth || !auth.email || !auth.key) {
+        showLogin();
+        return;
+    }
+
     if (loginScreen) loginScreen.classList.add('hidden');
     if (homeScreen) homeScreen.classList.add('hidden');
     if (introScreen) introScreen.classList.add('hidden');
     if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
+    if (eventControlView) eventControlView.classList.add('hidden');
     
-    const auth = window.electronAPI.getAuth();
     if (auth && auth.esportes) {
         userSports = auth.esportes.split(',').map(s => s.trim().toLowerCase());
     }
@@ -810,13 +829,33 @@ function showSportSelection() {
             badge3Tambores.className = 'absolute top-6 right-6 text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-1 rounded-full uppercase tracking-widest';
         }
     }
+
+    const btnTransmissao = document.getElementById('btn-sport-transmissao');
+    const badgeTransmissao = document.getElementById('badge-transmissao');
+    if (btnTransmissao && badgeTransmissao) {
+        if (userSports.includes('transmissao')) {
+            btnTransmissao.disabled = false;
+            btnTransmissao.style.opacity = '1';
+            btnTransmissao.style.cursor = 'pointer';
+            badgeTransmissao.innerText = 'Liberado';
+            badgeTransmissao.className = 'absolute top-6 right-6 text-[10px] font-black text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-widest';
+        } else {
+            btnTransmissao.disabled = true;
+            btnTransmissao.style.opacity = '0.4';
+            btnTransmissao.style.cursor = 'not-allowed';
+            badgeTransmissao.innerText = 'Bloqueado';
+            badgeTransmissao.className = 'absolute top-6 right-6 text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-1 rounded-full uppercase tracking-widest';
+        }
+    }
 }
 
 window.selectSport = async (sport) => {
-    if (!userSports.includes(sport)) {
-        alert('Você não tem acesso a esta modalidade.');
+    const auth = window.electronAPI.getAuth();
+    if (!auth || !auth.email || !auth.key) {
+        showLogin();
         return;
     }
+
     if (loadingOverlay) loadingOverlay.classList.remove('hidden');
     try {
         await window.electronAPI.setCurrentSport(sport);
@@ -836,7 +875,6 @@ window.selectSport = async (sport) => {
             }
 
             if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
-            const auth = window.electronAPI.getAuth();
             showHome(auth ? auth.expiry : null, auth ? auth.nome : '');
         }
     } catch(e) {
@@ -856,6 +894,12 @@ window.backToSports = () => {
 };
 
 function showHome(expiryOrDays, nome) { 
+    const auth = window.electronAPI.getAuth();
+    if (!auth || !auth.email || !auth.key) {
+        showLogin();
+        return;
+    }
+
     if (loginScreen) loginScreen.classList.add('hidden'); 
     if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
     if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
@@ -1499,7 +1543,10 @@ window.hideAllModalsAndViews = () => {
         'modal-notas-days', 'modal-scoring-new', 'modal-reride-reason', 'modal-reride-bull',
         'modal-reride-confirm', 'modal-notas-summary', 'modal-contrato-config', 'modal-export-contract',
         'modal-settings', 'modal-global-peao', 'modal-global-boiada',
-        'overlay-settings-list-screen', 'overlay-settings-config-screen'
+        'overlay-settings-list-screen', 'overlay-settings-config-screen',
+        'modal-tablet-control', 'modal-import-pdf', 'modal-transmissao-eventos',
+        'event-control-view', 'transmissao-event-view', 'home-screen', 'sport-select-screen',
+        'intro-screen', 'transmissao-screen', 'content-view'
     ];
     ids.forEach(id => {
         const el = document.getElementById(id);
