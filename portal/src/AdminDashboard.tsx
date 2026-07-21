@@ -143,10 +143,8 @@ export default function AdminDashboard() {
     const savedComps = tc.abertura_competidores_destaque || tc.competidores_destaque;
     const eventComps = getEventCompetitors(ev);
 
-    if (Array.isArray(savedComps) && savedComps.length > 0) {
+    if (Array.isArray(savedComps)) {
       setTabletAberturaCompetidoresDestaque(savedComps);
-    } else if (eventComps.length > 0) {
-      setTabletAberturaCompetidoresDestaque(eventComps);
     } else {
       setTabletAberturaCompetidoresDestaque([]);
     }

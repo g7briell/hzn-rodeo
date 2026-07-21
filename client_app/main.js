@@ -2303,45 +2303,73 @@ ipcMain.handle('update-tablet-config', async (event, { email, eventId, tabletCon
         ev.tablet_config = tabletConfig;
         saveLocalData(email, localData);
 
-        const { data: existingEvents } = await supabase.from('eventos_oficiais')
-            .select('id, detalhes')
+        let diretorNome = email;
+        try {
+            const { data: userLicense } = await supabase.from('licencas').select('nome').eq('email', email).maybeSingle();
+            if (userLicense && userLicense.nome) diretorNome = userLicense.nome;
+        } catch (e) {}
+
+        let existingEvent = null;
+        const { data: byEmailAndName } = await supabase.from('eventos_oficiais')
+            .select('id, status, detalhes')
+            .eq('organizador_email', email)
             .ilike('nome', ev.name.trim())
+            .order('created_at', { ascending: false })
             .limit(1);
 
-        if (existingEvents && existingEvents.length > 0) {
-            const currentDet = existingEvents[0].detalhes || {};
-            const updatedDet = {
-                ...currentDet,
-                tablet_config: {
-                    ...(currentDet.tablet_config || {}),
-                    ...tabletConfig,
-                    updated_at: new Date().toISOString()
-                }
-            };
+        if (byEmailAndName && byEmailAndName.length > 0) {
+            existingEvent = byEmailAndName[0];
+        } else {
+            const { data: byNameOnly } = await supabase.from('eventos_oficiais')
+                .select('id, status, detalhes')
+                .ilike('nome', ev.name.trim())
+                .order('created_at', { ascending: false })
+                .limit(1);
+            if (byNameOnly && byNameOnly.length > 0) {
+                existingEvent = byNameOnly[0];
+            }
+        }
+
+        const currentDet = existingEvent ? (existingEvent.detalhes || {}) : {};
+        const fullDetalhes = {
+            ...currentDet,
+            ranking: ev.peoes || currentDet.ranking || [],
+            boiadas: ev.boiadas || currentDet.boiadas || [],
+            notas: ev.notas || currentDet.notas || [],
+            sorteios: ev.sorteios || currentDet.sorteios || [],
+            logo: ev.logo || currentDet.logo || null,
+            diretor: diretorNome,
+            circuito: ev.circuito || currentDet.circuito || null,
+            tablet_config: {
+                ...(currentDet.tablet_config || {}),
+                ...tabletConfig,
+                updated_at: new Date().toISOString()
+            }
+        };
+
+        const payload = {
+            nome: ev.name,
+            data_inicio: (ev.days || '3') + ' dias',
+            local: ev.city || '',
+            organizador_email: email,
+            status: 'aprovado',
+            created_at: new Date().toISOString(),
+            detalhes: fullDetalhes
+        };
+
+        if (existingEvent) {
             const { error } = await supabase.from('eventos_oficiais')
-                .update({ detalhes: updatedDet })
-                .eq('id', existingEvents[0].id);
+                .update(payload)
+                .eq('id', existingEvent.id);
             if (error) throw error;
         } else {
-            const payload = {
-                id: require('crypto').randomUUID(),
-                nome: ev.name,
-                data_inicio: (ev.days || '3') + ' dias',
-                local: ev.city || '',
-                organizador_email: email,
-                status: 'aprovado',
-                detalhes: {
-                    ranking: ev.peoes || [],
-                    boiadas: ev.boiadas || [],
-                    notas: ev.notas || [],
-                    sorteios: ev.sorteios || [],
-                    logo: ev.logo || null,
-                    tablet_config: tabletConfig
-                }
-            };
+            payload.id = require('crypto').randomUUID();
             const { error } = await supabase.from('eventos_oficiais').insert([payload]);
             if (error) throw error;
         }
+
+        await saveEventToRelationalDb(supabase, ev, email);
+
         return { success: true };
     } catch (err) {
         console.error("Erro ao atualizar tablet_config via IPC:", err);

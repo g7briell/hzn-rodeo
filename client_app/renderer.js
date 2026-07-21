@@ -5699,10 +5699,8 @@ window.openTabletControlModal = async () => {
     const savedComps = tc.abertura_competidores_destaque || tc.competidores_destaque;
     const eventComps = getDesktopEventCompetitors(currentEvent);
 
-    if (Array.isArray(savedComps) && savedComps.length > 0) {
+    if (Array.isArray(savedComps)) {
         desktopTabletAberturaCompetidoresDestaque = [...savedComps];
-    } else if (eventComps.length > 0) {
-        desktopTabletAberturaCompetidoresDestaque = [...eventComps];
     } else {
         desktopTabletAberturaCompetidoresDestaque = [];
     }
