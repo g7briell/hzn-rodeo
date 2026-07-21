@@ -2481,46 +2481,7 @@ Instruções importantes:
                 </button>
               ))}
             </div>
-
-            {/* Botão Importar PDF */}
-            <button
-              onClick={() => setShowPdfModal(true)}
-              style={{
-                background: 'linear-gradient(135deg, #d4af37 0%, #c8941c 100%)',
-                color: '#000',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.5rem 1.25rem',
-                fontWeight: 800,
-                fontSize: '0.88rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                boxShadow: '0 4px 12px rgba(212,175,55,0.25)',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              📄 Importar PDF
-            </button>
           </div>
-
-          {/* Modal do Importador de PDF */}
-          {showPdfModal && selectedEvent && (
-            <PdfImportModal
-              evento={selectedEvent}
-              onClose={() => setShowPdfModal(false)}
-              onSuccess={() => {
-                supabase.from('eventos_oficiais').select('*').then(({ data }) => {
-                  if (data) {
-                    setEventosOficiais(data);
-                    const updated = data.find((e: any) => e.id === selectedEvent.id);
-                    if (updated) setSelectedEvent(updated);
-                  }
-                });
-              }}
-            />
-          )}
 
           {/* Conteúdo Dinâmico */}
           <div className="event-tab-content">
@@ -2534,10 +2495,6 @@ Instruções importantes:
                 <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('ranking')}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
                   <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Ranking</h3>
-                </div>
-                <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem', background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.2)' }} onClick={() => setShowPdfModal(true)}>
-                  <span style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📄</span>
-                  <h3 style={{ fontSize: '1.25rem', margin: 0, color: '#d4af37' }}>Importar PDF</h3>
                 </div>
                 <div className="event-card" style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }} onClick={() => setEventTab('competidores')}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
