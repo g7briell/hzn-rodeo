@@ -260,11 +260,11 @@ if (btnSaveEvent) {
     btnSaveEvent.addEventListener('click', async () => {
         const targetEvent = window.currentEvent || (typeof window.getCurrentEvent === 'function' ? window.getCurrentEvent() : null);
         if (!targetEvent) {
-            alert("Nenhum evento carregado para salvar!");
+            alert("Nenhum evento aberto! Por favor, abra um evento na tela de eventos antes de importar o PDF.");
             return;
         }
 
-        // Apply changes from table to pdfParsedData
+        // Apply changes from preview table inputs to pdfParsedData
         const inputs = previewTableBody.querySelectorAll('input, select');
         inputs.forEach(input => {
             const idx = input.dataset.index;
@@ -276,32 +276,56 @@ if (btnSaveEvent) {
             }
         });
 
-        // 1. Populate targetEvent.scores[selectedDay]
-        if (!targetEvent.scores) targetEvent.scores = {};
-        targetEvent.scores[selectedDay] = [];
-        
+        // 1. Populate targetEvent.peoes
+        targetEvent.peoes = targetEvent.peoes || [];
         pdfParsedData.items.forEach(item => {
-            const itemTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
-            targetEvent.scores[selectedDay].push({
-                competitorName: item.peao,
-                animalName: item.touro,
-                ciaName: item.cia,
-                status: item.status,
-                j1_peao: item.totalPeao ? item.totalPeao / 2 : 0,
-                j2_peao: item.totalPeao ? item.totalPeao / 2 : 0,
-                j1_touro: item.totalTouro ? item.totalTouro / 2 : 0,
-                j2_touro: item.totalTouro ? item.totalTouro / 2 : 0,
-                peao: item.totalPeao || 0,
-                touro: item.totalTouro || 0,
-                tempo: itemTempo,
-                total: item.total || 0,
-                id_montaria: "pdf_" + Date.now() + "_" + Math.floor(Math.random() * 1000)
+            if (item.peao && item.peao.trim()) {
+                const peaoNome = item.peao.trim().toUpperCase();
+                const exists = targetEvent.peoes.some(p => (typeof p === 'string' ? p : p.nome).toUpperCase() === peaoNome);
+                if (!exists) {
+                    targetEvent.peoes.push({ nome: peaoNome, cidade: item.cidade || '' });
+                }
+            }
+        });
+
+        // 2. Populate targetEvent.boiadas (CIAs & Bulls)
+        targetEvent.boiadas = targetEvent.boiadas || [];
+        const tourosByCia = {};
+
+        pdfParsedData.items.forEach(item => {
+            if (item.touro && item.touro.trim()) {
+                const cia = (item.cia || 'CIA OUTRAS').trim().toUpperCase();
+                const touro = item.touro.trim().toUpperCase();
+                tourosByCia[cia] = tourosByCia[cia] || new Set();
+                tourosByCia[cia].add(touro);
+            }
+        });
+
+        if (pdfParsedData.detectedTouros) {
+            pdfParsedData.detectedTouros.forEach(t => {
+                const cia = (t.cia || 'CIA OUTRAS').trim().toUpperCase();
+                const touro = t.nome.trim().toUpperCase();
+                tourosByCia[cia] = tourosByCia[cia] || new Set();
+                tourosByCia[cia].add(touro);
+            });
+        }
+
+        Object.keys(tourosByCia).forEach(ciaNome => {
+            let existingCia = targetEvent.boiadas.find(b => b.nome.toUpperCase() === ciaNome);
+            if (!existingCia) {
+                existingCia = { nome: ciaNome, touros: [] };
+                targetEvent.boiadas.push(existingCia);
+            }
+            tourosByCia[ciaNome].forEach(t => {
+                if (!existingCia.touros.some(existingT => existingT.toUpperCase() === t)) {
+                    existingCia.touros.push(t);
+                }
             });
         });
 
-        // 2. Populate targetEvent.sorteios for selectedDay
+        // 3. Populate targetEvent.sorteios for selectedDay
         targetEvent.sorteios = targetEvent.sorteios || [];
-        const ridersList = pdfParsedData.items.map(i => i.peao);
+        const ridersList = pdfParsedData.items.map(i => ({ nome: i.peao, cidade: i.cidade || '' }));
         const bullsList = pdfParsedData.items.map(i => ({ nome: i.touro, cia: i.cia }));
         const assignmentsMap = {};
         pdfParsedData.items.forEach((_, idx) => {
@@ -316,26 +340,68 @@ if (btnSaveEvent) {
             assignments: assignmentsMap
         };
 
-        const existingIdx = targetEvent.sorteios.findIndex(s => s.day.toUpperCase() === selectedDay.toUpperCase());
-        if (existingIdx !== -1) {
-            targetEvent.sorteios[existingIdx] = drawToSave;
+        const existingDrawIdx = targetEvent.sorteios.findIndex(s => s.day.toUpperCase() === selectedDay.toUpperCase());
+        if (existingDrawIdx !== -1) {
+            targetEvent.sorteios[existingDrawIdx] = drawToSave;
         } else {
             targetEvent.sorteios.push(drawToSave);
         }
 
-        // 3. Save to database using updateLocalEvent
+        // 4. Populate targetEvent.notas (Flat array used across renderer.js)
+        targetEvent.notas = targetEvent.notas || [];
+        targetEvent.notas = targetEvent.notas.filter(n => (n.dia || '').toUpperCase() !== selectedDay.toUpperCase());
+
+        pdfParsedData.items.forEach(item => {
+            const itemTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
+            const j1_p = item.totalPeao ? item.totalPeao / 2 : 0;
+            const j2_p = item.totalPeao ? item.totalPeao / 2 : 0;
+            const j1_t = item.totalTouro ? item.totalTouro / 2 : 0;
+            const j2_t = item.totalTouro ? item.totalTouro / 2 : 0;
+            const calcTotal = (item.totalPeao || 0) + (item.totalTouro || 0);
+
+            targetEvent.notas.push({
+                peao: item.peao,
+                peaoNome: item.peao,
+                touro: item.touro,
+                touroNome: item.touro,
+                cia: item.cia,
+                ciaNome: item.cia,
+                dia: selectedDay,
+                status: item.status || 'ativa',
+                tempo: itemTempo,
+                j1_peao: j1_p,
+                j2_peao: j2_p,
+                j1_touro: j1_t,
+                j2_touro: j2_t,
+                peao_score: item.totalPeao || 0,
+                touro_score: item.totalTouro || 0,
+                totalPeao: item.totalPeao || 0,
+                totalTouro: item.totalTouro || 0,
+                total: item.total || calcTotal,
+                id_montaria: "pdf_" + Date.now() + "_" + Math.floor(Math.random() * 1000)
+            });
+        });
+
+        // Update global reference
+        window.currentEvent = targetEvent;
+
+        // 5. Save to database using updateLocalEvent
         const auth = window.electronAPI.getAuth();
-        if (auth) {
-            const email = auth.email;
+        const email = auth ? auth.email : '';
+        
+        if (email) {
             await window.electronAPI.updateLocalEvent(email, targetEvent);
             
-            if (window.renderNotasTable) window.renderNotasTable();
-            if (window.renderSorteiosList) window.renderSorteiosList();
-            if (window.renderEvents) window.renderEvents();
+            // Re-render screens
+            if (typeof window.renderNotasTable === 'function') window.renderNotasTable();
+            if (typeof window.renderSorteiosList === 'function') window.renderSorteiosList();
+            if (typeof window.renderEvents === 'function') window.renderEvents();
+            if (typeof window.renderPeoesList === 'function') window.renderPeoesList();
+            if (typeof window.renderBoiadasList === 'function') window.renderBoiadasList();
             
-            alert("Sorteio e Notas salvos no evento com sucesso!");
+            alert("Sorteio, Peões, Boiadas e Notas salvos no evento com sucesso!");
         } else {
-            alert("Erro: Você não está logado.");
+            alert("Erro: Você não está logado no sistema.");
         }
         
         document.getElementById('modal-import-pdf').classList.add('hidden');
