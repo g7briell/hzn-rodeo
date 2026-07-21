@@ -63,6 +63,31 @@ export async function extractPdfText(file: File): Promise<string[]> {
   return pageTexts;
 }
 
+async function getGeminiApiKey(): Promise<string | null> {
+  let apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('hzn_gemini_api_key') || localStorage.getItem('gemini_api_key');
+  if (apiKey && apiKey.trim().length > 10) return apiKey.trim();
+
+  try {
+    const supabaseUrl = 'https://api.rodeoapp.pro';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
+    const res = await fetch(`${supabaseUrl}/rest/v1/portal_configs?key=eq.gemini_api_key&select=value`, {
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      }
+    });
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0 && data[0].value) {
+      apiKey = data[0].value.trim();
+      localStorage.setItem('hzn_gemini_api_key', apiKey);
+      return apiKey;
+    }
+  } catch (e) {
+    console.warn("Erro ao buscar chave Gemini do Supabase portal_configs:", e);
+  }
+  return null;
+}
+
 function customGeminiPrompt(title: string, placeholder: string): Promise<string | null> {
   return new Promise((resolve) => {
     const bg = document.createElement('div');
@@ -104,7 +129,7 @@ function customGeminiPrompt(title: string, placeholder: string): Promise<string 
 }
 
 async function parsePdfWithGemini(rawText: string): Promise<any> {
-  let apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('hzn_gemini_api_key') || localStorage.getItem('gemini_api_key');
+  let apiKey = await getGeminiApiKey();
   if (!apiKey) {
     const inputKey = await customGeminiPrompt("Chave API do Gemini", "AIzaSy...");
     if (!inputKey || !inputKey.trim()) return null;
