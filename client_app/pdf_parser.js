@@ -353,10 +353,46 @@ function resetPdfWizard() {
     pdfParsedData = null;
 }
 
+function customGeminiPrompt(title, placeholder) {
+    return new Promise((resolve) => {
+        const bg = document.createElement('div');
+        bg.className = 'fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md';
+        bg.innerHTML = `
+            <div class="bg-slate-900 border-2 border-yellow-500/50 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl">
+                <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-yellow-500/30">
+                    <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                </div>
+                <h3 class="text-white font-black text-lg mb-2 uppercase">${title}</h3>
+                <p class="text-slate-400 text-xs mb-6">Cole sua chave do Google AI Studio para ativar a Inteligência Artificial no leitor de PDF.</p>
+                <input type="password" id="custom-prompt-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-sm font-mono mb-6 text-center focus:border-yellow-500 outline-none" placeholder="${placeholder}">
+                <div class="flex gap-3">
+                    <button id="custom-prompt-cancel" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold uppercase text-xs">Pular / Off-line</button>
+                    <button id="custom-prompt-ok" class="flex-1 py-3 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-black uppercase text-xs shadow-lg">Salvar e Usar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(bg);
+        const input = document.getElementById('custom-prompt-input');
+        input.focus();
+
+        const cleanup = (val) => {
+            document.body.removeChild(bg);
+            resolve(val);
+        };
+
+        document.getElementById('custom-prompt-cancel').onclick = () => cleanup(null);
+        document.getElementById('custom-prompt-ok').onclick = () => cleanup(input.value);
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') cleanup(input.value);
+            if (e.key === 'Escape') cleanup(null);
+        };
+    });
+}
+
 async function parsePdfWithGemini(rawText) {
     let apiKey = localStorage.getItem('hzn_gemini_api_key') || localStorage.getItem('gemini_api_key');
     if (!apiKey) {
-        const inputKey = prompt("Insira a sua Chave de API do Gemini (Google AI Studio) para a Inteligência Artificial ler o PDF com precisão:");
+        const inputKey = await customGeminiPrompt("Chave API do Gemini", "AIzaSy...");
         if (!inputKey || !inputKey.trim()) return null;
         apiKey = inputKey.trim();
         localStorage.setItem('hzn_gemini_api_key', apiKey);
@@ -411,6 +447,10 @@ REGRAS RÍGIDAS:
                 })
             });
             const data = await response.json();
+            if (data.error && (data.error.code === 400 || data.error.code === 403)) {
+                console.warn("Chave API do Gemini inválida. Removendo do localStorage...");
+                localStorage.removeItem('hzn_gemini_api_key');
+            }
             if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
                 let text = data.candidates[0].content.parts[0].text;
                 text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
