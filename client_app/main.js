@@ -342,7 +342,7 @@ ipcMain.handle('save-local-event', (event, { email, newEvent }) => {
 
 ipcMain.handle('update-local-event', (event, { email, updatedEvent }) => {
   const data = getLocalData(email);
-  const index = data.eventos.findIndex(e => e.id === updatedEvent.id);
+  const index = data.eventos.findIndex(e => String(e.id) === String(updatedEvent.id));
   if (index !== -1) {
     data.eventos[index] = { ...data.eventos[index], ...updatedEvent };
     saveLocalData(email, data);

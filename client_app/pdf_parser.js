@@ -290,14 +290,14 @@ if (btnSaveEvent) {
 
         // 2. Populate targetEvent.boiadas (CIAs & Bulls)
         targetEvent.boiadas = targetEvent.boiadas || [];
-        const tourosByCia = {};
+        const ciasMap = new Map();
 
         pdfParsedData.items.forEach(item => {
             if (item.touro && item.touro.trim()) {
                 const cia = (item.cia || 'CIA OUTRAS').trim().toUpperCase();
                 const touro = item.touro.trim().toUpperCase();
-                tourosByCia[cia] = tourosByCia[cia] || new Set();
-                tourosByCia[cia].add(touro);
+                if (!ciasMap.has(cia)) ciasMap.set(cia, new Set());
+                ciasMap.get(cia).add(touro);
             }
         });
 
@@ -305,25 +305,25 @@ if (btnSaveEvent) {
             pdfParsedData.detectedTouros.forEach(t => {
                 const cia = (t.cia || 'CIA OUTRAS').trim().toUpperCase();
                 const touro = t.nome.trim().toUpperCase();
-                tourosByCia[cia] = tourosByCia[cia] || new Set();
-                tourosByCia[cia].add(touro);
+                if (!ciasMap.has(cia)) ciasMap.set(cia, new Set());
+                ciasMap.get(cia).add(touro);
             });
         }
 
-        Object.keys(tourosByCia).forEach(ciaNome => {
+        ciasMap.forEach((tourosSet, ciaNome) => {
             let existingCia = targetEvent.boiadas.find(b => b.nome.toUpperCase() === ciaNome);
             if (!existingCia) {
                 existingCia = { nome: ciaNome, touros: [] };
                 targetEvent.boiadas.push(existingCia);
             }
-            tourosByCia[ciaNome].forEach(t => {
+            tourosSet.forEach(t => {
                 if (!existingCia.touros.some(existingT => existingT.toUpperCase() === t)) {
                     existingCia.touros.push(t);
                 }
             });
         });
 
-        // 3. Populate targetEvent.sorteios for selectedDay
+        // 3. Populate targetEvent.sorteios for cleanDay
         targetEvent.sorteios = targetEvent.sorteios || [];
         const ridersList = pdfParsedData.items.map(i => ({ nome: i.peao, cidade: i.cidade || '' }));
         const bullsList = pdfParsedData.items.map(i => ({ nome: i.touro, cia: i.cia }));
@@ -333,14 +333,14 @@ if (btnSaveEvent) {
         });
 
         const drawToSave = {
-            day: selectedDay,
+            day: cleanDay,
             date: new Date().toLocaleString(),
             riders: ridersList,
             bulls: bullsList,
             assignments: assignmentsMap
         };
 
-        const existingDrawIdx = targetEvent.sorteios.findIndex(s => s.day.toUpperCase() === selectedDay.toUpperCase());
+        const existingDrawIdx = targetEvent.sorteios.findIndex(s => normalizeDayName(s.day) === cleanDay);
         if (existingDrawIdx !== -1) {
             targetEvent.sorteios[existingDrawIdx] = drawToSave;
         } else {
@@ -349,7 +349,7 @@ if (btnSaveEvent) {
 
         // 4. Populate targetEvent.notas (Flat array used across renderer.js)
         targetEvent.notas = targetEvent.notas || [];
-        targetEvent.notas = targetEvent.notas.filter(n => (n.dia || '').toUpperCase() !== selectedDay.toUpperCase());
+        targetEvent.notas = targetEvent.notas.filter(n => normalizeDayName(n.dia) !== cleanDay);
 
         pdfParsedData.items.forEach(item => {
             const itemTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
@@ -368,7 +368,7 @@ if (btnSaveEvent) {
                 touroNome: item.touro,
                 cia: item.cia,
                 ciaNome: item.cia,
-                dia: selectedDay,
+                dia: cleanDay,
                 status: item.status || (itemTempo >= 8.0 && calcTotal > 0 ? 'ativa' : 'queda'),
                 tempo: itemTempo,
                 j1_peao: j1_p,
@@ -395,7 +395,7 @@ if (btnSaveEvent) {
         }
 
         // 6. Save to database using updateLocalEvent
-        const auth = window.electronAPI.getAuth();
+        const auth = window.electronAPI ? window.electronAPI.getAuth() : null;
         const email = auth ? auth.email : '';
         
         if (email) {
