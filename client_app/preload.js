@@ -72,5 +72,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pullEventFromCloud: (payload) => ipcRenderer.invoke('pull-event-from-cloud', payload),
   sendOverlayCommand: (payload) => ipcRenderer.send('send-overlay-command', payload),
   uploadMedia: (filePath) => ipcRenderer.invoke('upload-media', filePath),
-  deleteMedia: (fileName) => ipcRenderer.invoke('delete-media', fileName)
+  deleteMedia: (fileName) => ipcRenderer.invoke('delete-media', fileName),
+  updateTabletConfig: (payload) => ipcRenderer.invoke('update-tablet-config', payload)
 });

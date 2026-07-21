@@ -605,6 +605,14 @@
                 <div class="w-14 h-14 bg-yellow-500/20 rounded-2xl mb-6 flex items-center justify-center border border-yellow-500/50 group-hover:scale-110 transition-transform"><svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
                 <h3 class="font-black text-xl text-yellow-500 uppercase tracking-tighter">IMPORTAR PDF</h3>
             </button>
+
+            <!-- Botão Controle Tablet (Exclusivo g7briell@hotmail.com ou Admin) -->
+            <button id="control-btn-tablet" onclick="openTabletControlModal()" class="glass p-8 rounded-[2.5rem] border-yellow-500/30 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all group text-left hidden">
+                <div class="w-14 h-14 bg-yellow-500/20 rounded-2xl mb-6 flex items-center justify-center border border-yellow-500/50 group-hover:scale-110 transition-transform">
+                    <svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 002 2v14a2 2 0 002 2z"/></svg>
+                </div>
+                <h3 class="font-black text-xl text-yellow-500 uppercase tracking-tighter">CONTROLE TABLET</h3>
+            </button>
         </div>
     </div>
 
@@ -855,6 +863,129 @@
                 </button>
                 <button onclick="document.getElementById('modal-menu-sorteios').classList.add('hidden'); openSorteiosList()" class="col-span-2 mt-4 bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/10 text-left transition-all">
                     HISTÓRICO DE SORTEIOS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONTROLE TABLET (Desktop/Mac App) -->
+    <div id="modal-tablet-control" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-6 md:p-8 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center border border-yellow-500/50">
+                        <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 002 2v14a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-black italic uppercase text-yellow-500 tracking-tighter">CONTROLE TABLET (AO VIVO)</h2>
+                        <p class="text-slate-400 font-bold uppercase tracking-widest text-xs mt-0.5" id="tablet-modal-event-name">Sincronização em Tempo Real</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('modal-tablet-control').classList.add('hidden')" class="p-3 bg-slate-950 border border-slate-800 rounded-2xl text-slate-500 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 scroll-custom">
+                <!-- Secao 1: Dia Ativo -->
+                <div class="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-3">
+                    <label class="text-xs font-black text-yellow-500 uppercase tracking-widest block">
+                        📅 1. Selecionar Dia Ativo no Tablet:
+                    </label>
+                    <div class="flex flex-wrap gap-2" id="desktop-tablet-days-container">
+                        <!-- Dynamic Day Chips -->
+                    </div>
+                </div>
+
+                <!-- Secao 2: Letreiro em Tempo Real -->
+                <div class="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-3">
+                    <label class="text-xs font-black text-yellow-500 uppercase tracking-widest block">
+                        📰 2. Letreiro de Notícias em Tempo Real (Ticker):
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="desktop-tablet-ticker-input" placeholder="Digite uma notícia ou comunicado rápido..." class="flex-1 bg-black border border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-yellow-500">
+                        <button onclick="addDesktopTabletNoticia()" class="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all">
+                            + Adicionar
+                        </button>
+                    </div>
+                    <div id="desktop-tablet-noticias-list" class="space-y-2 pt-2">
+                        <!-- Ticker List -->
+                    </div>
+                </div>
+
+                <!-- Secao 3: Controle de Abertura -->
+                <div class="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-sm font-black uppercase text-yellow-500 tracking-wider">🎬 3. Modo Abertura (Tela Cheia no Tablet)</h4>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="desktop-tablet-abertura-ativa" class="w-5 h-5 accent-yellow-500">
+                            <span class="text-xs font-black text-slate-300 uppercase">Ativar Tela de Abertura</span>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Título da Abertura:</label>
+                            <input type="text" id="desktop-tablet-abertura-titulo" placeholder="Ex: ABERTURA OFICIAL" class="w-full bg-black border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-yellow-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Subtítulo / Etapa:</label>
+                            <input type="text" id="desktop-tablet-abertura-subtitulo" placeholder="Ex: COPA MD SUPER BULLS 2026" class="w-full bg-black border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-yellow-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Mídia (Foto ou Vídeo):</label>
+                        <div class="flex gap-2">
+                            <input type="url" id="desktop-tablet-abertura-url" placeholder="https://... ou suba uma foto do seu computador" class="flex-1 bg-black border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-yellow-500">
+                            <label class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase cursor-pointer shrink-0 flex items-center gap-1">
+                                📁 PC
+                                <input type="file" accept="image/*" class="hidden" onchange="handleDesktopTabletPhotoUpload(event)">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Competidores em Destaque -->
+                    <div class="space-y-3 pt-3 border-t border-slate-800">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <label class="text-xs font-black text-yellow-500 uppercase tracking-wider">⭐ Competidores em Destaque na Foto:</label>
+                            <button onclick="handlePullAllEventCompetitorsDesktop()" class="bg-yellow-500/20 hover:bg-yellow-500 hover:text-black border border-yellow-500/40 text-yellow-400 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all">
+                                ⚡ Puxar Todos do Evento
+                            </button>
+                        </div>
+
+                        <!-- Quick Selection Chips from Event -->
+                        <div class="bg-black/60 p-3 rounded-xl border border-slate-800/60 space-y-2">
+                            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Clique nos competidores do evento para selecionar:</span>
+                            <div id="desktop-event-competitors-chips" class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                                <!-- Dynamic Event Chips -->
+                            </div>
+                        </div>
+
+                        <!-- Selected List -->
+                        <div id="desktop-active-competitors-badges" class="flex flex-wrap gap-2">
+                            <!-- Active Badges -->
+                        </div>
+
+                        <!-- Manual Addition -->
+                        <div class="flex gap-2 pt-1">
+                            <input type="text" id="desktop-tablet-manual-comp-input" placeholder="Adicionar pessoa específica (salva-vidas, locutor...)" class="flex-1 bg-black border border-slate-800 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-yellow-500">
+                            <button onclick="addManualCompetidorDesktop()" class="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all shrink-0">
+                                + Adicionar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Texto / Discurso Oficial de Abertura:</label>
+                        <textarea id="desktop-tablet-abertura-texto" rows="3" placeholder="Texto lido na abertura..." class="w-full bg-black border border-slate-800 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-yellow-500 resize-y"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 flex justify-end bg-slate-950/80">
+                <button onclick="saveTabletControlDesktop()" class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-black uppercase text-xs tracking-wider px-8 py-3.5 rounded-xl shadow-lg shadow-yellow-500/20 transition-all">
+                    💾 SALVAR NO TABLET AO VIVO
                 </button>
             </div>
         </div>

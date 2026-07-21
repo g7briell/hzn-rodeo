@@ -2294,6 +2294,61 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
     }
 });
 
+ipcMain.handle('update-tablet-config', async (event, { email, eventId, tabletConfig }) => {
+    try {
+        const localData = getLocalData(email);
+        const ev = localData.eventos.find(e => String(e.id) === String(eventId));
+        if (!ev) throw new Error("Evento não encontrado localmente.");
+
+        ev.tablet_config = tabletConfig;
+        saveLocalData(email, localData);
+
+        const { data: existingEvents } = await supabase.from('eventos_oficiais')
+            .select('id, detalhes')
+            .ilike('nome', ev.name.trim())
+            .limit(1);
+
+        if (existingEvents && existingEvents.length > 0) {
+            const currentDet = existingEvents[0].detalhes || {};
+            const updatedDet = {
+                ...currentDet,
+                tablet_config: {
+                    ...(currentDet.tablet_config || {}),
+                    ...tabletConfig,
+                    updated_at: new Date().toISOString()
+                }
+            };
+            const { error } = await supabase.from('eventos_oficiais')
+                .update({ detalhes: updatedDet })
+                .eq('id', existingEvents[0].id);
+            if (error) throw error;
+        } else {
+            const payload = {
+                id: require('crypto').randomUUID(),
+                nome: ev.name,
+                data_inicio: (ev.days || '3') + ' dias',
+                local: ev.city || '',
+                organizador_email: email,
+                status: 'aprovado',
+                detalhes: {
+                    ranking: ev.peoes || [],
+                    boiadas: ev.boiadas || [],
+                    notas: ev.notas || [],
+                    sorteios: ev.sorteios || [],
+                    logo: ev.logo || null,
+                    tablet_config: tabletConfig
+                }
+            };
+            const { error } = await supabase.from('eventos_oficiais').insert([payload]);
+            if (error) throw error;
+        }
+        return { success: true };
+    } catch (err) {
+        console.error("Erro ao atualizar tablet_config via IPC:", err);
+        return { success: false, error: err.message || String(err) };
+    }
+});
+
 // Compartilhar evento na nuvem (status 'compartilhado')
 ipcMain.handle('share-event-to-cloud', async (event, { email, eventId, password }) => {
     try {

@@ -1242,6 +1242,29 @@ Instruções importantes:
     return () => subscription.unsubscribe();
   }, [registerStep, authMode]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('portal_realtime_events_global')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos_oficiais' }, (payload) => {
+        if (payload.new) {
+          const updatedEv = payload.new as EventoOficial;
+          setEventosOficiais(prev => prev.map(e => e.id === updatedEv.id ? updatedEv : e));
+          setSelectedEvent(prev => (prev && prev.id === updatedEv.id ? updatedEv : prev));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transmissoes_aovivo' }, () => {
+        fetchLives();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'patrocinios' }, () => {
+        fetchPatrocinios();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {

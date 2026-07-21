@@ -1474,6 +1474,16 @@ window.openEventControl = async (id) => {
         if (btnSorteios) btnSorteios.setAttribute('onclick', "document.getElementById('modal-menu-sorteios').classList.remove('hidden')");
     }
 
+    const userEmail = (email || '').toLowerCase().trim();
+    const btnTablet = document.getElementById('control-btn-tablet');
+    if (btnTablet) {
+        if (userEmail === 'g7briell@hotmail.com' || userEmail === 'admin@rodeoapp.pro') {
+            btnTablet.classList.remove('hidden');
+        } else {
+            btnTablet.classList.add('hidden');
+        }
+    }
+
     if (eventControlView) eventControlView.classList.remove('hidden');
 };
 
@@ -5640,5 +5650,258 @@ window.triggerOverlay = async (action, mode = '') => {
     }
 
     window.electronAPI.sendOverlayCommand(payload);
+};
+
+// --- CONTROLE TABLET (Desktop & Mac App para g7briell@hotmail.com) ---
+let desktopTabletDiaAtivo = 'DIA 1';
+let desktopTabletNoticias = [];
+let desktopTabletAberturaCompetidoresDestaque = [];
+
+window.getDesktopEventCompetitors = (ev) => {
+    if (!ev) return [];
+    const set = new Set();
+
+    if (Array.isArray(ev.sorteios)) {
+        ev.sorteios.forEach(s => {
+            const riders = s.riders || s.peoes || s.competidores || s.peoes_lista || s.bulls || [];
+            riders.forEach(r => {
+                const name = typeof r === 'string' ? r : (r.nome || r.name || r.peao);
+                if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+            });
+        });
+    }
+
+    const montarias = [...(ev.notas || []), ...(ev.notes || []), ...(ev.montarias || []), ...(ev.peoes || [])];
+    montarias.forEach(m => {
+        const name = typeof m === 'string' ? m : (m.peao || m.competidor || m.rider || m.nome);
+        if (name && typeof name === 'string' && name.trim()) set.add(name.trim());
+    });
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+};
+
+window.openTabletControlModal = async () => {
+    if (!currentEvent) return;
+
+    document.getElementById('tablet-modal-event-name').innerText = currentEvent.name;
+
+    const tc = currentEvent.tablet_config || {};
+    desktopTabletDiaAtivo = tc.dia_ativo || 'DIA 1';
+    desktopTabletNoticias = tc.noticias || [];
+    
+    document.getElementById('desktop-tablet-ticker-input').value = tc.ticker_noticias || tc.ticker || '';
+    document.getElementById('desktop-tablet-abertura-ativa').checked = !!tc.abertura_ativa;
+    document.getElementById('desktop-tablet-abertura-titulo').value = tc.abertura_titulo || 'ABERTURA OFICIAL';
+    document.getElementById('desktop-tablet-abertura-subtitulo').value = tc.abertura_subtitulo || currentEvent.name || 'RODEOAPP';
+    document.getElementById('desktop-tablet-abertura-url').value = tc.abertura_midia_url || '';
+    document.getElementById('desktop-tablet-abertura-texto').value = tc.abertura_texto || '';
+
+    const savedComps = tc.abertura_competidores_destaque || tc.competidores_destaque;
+    const eventComps = getDesktopEventCompetitors(currentEvent);
+
+    if (Array.isArray(savedComps) && savedComps.length > 0) {
+        desktopTabletAberturaCompetidoresDestaque = [...savedComps];
+    } else if (eventComps.length > 0) {
+        desktopTabletAberturaCompetidoresDestaque = [...eventComps];
+    } else {
+        desktopTabletAberturaCompetidoresDestaque = [];
+    }
+
+    renderDesktopTabletDays(parseInt(currentEvent.days) || 3);
+    renderDesktopTabletNoticias();
+    renderDesktopEventCompetitorsChips(eventComps);
+    renderDesktopActiveCompetitorsBadges();
+
+    document.getElementById('modal-tablet-control').classList.remove('hidden');
+};
+
+window.renderDesktopTabletDays = (numDays) => {
+    const container = document.getElementById('desktop-tablet-days-container');
+    if (!container) return;
+
+    let daysList = [];
+    for (let i = 1; i <= numDays; i++) {
+        daysList.push(`DIA ${i}`);
+    }
+    daysList.push('FINAL');
+
+    container.innerHTML = daysList.map(day => {
+        const isActive = desktopTabletDiaAtivo === day;
+        return `
+            <button type="button" onclick="setDesktopTabletDiaAtivo('${day}')" class="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all border ${
+                isActive
+                    ? 'bg-yellow-500 text-black border-yellow-500 shadow-lg shadow-yellow-500/20'
+                    : 'bg-black border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+            }">
+                ${isActive ? '✓ ' : ''}${day}
+            </button>
+        `;
+    }).join('');
+};
+
+window.setDesktopTabletDiaAtivo = (day) => {
+    desktopTabletDiaAtivo = day;
+    renderDesktopTabletDays(parseInt(currentEvent.days) || 3);
+};
+
+window.renderDesktopTabletNoticias = () => {
+    const container = document.getElementById('desktop-tablet-noticias-list');
+    if (!container) return;
+
+    if (desktopTabletNoticias.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 italic">Nenhum aviso ou notícia cadastrado no letreiro.</p>`;
+        return;
+    }
+
+    container.innerHTML = desktopTabletNoticias.map((item, idx) => `
+        <div class="flex items-center justify-between bg-black/60 p-3 rounded-xl border border-slate-800 text-xs text-white">
+            <span>• ${item}</span>
+            <button type="button" onclick="removeDesktopTabletNoticia(${idx})" class="text-red-400 hover:text-red-300 font-bold uppercase text-[10px] ml-2">✕ Remover</button>
+        </div>
+    `).join('');
+};
+
+window.addDesktopTabletNoticia = () => {
+    const input = document.getElementById('desktop-tablet-ticker-input');
+    const val = input.value.trim();
+    if (!val) return;
+    desktopTabletNoticias.push(val);
+    input.value = '';
+    renderDesktopTabletNoticias();
+};
+
+window.removeDesktopTabletNoticia = (idx) => {
+    desktopTabletNoticias.splice(idx, 1);
+    renderDesktopTabletNoticias();
+};
+
+window.renderDesktopEventCompetitorsChips = (eventComps) => {
+    const container = document.getElementById('desktop-event-competitors-chips');
+    if (!container) return;
+
+    if (eventComps.length === 0) {
+        container.innerHTML = `<p class="text-[11px] text-slate-500 italic">Nenhum competidor cadastrado neste evento.</p>`;
+        return;
+    }
+
+    container.innerHTML = eventComps.map(comp => {
+        const isSelected = desktopTabletAberturaCompetidoresDestaque.includes(comp);
+        return `
+            <button type="button" onclick="toggleEventCompetidorDesktop('${comp.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-lg font-bold text-[11px] uppercase transition-all border flex items-center gap-1 ${
+                isSelected
+                    ? 'bg-yellow-500 text-black border-yellow-500 shadow-sm'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+            }">
+                <span>${isSelected ? '✓' : '+'}</span>
+                <span>${comp}</span>
+            </button>
+        `;
+    }).join('');
+};
+
+window.renderDesktopActiveCompetitorsBadges = () => {
+    const container = document.getElementById('desktop-active-competitors-badges');
+    if (!container) return;
+
+    if (desktopTabletAberturaCompetidoresDestaque.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 italic">Nenhum competidor em destaque selecionado.</p>`;
+        return;
+    }
+
+    container.innerHTML = desktopTabletAberturaCompetidoresDestaque.map((comp, idx) => `
+        <div class="bg-yellow-500/10 border border-yellow-500/40 px-3 py-1 rounded-full text-xs font-black text-yellow-400 flex items-center gap-2 uppercase tracking-wider">
+            <span>⭐ ${comp}</span>
+            <button type="button" onclick="removeTabletCompetidorDesktop(${idx})" class="text-slate-400 hover:text-red-400 font-bold ml-1">✕</button>
+        </div>
+    `).join('');
+};
+
+window.toggleEventCompetidorDesktop = (compName) => {
+    const idx = desktopTabletAberturaCompetidoresDestaque.indexOf(compName);
+    if (idx >= 0) {
+        desktopTabletAberturaCompetidoresDestaque.splice(idx, 1);
+    } else {
+        desktopTabletAberturaCompetidoresDestaque.push(compName);
+    }
+    const eventComps = getDesktopEventCompetitors(currentEvent);
+    renderDesktopEventCompetitorsChips(eventComps);
+    renderDesktopActiveCompetitorsBadges();
+};
+
+window.handlePullAllEventCompetitorsDesktop = () => {
+    const eventComps = getDesktopEventCompetitors(currentEvent);
+    if (eventComps.length === 0) {
+        alert("Nenhum competidor cadastrado neste evento.");
+        return;
+    }
+    desktopTabletAberturaCompetidoresDestaque = [...eventComps];
+    renderDesktopEventCompetitorsChips(eventComps);
+    renderDesktopActiveCompetitorsBadges();
+};
+
+window.addManualCompetidorDesktop = () => {
+    const input = document.getElementById('desktop-tablet-manual-comp-input');
+    const val = input.value.trim();
+    if (!val) return;
+    desktopTabletAberturaCompetidoresDestaque.push(val);
+    input.value = '';
+    const eventComps = getDesktopEventCompetitors(currentEvent);
+    renderDesktopEventCompetitorsChips(eventComps);
+    renderDesktopActiveCompetitorsBadges();
+};
+
+window.removeTabletCompetidorDesktop = (idx) => {
+    desktopTabletAberturaCompetidoresDestaque.splice(idx, 1);
+    const eventComps = getDesktopEventCompetitors(currentEvent);
+    renderDesktopEventCompetitorsChips(eventComps);
+    renderDesktopActiveCompetitorsBadges();
+};
+
+window.handleDesktopTabletPhotoUpload = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        document.getElementById('desktop-tablet-abertura-url').value = event.target.result;
+    };
+    reader.readAsDataURL(file);
+};
+
+window.saveTabletControlDesktop = async () => {
+    if (!currentEvent) return;
+
+    const email = getCurrentUserEmail();
+    const tabletConfig = {
+        dia_ativo: desktopTabletDiaAtivo,
+        dias_disponiveis: Array.from({ length: parseInt(currentEvent.days) || 3 }, (_, i) => `DIA ${i + 1}`).concat(['FINAL']),
+        ticker_noticias: document.getElementById('desktop-tablet-ticker-input').value.trim(),
+        noticias: desktopTabletNoticias,
+        abertura_ativa: document.getElementById('desktop-tablet-abertura-ativa').checked,
+        abertura_titulo: document.getElementById('desktop-tablet-abertura-titulo').value.trim(),
+        abertura_subtitulo: document.getElementById('desktop-tablet-abertura-subtitulo').value.trim(),
+        abertura_midia_url: document.getElementById('desktop-tablet-abertura-url').value.trim(),
+        abertura_texto: document.getElementById('desktop-tablet-abertura-texto').value.trim(),
+        abertura_competidores_destaque: desktopTabletAberturaCompetidoresDestaque,
+        updated_at: new Date().toISOString()
+    };
+
+    try {
+        const res = await window.electronAPI.updateTabletConfig({
+            email,
+            eventId: currentEvent.id,
+            tabletConfig
+        });
+
+        if (res && res.success) {
+            currentEvent.tablet_config = tabletConfig;
+            alert('📱 Configurações salvas e enviadas em TEMPO REAL para os Tablets ao vivo!');
+            document.getElementById('modal-tablet-control').classList.add('hidden');
+        } else {
+            alert('Erro ao salvar no tablet: ' + (res.error || 'Erro desconhecido'));
+        }
+    } catch (err) {
+        console.error('Save tablet desktop err:', err);
+        alert('Erro ao salvar configurações no tablet.');
+    }
 };
 
