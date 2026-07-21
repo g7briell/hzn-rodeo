@@ -21,6 +21,8 @@ import {
   UserPlus, 
   ShieldCheck, 
   Key, 
+  Smartphone,
+  Tablet,
   Search, 
   Plus, 
   Clock, 
@@ -223,6 +225,95 @@ export default function AdminDashboard() {
   const [liveLatitude, setLiveLatitude] = useState<number | null>(null);
   const [liveLongitude, setLiveLongitude] = useState<number | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+
+  // Tablet Control States
+  const [selectedTabletEventId, setSelectedTabletEventId] = useState<string | null>(null);
+  const [tabletDiaAtivo, setTabletDiaAtivo] = useState<string>('DIA 1');
+  const [tabletDiasDisponiveis, setTabletDiasDisponiveis] = useState<string[]>(['DIA 1', 'DIA 2', 'DIA 3', 'FINAL']);
+  const [tabletTicker, setTabletTicker] = useState<string>('');
+  const [tabletNoticias, setTabletNoticias] = useState<string[]>([]);
+  const [newTabletNoticiaInput, setNewTabletNoticiaInput] = useState<string>('');
+  const [tabletAberturaAtiva, setTabletAberturaAtiva] = useState<boolean>(false);
+  const [tabletAberturaTitulo, setTabletAberturaTitulo] = useState<string>('ABERTURA OFICIAL');
+  const [tabletAberturaSubtitulo, setTabletAberturaSubtitulo] = useState<string>('RODEOAPP');
+  const [tabletAberturaMidiaUrl, setTabletAberturaMidiaUrl] = useState<string>('');
+  const [tabletAberturaTexto, setTabletAberturaTexto] = useState<string>('');
+  const [isSavingTabletConfig, setIsSavingTabletConfig] = useState<boolean>(false);
+
+  const handleSelectEventForTablet = (ev: any) => {
+    setSelectedTabletEventId(ev.id);
+    const tc = ev.detalhes?.tablet_config || {};
+    setTabletDiaAtivo(tc.dia_ativo || 'DIA 1');
+    setTabletDiasDisponiveis(tc.dias_disponiveis || ['DIA 1', 'DIA 2', 'DIA 3', 'FINAL']);
+    setTabletTicker(tc.ticker_noticias || tc.ticker || '');
+    setTabletNoticias(tc.noticias || []);
+    setTabletAberturaAtiva(!!tc.abertura_ativa);
+    setTabletAberturaTitulo(tc.abertura_titulo || 'ABERTURA OFICIAL');
+    setTabletAberturaSubtitulo(tc.abertura_subtitulo || ev.nome || 'RODEOAPP');
+    setTabletAberturaMidiaUrl(tc.abertura_midia_url || '');
+    setTabletAberturaTexto(tc.abertura_texto || '');
+  };
+
+  const handleAddTabletNoticia = () => {
+    if (!newTabletNoticiaInput.trim()) return;
+    setTabletNoticias(prev => [...prev, newTabletNoticiaInput.trim()]);
+    setNewTabletNoticiaInput('');
+  };
+
+  const handleRemoveTabletNoticia = (index: number) => {
+    setTabletNoticias(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleToggleTabletDiaDisponivel = (day: string) => {
+    if (tabletDiasDisponiveis.includes(day)) {
+      if (tabletDiasDisponiveis.length === 1) return alert("Ao menos 1 dia deve estar disponível.");
+      setTabletDiasDisponiveis(prev => prev.filter(d => d !== day));
+    } else {
+      setTabletDiasDisponiveis(prev => [...prev, day]);
+    }
+  };
+
+  const handleSaveTabletConfig = async () => {
+    if (!selectedTabletEventId) return;
+    setIsSavingTabletConfig(true);
+    try {
+      const ev = eventos.find(e => e.id === selectedTabletEventId);
+      if (!ev) return;
+
+      const tabletConfig = {
+        dia_ativo: tabletDiaAtivo,
+        dias_disponiveis: tabletDiasDisponiveis,
+        ticker_noticias: tabletTicker,
+        noticias: tabletNoticias,
+        abertura_ativa: tabletAberturaAtiva,
+        abertura_titulo: tabletAberturaTitulo,
+        abertura_subtitulo: tabletAberturaSubtitulo,
+        abertura_midia_url: tabletAberturaMidiaUrl,
+        abertura_texto: tabletAberturaTexto,
+        updated_at: new Date().toISOString()
+      };
+
+      const updatedDetalhes = {
+        ...(ev.detalhes || {}),
+        tablet_config: tabletConfig
+      };
+
+      const { error } = await supabase
+        .from('eventos_oficiais')
+        .update({ detalhes: updatedDetalhes })
+        .eq('id', selectedTabletEventId);
+
+      if (error) throw error;
+
+      setEventos(prev => prev.map(item => item.id === selectedTabletEventId ? { ...item, detalhes: updatedDetalhes } : item));
+      alert('📱 Configurações do Controle Tablet salvas com sucesso!');
+    } catch (err: any) {
+      console.error('Error saving tablet config', err);
+      alert('Erro ao salvar configurações do Tablet: ' + (err.message || err));
+    } finally {
+      setIsSavingTabletConfig(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedLicense) {
@@ -1866,6 +1957,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<DollarSign className="w-4 h-4" />} label="Patrocinadores" active={activeTab === "patrocinios"} onClick={() => setActiveTab("patrocinios")} />
           <TopNavBtn icon={<ShieldCheck className="w-4 h-4" />} label="Competidores" active={activeTab === "competidores"} onClick={() => setActiveTab("competidores")} />
           <TopNavBtn icon={<Zap className="w-4 h-4" />} label="IA / PDF" active={activeTab === "ai-pdf"} onClick={() => setActiveTab("ai-pdf")} />
+          <TopNavBtn icon={<Tablet className="w-4 h-4 text-yellow-500" />} label="Controle Tablet" active={activeTab === "tablet"} onClick={() => setActiveTab("tablet")} />
           <TopNavBtn 
             icon={
               <span className="relative flex h-2 w-2 mr-0.5">
@@ -1907,6 +1999,7 @@ export default function AdminDashboard() {
           <TopNavBtn icon={<DollarSign className="w-5 h-5" />} label="PATROCINADORES" active={activeTab === "patrocinios"} onClick={() => { setActiveTab("patrocinios"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<ShieldCheck className="w-5 h-5" />} label="COMPETIDORES" active={activeTab === "competidores"} onClick={() => { setActiveTab("competidores"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn icon={<Zap className="w-5 h-5" />} label="IA / PDF" active={activeTab === "ai-pdf"} onClick={() => { setActiveTab("ai-pdf"); setIsSidebarOpen(false); }} fullWidth />
+          <TopNavBtn icon={<Tablet className="w-5 h-5 text-yellow-500" />} label="CONTROLE TABLET" active={activeTab === "tablet"} onClick={() => { setActiveTab("tablet"); setIsSidebarOpen(false); }} fullWidth />
           <TopNavBtn 
             icon={
               <span className="relative flex h-2.5 w-2.5 mr-0.5">
@@ -3804,6 +3897,299 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === "tablet" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-transparent p-6 md:p-8 rounded-[2rem] border border-yellow-500/20">
+              <div>
+                <p className="text-yellow-500 font-black text-[10px] md:text-xs uppercase tracking-[0.5em] mb-2">Painel ao Vivo</p>
+                <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-white">
+                  Controle <span className="text-yellow-500">Tablet</span>
+                </h2>
+                <p className="text-xs font-bold text-white/50 uppercase tracking-widest mt-2">
+                  Gerencie em tempo real os dias ativos, letreiros e tela de abertura dos Tablets (rodeoapp.pro/tablet)
+                </p>
+              </div>
+              <a
+                href="/tablet"
+                target="_blank"
+                rel="noreferrer"
+                className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95 inline-flex items-center gap-2 self-start sm:self-auto"
+              >
+                ↗ Abrir /tablet em Nova Aba
+              </a>
+            </header>
+
+            {/* Event Selector Grid */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white/40">
+                1. Selecione o Evento para Controlar:
+              </h3>
+
+              {eventos.length === 0 ? (
+                <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] text-center text-xs font-bold uppercase tracking-widest text-white/40">
+                  Nenhum evento oficial cadastrado.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {eventos.map((ev: any) => {
+                    const isSelected = selectedTabletEventId === ev.id;
+                    const tc = ev.detalhes?.tablet_config;
+                    const activeDay = tc?.dia_ativo || "N/D";
+                    return (
+                      <div
+                        key={ev.id}
+                        onClick={() => handleSelectEventForTablet(ev)}
+                        className={`p-6 rounded-[2rem] cursor-pointer transition-all duration-300 border ${
+                          isSelected
+                            ? "bg-yellow-500/10 border-yellow-500 shadow-xl shadow-yellow-500/10"
+                            : "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10"
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-3">
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? "text-yellow-500" : "text-white/40"}`}>
+                            {ev.cidade || ev.local || "RODEIO"}
+                          </span>
+                          {tc?.abertura_ativa && (
+                            <span className="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
+                              🎬 ABERTURA ATIVA
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xl font-black italic uppercase tracking-tighter text-white mb-4">
+                          {ev.nome}
+                        </h4>
+                        <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs">
+                          <span className="text-white/40 font-bold">Dia Ativo: <strong className="text-white">{activeDay}</strong></span>
+                          <span className={`font-black uppercase tracking-wider ${isSelected ? "text-yellow-500" : "text-white/40"}`}>
+                            {isSelected ? "✓ Selecionado" : "Configurar →"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Form Settings Panel */}
+            {selectedTabletEventId && (
+              <div className="bg-white/5 border border-yellow-500/30 p-6 md:p-10 rounded-[2.5rem] space-y-8 backdrop-blur-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+                  <div>
+                    <p className="text-yellow-500 font-black text-[10px] uppercase tracking-[0.4em]">Configuração Ao Vivo</p>
+                    <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white">
+                      {eventos.find(e => e.id === selectedTabletEventId)?.nome}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={handleSaveTabletConfig}
+                    disabled={isSavingTabletConfig}
+                    className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95 shrink-0"
+                  >
+                    {isSavingTabletConfig ? "Salvando..." : "💾 Salvar no Tablet ao Vivo"}
+                  </button>
+                </div>
+
+                {/* Section A: Active Days */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-black/30 border border-white/10 p-6 rounded-[2rem] space-y-4">
+                    <h4 className="text-sm font-black uppercase tracking-wider text-yellow-500 flex items-center gap-2">
+                      📅 1. Round/Dia Atual em Destaque
+                    </h4>
+                    <p className="text-xs text-white/50 font-bold">
+                      Selecione qual round será o padrão no tablet:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {["DIA 1", "DIA 2", "DIA 3", "DIA 4", "SEMI-FINAL", "FINAL"].map(day => (
+                        <button
+                          key={day}
+                          onClick={() => setTabletDiaAtivo(day)}
+                          className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${
+                            tabletDiaAtivo === day
+                              ? "bg-yellow-500 text-black shadow-lg shadow-yellow-500/20"
+                              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {day} {tabletDiaAtivo === day ? "★" : ""}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-black/30 border border-white/10 p-6 rounded-[2rem] space-y-4">
+                    <h4 className="text-sm font-black uppercase tracking-wider text-yellow-500 flex items-center gap-2">
+                      🗓️ 2. Rounds Habilitados no Tablet
+                    </h4>
+                    <p className="text-xs text-white/50 font-bold">
+                      Marque os rounds navegáveis no tablet:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {["DIA 1", "DIA 2", "DIA 3", "DIA 4", "SEMI-FINAL", "FINAL"].map(day => {
+                        const isChecked = tabletDiasDisponiveis.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            onClick={() => handleToggleTabletDiaDisponivel(day)}
+                            className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all border ${
+                              isChecked
+                                ? "bg-green-500/20 border-green-500/40 text-green-400"
+                                : "bg-white/5 border-white/10 text-white/30 hover:bg-white/10"
+                            }`}
+                          >
+                            {isChecked ? "✓ " : "+ "} {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section B: Ticker Banner and News */}
+                <div className="bg-black/30 border border-white/10 p-6 rounded-[2rem] space-y-6">
+                  <h4 className="text-sm font-black uppercase tracking-wider text-yellow-500 flex items-center gap-2">
+                    📰 3. Notícias e Letreiro em Tempo Real (Ticker)
+                  </h4>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
+                      Texto do Letreiro Deslizante (Ticker Banner):
+                    </label>
+                    <input
+                      type="text"
+                      value={tabletTicker}
+                      onChange={e => setTabletTicker(e.target.value)}
+                      placeholder="Ex: Acompanhe os resultados oficiais da Etapa ao vivo pelo RodeoApp!"
+                      className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-yellow-500 transition-all font-bold text-sm text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
+                      Avisos / Notícias Destaque do Evento:
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTabletNoticiaInput}
+                        onChange={e => setNewTabletNoticiaInput(e.target.value)}
+                        placeholder="Adicionar novo aviso..."
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddTabletNoticia(); }}
+                        className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
+                      />
+                      <button
+                        onClick={handleAddTabletNoticia}
+                        className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all"
+                      >
+                        + Adicionar
+                      </button>
+                    </div>
+
+                    {tabletNoticias.length === 0 ? (
+                      <p className="text-xs text-white/30 italic font-bold">Nenhum aviso cadastrado.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {tabletNoticias.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-xs font-bold text-white">
+                            <span>• {item}</span>
+                            <button onClick={() => handleRemoveTabletNoticia(idx)} className="text-red-400 hover:text-red-300 font-black uppercase text-[10px]">
+                              ✕ Remover
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section C: Opening Control */}
+                <div className="bg-black/30 border border-white/10 p-6 rounded-[2rem] space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black uppercase tracking-wider text-yellow-500 flex items-center gap-2">
+                      🎬 4. Controle de Abertura (Tela Cheia no Tablet)
+                    </h4>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tabletAberturaAtiva}
+                        onChange={e => setTabletAberturaAtiva(e.target.checked)}
+                        className="w-5 h-5 accent-yellow-500 cursor-pointer"
+                      />
+                      <span className={`text-xs font-black uppercase tracking-wider ${tabletAberturaAtiva ? "text-green-400" : "text-white/40"}`}>
+                        {tabletAberturaAtiva ? "Modo Abertura ATIVADO" : "Modo Abertura Desativado"}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
+                        Título Principal da Abertura:
+                      </label>
+                      <input
+                        type="text"
+                        value={tabletAberturaTitulo}
+                        onChange={e => setTabletAberturaTitulo(e.target.value)}
+                        placeholder="Ex: ABERTURA OFICIAL"
+                        className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
+                        Subtítulo / Etapa:
+                      </label>
+                      <input
+                        type="text"
+                        value={tabletAberturaSubtitulo}
+                        onChange={e => setTabletAberturaSubtitulo(e.target.value)}
+                        placeholder="Ex: COPA MD SUPER BULLS 2026"
+                        className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
+                      URL de Vídeo ou Foto da Abertura (Mídia):
+                    </label>
+                    <input
+                      type="url"
+                      value={tabletAberturaMidiaUrl}
+                      onChange={e => setTabletAberturaMidiaUrl(e.target.value)}
+                      placeholder="Ex: https://meuservidor.com/video.mp4 ou foto"
+                      className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest ml-1">
+                      Texto / Discurso Oficial de Abertura:
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={tabletAberturaTexto}
+                      onChange={e => setTabletAberturaTexto(e.target.value)}
+                      placeholder="Texto de abertura lido pela locução..."
+                      className="w-full bg-black border border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-yellow-500 text-sm font-bold text-white resize-y"
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom Action Save */}
+                <div className="flex justify-end pt-4 border-t border-white/10">
+                  <button
+                    onClick={handleSaveTabletConfig}
+                    disabled={isSavingTabletConfig}
+                    className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+                  >
+                    {isSavingTabletConfig ? "Salvando..." : "💾 Salvar Configurações no Tablet ao Vivo"}
+                  </button>
+                </div>
+
+              </div>
+            )}
           </div>
         )}
 
