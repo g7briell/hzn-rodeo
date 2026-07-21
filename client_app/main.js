@@ -2270,7 +2270,7 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
         const existingEvent = existingEvents && existingEvents.length > 0 ? existingEvents[0] : null;
 
         if (existingEvent) {
-            // Mantém status aprovado se já estiver
+            payload.id = existingEvent.id;
             if (existingEvent.status === 'aprovado') {
                 payload.status = 'aprovado';
             }
@@ -2284,8 +2284,19 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
             if (error) throw error;
         }
         
-        // Sincroniza dados relacionais no portal
         await saveEventToRelationalDb(supabase, ev, email);
+
+        try {
+            const bcChannel = supabase.channel('rodeo_global_realtime');
+            await bcChannel.subscribe();
+            await bcChannel.send({
+                type: 'broadcast',
+                event: 'event_updated',
+                payload: payload
+            });
+        } catch (bcErr) {
+            console.warn('Broadcast error:', bcErr);
+        }
         
         return { success: true };
     } catch (e) {
@@ -2358,6 +2369,7 @@ ipcMain.handle('update-tablet-config', async (event, { email, eventId, tabletCon
         };
 
         if (existingEvent) {
+            payload.id = existingEvent.id;
             const { error } = await supabase.from('eventos_oficiais')
                 .update(payload)
                 .eq('id', existingEvent.id);
@@ -2369,6 +2381,18 @@ ipcMain.handle('update-tablet-config', async (event, { email, eventId, tabletCon
         }
 
         await saveEventToRelationalDb(supabase, ev, email);
+
+        try {
+            const bcChannel = supabase.channel('rodeo_global_realtime');
+            await bcChannel.subscribe();
+            await bcChannel.send({
+                type: 'broadcast',
+                event: 'event_updated',
+                payload: payload
+            });
+        } catch (bcErr) {
+            console.warn('Broadcast error:', bcErr);
+        }
 
         return { success: true };
     } catch (err) {

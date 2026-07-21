@@ -377,7 +377,19 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      setEventos(prev => prev.map(item => item.id === selectedTabletEventId ? { ...item, detalhes: updatedDetalhes } : item));
+      const updatedEv = { ...ev, detalhes: updatedDetalhes };
+      setEventos(prev => prev.map(item => item.id === selectedTabletEventId ? updatedEv : item));
+
+      try {
+        const bcChannel = supabase.channel('rodeo_global_realtime');
+        await bcChannel.subscribe();
+        await bcChannel.send({
+          type: 'broadcast',
+          event: 'event_updated',
+          payload: updatedEv
+        });
+      } catch (bcErr) {}
+
       alert('📱 Configurações do Controle Tablet salvas com sucesso!');
     } catch (err: any) {
       console.error('Error saving tablet config', err);
