@@ -6,6 +6,18 @@ if (window.pdfjsLib) {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
+function normalizeDayName(rawDay) {
+    if (!rawDay) return 'DIA 1';
+    const d = rawDay.toString().toUpperCase().trim().replace(/[\s-_]/g, '');
+    if (d === 'DIA1' || d === '1' || d === 'ROUND1' || d === '1ROUND' || d === '1ºROUND' || d === '1°ROUND') return 'DIA 1';
+    if (d === 'DIA2' || d === '2' || d === 'ROUND2' || d === '2ROUND' || d === '2ºROUND' || d === '2°ROUND') return 'DIA 2';
+    if (d === 'DIA3' || d === '3' || d === 'ROUND3' || d === '3ROUND' || d === '3ºROUND' || d === '3°ROUND') return 'DIA 3';
+    if (d === 'DIA4' || d === '4' || d === 'ROUND4' || d === '4ROUND' || d === '4ºROUND' || d === '4°ROUND') return 'DIA 4';
+    if (d === 'SEMIFINAL' || d === 'SEMI') return 'SEMI-FINAL';
+    if (d === 'FINAL') return 'FINAL';
+    return rawDay.toUpperCase().trim();
+}
+
 let pdfParsedData = null;
 let currentPdfFile = null;
 
