@@ -33,8 +33,40 @@ jobs:
           npm install
 
       - name: Build Windows app
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd client_app
-          npx electron-builder --win nsis --publish always
+          npx electron-builder --win nsis --publish never
+
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./client_app/package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Upload Windows setup EXE
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: client_app/dist/HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.exe
+          asset_name: HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.exe
+          tag: v${{ steps.get_version.outputs.VERSION }}
+          overwrite: true
+
+      - name: Upload Windows latest.yml (Auto-Updater)
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: client_app/dist/latest.yml
+          asset_name: latest.yml
+          tag: v${{ steps.get_version.outputs.VERSION }}
+          overwrite: true
+
+      - name: Upload Windows blockmap (Auto-Updater)
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: client_app/dist/HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.exe.blockmap
+          asset_name: HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.exe.blockmap
+          tag: v${{ steps.get_version.outputs.VERSION }}
+          overwrite: true
