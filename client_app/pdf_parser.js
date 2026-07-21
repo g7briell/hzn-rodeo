@@ -416,12 +416,12 @@ if (btnSaveEvent) {
             await window.electronAPI.updateLocalEvent(email, targetEvent);
             
             // Re-render screens with exact renderer function names
-            if (typeof window.openListPeoes === 'function') window.openListPeoes();
-            if (typeof window.openListBoiadas === 'function') window.openListBoiadas();
-            if (typeof window.openSorteiosList === 'function') window.openSorteiosList();
-            if (typeof window.renderEvents === 'function') window.renderEvents();
-            if (typeof window.renderNotasCards === 'function') window.renderNotasCards();
-            if (typeof window.renderRanking === 'function') window.renderRanking();
+            if (typeof window.openListPeoes === 'function') try { window.openListPeoes(); } catch(e){}
+            if (typeof window.openListBoiadas === 'function') try { window.openListBoiadas(); } catch(e){}
+            if (typeof window.openSorteiosList === 'function') try { window.openSorteiosList(); } catch(e){}
+            if (typeof window.renderEvents === 'function') try { window.renderEvents(); } catch(e){}
+            if (typeof window.renderNotasCards === 'function') try { window.renderNotasCards(); } catch(e){}
+            if (typeof window.renderRanking === 'function') try { window.renderRanking(); } catch(e){}
             
             alert("Sorteio, Peões, Boiadas, Notas e Ranking salvos no evento com sucesso!");
         } else {

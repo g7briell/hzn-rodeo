@@ -3775,6 +3775,7 @@ window.closeNotasView = () => {
 
 window.renderNotasCards = () => {
     const container = document.getElementById('notas-cards-container');
+    if (!container || typeof notasState === 'undefined' || !notasState || !notasState.sorteio || !notasState.sorteio.riders) return;
     container.innerHTML = '';
     
     let totalGraded = 0;
