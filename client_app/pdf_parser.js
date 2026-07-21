@@ -353,11 +353,13 @@ if (btnSaveEvent) {
 
         pdfParsedData.items.forEach(item => {
             const itemTempo = item.tempo !== undefined ? item.tempo : (item.status === 'ativa' ? 8.0 : 0);
-            const j1_p = item.totalPeao ? item.totalPeao / 2 : 0;
-            const j2_p = item.totalPeao ? item.totalPeao / 2 : 0;
-            const j1_t = item.totalTouro ? item.totalTouro / 2 : 0;
-            const j2_t = item.totalTouro ? item.totalTouro / 2 : 0;
-            const calcTotal = (item.totalPeao || 0) + (item.totalTouro || 0);
+            const j1_p = item.j1_peao !== undefined ? item.j1_peao : (item.totalPeao ? item.totalPeao / 2 : 0);
+            const j2_p = item.j2_peao !== undefined ? item.j2_peao : (item.totalPeao ? item.totalPeao / 2 : 0);
+            const j1_t = item.j1_touro !== undefined ? item.j1_touro : (item.totalTouro ? item.totalTouro / 2 : 0);
+            const j2_t = item.j2_touro !== undefined ? item.j2_touro : (item.totalTouro ? item.totalTouro / 2 : 0);
+            const totalPeao = itemTempo < 8.0 ? 0 : (item.totalPeao !== undefined ? item.totalPeao : (j1_p + j2_p));
+            const totalTouro = item.totalTouro !== undefined ? item.totalTouro : (j1_t + j2_t);
+            const calcTotal = itemTempo < 8.0 ? 0 : (totalPeao + totalTouro);
 
             targetEvent.notas.push({
                 peao: item.peao,
@@ -367,20 +369,23 @@ if (btnSaveEvent) {
                 cia: item.cia,
                 ciaNome: item.cia,
                 dia: selectedDay,
-                status: item.status || 'ativa',
+                status: item.status || (itemTempo >= 8.0 && calcTotal > 0 ? 'ativa' : 'queda'),
                 tempo: itemTempo,
                 j1_peao: j1_p,
                 j2_peao: j2_p,
                 j1_touro: j1_t,
                 j2_touro: j2_t,
-                peao_score: item.totalPeao || 0,
-                touro_score: item.totalTouro || 0,
-                totalPeao: item.totalPeao || 0,
-                totalTouro: item.totalTouro || 0,
-                total: item.total || calcTotal,
+                peao_score: totalPeao,
+                touro_score: totalTouro,
+                totalPeao: totalPeao,
+                totalTouro: totalTouro,
+                total: item.total !== undefined ? item.total : calcTotal,
                 id_montaria: "pdf_" + Date.now() + "_" + Math.floor(Math.random() * 1000)
             });
         });
+
+        // 5. Recalculate ranking scores and accumulated times for all riders
+        recalcularRankingPdf(targetEvent);
 
         // Update global reference in renderer
         if (typeof window.setCurrentEvent === 'function') {
@@ -389,7 +394,7 @@ if (btnSaveEvent) {
             window.currentEvent = targetEvent;
         }
 
-        // 5. Save to database using updateLocalEvent
+        // 6. Save to database using updateLocalEvent
         const auth = window.electronAPI.getAuth();
         const email = auth ? auth.email : '';
         
@@ -403,13 +408,43 @@ if (btnSaveEvent) {
             if (typeof window.renderEvents === 'function') window.renderEvents();
             if (typeof window.renderNotasTable === 'function') window.renderNotasTable();
             
-            alert("Sorteio, Peões, Boiadas e Notas salvos no evento com sucesso!");
+            alert("Sorteio, Peões, Boiadas, Notas e Ranking salvos no evento com sucesso!");
         } else {
             alert("Erro: Você não está logado no sistema.");
         }
         
         document.getElementById('modal-import-pdf').classList.add('hidden');
         resetPdfWizard();
+    });
+}
+
+function recalcularRankingPdf(targetEvent) {
+    if (!targetEvent || !targetEvent.peoes) return;
+    targetEvent.peoes.forEach(p => {
+        const pNome = (typeof p === 'string' ? p : p.nome || '').trim().toUpperCase();
+        const peaoNotas = (targetEvent.notas || []).filter(n => (n.peao || n.peaoNome || '').trim().toUpperCase() === pNome && n.status === 'ativa');
+        
+        let scoreTotal = 0;
+        let tempoAcumulado = 0;
+
+        peaoNotas.forEach(curr => {
+            const tempo = parseFloat(curr.tempo) || 0;
+            const totalPeao = parseFloat(curr.totalPeao) || parseFloat(curr.peao_score) || 0;
+            const totalTouro = parseFloat(curr.totalTouro) || parseFloat(curr.touro_score) || 0;
+            const total = parseFloat(curr.total) || (totalPeao + totalTouro);
+
+            if (totalPeao === 0 || tempo < 8.00) {
+                tempoAcumulado += tempo;
+            } else {
+                scoreTotal += total;
+                tempoAcumulado += tempo;
+            }
+        });
+
+        if (typeof p === 'object') {
+            p.score = scoreTotal;
+            p.tempoAcumulado = tempoAcumulado;
+        }
     });
 }
 
