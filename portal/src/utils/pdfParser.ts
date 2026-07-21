@@ -336,43 +336,6 @@ function convertGeminiResultToParsedData(aiResult: any, rawText: string): ParseP
   };
 }
 
-  if (aiResult.reservas && Array.isArray(aiResult.reservas)) {
-    aiResult.reservas.forEach((r: any) => {
-      const touro = (r.touro || '').trim().toUpperCase();
-      const cia = (r.cia || 'CIA OUTRAS').trim().toUpperCase();
-      if (touro && touro.length >= 2) {
-        if (cia && cia.length >= 2) {
-          ciasSet.add(cia);
-          tourosMap.set(touro, cia);
-        } else if (!tourosMap.has(touro)) {
-          tourosMap.set(touro, 'CIA OUTRAS');
-        }
-      }
-    });
-  }
-
-  const detectedTouros: { nome: string; cia: string }[] = [];
-  tourosMap.forEach((cia, nome) => detectedTouros.push({ nome, cia }));
-
-  let suggestedDay = 'DIA 1';
-  const fullUpper = rawText.toUpperCase();
-  if (fullUpper.includes('FINAL')) suggestedDay = 'FINAL';
-  else if (fullUpper.includes('SEMI')) suggestedDay = 'SEMI-FINAL';
-  else if (fullUpper.includes('DIA 4') || fullUpper.includes('ROUND 4')) suggestedDay = 'DIA 4';
-  else if (fullUpper.includes('DIA 3') || fullUpper.includes('ROUND 3')) suggestedDay = 'DIA 3';
-  else if (fullUpper.includes('DIA 2') || fullUpper.includes('ROUND 2')) suggestedDay = 'DIA 2';
-  else if (fullUpper.includes('DIA 1') || fullUpper.includes('ROUND 1')) suggestedDay = 'DIA 1';
-
-  return {
-    rawText,
-    items,
-    detectedPeoes: Array.from(peoesSet),
-    detectedTouros,
-    detectedCias: Array.from(ciasSet),
-    suggestedDay
-  };
-}
-
 /**
  * Intelligently parses rodeo lines into structured entities
  */
