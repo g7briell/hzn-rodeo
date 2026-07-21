@@ -1339,67 +1339,103 @@ export default function TabletApp() {
   const [ss, setSs] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const fetchAllTabletData = useCallback(async () => {
+    try {
+      const [ev, pat, boi, touros, cias] = await Promise.all([
+        supabase.from('eventos_oficiais').select('*').order('created_at', { ascending: false }),
+        supabase.from('patrocinios').select('*').eq('status', 'ativo'),
+        supabase.from('boiadas_oficiais').select('*'),
+        supabase.from('rel_touros').select('*'),
+        supabase.from('rel_cias').select('*'),
+      ]);
+
+      if (ev.data) {
+        setEventos(ev.data);
+        setSelected(prev => {
+          if (!prev) return prev;
+          const match = ev.data.find(e =>
+            String(e.id) === String(prev.id) ||
+            (e.nome && prev.nome && e.nome.trim().toLowerCase() === prev.nome.trim().toLowerCase())
+          );
+          return match || prev;
+        });
+      }
+      if (pat.data) setPats(pat.data);
+      if (boi.data) setBoiadas(boi.data);
+      if (touros.data) setRelTouros(touros.data);
+      if (cias.data) setRelCias(cias.data);
+    } catch (err) {
+      console.error('Tablet fetch error:', err);
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      try {
-        const [ev, pat, boi, touros, cias] = await Promise.all([
-          supabase.from('eventos_oficiais').select('*').order('created_at', { ascending: false }),
-          supabase.from('patrocinios').select('*').eq('status', 'ativo'),
-          supabase.from('boiadas_oficiais').select('*'),
-          supabase.from('rel_touros').select('*'),
-          supabase.from('rel_cias').select('*'),
-        ]);
-        if (ev.data) setEventos(ev.data);
-        if (pat.data) setPats(pat.data);
-        if (boi.data) setBoiadas(boi.data);
-        if (touros.data) setRelTouros(touros.data);
-        if (cias.data) setRelCias(cias.data);
-      } catch (err) {
-        console.error('Tablet fetch error:', err);
-      } finally { setLoading(false); }
+      await fetchAllTabletData();
+      setLoading(false);
     })();
 
-    const channel = supabase
-      .channel('tablet_realtime_events')
+    const updateEventInState = (updatedEv: Evento) => {
+      if (!updatedEv || (!updatedEv.id && !updatedEv.nome)) return;
+
+      setEventos(prev => {
+        const isMatch = (e: Evento) =>
+          String(e.id) === String(updatedEv.id) ||
+          (e.nome && updatedEv.nome && e.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
+
+        const index = prev.findIndex(isMatch);
+        if (index >= 0) {
+          const copy = [...prev];
+          copy[index] = updatedEv;
+          return copy;
+        } else {
+          return [updatedEv, ...prev];
+        }
+      });
+
+      setSelected(prev => {
+        if (!prev) return prev;
+        const isMatch =
+          String(prev.id) === String(updatedEv.id) ||
+          (prev.nome && updatedEv.nome && prev.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
+
+        if (isMatch) {
+          return updatedEv;
+        }
+        return prev;
+      });
+    };
+
+    const channel = supabase.channel('rodeo_global_realtime');
+
+    channel
+      .on('broadcast', { event: 'event_updated' }, ({ payload }) => {
+        if (payload) {
+          const updatedEv = (payload.event || payload.updatedEv || payload) as Evento;
+          updateEventInState(updatedEv);
+          fetchAllTabletData();
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos_oficiais' }, (payload) => {
         if (payload.new) {
           const updatedEv = payload.new as Evento;
-
-          setEventos(prev => {
-            const isMatch = (e: Evento) =>
-              String(e.id) === String(updatedEv.id) ||
-              (e.nome && updatedEv.nome && e.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
-
-            const index = prev.findIndex(isMatch);
-            if (index >= 0) {
-              const copy = [...prev];
-              copy[index] = updatedEv;
-              return copy;
-            } else {
-              return [updatedEv, ...prev];
-            }
-          });
-
-          setSelected(prev => {
-            if (!prev) return prev;
-            const isMatch =
-              String(prev.id) === String(updatedEv.id) ||
-              (prev.nome && updatedEv.nome && prev.nome.trim().toLowerCase() === updatedEv.nome.trim().toLowerCase());
-
-            if (isMatch) {
-              return updatedEv;
-            }
-            return prev;
-          });
+          updateEventInState(updatedEv);
+        } else {
+          fetchAllTabletData();
         }
       })
       .subscribe();
 
+    const pollInterval = setInterval(() => {
+      fetchAllTabletData();
+    }, 3000);
+
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchAllTabletData]);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
