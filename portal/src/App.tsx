@@ -91,7 +91,7 @@ function App() {
   const [sponsorAdIndex, setSponsorAdIndex] = useState(0);
   const [sponsorFade, setSponsorFade] = useState(true);
 
-  // Rotate sponsor ads every 5 seconds with smooth fade
+  // Rotate sponsor ads every 45 seconds with smooth fade
   useEffect(() => {
     if (!patrocinios || patrocinios.length <= 1) return;
     const interval = setInterval(() => {
@@ -100,7 +100,7 @@ function App() {
         setSponsorAdIndex(prev => prev + 1);
         setSponsorFade(true);
       }, 300);
-    }, 5000);
+    }, 45000); // 45 segundos
 
     return () => clearInterval(interval);
   }, [patrocinios]);
@@ -7261,7 +7261,7 @@ Instruções importantes:
                     
                     {/* Left: Video Player */}
                     <div style={{ flex: isMobile ? 1.5 : 3.2, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {isMobile && (
+                      {isMobile ? (
                         <>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                             <button 
@@ -7277,6 +7277,8 @@ Instruções importantes:
                           </div>
                           {renderSponsorAdBanner('mobile_top')}
                         </>
+                      ) : (
+                        renderSponsorAdBanner('pc_video_top')
                       )}
                       
                       {/* Video Embed */}
