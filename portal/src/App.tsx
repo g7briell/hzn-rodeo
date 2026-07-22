@@ -812,10 +812,23 @@ function App() {
     }
   };
 
-  const getSponsorImage = (s: any) => {
+  const getSponsorImage = (s: any, slotKey?: string) => {
     if (!s) return null;
-    const banner720x90 = s.detalhes?.portal_noticias?.fino_redacao?.logo_url;
-    return banner720x90 || null;
+    if (slotKey === 'desktop_chat_bottom') {
+      return s.detalhes?.portal_noticias?.baixo_chat?.logo_url || 
+             s.detalhes?.portal_noticias?.fino_redacao?.logo_url || 
+             s.detalhes?.banner_url || 
+             null;
+    }
+    return s.detalhes?.portal_noticias?.fino_redacao?.logo_url || s.detalhes?.banner_url || null;
+  };
+
+  const getSponsorClickUrl = (s: any, slotKey?: string) => {
+    if (!s) return '#';
+    if (slotKey === 'desktop_chat_bottom' && s.detalhes?.portal_noticias?.baixo_chat?.click_url) {
+      return s.detalhes.portal_noticias.baixo_chat.click_url;
+    }
+    return s.click_url || s.detalhes?.portal_noticias?.fino_redacao?.click_url || '#';
   };
 
   const renderSponsorAdBanner = (slotKey: string) => {
@@ -823,7 +836,7 @@ function App() {
 
     const activeSponsors = patrocinios.filter((p: any) => {
       if (p.status && p.status !== 'ativo') return false;
-      return !!getSponsorImage(p);
+      return !!getSponsorImage(p, slotKey);
     });
 
     if (activeSponsors.length === 0) return null;
@@ -831,13 +844,16 @@ function App() {
     const slotOffset = slotKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const currentIndex = (sponsorAdIndex + slotOffset) % activeSponsors.length;
     const sponsor = activeSponsors[currentIndex];
-    const bannerUrl = getSponsorImage(sponsor);
+    const bannerUrl = getSponsorImage(sponsor, slotKey);
+    const clickUrl = getSponsorClickUrl(sponsor, slotKey);
 
     if (!bannerUrl) return null;
 
+    const isBottomChat = slotKey === 'desktop_chat_bottom';
+
     return (
       <a
-        href={sponsor.click_url || '#'}
+        href={clickUrl}
         target="_blank"
         rel="noopener noreferrer"
         style={{
@@ -847,7 +863,7 @@ function App() {
           overflow: 'hidden',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           marginBottom: '0.75rem',
-          marginTop: '0.25rem',
+          marginTop: '0.5rem',
           boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
           opacity: sponsorFade ? 1 : 0,
           transition: 'opacity 0.3s ease-in-out',
@@ -862,13 +878,14 @@ function App() {
           style={{
             width: '100%',
             height: 'auto',
-            maxHeight: '120px',
+            maxHeight: isBottomChat ? '160px' : '120px',
+            minHeight: isBottomChat ? '80px' : undefined,
             objectFit: 'contain',
             display: 'block'
           }}
           onLoad={(e) => {
             const img = e.currentTarget;
-            if (img.naturalWidth && img.naturalHeight) {
+            if (!isBottomChat && img.naturalWidth && img.naturalHeight) {
               const ratio = img.naturalWidth / img.naturalHeight;
               if (ratio < 2.5) {
                 const anchor = img.closest('a');

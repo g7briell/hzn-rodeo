@@ -1298,6 +1298,7 @@ export default function AdminDashboard() {
         fino_redacao: { logo_url: '', click_url: '' },
         meio_materia: { logo_url: '', click_url: '' },
         fino_ia: { logo_url: '', click_url: '' },
+        baixo_chat: { logo_url: '', click_url: '' },
         grid_lateral: {
           main: { logo_url: '', click_url: '' },
           sub1: { logo_url: '', click_url: '' },
@@ -1327,6 +1328,10 @@ export default function AdminDashboard() {
         fino_ia: {
           ...defaultDetalhes.portal_noticias.fino_ia,
           ...(pat.detalhes?.portal_noticias?.fino_ia || {})
+        },
+        baixo_chat: {
+          ...defaultDetalhes.portal_noticias.baixo_chat,
+          ...(pat.detalhes?.portal_noticias?.baixo_chat || {})
         },
         grid_lateral: {
           ...defaultDetalhes.portal_noticias.grid_lateral,
@@ -3103,9 +3108,46 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
+                      {/* Baixo Chat */}
+                      <div className="bg-black/20 border border-white/5 p-5 rounded-2xl space-y-4">
+                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">4. Banner Inferior do Chat (Ao Vivo Portal) - Recomenda-se 380x120px / 400x150px</h4>
+                        <InputGroup 
+                          label="Link de Redirecionamento (Baixo Chat)" 
+                          type="url" 
+                          value={editSponsorDetalhes.portal_noticias?.baixo_chat?.click_url || ''} 
+                          onChange={(val: any) => {
+                            const det = { ...editSponsorDetalhes };
+                            if (!det.portal_noticias) det.portal_noticias = {};
+                            if (!det.portal_noticias.baixo_chat) det.portal_noticias.baixo_chat = { logo_url: '', click_url: '' };
+                            det.portal_noticias.baixo_chat.click_url = val;
+                            setEditSponsorDetalhes(det);
+                          }} 
+                          placeholder="Ex: https://imperio.com.br/chat" 
+                          required={false}
+                        />
+                        <div>
+                          <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Upload da Arte (Baixo Chat)</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 outline-none text-xs text-white" 
+                            onChange={e => handlePhotoUpload(e, (b64) => {
+                              const det = { ...editSponsorDetalhes };
+                              if (!det.portal_noticias) det.portal_noticias = {};
+                              if (!det.portal_noticias.baixo_chat) det.portal_noticias.baixo_chat = { logo_url: '', click_url: '' };
+                              det.portal_noticias.baixo_chat.logo_url = b64;
+                              setEditSponsorDetalhes(det);
+                            })} 
+                          />
+                          {editSponsorDetalhes.portal_noticias?.baixo_chat?.logo_url && (
+                            <img src={editSponsorDetalhes.portal_noticias.baixo_chat.logo_url} alt="Baixo Chat" className="mt-3 max-h-[80px] object-contain bg-white p-1 rounded" />
+                          )}
+                        </div>
+                      </div>
+
                       {/* Grade Lateral AliExpress */}
                       <div className="bg-black/20 border border-white/5 p-5 rounded-2xl space-y-6">
-                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">4. Anúncio Lateral Quadrado</h4>
+                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">5. Anúncio Lateral Quadrado</h4>
                         
                         {/* Main Lateral */}
                         <div className="space-y-4">
