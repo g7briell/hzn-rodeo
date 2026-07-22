@@ -226,6 +226,14 @@ export default function AdminDashboard() {
   const [liveLongitude, setLiveLongitude] = useState<number | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
 
+  // Live Auto Search & Selection States
+  const [isSearchingLives, setIsSearchingLives] = useState(false);
+  const [searchedLives, setSearchedLives] = useState<any[]>([]);
+  const [selectedLiveVideoIds, setSelectedLiveVideoIds] = useState<string[]>([]);
+  const [customLiveUrlInput, setCustomLiveUrlInput] = useState('');
+  const [isAddingCustomUrl, setIsAddingCustomUrl] = useState(false);
+  const [isPublishingSelectedLives, setIsPublishingSelectedLives] = useState(false);
+
   // Tablet Control States
   const [selectedTabletEventId, setSelectedTabletEventId] = useState<string | null>(null);
   const [tabletDiaAtivo, setTabletDiaAtivo] = useState<string>('DIA 1');
@@ -726,6 +734,101 @@ export default function AdminDashboard() {
       alert("Erro ao salvar transmissão: " + err.message);
     } finally {
       setIsSavingLive(false);
+    }
+  };
+
+  const handleOpenAddLiveModal = async () => {
+    setIsAddLiveModalOpen(true);
+    if (searchedLives.length === 0) {
+      await fetchYouTubeLivesSearch();
+    }
+  };
+
+  const fetchYouTubeLivesSearch = async (customQuery?: string) => {
+    setIsSearchingLives(true);
+    try {
+      const res = await fetch("/api/search-lives", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: customQuery || "rodeio festa do peao montarias em touro ao vivo" })
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.lives)) {
+        setSearchedLives(data.lives);
+        const liveNowIds = data.lives.filter((l: any) => l.isLive).map((l: any) => l.videoId);
+        setSelectedLiveVideoIds(liveNowIds);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar lives do YouTube:", err);
+    } finally {
+      setIsSearchingLives(false);
+    }
+  };
+
+  const handleAddCustomLiveUrl = async () => {
+    if (!customLiveUrlInput.trim()) return alert("Digite ou cole a URL do vídeo do YouTube.");
+    setIsAddingCustomUrl(true);
+    try {
+      const res = await fetch("/api/search-lives", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customUrl: customLiveUrlInput.trim() })
+      });
+      const data = await res.json();
+      if (data.success && data.customVideo) {
+        const newVid = data.customVideo;
+        setSearchedLives(prev => {
+          const exists = prev.some(v => v.videoId === newVid.videoId);
+          if (exists) return prev.map(v => v.videoId === newVid.videoId ? newVid : v);
+          return [newVid, ...prev];
+        });
+        setSelectedLiveVideoIds(prev => Array.from(new Set([...prev, newVid.videoId])));
+        setCustomLiveUrlInput('');
+      } else {
+        alert(data.error || "Não foi possível carregar a live com esta URL.");
+      }
+    } catch (err: any) {
+      alert("Erro ao processar URL: " + err.message);
+    } finally {
+      setIsAddingCustomUrl(false);
+    }
+  };
+
+  const toggleSelectLiveVideo = (videoId: string) => {
+    setSelectedLiveVideoIds(prev => {
+      if (prev.includes(videoId)) {
+        return prev.filter(id => id !== videoId);
+      } else {
+        return [...prev, videoId];
+      }
+    });
+  };
+
+  const handlePublishSelectedLives = async () => {
+    if (selectedLiveVideoIds.length === 0) {
+      return alert("Selecione pelo menos uma live para publicar no portal.");
+    }
+    setIsPublishingSelectedLives(true);
+    try {
+      const livesToSave = searchedLives.filter(l => selectedLiveVideoIds.includes(l.videoId));
+      let count = 0;
+      for (const liveItem of livesToSave) {
+        const { error } = await supabase.from("transmissoes_aovivo").insert({
+          titulo: liveItem.titulo,
+          link: liveItem.link,
+          capa_url: liveItem.thumbnail || `https://img.youtube.com/vi/${liveItem.videoId}/maxresdefault.jpg`,
+          status: 'ativa',
+          created_at: new Date().toISOString()
+        });
+        if (!error) count++;
+      }
+      alert(`🎉 ${count} live(s) publicada(s) com sucesso no Portal!`);
+      setIsAddLiveModalOpen(false);
+      fetchLives();
+    } catch (err: any) {
+      alert("Erro ao publicar lives: " + err.message);
+    } finally {
+      setIsPublishingSelectedLives(false);
     }
   };
 
@@ -3943,10 +4046,10 @@ export default function AdminDashboard() {
                 <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-2">Gerencie as lives que aparecem no portal do usuário</p>
               </div>
               <button
-                onClick={() => setIsAddLiveModalOpen(true)}
-                className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+                onClick={handleOpenAddLiveModal}
+                className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center gap-2"
               >
-                Adicionar Live
+                + Adicionar Live
               </button>
             </header>
 
@@ -4461,90 +4564,153 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Modal Adicionar Live */}
+      {/* Modal Adicionar Live com Busca Automática e Seleção Múltipla */}
       {isAddLiveModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
-          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
-            <button className="absolute top-6 right-6 md:top-8 md:right-8 text-white/20 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-full p-2 font-bold text-xl" onClick={() => setIsAddLiveModalOpen(false)}>×</button>
-            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">Nova Transmissão ao Vivo</h2>
-            <form onSubmit={handleSaveLive} className="space-y-6">
-              <InputGroup label="Título da Live" value={liveTitle} onChange={setLiveTitle} placeholder="Ex: Rodeio de Barretos - Ao Vivo" />
-              <InputGroup label="Link da Live (YouTube)" value={liveLink} onChange={setLiveLink} placeholder="Ex: https://www.youtube.com/watch?v=..." />
-              
-              {/* Weather Fields */}
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <InputGroup 
-                    label="Cidade do Evento" 
-                    value={liveCidade} 
-                    onChange={setLiveCidade} 
-                    placeholder="Ex: Barretos - SP" 
-                    required={false} 
-                  />
-                </div>
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-8 rounded-[2rem] max-w-4xl w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto flex flex-col max-h-[90vh]">
+            <button className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors bg-white/10 rounded-full p-2 font-bold text-xl z-20" onClick={() => setIsAddLiveModalOpen(false)}>×</button>
+            
+            <div className="border-b border-white/10 pb-4 mb-4">
+              <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest block">Busca Automática de Lives</span>
+              <h2 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter text-white">Transmissões Ao Vivo</h2>
+              <p className="text-xs text-white/50 font-bold uppercase tracking-wider mt-1">O sistema busca automaticamente no YouTube por Rodeios, Festas do Peão e Montarias em Touro Ao Vivo. Selecione as que deseja publicar ou cole o link direto.</p>
+            </div>
+
+            {/* Custom Paste Bar */}
+            <div className="bg-zinc-900/90 border border-white/10 p-4 rounded-2xl mb-4 space-y-2">
+              <label className="text-[10px] font-black text-yellow-500 uppercase tracking-widest block">
+                🔗 Não encontrou a live que procurava? Cole o link do YouTube aqui:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={customLiveUrlInput}
+                  onChange={e => setCustomLiveUrlInput(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=... ou https://youtu.be/..."
+                  className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-yellow-500"
+                />
                 <button
                   type="button"
-                  onClick={handleFetchWeather}
-                  disabled={isFetchingWeather}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 px-4 py-4 rounded-2xl text-xs font-black h-[54px] mb-0"
+                  onClick={handleAddCustomLiveUrl}
+                  disabled={isAddingCustomUrl}
+                  className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all shrink-0"
                 >
-                  {isFetchingWeather ? "Buscando..." : "Buscar Clima"}
+                  {isAddingCustomUrl ? "Buscando..." : "+ Adicionar Link"}
                 </button>
               </div>
+            </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <InputGroup 
-                  label="Temp." 
-                  value={liveTemperatura} 
-                  onChange={setLiveTemperatura} 
-                  placeholder="Ex: 22°C" 
-                  required={false} 
-                />
-                <InputGroup 
-                  label="Chuva" 
-                  value={livePrevisaoChuva} 
-                  onChange={setLivePrevisaoChuva} 
-                  placeholder="Ex: 10%" 
-                  required={false} 
-                />
-                <InputGroup 
-                  label="Clima" 
-                  value={liveClima} 
-                  onChange={setLiveClima} 
-                  placeholder="Ex: Ensolarado" 
-                  required={false} 
-                />
-              </div>
+            {/* Live Search Results Header & Refresh */}
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-black uppercase tracking-widest text-white/70">
+                📺 Lives Encontradas ({searchedLives.length}):
+              </h4>
+              <button
+                type="button"
+                onClick={() => fetchYouTubeLivesSearch()}
+                disabled={isSearchingLives}
+                className="text-[10px] font-black text-yellow-500 hover:text-yellow-400 uppercase tracking-wider flex items-center gap-1"
+              >
+                🔄 {isSearchingLives ? "Buscando..." : "Atualizar Busca"}
+              </button>
+            </div>
 
-              <div>
-                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">Imagem de Capa (Opcional)</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={e => handlePhotoUpload(e, (b64) => setLiveCapaUrl(b64))}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none text-xs text-white" 
-                />
-                <p className="text-[9px] text-white/30 mt-1 uppercase tracking-wider">Se não enviar uma imagem, o sistema puxará automaticamente a capa do vídeo do YouTube.</p>
-              </div>
-
-              {liveCapaUrl && (
-                <div className="mt-4 rounded-xl overflow-hidden border border-white/10 h-32 w-full">
-                  <img src={liveCapaUrl} alt="Preview" className="w-full h-full object-cover" />
+            {/* Results Grid / List */}
+            <div className="overflow-y-auto flex-1 pr-1 space-y-3 scroll-custom min-h-[250px]">
+              {isSearchingLives ? (
+                <div className="flex flex-col items-center justify-center py-16 space-y-3">
+                  <div className="w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs font-bold text-white/50 uppercase tracking-wider">Buscando transmissões ao vivo de rodeio no YouTube...</p>
+                </div>
+              ) : searchedLives.length === 0 ? (
+                <div className="p-12 text-center text-white/40 italic font-bold text-sm bg-zinc-950 rounded-2xl border border-white/5">
+                  Nenhuma live foi encontrada automaticamente no momento. Cole o link do YouTube na caixa acima para adicionar manualmente!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {searchedLives.map((item) => {
+                    const isSelected = selectedLiveVideoIds.includes(item.videoId);
+                    return (
+                      <div
+                        key={item.videoId}
+                        onClick={() => toggleSelectLiveVideo(item.videoId)}
+                        className={`group cursor-pointer p-3 rounded-2xl border transition-all flex gap-3 relative ${
+                          isSelected
+                            ? "bg-yellow-500/10 border-yellow-500 shadow-lg shadow-yellow-500/10"
+                            : "bg-zinc-950 border-white/10 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="w-36 h-24 rounded-xl overflow-hidden bg-black shrink-0 relative">
+                          <img src={item.thumbnail} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          {item.isLive && (
+                            <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest animate-pulse shadow">
+                              🔴 AO VIVO
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <h5 className="text-xs font-black uppercase text-white line-clamp-2 leading-snug group-hover:text-yellow-500 transition-colors">
+                                {item.titulo}
+                              </h5>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {}}
+                                className="w-5 h-5 accent-yellow-500 rounded shrink-0 cursor-pointer"
+                              />
+                            </div>
+                            <p className="text-[10px] font-bold text-white/40 uppercase mt-1 truncate">
+                              📺 {item.channel || "Canal YouTube"}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
+                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-yellow-400' : 'text-white/30'}`}>
+                              {isSelected ? "✓ Selecionada" : "+ Clique para selecionar"}
+                            </span>
+                            <a
+                              href={item.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="text-[9px] font-bold text-white/50 hover:text-white underline"
+                            >
+                              Assistir ↗
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              
-              <button 
-                type="submit" 
-                disabled={isSavingLive}
-                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-2"
-              >
-                {isSavingLive ? (
-                  <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> Salvando...</>
-                ) : (
-                  "Criar Transmissão"
-                )}
-              </button>
-            </form>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between mt-4">
+              <span className="text-xs font-black uppercase text-white/70 tracking-wider">
+                {selectedLiveVideoIds.length} live(s) selecionada(s)
+              </span>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddLiveModalOpen(false)}
+                  className="px-6 py-3.5 rounded-xl bg-zinc-900 border border-white/10 text-white/70 hover:text-white text-xs font-black uppercase tracking-wider transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePublishSelectedLives}
+                  disabled={isPublishingSelectedLives || selectedLiveVideoIds.length === 0}
+                  className="bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black px-8 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center gap-2"
+                >
+                  {isPublishingSelectedLives ? "Publicando..." : `🚀 Publicar (${selectedLiveVideoIds.length}) Lives no Portal`}
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
