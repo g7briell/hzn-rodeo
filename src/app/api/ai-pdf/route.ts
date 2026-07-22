@@ -39,10 +39,12 @@ Se o usuário pedir para gerar a lista de montarias ou sorteio, e o PDF tiver os
     "competidor_nome": "NOME DO COMPETIDOR EM MAIÚSCULAS",
     "touro_nome": "NOME DO TOURO EM MAIÚSCULAS (se não tiver, deixe null)",
     "cia_nome": "NOME DA CIA EM MAIÚSCULAS (se não tiver, deixe null)",
+    "lado": "C" | "E" | null,
     "dia": "DIA 1"
   }
 ]
 E mude "tipo_de_dados" para "montarias".
+ATENÇÃO PARA A COLUNA LADO (L): Na tabela do PDF existe a coluna marcada como 'L' (posicionada entre a Companhia e o Tempo). Se constar 'C', o lado é 'C' (Lado Certo). Se constar 'E', o lado é 'E' (Lado Errado).
 
 REGRA PARA AÇÕES DE CHAT (LANÇAR NOTAS):
 Se o usuário pedir para "pegar um boi" ou "dar nota" ou "cadastrar nota" (mesmo que ele não especifique o boi exato, ou se houver vários, escolha o primeiro ou peça para ele especificar):
@@ -54,7 +56,8 @@ Se o usuário pedir para "pegar um boi" ou "dar nota" ou "cadastrar nota" (mesmo
 "dados": {
   "competidor_nome": "NOME DO COMPETIDOR ASSOCIADO AO TOURO NO PDF (busque no texto do PDF qual competidor monta esse touro para preencher aqui)",
   "touro_nome": "NOME DO TOURO EM MAIÚSCULAS",
-  "cia_nome": "NOME DA CIA EM MAIÚSCULAS"
+  "cia_nome": "NOME DA CIA EM MAIÚSCULAS",
+  "lado": "C" | "E" | null
 }
 ATENÇÃO CRÍTICA: Se o usuário pedir para dar nota ou abrir o popup de notas para um touro específico, você DEVE buscar no texto do PDF enviado qual competidor está escalado para montar este touro e preencher o "competidor_nome" automaticamente com o nome dele. Nunca retorne "tipo_de_dados": "montarias" se o objetivo for abrir o pop-up de notas! E nunca retorne um array (lista) em "dados" para o acao_tipo "abrir_dar_nota", deve ser um ÚNICO objeto com as chaves acima. Se houver vários bois que combinam com o pedido, pegue apenas o primeiro. O sistema abrirá automaticamente o pop-up de dar notas para o usuário preencher.
 

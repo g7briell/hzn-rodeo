@@ -227,6 +227,13 @@ function renderPdfPreviewTable() {
                 <input type="text" class="bg-slate-900 border border-slate-700 rounded p-1 w-full text-white text-xs font-bold uppercase" value="${item.cia}" data-index="${index}" data-field="cia">
             </td>
             <td class="px-4 py-2 border-b border-slate-800">
+                <select class="bg-slate-900 border border-slate-700 rounded p-1 w-full text-white text-xs font-bold uppercase" data-index="${index}" data-field="lado">
+                    <option value="">--</option>
+                    <option value="C" ${item.lado === 'C' ? 'selected' : ''}>C (Certo)</option>
+                    <option value="E" ${item.lado === 'E' ? 'selected' : ''}>E (Errado)</option>
+                </select>
+            </td>
+            <td class="px-4 py-2 border-b border-slate-800">
                 <select class="bg-slate-900 border border-slate-700 rounded p-1 w-full text-white text-xs font-bold uppercase" data-index="${index}" data-field="status">
                     <option value="ativa" ${item.status === 'ativa' ? 'selected' : ''}>Válida</option>
                     <option value="queda" ${item.status === 'queda' ? 'selected' : ''}>Queda</option>
@@ -302,7 +309,7 @@ if (btnSaveEvent) {
             }
         });
 
-        // 2. Populate targetEvent.boiadas (CIAs & Bulls)
+        // 2. Populate targetEvent.boiadas (CIAs & Bulls & Lados)
         targetEvent.boiadas = targetEvent.boiadas || [];
         const ciasMap = new Map();
 
@@ -310,8 +317,9 @@ if (btnSaveEvent) {
             if (item.touro && item.touro.trim()) {
                 const cia = (item.cia || 'CIA OUTRAS').trim().toUpperCase();
                 const touro = item.touro.trim().toUpperCase();
-                if (!ciasMap.has(cia)) ciasMap.set(cia, new Set());
-                ciasMap.get(cia).add(touro);
+                const lado = (item.lado || '').trim().toUpperCase();
+                if (!ciasMap.has(cia)) ciasMap.set(cia, new Map());
+                ciasMap.get(cia).set(touro, lado);
             }
         });
 
@@ -319,28 +327,31 @@ if (btnSaveEvent) {
             pdfParsedData.detectedTouros.forEach(t => {
                 const cia = (t.cia || 'CIA OUTRAS').trim().toUpperCase();
                 const touro = t.nome.trim().toUpperCase();
-                if (!ciasMap.has(cia)) ciasMap.set(cia, new Set());
-                ciasMap.get(cia).add(touro);
+                const lado = (t.lado || '').trim().toUpperCase();
+                if (!ciasMap.has(cia)) ciasMap.set(cia, new Map());
+                ciasMap.get(cia).set(touro, lado);
             });
         }
 
-        ciasMap.forEach((tourosSet, ciaNome) => {
+        ciasMap.forEach((tourosMap, ciaNome) => {
             let existingCia = targetEvent.boiadas.find(b => b.nome.toUpperCase() === ciaNome);
             if (!existingCia) {
-                existingCia = { nome: ciaNome, touros: [] };
+                existingCia = { nome: ciaNome, touros: [], lados: {} };
                 targetEvent.boiadas.push(existingCia);
             }
-            tourosSet.forEach(t => {
+            existingCia.lados = existingCia.lados || {};
+            tourosMap.forEach((lado, t) => {
                 if (!existingCia.touros.some(existingT => existingT.toUpperCase() === t)) {
                     existingCia.touros.push(t);
                 }
+                if (lado) existingCia.lados[t] = lado;
             });
         });
 
         // 3. Populate targetEvent.sorteios for cleanDay
         targetEvent.sorteios = targetEvent.sorteios || [];
         const ridersList = pdfParsedData.items.map(i => ({ nome: i.peao, cidade: i.cidade || '' }));
-        const bullsList = pdfParsedData.items.map(i => ({ nome: i.touro, cia: i.cia }));
+        const bullsList = pdfParsedData.items.map(i => ({ nome: i.touro, cia: i.cia, lado: i.lado || '' }));
         const assignmentsMap = {};
         pdfParsedData.items.forEach((_, idx) => {
             assignmentsMap[idx] = idx;
@@ -382,6 +393,7 @@ if (btnSaveEvent) {
                 touroNome: item.touro,
                 cia: item.cia,
                 ciaNome: item.cia,
+                lado: item.lado || '',
                 dia: cleanDay,
                 status: 'ativa',
                 tempo: itemTempo,
@@ -558,6 +570,7 @@ Retorne APENAS um objeto JSON com essa estrutura idêntica (sem blocos markdown 
       "cidade": "MIGUELOPOLIS-SP",
       "touro": "JAGUNÇO",
       "cia": "OR.2B.BULLS",
+      "lado": "C",
       "tempo": 8.0,
       "j1_peao": 22.0,
       "j1_touro": 21.5,
@@ -573,6 +586,7 @@ Retorne APENAS um objeto JSON com essa estrutura idêntica (sem blocos markdown 
       "cidade": "CASTILHO-SP",
       "touro": "AFRICANO JR",
       "cia": "ESTRADEIRO",
+      "lado": "E",
       "tempo": 6.97,
       "j1_peao": 0.0,
       "j1_touro": 22.0,
@@ -588,12 +602,14 @@ Retorne APENAS um objeto JSON com essa estrutura idêntica (sem blocos markdown 
     {
       "peao": "FELIPE DIAS REIS",
       "touro": "PARANGOLE",
-      "cia": "OR.2B.BULLS"
+      "cia": "OR.2B.BULLS",
+      "lado": "C"
     }
   ]
 }
 
 REGRAS RÍGIDAS DE EXTRAÇÃO:
+- "lado": OBRIGATÓRIO! Na tabela do PDF existe uma coluna marcada como 'L' (localizada entre a Companhia e o Tempo). Se estiver preenchida com 'C', o lado é 'C' (Lado Certo). Se estiver preenchida com 'E', o lado é 'E' (Lado Errado). Preencha a propriedade "lado": "C" ou "E" exatamente como informado na coluna L.
 - "tempo": se houver coluna de tempo no PDF, extraia o número exato (ex: 8,00 -> 8.0, 6,97 -> 6.97, 5,08 -> 5.08, 3,28 -> 3.28, 0,00 -> 0.0). Se não houver coluna de tempo no PDF (PDF apenas de Sorteio), deixe 8.0.
 - "status":
     * Se o tempo for 8.0 e houver nota de peão > 0, "status" = "ativa".
@@ -601,7 +617,7 @@ REGRAS RÍGIDAS DE EXTRAÇÃO:
     * Se o total for "Clock" ou tempo 0, "status" = "queda".
 - Extraia os valores individuais dos juízes (j1_peao, j1_touro, j2_peao, j2_touro) e os totais se presentes.
 - Todos os nomes devem estar limpos e em MAIÚSCULAS.
-- Ignore números de ordem (1, 2, 28) e letras de lado ('E', 'C').`;
+- Ignore APENAS o número de ordem sequencial do competidor (ex: 1, 2, 28 na primeira coluna). NÃO IGNORE a coluna 'L' (Lado 'C' ou 'E')!`;
 
     const modelsToTry = [
         "gemini-2.5-flash",
@@ -653,15 +669,17 @@ function convertGeminiResultToParsedData(aiResult, rawText) {
             const touro = (m.touro || '').trim().toUpperCase();
             const cia = (m.cia || 'CIA OUTRAS').trim().toUpperCase();
             const cidade = (m.cidade || '').trim().toUpperCase();
+            const rawLado = (m.lado || '').trim().toUpperCase();
+            const lado = (rawLado === 'C' || rawLado === 'E') ? rawLado : '';
 
             if (peao && peao.length >= 3) {
                 peoesSet.add(peao);
                 if (touro && touro.length >= 2) {
                     if (cia && cia.length >= 2) {
                         ciasSet.add(cia);
-                        tourosMap.set(touro, cia);
+                        tourosMap.set(touro, { cia, lado });
                     } else if (!tourosMap.has(touro)) {
-                        tourosMap.set(touro, 'CIA OUTRAS');
+                        tourosMap.set(touro, { cia: 'CIA OUTRAS', lado });
                     }
 
                     let tempo = parseFloat(m.tempo);
@@ -692,7 +710,8 @@ function convertGeminiResultToParsedData(aiResult, rawText) {
                         peao,
                         cidade,
                         touro,
-                        cia: cia || tourosMap.get(touro) || 'CIA OUTRAS',
+                        cia: cia || (tourosMap.get(touro) ? tourosMap.get(touro).cia : 'CIA OUTRAS'),
+                        lado,
                         status,
                         tempo,
                         j1_peao,
@@ -712,19 +731,21 @@ function convertGeminiResultToParsedData(aiResult, rawText) {
         aiResult.reservas.forEach(r => {
             const touro = (r.touro || '').trim().toUpperCase();
             const cia = (r.cia || 'CIA OUTRAS').trim().toUpperCase();
+            const rawLado = (r.lado || '').trim().toUpperCase();
+            const lado = (rawLado === 'C' || rawLado === 'E') ? rawLado : '';
             if (touro && touro.length >= 2) {
                 if (cia && cia.length >= 2) {
                     ciasSet.add(cia);
-                    tourosMap.set(touro, cia);
+                    tourosMap.set(touro, { cia, lado });
                 } else if (!tourosMap.has(touro)) {
-                    tourosMap.set(touro, 'CIA OUTRAS');
+                    tourosMap.set(touro, { cia: 'CIA OUTRAS', lado });
                 }
             }
         });
     }
 
     const detectedTouros = [];
-    tourosMap.forEach((cia, nome) => detectedTouros.push({ nome, cia }));
+    tourosMap.forEach((info, nome) => detectedTouros.push({ nome, cia: info.cia, lado: info.lado }));
 
     let suggestedDay = 'DIA 1';
     const fullUpper = rawText.toUpperCase();
