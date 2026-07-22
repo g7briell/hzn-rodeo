@@ -751,25 +751,35 @@ function App() {
     const urls = currentLives.map(l => l.link_live || l.link).filter(Boolean);
     if (urls.length === 0) return;
 
-    try {
-      const res = await fetch("/api/youtube-viewers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoUrls: urls })
-      });
-      const data = await res.json();
-      if (data.success && data.viewersMap) {
-        const newMap: {[key: number]: number} = {};
-        currentLives.forEach(l => {
-          const urlStr = l.link_live || l.link;
-          if (urlStr && data.viewersMap[urlStr] !== undefined) {
-            newMap[l.id] = data.viewersMap[urlStr];
-          }
+    const endpoints = [
+      "/api/youtube-viewers",
+      "https://rodeoapp.pro/api/youtube-viewers",
+      "https://admin.rodeoapp.pro/api/youtube-viewers"
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoUrls: urls })
         });
-        setYtOnlineCounts(prev => ({ ...prev, ...newMap }));
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data.success && data.viewersMap) {
+          const newMap: {[key: number]: number} = {};
+          currentLives.forEach(l => {
+            const urlStr = l.link_live || l.link;
+            if (urlStr && data.viewersMap[urlStr] !== undefined) {
+              newMap[l.id] = data.viewersMap[urlStr];
+            }
+          });
+          setYtOnlineCounts(prev => ({ ...prev, ...newMap }));
+          break;
+        }
+      } catch (err) {
+        console.warn(`Erro ao buscar espectadores no endpoint ${endpoint}:`, err);
       }
-    } catch (err) {
-      console.warn("Erro ao buscar espectadores do YouTube:", err);
     }
   };
 
