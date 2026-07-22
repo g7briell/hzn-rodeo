@@ -158,6 +158,7 @@ function App() {
   const [liveChatMessages, setLiveChatMessages] = useState<any[]>([]);
   const [liveChatInput, setLiveChatInput] = useState('');
   const [liveOnlineCounts, setLiveOnlineCounts] = useState<{[key: number]: number}>({});
+  const [ytOnlineCounts, setYtOnlineCounts] = useState<{[key: number]: number}>({});
   const [isChatLocked, setIsChatLocked] = useState(false);
   const [isModerator, setIsModerator] = useState(false);
   const [liveAdmins, setLiveAdmins] = useState<string[]>([]);
@@ -745,15 +746,54 @@ function App() {
     }
   };
 
+  const fetchYouTubeViewersCount = async (currentLives: any[]) => {
+    if (!currentLives || currentLives.length === 0) return;
+    const urls = currentLives.map(l => l.link_live || l.link).filter(Boolean);
+    if (urls.length === 0) return;
+
+    try {
+      const res = await fetch("/api/youtube-viewers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrls: urls })
+      });
+      const data = await res.json();
+      if (data.success && data.viewersMap) {
+        const newMap: {[key: number]: number} = {};
+        currentLives.forEach(l => {
+          const urlStr = l.link_live || l.link;
+          if (urlStr && data.viewersMap[urlStr] !== undefined) {
+            newMap[l.id] = data.viewersMap[urlStr];
+          }
+        });
+        setYtOnlineCounts(prev => ({ ...prev, ...newMap }));
+      }
+    } catch (err) {
+      console.warn("Erro ao buscar espectadores do YouTube:", err);
+    }
+  };
+
   const fetchLives = async () => {
     try {
       const { data, error } = await supabase.from('transmissoes_aovivo').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      if (data) setLives(data);
+      if (data) {
+        setLives(data);
+        fetchYouTubeViewersCount(data);
+      }
     } catch (err) {
       console.error('Erro ao buscar transmissões ao vivo:', err);
     }
   };
+
+  useEffect(() => {
+    if (lives.length > 0) {
+      const interval = setInterval(() => {
+        fetchYouTubeViewersCount(lives);
+      }, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [lives]);
 
   const handleGenerateNews = async () => {
     if (!isAdmin) return alert("Apenas o Administrador do portal pode gerar notícias com IA.");
@@ -7029,7 +7069,9 @@ Instruções importantes:
                     ) : (
                       <div className="aovivo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
                         {lives.map(l => {
-                          const onlineCount = liveOnlineCounts[l.id] || 0;
+                          const portalCount = liveOnlineCounts[l.id] || 0;
+                          const ytCount = ytOnlineCounts[l.id] || 0;
+                          const totalCount = portalCount + ytCount;
                           return (
                             <div 
                               key={l.id} 
@@ -7059,7 +7101,7 @@ Instruções importantes:
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                   <span style={{ display: 'inline-block', width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%' }}></span>
                                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)' }}>
-                                    {onlineCount} {onlineCount === 1 ? 'espectador' : 'espectadores'} online
+                                    {totalCount} {totalCount === 1 ? 'espectador' : 'espectadores'} online
                                   </span>
                                 </div>
                               </div>
@@ -7342,7 +7384,7 @@ Instruções importantes:
                         <div>
                           <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#eab308' }}>Chat Ao Vivo</h4>
                           <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>
-                            {liveOnlineCounts[selectedLive.id] || 0} online
+                            {(liveOnlineCounts[selectedLive.id] || 0) + (ytOnlineCounts[selectedLive.id] || 0)} espectadores online
                           </span>
                         </div>
                         {isModerator && (
