@@ -814,11 +814,7 @@ function App() {
 
   const getSponsorImage = (s: any) => {
     if (!s) return null;
-    const banner720x90 = 
-      s.detalhes?.portal_noticias?.fino_redacao?.logo_url || 
-      s.detalhes?.banner_url || 
-      s.detalhes?.portal_noticias?.meio_materia?.logo_url || 
-      s.detalhes?.fino_ia?.logo_url;
+    const banner720x90 = s.detalhes?.portal_noticias?.fino_redacao?.logo_url;
     return banner720x90 || null;
   };
 
@@ -869,6 +865,16 @@ function App() {
             maxHeight: '120px',
             objectFit: 'contain',
             display: 'block'
+          }}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              const ratio = img.naturalWidth / img.naturalHeight;
+              if (ratio < 2.5) {
+                const anchor = img.closest('a');
+                if (anchor) anchor.style.display = 'none';
+              }
+            }
           }}
         />
       </a>
