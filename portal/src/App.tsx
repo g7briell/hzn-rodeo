@@ -796,6 +796,64 @@ function App() {
     }
   };
 
+  const renderSponsorAdBanner = (slotKey: string) => {
+    if (!patrocinios || patrocinios.length === 0) return null;
+
+    const activeSponsors = patrocinios.filter((p: any) => {
+      if (p.status && p.status !== 'ativo') return false;
+      const logo = p.logo_url || p.detalhes?.logo_url || p.detalhes?.banner_url || p.detalhes?.portal_noticias?.fino_redacao?.logo_url;
+      return !!logo;
+    });
+
+    if (activeSponsors.length === 0) return null;
+
+    const charSum = slotKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const sponsor = activeSponsors[charSum % activeSponsors.length];
+    const logoUrl = sponsor.logo_url || sponsor.detalhes?.logo_url || sponsor.detalhes?.banner_url || sponsor.detalhes?.portal_noticias?.fino_redacao?.logo_url;
+
+    return (
+      <a
+        href={sponsor.click_url || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          padding: '0.75rem 1.25rem',
+          background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.95) 100%)',
+          border: '1px solid rgba(234, 179, 8, 0.3)',
+          borderRadius: '20px',
+          textDecoration: 'none',
+          marginBottom: '0.75rem',
+          marginTop: '0.25rem',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          transition: 'transform 0.2s ease, border-color 0.2s ease'
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+            <span style={{ width: '6px', height: '6px', background: '#eab308', borderRadius: '50%', display: 'inline-block' }}></span>
+            <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', color: '#eab308', letterSpacing: '0.12em' }}>
+              Patrocinador Oficial
+            </span>
+          </div>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+            {sponsor.empresa || sponsor.nome || 'Parceiro RodeoApp'}
+          </span>
+        </div>
+        {logoUrl && (
+          <img
+            src={logoUrl}
+            alt={sponsor.empresa || 'Patrocinador'}
+            style={{ maxHeight: '38px', maxWidth: '120px', objectFit: 'contain' }}
+          />
+        )}
+      </a>
+    );
+  };
+
   useEffect(() => {
     if (lives.length > 0) {
       const interval = setInterval(() => {
@@ -6286,37 +6344,73 @@ Instruções importantes:
         <main className="dashboard-main">
           {/* Header */}
           {!selectedLive && (
-            <header className="dashboard-header">
-            <div className="header-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input 
-                type="text" 
-                placeholder={
-                  currentTab === 'explore' ? "Buscar por eventos ou locais..." :
-                  currentTab === 'feed' ? "Buscar notícias..." :
-                  currentTab === 'boiadas' ? "Buscar por boiada ou nome de touro..." :
-                  "Buscar..."
-                }
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={currentTab === 'profile'}
-              />
-            </div>
+            <header className="dashboard-header" style={isMobile ? { padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } : {}}>
+              {isMobile ? (
+                <div 
+                  onClick={() => { setCurrentTab('home'); setSearchTerm(''); }}
+                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <span style={{ fontSize: '1.25rem', fontWeight: 900, fontStyle: 'italic', color: '#fff', letterSpacing: '-0.03em' }}>
+                    RODEO<span style={{ color: '#eab308' }}>APP.PRO</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="header-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input 
+                    type="text" 
+                    placeholder={
+                      currentTab === 'explore' ? "Buscar por eventos ou locais..." :
+                      currentTab === 'feed' ? "Buscar notícias..." :
+                      currentTab === 'boiadas' ? "Buscar por boiada ou nome de touro..." :
+                      "Buscar..."
+                    }
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    disabled={currentTab === 'profile'}
+                  />
+                </div>
+              )}
             
-            <div className="header-user-info">
-              <span className="header-user-name" onClick={() => setCurrentTab('profile')}>
-                {userProfile?.nome || user?.email}
-              </span>
-              <img 
-                src={userFoto || "/novacontasfoto.jpg"} 
-                alt="Foto de Perfil" 
-                className={`header-avatar ${isAdmin ? 'admin-pulsing-avatar-small' : userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar-small' : ''}`}
-                onClick={() => setCurrentTab('profile')}
-              />
-            </div>
-          </header>
+              <div className="header-user-info" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {!isMobile && (
+                  <span className="header-user-name" onClick={() => setCurrentTab('profile')} style={{ cursor: 'pointer' }}>
+                    {userProfile?.nome || user?.email}
+                  </span>
+                )}
+                <img 
+                  src={userFoto || "/novacontasfoto.jpg"} 
+                  alt="Foto de Perfil" 
+                  className={`header-avatar ${isAdmin ? 'admin-pulsing-avatar-small' : userProfile?.veio_do_app_desktop ? 'rodeo-pulsing-avatar-small' : ''}`}
+                  onClick={() => setCurrentTab('profile')}
+                  style={{ cursor: 'pointer' }}
+                  title="Meu Perfil"
+                />
+                {user && (
+                  <button 
+                    onClick={() => setIsLogoutConfirmOpen(true)}
+                    style={{ 
+                      background: 'rgba(239, 68, 68, 0.15)', 
+                      border: '1px solid rgba(239, 68, 68, 0.3)', 
+                      color: '#ef4444', 
+                      padding: isMobile ? '6px 10px' : '6px 12px', 
+                      borderRadius: '12px', 
+                      fontSize: '11px', 
+                      fontWeight: 900, 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Sair da Conta"
+                  >
+                    🚪 {isMobile ? '' : 'Sair'}
+                  </button>
+                )}
+              </div>
+            </header>
           )}
 
           {/* Dynamic Tabs Content */}
@@ -6998,6 +7092,24 @@ Instruções importantes:
                     >
                       🔗 Copiar Link Público
                     </button>
+
+                    <button 
+                      className="photo-upload-btn" 
+                      style={{ 
+                        marginTop: '0.75rem', 
+                        width: '100%', 
+                        fontSize: '0.85rem', 
+                        padding: '0.75rem 1rem', 
+                        background: 'rgba(239, 68, 68, 0.15)', 
+                        color: '#ef4444', 
+                        border: '1px solid rgba(239, 68, 68, 0.3)', 
+                        fontWeight: 900,
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setIsLogoutConfirmOpen(true)}
+                    >
+                      🚪 Desconectar da Conta
+                    </button>
                   </div>
 
                   {/* Right Column: Bio & Details */}
@@ -7128,16 +7240,21 @@ Instruções importantes:
                     {/* Left: Video Player */}
                     <div style={{ flex: isMobile ? 1.5 : 3.2, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       {isMobile && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <button 
-                            onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                          </button>
-                          <img src="/header_logo.png" alt="RodeoApp" style={{ height: '30px', objectFit: 'contain' }} />
-                          <div style={{ width: '40px' }}></div>
-                        </div>
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                            <button 
+                              onClick={() => { setSelectedLive(null); setLiveChatMessages([]); }}
+                              style={{ background: 'transparent', border: 'none', color: '#fff', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            </button>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 900, fontStyle: 'italic', color: '#fff', letterSpacing: '-0.03em' }}>
+                              RODEO<span style={{ color: '#eab308' }}>APP.PRO</span>
+                            </span>
+                            <div style={{ width: '40px' }}></div>
+                          </div>
+                          {renderSponsorAdBanner('mobile_top')}
+                        </>
                       )}
                       
                       {/* Video Embed */}
@@ -7385,148 +7502,155 @@ Instruções importantes:
                         </div>
                       )}
                     </div>
- 
-                    {/* Right: Realtime Chat */}
-                    <div style={{ flex: isMobile ? 'none' : 1, minWidth: isMobile ? 'none' : '380px', display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '700px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
-                      
-                      {/* Chat Header */}
-                      <div style={{ padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem', background: '#0e0e0e', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#eab308' }}>Chat Ao Vivo</h4>
-                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>
-                            {(liveOnlineCounts[selectedLive.id] || 0) + (ytOnlineCounts[selectedLive.id] || 0)} espectadores online
-                          </span>
-                        </div>
-                        {isModerator && (
-                          <button 
-                            onClick={() => setIsModerationModalOpen(true)}
-                            style={{ 
-                              background: '#eab308', 
-                              border: 'none', 
-                              color: '#000', 
-                              padding: '8px 16px', 
-                              borderRadius: '12px', 
-                              fontSize: '10px', 
-                              fontWeight: 900, 
-                              textTransform: 'uppercase',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                          >
-                            🛡️ Moderação
-                          </button>
-                        )}
-                      </div>
+                    <div style={{ flex: isMobile ? 'none' : 1, minWidth: isMobile ? 'none' : '380px', display: 'flex', flexDirection: 'column' }}>
+                      {/* Top Sponsor Banner */}
+                      {isMobile ? renderSponsorAdBanner('mobile_middle') : renderSponsorAdBanner('desktop_chat_top')}
 
-                      {/* Chat Messages */}
-                      <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {liveChatMessages.length === 0 ? (
-                          <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 'bold' }}>
-                            Diga olá no chat! 👋
+                      {/* Chat Container */}
+                      <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '700px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
+                        
+                        {/* Chat Header */}
+                        <div style={{ padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem', background: '#0e0e0e', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', color: '#eab308' }}>Chat Ao Vivo</h4>
+                            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 'bold' }}>
+                              {(liveOnlineCounts[selectedLive.id] || 0) + (ytOnlineCounts[selectedLive.id] || 0)} espectadores online
+                            </span>
                           </div>
-                        ) : (
-                          liveChatMessages.map(m => {
-                            const isMsgAdmin = typeof m.email === 'string' && liveAdmins.includes(m.email.toLowerCase());
-                            return (
-                              <div key={m.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', opacity: m.is_deleted ? 0.6 : 1 }}>
-                                <img 
-                                  src={m.foto || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
-                                  alt={m.nome} 
-                                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: isMsgAdmin ? '2px solid #eab308' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} 
-                                  onClick={() => {
-                                    if (isModerator && m.email !== user?.email) {
-                                      if (window.confirm(`Moderar usuário ${m.nome} (${m.email})?`)) {
-                                        const action = window.prompt("Escolha a ação:\n1. Dar Timeout de 1 minuto\n2. Dar Timeout de 5 minutos\n3. Dar Timeout de 1 hora\n4. Banir permanentemente\nDigite o número da ação:");
-                                        if (action === '1') handleModerateUser(m.email, m.nome, 'timeout', 1);
-                                        else if (action === '2') handleModerateUser(m.email, m.nome, 'timeout', 5);
-                                        else if (action === '3') handleModerateUser(m.email, m.nome, 'timeout', 60);
-                                        else if (action === '4') handleModerateUser(m.email, m.nome, 'ban');
-                                      }
-                                    }
-                                  }}
-                                />
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2px' }}>
-                                    <span style={{ fontSize: '11px', fontWeight: 900, color: isMsgAdmin ? '#eab308' : 'rgba(255,255,255,0.8)' }}>
-                                      {m.nome} {isMsgAdmin && <span style={{ fontSize: '8px', background: '#eab308/10', color: '#eab308', padding: '1px 4px', borderRadius: '4px', marginLeft: '2px' }}>ADMIN</span>}
-                                    </span>
-                                    <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)' }}>
-                                      {m.created_at && !isNaN(new Date(m.created_at).getTime()) ? new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                                    </span>
-                                  </div>
-                                  <p style={{ margin: 0, fontSize: '13px', color: m.is_deleted ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)', fontStyle: m.is_deleted ? 'italic' : 'normal', wordBreak: 'break-word' }}>
-                                    {m.texto}
-                                  </p>
-                                </div>
-                                {isModerator && !m.is_deleted && (
-                                  <button 
-                                    onClick={() => handleDeleteChatMessage(m.id)}
-                                    style={{ background: 'transparent', border: 'none', color: 'rgba(239, 68, 68, 0.4)', cursor: 'pointer', fontSize: '12px', padding: '4px' }}
-                                    title="Apagar mensagem"
-                                  >
-                                    🗑️
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      {/* Chat Input */}
-                      <div style={{ padding: isMobile ? '1rem' : '1.25rem', background: '#0e0e0e', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                        {isUserBanned ? (
-                          <div style={{ textAlign: 'center', color: '#ef4444', fontSize: '12px', fontWeight: 'bold', padding: '8px' }}>
-                            🚫 Você está banido deste chat.
-                          </div>
-                        ) : userTimeoutUntil && new Date() < userTimeoutUntil ? (
-                          <div style={{ textAlign: 'center', color: '#f59e0b', fontSize: '11px', fontWeight: 'bold', padding: '8px' }}>
-                            ⏳ Chat bloqueado temporariamente por spam.
-                          </div>
-                        ) : isChatLocked && !isModerator ? (
-                          <div style={{ textAlign: 'center', color: '#f59e0b', fontSize: '11px', fontWeight: 'bold', padding: '8px' }}>
-                            🔒 Chat travado apenas para administradores.
-                          </div>
-                        ) : (
-                          <form onSubmit={handleSendChatMessage} style={{ display: 'flex', gap: '0.75rem' }}>
-                            <input 
-                              type="text" 
-                              value={liveChatInput}
-                              onChange={e => setLiveChatInput(e.target.value)}
-                              placeholder={isChatLocked ? "Chat travado para admins..." : "Envie uma mensagem..."}
-                              disabled={isChatLocked && !isModerator}
-                              style={{ 
-                                flex: 1, 
-                                background: 'rgba(255,255,255,0.03)', 
-                                border: '1px solid rgba(255,255,255,0.08)', 
-                                borderRadius: '16px', 
-                                padding: '10px 16px', 
-                                color: '#fff', 
-                                fontSize: '16px', 
-                                outline: 'none' 
-                              }} 
-                            />
+                          {isModerator && (
                             <button 
-                              type="submit"
+                              onClick={() => setIsModerationModalOpen(true)}
                               style={{ 
                                 background: '#eab308', 
                                 border: 'none', 
                                 color: '#000', 
-                                padding: '10px 20px', 
-                                borderRadius: '16px', 
-                                fontSize: '13px', 
+                                padding: '8px 16px', 
+                                borderRadius: '12px', 
+                                fontSize: '10px', 
                                 fontWeight: 900, 
-                                cursor: 'pointer' 
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
                               }}
                             >
-                              Enviar
+                              🛡️ Moderação
                             </button>
-                          </form>
-                        )}
+                          )}
+                        </div>
+
+                        {/* Chat Messages */}
+                        <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          {liveChatMessages.length === 0 ? (
+                            <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 'bold' }}>
+                              Diga olá no chat! 👋
+                            </div>
+                          ) : (
+                            liveChatMessages.map(m => {
+                              const isMsgAdmin = typeof m.email === 'string' && liveAdmins.includes(m.email.toLowerCase());
+                              return (
+                                <div key={m.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', opacity: m.is_deleted ? 0.6 : 1 }}>
+                                  <img 
+                                    src={m.foto || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
+                                    alt={m.nome} 
+                                    style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: isMsgAdmin ? '2px solid #eab308' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} 
+                                    onClick={() => {
+                                      if (isModerator && m.email !== user?.email) {
+                                        if (window.confirm(`Moderar usuário ${m.nome} (${m.email})?`)) {
+                                          const action = window.prompt("Escolha a ação:\n1. Dar Timeout de 1 minuto\n2. Dar Timeout de 5 minutos\n3. Dar Timeout de 1 hora\n4. Banir permanentemente\nDigite o número da ação:");
+                                          if (action === '1') handleModerateUser(m.email, m.nome, 'timeout', 1);
+                                          else if (action === '2') handleModerateUser(m.email, m.nome, 'timeout', 5);
+                                          else if (action === '3') handleModerateUser(m.email, m.nome, 'timeout', 60);
+                                          else if (action === '4') handleModerateUser(m.email, m.nome, 'ban');
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2px' }}>
+                                      <span style={{ fontSize: '11px', fontWeight: 900, color: isMsgAdmin ? '#eab308' : 'rgba(255,255,255,0.8)' }}>
+                                        {m.nome} {isMsgAdmin && <span style={{ fontSize: '8px', background: '#eab308/10', color: '#eab308', padding: '1px 4px', borderRadius: '4px', marginLeft: '2px' }}>ADMIN</span>}
+                                      </span>
+                                      <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)' }}>
+                                        {m.created_at && !isNaN(new Date(m.created_at).getTime()) ? new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                      </span>
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: '13px', color: m.is_deleted ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)', fontStyle: m.is_deleted ? 'italic' : 'normal', wordBreak: 'break-word' }}>
+                                      {m.texto}
+                                    </p>
+                                  </div>
+                                  {isModerator && !m.is_deleted && (
+                                    <button 
+                                      onClick={() => handleDeleteChatMessage(m.id)}
+                                      style={{ background: 'transparent', border: 'none', color: 'rgba(239, 68, 68, 0.4)', cursor: 'pointer', fontSize: '12px', padding: '4px' }}
+                                      title="Apagar mensagem"
+                                    >
+                                      🗑️
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Chat Input */}
+                        <div style={{ padding: isMobile ? '1rem' : '1.25rem', background: '#0e0e0e', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          {isUserBanned ? (
+                            <div style={{ textAlign: 'center', color: '#ef4444', fontSize: '12px', fontWeight: 'bold', padding: '8px' }}>
+                              🚫 Você está banido deste chat.
+                            </div>
+                          ) : userTimeoutUntil && new Date() < userTimeoutUntil ? (
+                            <div style={{ textAlign: 'center', color: '#f59e0b', fontSize: '11px', fontWeight: 'bold', padding: '8px' }}>
+                              ⏳ Chat bloqueado temporariamente por spam.
+                            </div>
+                          ) : isChatLocked && !isModerator ? (
+                            <div style={{ textAlign: 'center', color: '#f59e0b', fontSize: '11px', fontWeight: 'bold', padding: '8px' }}>
+                              🔒 Chat travado apenas para administradores.
+                            </div>
+                          ) : (
+                            <form onSubmit={handleSendChatMessage} style={{ display: 'flex', gap: '0.75rem' }}>
+                              <input 
+                                type="text" 
+                                value={liveChatInput}
+                                onChange={e => setLiveChatInput(e.target.value)}
+                                placeholder={isChatLocked ? "Chat travado para admins..." : "Envie uma mensagem..."}
+                                disabled={isChatLocked && !isModerator}
+                                style={{ 
+                                  flex: 1, 
+                                  background: 'rgba(255,255,255,0.03)', 
+                                  border: '1px solid rgba(255,255,255,0.08)', 
+                                  borderRadius: '16px', 
+                                  padding: '10px 16px', 
+                                  color: '#fff', 
+                                  fontSize: '16px', 
+                                  outline: 'none' 
+                                }} 
+                              />
+                              <button 
+                                type="submit"
+                                style={{ 
+                                  background: '#eab308', 
+                                  border: 'none', 
+                                  color: '#000', 
+                                  padding: '10px 20px', 
+                                  borderRadius: '16px', 
+                                  fontSize: '13px', 
+                                  fontWeight: 900, 
+                                  cursor: 'pointer' 
+                                }}
+                              >
+                                Enviar
+                              </button>
+                            </form>
+                          )}
+                        </div>
+
                       </div>
 
+                      {/* Bottom Sponsor Banner */}
+                      {!isMobile && renderSponsorAdBanner('desktop_chat_bottom')}
                     </div>
                   </div>
                 )}
