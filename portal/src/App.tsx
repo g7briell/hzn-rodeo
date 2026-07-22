@@ -814,13 +814,12 @@ function App() {
 
   const getSponsorImage = (s: any) => {
     if (!s) return null;
-    return s.detalhes?.banner_url || 
-           s.detalhes?.portal_noticias?.fino_redacao?.logo_url || 
-           s.detalhes?.portal_noticias?.meio_materia?.logo_url || 
-           s.detalhes?.fino_ia?.logo_url || 
-           s.detalhes?.logo_url || 
-           s.logo_url || 
-           null;
+    const banner720x90 = 
+      s.detalhes?.portal_noticias?.fino_redacao?.logo_url || 
+      s.detalhes?.banner_url || 
+      s.detalhes?.portal_noticias?.meio_materia?.logo_url || 
+      s.detalhes?.fino_ia?.logo_url;
+    return banner720x90 || null;
   };
 
   const renderSponsorAdBanner = (slotKey: string) => {
@@ -7527,8 +7526,8 @@ Instruções importantes:
                       )}
                     </div>
                     <div style={{ flex: isMobile ? 'none' : 1, minWidth: isMobile ? 'none' : '380px', display: 'flex', flexDirection: 'column' }}>
-                      {/* Top Sponsor Banner */}
-                      {isMobile ? renderSponsorAdBanner('mobile_middle') : renderSponsorAdBanner('desktop_chat_top')}
+                      {/* Middle Sponsor Banner ONLY for Mobile */}
+                      {isMobile && renderSponsorAdBanner('mobile_middle')}
 
                       {/* Chat Container */}
                       <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? '450px' : '700px', background: '#090909', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '32px', overflow: 'hidden', position: 'relative' }}>
