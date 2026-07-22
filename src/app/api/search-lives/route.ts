@@ -46,16 +46,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Search YouTube automatically for live streams
+    // 2. Search YouTube strictly for streams that are CURRENTLY LIVE NOW (&sp=CAMSAkAB)
     const searchQueries = [
       query || "rodeio ao vivo",
       "festa do peao ao vivo",
-      "montarias em touro ao vivo"
+      "montarias em touro ao vivo",
+      "laco comprido ao vivo",
+      "vaquejada ao vivo"
     ];
 
     const fetchSearchForQuery = async (queryStr: string) => {
       try {
-        const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`;
+        const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}&sp=CAMSAkAB`;
         const response = await fetch(url, {
           headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
@@ -78,18 +80,42 @@ export async function POST(req: NextRequest) {
               const title = v.title?.runs?.[0]?.text || v.title?.simpleText || "";
               const channel = v.ownerText?.runs?.[0]?.text || "";
               const thumbnail = `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`;
-              const isLive = v.badges?.some((b: any) => 
+
+              // Strict check: Only videos currently streaming live right now
+              const overlays = v.thumbnailOverlays || [];
+              const isLiveOverlay = overlays.some((o: any) => o.thumbnailOverlayTimeStatusRenderer?.style === "LIVE");
+              
+              const badges = v.badges || [];
+              const isLiveBadge = badges.some((b: any) => 
                 b.metadataBadgeRenderer?.style === "BADGE_STYLE_TYPE_LIVE_NOW" || 
-                (b.metadataBadgeRenderer?.label || "").toLowerCase().includes("ao vivo")
-              ) || v.thumbnailOverlays?.some((o: any) => o.thumbnailOverlayTimeStatusRenderer?.style === "LIVE") ||
-              title.toLowerCase().includes("ao vivo") || title.toLowerCase().includes("live");
+                (b.metadataBadgeRenderer?.label || "").toLowerCase().includes("ao vivo agora") ||
+                (b.metadataBadgeRenderer?.label || "").toLowerCase() === "ao vivo"
+              );
+
+              const viewText = (v.viewCountText?.runs?.[0]?.text || v.viewCountText?.simpleText || "").toLowerCase();
+              const isLiveViewText = viewText.includes("assistindo") || viewText.includes("watching");
+
+              const isCurrentlyLive = isLiveOverlay || isLiveBadge || isLiveViewText;
+
+              if (!isCurrentlyLive) return; // Filter out ended / recorded streams!
+
+              // Relevance check for rodeo / festa do peao / touros / vaquejada / laco
+              const lowerTitle = title.toLowerCase();
+              const lowerChannel = channel.toLowerCase();
+              const isRodeoRelated = 
+                lowerTitle.includes("rodeio") || lowerTitle.includes("rodeo") || lowerTitle.includes("peao") || lowerTitle.includes("peão") ||
+                lowerTitle.includes("touro") || lowerTitle.includes("laço") || lowerTitle.includes("laco") || lowerTitle.includes("vaquejada") ||
+                lowerChannel.includes("rodeo") || lowerChannel.includes("rozeta") || lowerChannel.includes("acr") || lowerChannel.includes("crp") ||
+                lowerChannel.includes("vaquejada") || lowerChannel.includes("laço") || lowerChannel.includes("laco") || lowerChannel.includes("festa");
+
+              if (!isRodeoRelated) return; // Filter out unrelated live streams!
 
               videos.push({
                 videoId: v.videoId,
                 titulo: title,
                 channel,
                 thumbnail,
-                isLive,
+                isLive: true,
                 link: `https://www.youtube.com/watch?v=${v.videoId}`
               });
             }
@@ -106,20 +132,17 @@ export async function POST(req: NextRequest) {
     const allVideos = resultsArray.flat();
 
     const map = new Set();
-    const uniqueVideos: any[] = [];
+    const uniqueLiveVideos: any[] = [];
     allVideos.forEach(v => {
       if (!map.has(v.videoId)) {
         map.add(v.videoId);
-        uniqueVideos.push(v);
+        uniqueLiveVideos.push(v);
       }
     });
 
-    // Sort so currently live streams appear first
-    uniqueVideos.sort((a, b) => (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0));
-
     return NextResponse.json({
       success: true,
-      lives: uniqueVideos
+      lives: uniqueLiveVideos
     });
   } catch (err: any) {
     console.error("Error in /api/search-lives:", err);
