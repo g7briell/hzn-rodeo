@@ -234,6 +234,14 @@ export default function AdminDashboard() {
   const [isAddingCustomUrl, setIsAddingCustomUrl] = useState(false);
   const [isPublishingSelectedLives, setIsPublishingSelectedLives] = useState(false);
 
+  // Published Live Editing States
+  const [editingLive, setEditingLive] = useState<any>(null);
+  const [editLiveTitle, setEditLiveTitle] = useState('');
+  const [editLiveLink, setEditLiveLink] = useState('');
+  const [editLiveCapaUrl, setEditLiveCapaUrl] = useState('');
+  const [isSavingLiveEdit, setIsSavingLiveEdit] = useState(false);
+  const [editingCardVideoId, setEditingCardVideoId] = useState<string | null>(null);
+
   // Tablet Control States
   const [selectedTabletEventId, setSelectedTabletEventId] = useState<string | null>(null);
   const [tabletDiaAtivo, setTabletDiaAtivo] = useState<string>('DIA 1');
@@ -840,6 +848,57 @@ export default function AdminDashboard() {
       alert("Erro ao publicar lives: " + err.message);
     } finally {
       setIsPublishingSelectedLives(false);
+    }
+  };
+
+  const handleUpdateSearchedLiveItem = (videoId: string, updates: Partial<{ titulo: string; thumbnail: string }>) => {
+    setSearchedLives(prev => prev.map(item => item.videoId === videoId ? { ...item, ...updates } : item));
+  };
+
+  const handleUploadSearchedLiveThumb = (videoId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        handleUpdateSearchedLiveItem(videoId, { thumbnail: base64 });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleOpenEditLiveModal = (live: any) => {
+    setEditingLive(live);
+    setEditLiveTitle(live.titulo || '');
+    setEditLiveLink(live.link_live || live.link || '');
+    setEditLiveCapaUrl(live.capa_url || '');
+  };
+
+  const handleSaveLiveEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLive) return;
+    if (!editLiveTitle.trim() || !editLiveLink.trim()) return alert("Título e Link da Live são obrigatórios.");
+
+    setIsSavingLiveEdit(true);
+    try {
+      const { error } = await supabase
+        .from("transmissoes_aovivo")
+        .update({
+          titulo: editLiveTitle.trim(),
+          link_live: editLiveLink.trim(),
+          capa_url: editLiveCapaUrl
+        })
+        .eq("id", editingLive.id);
+
+      if (error) throw error;
+
+      alert("🎉 Transmissão atualizada com sucesso!");
+      setEditingLive(null);
+      fetchLives();
+    } catch (err: any) {
+      alert("Erro ao atualizar transmissão: " + err.message);
+    } finally {
+      setIsSavingLiveEdit(false);
     }
   };
 
@@ -4089,12 +4148,20 @@ export default function AdminDashboard() {
                       {l.link_live}
                     </p>
                     
-                    <button
-                      onClick={() => handleDeleteLive(l.id)}
-                      className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors"
-                    >
-                      Remover Live
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenEditLiveModal(l)}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteLive(l.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors"
+                      >
+                        🗑️ Remover
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -4663,56 +4730,106 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {searchedLives.map((item) => {
                     const isSelected = selectedLiveVideoIds.includes(item.videoId);
+                    const isEditing = editingCardVideoId === item.videoId;
                     return (
                       <div
                         key={item.videoId}
                         onClick={() => toggleSelectLiveVideo(item.videoId)}
-                        className={`group cursor-pointer p-3 rounded-2xl border transition-all flex gap-3 relative ${
+                        className={`group cursor-pointer p-3 rounded-2xl border transition-all flex flex-col gap-2 relative ${
                           isSelected
                             ? "bg-yellow-500/10 border-yellow-500 shadow-lg shadow-yellow-500/10"
                             : "bg-zinc-950 border-white/10 hover:border-white/20"
                         }`}
                       >
-                        <div className="w-36 h-24 rounded-xl overflow-hidden bg-black shrink-0 relative">
-                          <img src={item.thumbnail} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          {item.isLive && (
-                            <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest animate-pulse shadow">
-                              🔴 AO VIVO
-                            </span>
-                          )}
+                        <div className="flex gap-3">
+                          <div className="w-36 h-24 rounded-xl overflow-hidden bg-black shrink-0 relative">
+                            <img src={item.thumbnail} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            {item.isLive && (
+                              <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest animate-pulse shadow">
+                                🔴 AO VIVO
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <h5 className="text-xs font-black uppercase text-white line-clamp-2 leading-snug group-hover:text-yellow-500 transition-colors">
+                                  {item.titulo}
+                                </h5>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {}}
+                                  className="w-5 h-5 accent-yellow-500 rounded shrink-0 cursor-pointer"
+                                />
+                              </div>
+                              <p className="text-[10px] font-bold text-white/40 uppercase mt-1 truncate">
+                                📺 {item.channel || "Canal YouTube"}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCardVideoId(isEditing ? null : item.videoId);
+                                }}
+                                className="text-[9px] font-black text-yellow-500 hover:underline uppercase tracking-wider"
+                              >
+                                ✏️ {isEditing ? "Concluir" : "Editar Título/Thumb"}
+                              </button>
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="text-[9px] font-bold text-white/50 hover:text-white underline"
+                              >
+                                Assistir ↗
+                              </a>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
-                          <div>
-                            <div className="flex items-start justify-between gap-2">
-                              <h5 className="text-xs font-black uppercase text-white line-clamp-2 leading-snug group-hover:text-yellow-500 transition-colors">
-                                {item.titulo}
-                              </h5>
+
+                        {/* Inline Editor Drawer */}
+                        {isEditing && (
+                          <div 
+                            onClick={e => e.stopPropagation()} 
+                            className="bg-black/90 border border-yellow-500/40 p-3 rounded-xl space-y-2.5 mt-1 animate-in fade-in"
+                          >
+                            <div>
+                              <label className="text-[9px] font-black text-yellow-500 uppercase tracking-wider block mb-1">
+                                Título Personalizado:
+                              </label>
                               <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                className="w-5 h-5 accent-yellow-500 rounded shrink-0 cursor-pointer"
+                                type="text"
+                                value={item.titulo}
+                                onChange={e => handleUpdateSearchedLiveItem(item.videoId, { titulo: e.target.value })}
+                                className="w-full bg-zinc-900 border border-white/20 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-yellow-500"
                               />
                             </div>
-                            <p className="text-[10px] font-bold text-white/40 uppercase mt-1 truncate">
-                              📺 {item.channel || "Canal YouTube"}
-                            </p>
+                            <div>
+                              <label className="text-[9px] font-black text-yellow-500 uppercase tracking-wider block mb-1">
+                                Imagem de Capa (Thumb):
+                              </label>
+                              <div className="flex flex-col gap-1.5">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={e => handleUploadSearchedLiveThumb(item.videoId, e)}
+                                  className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white/70"
+                                />
+                                <input
+                                  type="url"
+                                  value={item.thumbnail}
+                                  onChange={e => handleUpdateSearchedLiveItem(item.videoId, { thumbnail: e.target.value })}
+                                  placeholder="ou cole a URL da imagem aqui..."
+                                  className="w-full bg-zinc-900 border border-white/20 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-yellow-500"
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
-                            <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-yellow-400' : 'text-white/30'}`}>
-                              {isSelected ? "✓ Selecionada" : "+ Clique para selecionar"}
-                            </span>
-                            <a
-                              href={item.link}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={e => e.stopPropagation()}
-                              className="text-[9px] font-bold text-white/50 hover:text-white underline"
-                            >
-                              Assistir ↗
-                            </a>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -4744,6 +4861,73 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Live Publicada */}
+      {editingLive && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-[#080808] border border-white/10 p-6 md:p-10 rounded-[2rem] max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-300 my-auto">
+            <button
+              className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors bg-white/10 rounded-full p-2 font-bold text-xl z-20"
+              onClick={() => setEditingLive(null)}
+            >
+              ×
+            </button>
+            <h2 className="text-2xl md:text-3xl font-black mb-6 uppercase italic tracking-tighter text-yellow-500">
+              Editar Transmissão
+            </h2>
+            <form onSubmit={handleSaveLiveEditSubmit} className="space-y-6">
+              <InputGroup
+                label="Título da Live"
+                value={editLiveTitle}
+                onChange={setEditLiveTitle}
+                placeholder="Ex: Rodeio de Barretos - Ao Vivo"
+              />
+              <InputGroup
+                label="Link da Live (YouTube)"
+                value={editLiveLink}
+                onChange={setEditLiveLink}
+                placeholder="Ex: https://www.youtube.com/watch?v=..."
+              />
+
+              <div>
+                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">
+                  Imagem de Capa (Thumb)
+                </label>
+                <div className="space-y-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => handlePhotoUpload(e, (b64) => setEditLiveCapaUrl(b64))}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none text-xs text-white"
+                  />
+                  <div className="text-center text-[10px] text-white/30 font-bold uppercase">ou cole a URL da imagem:</div>
+                  <input
+                    type="url"
+                    value={editLiveCapaUrl}
+                    onChange={e => setEditLiveCapaUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 outline-none text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              {editLiveCapaUrl && (
+                <div className="mt-4 rounded-xl overflow-hidden border border-white/10 h-36 w-full relative">
+                  <img src={editLiveCapaUrl} alt="Preview Capa" className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSavingLiveEdit}
+                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-2"
+              >
+                {isSavingLiveEdit ? "Salvando..." : "💾 Salvar Alterações"}
+              </button>
+            </form>
           </div>
         </div>
       )}
