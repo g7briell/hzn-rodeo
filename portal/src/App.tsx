@@ -88,6 +88,22 @@ function App() {
   const [boiadas, setBoiadas] = useState<any[]>([]);
   const [eventosOficiais, setEventosOficiais] = useState<any[]>([]);
   const [patrocinios, setPatrocinios] = useState<any[]>([]);
+  const [sponsorAdIndex, setSponsorAdIndex] = useState(0);
+  const [sponsorFade, setSponsorFade] = useState(true);
+
+  // Rotate sponsor ads every 5 seconds with smooth fade
+  useEffect(() => {
+    if (!patrocinios || patrocinios.length <= 1) return;
+    const interval = setInterval(() => {
+      setSponsorFade(false);
+      setTimeout(() => {
+        setSponsorAdIndex(prev => prev + 1);
+        setSponsorFade(true);
+      }, 300);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [patrocinios]);
 
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedPeaoProfile, setSelectedPeaoProfile] = useState<any>(null);
@@ -796,20 +812,33 @@ function App() {
     }
   };
 
+  const getSponsorImage = (s: any) => {
+    if (!s) return null;
+    return s.detalhes?.banner_url || 
+           s.detalhes?.portal_noticias?.fino_redacao?.logo_url || 
+           s.detalhes?.portal_noticias?.meio_materia?.logo_url || 
+           s.detalhes?.fino_ia?.logo_url || 
+           s.detalhes?.logo_url || 
+           s.logo_url || 
+           null;
+  };
+
   const renderSponsorAdBanner = (slotKey: string) => {
     if (!patrocinios || patrocinios.length === 0) return null;
 
     const activeSponsors = patrocinios.filter((p: any) => {
       if (p.status && p.status !== 'ativo') return false;
-      const logo = p.logo_url || p.detalhes?.logo_url || p.detalhes?.banner_url || p.detalhes?.portal_noticias?.fino_redacao?.logo_url;
-      return !!logo;
+      return !!getSponsorImage(p);
     });
 
     if (activeSponsors.length === 0) return null;
 
-    const charSum = slotKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const sponsor = activeSponsors[charSum % activeSponsors.length];
-    const logoUrl = sponsor.logo_url || sponsor.detalhes?.logo_url || sponsor.detalhes?.banner_url || sponsor.detalhes?.portal_noticias?.fino_redacao?.logo_url;
+    const slotOffset = slotKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const currentIndex = (sponsorAdIndex + slotOffset) % activeSponsors.length;
+    const sponsor = activeSponsors[currentIndex];
+    const bannerUrl = getSponsorImage(sponsor);
+
+    if (!bannerUrl) return null;
 
     return (
       <a
@@ -817,39 +846,32 @@ function App() {
         target="_blank"
         rel="noopener noreferrer"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1rem',
-          padding: '0.75rem 1.25rem',
-          background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.95) 100%)',
-          border: '1px solid rgba(234, 179, 8, 0.3)',
-          borderRadius: '20px',
-          textDecoration: 'none',
+          display: 'block',
+          width: '100%',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           marginBottom: '0.75rem',
           marginTop: '0.25rem',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-          transition: 'transform 0.2s ease, border-color 0.2s ease'
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+          opacity: sponsorFade ? 1 : 0,
+          transition: 'opacity 0.3s ease-in-out',
+          background: '#050505',
+          textDecoration: 'none'
         }}
+        className="sponsor-banner-hover"
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-            <span style={{ width: '6px', height: '6px', background: '#eab308', borderRadius: '50%', display: 'inline-block' }}></span>
-            <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', color: '#eab308', letterSpacing: '0.12em' }}>
-              Patrocinador Oficial
-            </span>
-          </div>
-          <span style={{ fontSize: '12px', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
-            {sponsor.empresa || sponsor.nome || 'Parceiro RodeoApp'}
-          </span>
-        </div>
-        {logoUrl && (
-          <img
-            src={logoUrl}
-            alt={sponsor.empresa || 'Patrocinador'}
-            style={{ maxHeight: '38px', maxWidth: '120px', objectFit: 'contain' }}
-          />
-        )}
+        <img
+          src={bannerUrl}
+          alt={sponsor.empresa || sponsor.nome || 'Patrocinador Oficial'}
+          style={{
+            width: '100%',
+            height: 'auto',
+            maxHeight: '120px',
+            objectFit: 'contain',
+            display: 'block'
+          }}
+        />
       </a>
     );
   };
