@@ -239,6 +239,12 @@ export default function AdminDashboard() {
   const [editLiveTitle, setEditLiveTitle] = useState('');
   const [editLiveLink, setEditLiveLink] = useState('');
   const [editLiveCapaUrl, setEditLiveCapaUrl] = useState('');
+  const [editLiveCidade, setEditLiveCidade] = useState('');
+  const [editLiveTemperatura, setEditLiveTemperatura] = useState('');
+  const [editLivePrevisaoChuva, setEditLivePrevisaoChuva] = useState('');
+  const [editLiveClima, setEditLiveClima] = useState('');
+  const [editLiveLatitude, setEditLiveLatitude] = useState<number | null>(null);
+  const [editLiveLongitude, setEditLiveLongitude] = useState<number | null>(null);
   const [isSavingLiveEdit, setIsSavingLiveEdit] = useState(false);
   const [editingCardVideoId, setEditingCardVideoId] = useState<string | null>(null);
 
@@ -833,7 +839,13 @@ export default function AdminDashboard() {
         const { error } = await supabase.from("transmissoes_aovivo").insert({
           titulo: liveItem.titulo,
           link_live: liveItem.link,
-          capa_url: liveItem.thumbnail || `https://img.youtube.com/vi/${liveItem.videoId}/maxresdefault.jpg`
+          capa_url: liveItem.thumbnail || `https://img.youtube.com/vi/${liveItem.videoId}/maxresdefault.jpg`,
+          cidade: liveItem.cidade || null,
+          temperatura: liveItem.temperatura || null,
+          previsao_chuva: liveItem.previsao_chuva || null,
+          clima: liveItem.clima || null,
+          latitude: liveItem.latitude || null,
+          longitude: liveItem.longitude || null
         });
         if (error) {
           console.error("Erro ao publicar live no banco:", error);
@@ -851,7 +863,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUpdateSearchedLiveItem = (videoId: string, updates: Partial<{ titulo: string; thumbnail: string }>) => {
+  const handleUpdateSearchedLiveItem = (videoId: string, updates: Partial<{ titulo: string; thumbnail: string; cidade: string; temperatura: string; previsao_chuva: string; clima: string; latitude: number | null; longitude: number | null }>) => {
     setSearchedLives(prev => prev.map(item => item.videoId === videoId ? { ...item, ...updates } : item));
   };
 
@@ -867,11 +879,103 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleFetchWeatherForSearchedCard = async (videoId: string, cidadeName: string) => {
+    if (!cidadeName.trim()) return alert("Digite o nome da cidade primeiro.");
+    try {
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidadeName)}&count=1&language=pt`;
+      const geoRes = await fetch(geoUrl);
+      const geoData = await geoRes.json();
+      if (!geoData.results || geoData.results.length === 0) return alert("Cidade não encontrada.");
+      const city = geoData.results[0];
+      const { latitude, longitude, name, admin1 } = city;
+      
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation,weather_code&daily=precipitation_probability_max&timezone=auto`;
+      const weatherRes = await fetch(weatherUrl);
+      const weatherData = await weatherRes.json();
+
+      const tempVal = Math.round(weatherData.current.temperature_2m);
+      const rainProbVal = weatherData.daily.precipitation_probability_max[0];
+      const code = weatherData.current.weather_code;
+
+      let condition = "Ensolarado";
+      if (code === 0 || code === 1) condition = "Ensolarado";
+      else if (code === 2) condition = "Parcialmente Nublado";
+      else if (code === 3) condition = "Encoberto";
+      else if (code >= 45 && code <= 48) condition = "Neblina";
+      else if (code >= 51 && code <= 55) condition = "Chuvisco";
+      else if (code >= 61 && code <= 65) condition = "Chuva";
+      else if (code >= 80 && code <= 82) condition = "Pancadas de Chuva";
+      else if (code >= 95 && code <= 99) condition = "Tempestade";
+
+      handleUpdateSearchedLiveItem(videoId, {
+        cidade: `${name} - ${admin1 || ''}`,
+        temperatura: `${tempVal}°C`,
+        previsao_chuva: `${rainProbVal}%`,
+        clima: condition,
+        latitude,
+        longitude
+      });
+    } catch (err: any) {
+      alert("Erro ao buscar clima: " + err.message);
+    }
+  };
+
   const handleOpenEditLiveModal = (live: any) => {
     setEditingLive(live);
     setEditLiveTitle(live.titulo || '');
     setEditLiveLink(live.link_live || live.link || '');
     setEditLiveCapaUrl(live.capa_url || '');
+    setEditLiveCidade(live.cidade || '');
+    setEditLiveTemperatura(live.temperatura || '');
+    setEditLivePrevisaoChuva(live.previsao_chuva || '');
+    setEditLiveClima(live.clima || '');
+    setEditLiveLatitude(live.latitude || null);
+    setEditLiveLongitude(live.longitude || null);
+  };
+
+  const handleFetchWeatherForEditModal = async () => {
+    if (!editLiveCidade.trim()) return alert("Digite o nome da cidade primeiro.");
+    setIsFetchingWeather(true);
+    try {
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(editLiveCidade)}&count=1&language=pt`;
+      const geoRes = await fetch(geoUrl);
+      const geoData = await geoRes.json();
+      if (!geoData.results || geoData.results.length === 0) {
+        alert("Cidade não encontrada. Verifique a ortografia.");
+        return;
+      }
+      const city = geoData.results[0];
+      const { latitude, longitude, name, admin1 } = city;
+      
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation,weather_code&daily=precipitation_probability_max&timezone=auto`;
+      const weatherRes = await fetch(weatherUrl);
+      const weatherData = await weatherRes.json();
+
+      const tempVal = Math.round(weatherData.current.temperature_2m);
+      const rainProbVal = weatherData.daily.precipitation_probability_max[0];
+      const code = weatherData.current.weather_code;
+
+      let condition = "Ensolarado";
+      if (code === 0 || code === 1) condition = "Ensolarado";
+      else if (code === 2) condition = "Parcialmente Nublado";
+      else if (code === 3) condition = "Encoberto";
+      else if (code >= 45 && code <= 48) condition = "Neblina";
+      else if (code >= 51 && code <= 55) condition = "Chuvisco";
+      else if (code >= 61 && code <= 65) condition = "Chuva";
+      else if (code >= 80 && code <= 82) condition = "Pancadas de Chuva";
+      else if (code >= 95 && code <= 99) condition = "Tempestade";
+
+      setEditLiveCidade(`${name} - ${admin1 || ''}`);
+      setEditLiveTemperatura(`${tempVal}°C`);
+      setEditLivePrevisaoChuva(`${rainProbVal}%`);
+      setEditLiveClima(condition);
+      setEditLiveLatitude(latitude);
+      setEditLiveLongitude(longitude);
+    } catch (err: any) {
+      alert("Erro ao buscar previsão: " + err.message);
+    } finally {
+      setIsFetchingWeather(false);
+    }
   };
 
   const handleSaveLiveEditSubmit = async (e: React.FormEvent) => {
@@ -886,7 +990,13 @@ export default function AdminDashboard() {
         .update({
           titulo: editLiveTitle.trim(),
           link_live: editLiveLink.trim(),
-          capa_url: editLiveCapaUrl
+          capa_url: editLiveCapaUrl,
+          cidade: editLiveCidade || null,
+          temperatura: editLiveTemperatura || null,
+          previsao_chuva: editLivePrevisaoChuva || null,
+          clima: editLiveClima || null,
+          latitude: editLiveLatitude || null,
+          longitude: editLiveLongitude || null
         })
         .eq("id", editingLive.id);
 
@@ -4147,6 +4257,15 @@ export default function AdminDashboard() {
                     <p className="text-white/40 font-bold text-[10px] uppercase tracking-widest break-all">
                       {l.link_live}
                     </p>
+
+                    {l.cidade && (
+                      <div className="text-xs font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-3 py-2 rounded-xl flex flex-wrap items-center gap-1.5">
+                        <span>📍 {l.cidade}</span>
+                        {l.temperatura && <span>• 🌡️ {l.temperatura}</span>}
+                        {l.clima && <span>• 🌤️ {l.clima}</span>}
+                        {l.previsao_chuva && <span>• 🌧️ {l.previsao_chuva}</span>}
+                      </div>
+                    )}
                     
                     <div className="flex gap-2">
                       <button
@@ -4828,6 +4947,34 @@ export default function AdminDashboard() {
                                 />
                               </div>
                             </div>
+
+                            {/* Weather Info in Search Drawer */}
+                            <div>
+                              <label className="text-[9px] font-black text-yellow-500 uppercase tracking-wider block mb-1">
+                                🌤️ Previsão do Tempo / Cidade do Evento:
+                              </label>
+                              <div className="flex gap-1.5 mb-1.5">
+                                <input
+                                  type="text"
+                                  value={item.cidade || ''}
+                                  onChange={e => handleUpdateSearchedLiveItem(item.videoId, { cidade: e.target.value })}
+                                  placeholder="Ex: Barretos - SP"
+                                  className="flex-1 bg-zinc-900 border border-white/20 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-yellow-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleFetchWeatherForSearchedCard(item.videoId, item.cidade || '')}
+                                  className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider shrink-0"
+                                >
+                                  Buscar Clima
+                                </button>
+                              </div>
+                              {item.cidade && (
+                                <div className="text-[9px] font-bold text-yellow-400 bg-yellow-500/10 p-1.5 rounded-md border border-yellow-500/20">
+                                  📍 {item.cidade} {item.temperatura && `• 🌡️ ${item.temperatura}`} {item.clima && `• 🌤️ ${item.clima}`} {item.previsao_chuva && `• 🌧️ ${item.previsao_chuva}`}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -4891,6 +5038,51 @@ export default function AdminDashboard() {
                 onChange={setEditLiveLink}
                 placeholder="Ex: https://www.youtube.com/watch?v=..."
               />
+
+              {/* Weather Fields */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <InputGroup 
+                    label="Cidade do Evento" 
+                    value={editLiveCidade} 
+                    onChange={setEditLiveCidade} 
+                    placeholder="Ex: Barretos - SP" 
+                    required={false} 
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleFetchWeatherForEditModal}
+                  disabled={isFetchingWeather}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 px-4 py-4 rounded-2xl text-xs font-black h-[54px] mb-0 shrink-0"
+                >
+                  {isFetchingWeather ? "Buscando..." : "🌤️ Buscar Clima"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <InputGroup 
+                  label="Temp." 
+                  value={editLiveTemperatura} 
+                  onChange={setEditLiveTemperatura} 
+                  placeholder="Ex: 22°C" 
+                  required={false} 
+                />
+                <InputGroup 
+                  label="Chuva" 
+                  value={editLivePrevisaoChuva} 
+                  onChange={setEditLivePrevisaoChuva} 
+                  placeholder="Ex: 10%" 
+                  required={false} 
+                />
+                <InputGroup 
+                  label="Clima" 
+                  value={editLiveClima} 
+                  onChange={setEditLiveClima} 
+                  placeholder="Ex: Ensolarado" 
+                  required={false} 
+                />
+              </div>
 
               <div>
                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block mb-2">
