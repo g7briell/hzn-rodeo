@@ -755,14 +755,23 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success && Array.isArray(data.lives)) {
         setSearchedLives(data.lives);
-        const liveNowIds = data.lives.filter((l: any) => l.isLive).map((l: any) => l.videoId);
-        setSelectedLiveVideoIds(liveNowIds);
+        // Start with no items selected by default so user can choose
+        setSelectedLiveVideoIds([]);
       }
     } catch (err) {
       console.error("Erro ao buscar lives do YouTube:", err);
     } finally {
       setIsSearchingLives(false);
     }
+  };
+
+  const selectAllLiveVideos = () => {
+    const allIds = searchedLives.map(l => l.videoId);
+    setSelectedLiveVideoIds(allIds);
+  };
+
+  const deselectAllLiveVideos = () => {
+    setSelectedLiveVideoIds([]);
   };
 
   const handleAddCustomLiveUrl = async () => {
@@ -815,12 +824,14 @@ export default function AdminDashboard() {
       for (const liveItem of livesToSave) {
         const { error } = await supabase.from("transmissoes_aovivo").insert({
           titulo: liveItem.titulo,
-          link: liveItem.link,
-          capa_url: liveItem.thumbnail || `https://img.youtube.com/vi/${liveItem.videoId}/maxresdefault.jpg`,
-          status: 'ativa',
-          created_at: new Date().toISOString()
+          link_live: liveItem.link,
+          capa_url: liveItem.thumbnail || `https://img.youtube.com/vi/${liveItem.videoId}/maxresdefault.jpg`
         });
-        if (!error) count++;
+        if (error) {
+          console.error("Erro ao publicar live no banco:", error);
+        } else {
+          count++;
+        }
       }
       alert(`🎉 ${count} live(s) publicada(s) com sucesso no Portal!`);
       setIsAddLiveModalOpen(false);
@@ -4601,18 +4612,40 @@ export default function AdminDashboard() {
             </div>
 
             {/* Live Search Results Header & Refresh */}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
               <h4 className="text-xs font-black uppercase tracking-widest text-white/70">
                 📺 Lives Encontradas ({searchedLives.length}):
               </h4>
-              <button
-                type="button"
-                onClick={() => fetchYouTubeLivesSearch()}
-                disabled={isSearchingLives}
-                className="text-[10px] font-black text-yellow-500 hover:text-yellow-400 uppercase tracking-wider flex items-center gap-1"
-              >
-                🔄 {isSearchingLives ? "Buscando..." : "Atualizar Busca"}
-              </button>
+              <div className="flex items-center gap-3">
+                {searchedLives.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={selectAllLiveVideos}
+                      className="text-[10px] font-black text-yellow-500/80 hover:text-yellow-400 uppercase tracking-wider"
+                    >
+                      ✓ Marcar Todas
+                    </button>
+                    <span className="text-white/20 text-xs">|</span>
+                    <button
+                      type="button"
+                      onClick={deselectAllLiveVideos}
+                      className="text-[10px] font-black text-white/40 hover:text-white uppercase tracking-wider"
+                    >
+                      ✕ Desmarcar Todas
+                    </button>
+                    <span className="text-white/20 text-xs">|</span>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fetchYouTubeLivesSearch()}
+                  disabled={isSearchingLives}
+                  className="text-[10px] font-black text-yellow-500 hover:text-yellow-400 uppercase tracking-wider flex items-center gap-1"
+                >
+                  🔄 {isSearchingLives ? "Buscando..." : "Atualizar Busca"}
+                </button>
+              </div>
             </div>
 
             {/* Results Grid / List */}
