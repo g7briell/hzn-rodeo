@@ -1365,7 +1365,6 @@ Instruções importantes:
         setUser(session.user);
         if (session.user.email) {
           fetchUserProfile(session.user.email);
-          fetchBoiadas();
           fetchTropeiroBoiada(session.user.email);
           setCurrentTab('home');
         }
@@ -1384,7 +1383,6 @@ Instruções importantes:
           setUser(session?.user ?? null);
           if (session?.user?.email) {
             fetchUserProfile(session.user.email);
-            fetchBoiadas();
             fetchTropeiroBoiada(session.user.email);
             setCurrentTab('home');
           }
@@ -1396,8 +1394,6 @@ Instruções importantes:
         setUser(session.user);
         if (session.user.email) {
           fetchUserProfile(session.user.email);
-          fetchBoiadas();
-          fetchEventosOficiais();
           fetchTropeiroBoiada(session.user.email);
           setCurrentTab(prev => prev === 'explore' ? 'home' : prev);
         }
