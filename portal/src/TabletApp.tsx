@@ -474,16 +474,31 @@ function Dashboard({
 
   // Ranking calculation
   const rmap: Record<string, { peao: string; total: number; count: number }> = {};
-  src.forEach((n: any) => {
-    if (n.peao) {
-      const total = (typeof n.totalPeao === 'number' ? n.totalPeao : 0) + (typeof n.totalTouro === 'number' ? n.totalTouro : 0);
-      if (!rmap[n.peao]) rmap[n.peao] = { peao: n.peao, total: 0, count: 0 };
-      if (n.status === 'ativa' && total > 0) {
-        rmap[n.peao].total += total;
-        rmap[n.peao].count += 1;
+  if (Array.isArray(det.ranking) && det.ranking.length > 0) {
+    det.ranking.forEach((r: any) => {
+      const name = r.nome || r.peao;
+      if (name) {
+        rmap[name] = {
+          peao: name,
+          total: Number(r.score) || 0,
+          count: Number(r.count) || Number(r.montarias) || (r.score > 0 ? 1 : 0)
+        };
       }
-    }
-  });
+    });
+  } else {
+    src.forEach((n: any) => {
+      if (n.peao) {
+        const isParada = (n.tempo == null || n.tempo >= 8) && n.status !== 'queda' && (typeof n.totalPeao === 'number' ? n.totalPeao > 0 : true);
+        const rideScore = isParada ? ((typeof n.totalPeao === 'number' ? n.totalPeao : 0) + (typeof n.totalTouro === 'number' ? n.totalTouro : 0)) : 0;
+        
+        if (!rmap[n.peao]) rmap[n.peao] = { peao: n.peao, total: 0, count: 0 };
+        rmap[n.peao].count += 1;
+        if (isParada && rideScore > 0) {
+          rmap[n.peao].total += rideScore;
+        }
+      }
+    });
+  }
   const ranking = Object.values(rmap).sort((a, b) => b.total - a.total).slice(0, 50);
 
   // Group Touros by Resolved CIA
@@ -735,7 +750,7 @@ function Dashboard({
       </header>
 
       {/* Content Area */}
-      <main style={{ flex: 1, padding: '2.5rem', overflowY: 'auto', animation: 'tSlide 0.2s ease' }} key={view}>
+      <main style={{ flex: 1, padding: '2.5rem', paddingBottom: pats.length > 0 ? '110px' : '2.5rem', overflowY: 'auto', animation: 'tSlide 0.2s ease' }} key={view}>
 
         {/* ── TELA INICIAL DO EVENTO: 4 BOTÕES GRANDES ── */}
         {view === 'menu' && (
@@ -1250,9 +1265,26 @@ function Dashboard({
         )}
       </main>
 
-      {/* Sponsor Footer */}
+      {/* Fixed Sponsor Footer */}
       {pats.length > 0 && (
-        <footer style={{ background: '#000', borderTop: '1px solid rgba(255,255,255,0.04)', padding: '1.5rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3.5rem', flexWrap: 'wrap', minHeight: '90px' }}>
+        <footer style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: 'rgba(0, 0, 0, 0.95)',
+          backdropFilter: 'blur(12px)',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          padding: '0.85rem 2.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '3.5rem',
+          flexWrap: 'wrap',
+          minHeight: '80px',
+          boxShadow: '0 -10px 30px rgba(0,0,0,0.9)'
+        }}>
           {pats.map((p, i) => {
             const url = p.detalhes?.splash_app?.logo_url || p.logo_url;
             if (!url) return null;
@@ -1261,7 +1293,7 @@ function Dashboard({
                 key={i}
                 src={url}
                 alt={p.nome}
-                style={{ maxHeight: '52px', maxWidth: '150px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.55 }}
+                style={{ maxHeight: '48px', maxWidth: '140px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.65 }}
                 onError={(e: any) => { e.target.style.display = 'none'; }}
               />
             );

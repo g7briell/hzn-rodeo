@@ -1806,8 +1806,8 @@ export default function AdminDashboard() {
             tempoAcumulado: 0
           });
         }
-        const score = (n.totalPeao || 0) + (n.totalTouro || 0);
-        const isParada = n.tempo >= 8 || n.tempo == null;
+        const isParada = (n.tempo >= 8 || n.tempo == null) && n.status !== 'queda' && (n.totalPeao || 0) > 0;
+        const score = isParada ? ((n.totalPeao || 0) + (n.totalTouro || 0)) : 0;
         const entry = competitorScores.get(key)!;
         entry.score += score;
         if (isParada) {
