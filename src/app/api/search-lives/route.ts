@@ -47,13 +47,18 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Search YouTube strictly for streams that are CURRENTLY LIVE NOW (&sp=CAMSAkAB)
-    const searchQueries = [
-      query || "rodeio ao vivo",
+    const baseQueries = [
+      "rodeio ao vivo",
       "festa do peao ao vivo",
-      "montarias em touro ao vivo",
-      "laco comprido ao vivo",
-      "vaquejada ao vivo"
+      "montaria em touro ao vivo",
+      "3 tambores ao vivo",
+      "cutiano ao vivo",
+      "breakaway roping ao vivo",
+      "bareback ao vivo",
+      "laco comprido ao vivo"
     ];
+
+    const searchQueries = query ? [query, ...baseQueries.slice(0, 4)] : baseQueries;
 
     const fetchSearchForQuery = async (queryStr: string) => {
       try {
@@ -99,14 +104,16 @@ export async function POST(req: NextRequest) {
 
               if (!isCurrentlyLive) return; // Filter out ended / recorded streams!
 
-              // Relevance check for rodeo / festa do peao / touros / vaquejada / laco
+              // Relevance check for rodeo / touros / 3 tambores / cutiano / breakaway / bareback / laco
               const lowerTitle = title.toLowerCase();
               const lowerChannel = channel.toLowerCase();
               const isRodeoRelated = 
                 lowerTitle.includes("rodeio") || lowerTitle.includes("rodeo") || lowerTitle.includes("peao") || lowerTitle.includes("peão") ||
-                lowerTitle.includes("touro") || lowerTitle.includes("laço") || lowerTitle.includes("laco") || lowerTitle.includes("vaquejada") ||
+                lowerTitle.includes("touro") || lowerTitle.includes("laço") || lowerTitle.includes("laco") || lowerTitle.includes("cutiano") ||
+                lowerTitle.includes("tambor") || lowerTitle.includes("breakaway") || lowerTitle.includes("bareback") || lowerTitle.includes("rozeta") ||
+                lowerTitle.includes("pbr") || lowerTitle.includes("crp") || lowerTitle.includes("acr") || lowerTitle.includes("festa") ||
                 lowerChannel.includes("rodeo") || lowerChannel.includes("rozeta") || lowerChannel.includes("acr") || lowerChannel.includes("crp") ||
-                lowerChannel.includes("vaquejada") || lowerChannel.includes("laço") || lowerChannel.includes("laco") || lowerChannel.includes("festa");
+                lowerChannel.includes("laço") || lowerChannel.includes("laco") || lowerChannel.includes("festa") || lowerChannel.includes("touro");
 
               if (!isRodeoRelated) return; // Filter out unrelated live streams!
 

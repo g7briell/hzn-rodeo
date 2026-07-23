@@ -4815,6 +4815,28 @@ export default function AdminDashboard() {
               <p className="text-xs text-white/50 font-bold uppercase tracking-wider mt-1">O sistema busca automaticamente no YouTube por Rodeios, Festas do Peão e Montarias em Touro Ao Vivo. Selecione as que deseja publicar ou cole o link direto.</p>
             </div>
 
+            {/* Quick Category Filters */}
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-3 custom-scrollbar">
+              {[
+                { label: '🤠 Todos Rodeios', q: 'rodeio festa do peao montarias em touro ao vivo' },
+                { label: '🐂 Montaria em Touro', q: 'montaria em touro ao vivo rodeio' },
+                { label: '🐎 Cutiano / Cavalo', q: 'cutiano ao vivo rodeio' },
+                { label: '🐎 3 Tambores', q: '3 tambores ao vivo tres tambores' },
+                { label: '🤠 Breakaway Roping', q: 'breakaway roping ao vivo' },
+                { label: '🐎 Bareback', q: 'bareback ao vivo' },
+                { label: '🐮 Laço Comprido', q: 'laco comprido ao vivo' }
+              ].map(btn => (
+                <button
+                  key={btn.label}
+                  type="button"
+                  onClick={() => fetchYouTubeLivesSearch(btn.q)}
+                  className="bg-white/5 hover:bg-yellow-500/20 hover:border-yellow-500/50 border border-white/10 text-white/80 hover:text-yellow-400 px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all shrink-0"
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
             {/* Custom Paste Bar */}
             <div className="bg-zinc-900/90 border border-white/10 p-4 rounded-2xl mb-4 space-y-2">
               <label className="text-[10px] font-black text-yellow-500 uppercase tracking-widest block">
