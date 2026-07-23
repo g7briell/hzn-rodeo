@@ -877,10 +877,9 @@ function App() {
           alt={sponsor.empresa || sponsor.nome || 'Patrocinador Oficial'}
           style={{
             width: '100%',
-            height: 'auto',
-            maxHeight: isBottomChat ? '160px' : '120px',
-            minHeight: isBottomChat ? '80px' : undefined,
-            objectFit: 'contain',
+            height: isBottomChat ? '140px' : '90px',
+            objectFit: 'cover',
+            objectPosition: 'center',
             display: 'block'
           }}
           onLoad={(e) => {
