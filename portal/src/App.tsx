@@ -553,6 +553,26 @@ function App() {
         // Load bio and foto from Supabase
         setUserBio(profile.bio || '');
         setUserFoto(profile.foto || '');
+      } else {
+        // Auto-create profile entry in perfis_portal if missing
+        try {
+          const newProfile = {
+            id: user?.id,
+            email: email.trim(),
+            nome: user?.user_metadata?.nome || user?.user_metadata?.name || email.split('@')[0],
+            cargo: 'usuario_comum',
+            veio_do_app_desktop: false
+          };
+          const { data: insData } = await supabase.from('perfis_portal').insert([newProfile]).select('*');
+          if (insData && insData.length > 0) {
+            setUserProfile(insData[0]);
+            setUserBio(insData[0].bio || '');
+            setUserFoto(insData[0].foto || '');
+          }
+          fetchAllProfiles();
+        } catch (insErr) {
+          console.error('Erro ao auto-criar perfil no perfis_portal:', insErr);
+        }
       }
     } catch (err) {
       console.error('Error fetching global events:', err);
