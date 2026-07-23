@@ -380,6 +380,10 @@ async function init() {
     const auth = window.electronAPI.getAuth();
     
     if (auth && auth.email && auth.key) {
+        try {
+            localStorage.setItem('hzn_last_email', auth.email);
+            localStorage.setItem('hzn_last_key', auth.key);
+        } catch(e) {}
         console.log("RODEOAPP: Autenticação encontrada, validando...");
         fetchGlobalData();
         if (loadingOverlay) loadingOverlay.classList.remove('hidden');
@@ -467,6 +471,11 @@ async function handleActivation() {
     const key = document.getElementById('key').value;
     if (errorMsg) errorMsg.classList.add('hidden');
     if (!email || !key) { if (errorMsg) { errorMsg.innerText = "Preencha todos os campos."; errorMsg.classList.remove('hidden'); } return; }
+
+    try {
+        localStorage.setItem('hzn_last_email', email);
+        localStorage.setItem('hzn_last_key', key);
+    } catch(e) {}
     if (loadingOverlay) loadingOverlay.classList.remove('hidden');
     btnActivate.disabled = true;
     try {
@@ -757,6 +766,15 @@ function showLogin() {
 
     if (loginScreen) loginScreen.classList.remove('hidden'); 
     toggleSupportBtn(false);
+
+    try {
+        const emailInput = document.getElementById('email');
+        const keyInput = document.getElementById('key');
+        const lastEmail = localStorage.getItem('hzn_last_email') || '';
+        const lastKey = localStorage.getItem('hzn_last_key') || '';
+        if (emailInput && lastEmail) emailInput.value = lastEmail;
+        if (keyInput && lastKey) keyInput.value = lastKey;
+    } catch (e) {}
 }
 
 function showSportSelection() {

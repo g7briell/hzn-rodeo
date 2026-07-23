@@ -301,11 +301,7 @@ ipcMain.handle('heartbeat', async (event, { email, key, appVersion }) => {
 
     if (error) {
       console.error("Heartbeat error:", error);
-      const errMsg = error.message ? error.message.toLowerCase() : '';
-      if (errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('connection') || errMsg.includes('timeout') || errMsg.includes('enotfound') || errMsg.includes('load failed')) {
-        return { valid: true, isNetworkError: true };
-      }
-      return { valid: false, reason: 'deleted' };
+      return { valid: true, isNetworkError: true };
     }
 
     if (!data) return { valid: false, reason: 'deleted' };
