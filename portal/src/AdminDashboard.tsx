@@ -50,6 +50,188 @@ export default function AdminDashboard() {
   const [logoY, setLogoY] = useState<number>(0);
   const [logoScale, setLogoScale] = useState<number>(1);
 
+  // ── Sorteio Template States ──
+  const [sorteioTitle, setSorteioTitle] = useState<string>('SORTEIO');
+  const [sorteioShowTitle, setSorteioShowTitle] = useState<boolean>(true);
+  const [sorteioSubTitle, setSorteioSubTitle] = useState<string>('RODEIO EM TOUROS');
+  const [sorteioShowSubTitle, setSorteioShowSubTitle] = useState<boolean>(true);
+  const [sorteioDay, setSorteioDay] = useState<string>('SEXTA-FEIRA');
+  const [sorteioShowDay, setSorteioShowDay] = useState<boolean>(true);
+  const [sorteioRound, setSorteioRound] = useState<string>('2º ROUND');
+  const [sorteioShowRound, setSorteioShowRound] = useState<boolean>(true);
+  const [sorteioCol1Header, setSorteioCol1Header] = useState<string>('Animal');
+  const [sorteioCol2Header, setSorteioCol2Header] = useState<string>('Boiada');
+
+  const [sorteioItems, setSorteioItems] = useState<{ col1: string; col2: string }[]>([
+    { col1: 'ALEMAO', col2: 'WB' },
+    { col1: 'TALISMA', col2: '3 IRMAOS' },
+    { col1: 'K9', col2: '3 IRMAOS' },
+    { col1: 'MAL FALADO', col2: 'ESTRADEIRO' },
+    { col1: '10%', col2: 'WB' },
+    { col1: 'AFRICANO JR', col2: 'ESTRADEIRO' },
+    { col1: 'MEGATRON', col2: 'ESTRADEIRO' },
+    { col1: 'SINTONIA', col2: '3 IRMAOS' },
+  ]);
+
+  // Images & Logos
+  const [sorteioBgImage, setSorteioBgImage] = useState<string>('');
+  const [sorteioFestaLogo, setSorteioFestaLogo] = useState<string>('');
+  const [sorteioShowFestaLogo, setSorteioShowFestaLogo] = useState<boolean>(true);
+  const [sorteioEtapaLogo, setSorteioEtapaLogo] = useState<string>('');
+  const [sorteioShowEtapaLogo, setSorteioShowEtapaLogo] = useState<boolean>(true);
+  const [sorteioExtraPngs, setSorteioExtraPngs] = useState<{ id: string; url: string; scale: number; x: number; y: number }[]>([]);
+
+  // Colors & Fonts
+  const [sorteioPrimaryColor, setSorteioPrimaryColor] = useState<string>('#FF2A1F');
+  const [sorteioBoxBgColor, setSorteioBoxBgColor] = useState<string>('#FF2A1F');
+  const [sorteioItemTextColor, setSorteioItemTextColor] = useState<string>('#FFFFFF');
+  const [sorteioTitleTextColor, setSorteioTitleTextColor] = useState<string>('#FFFFFF');
+  const [sorteioRoundTextColor, setSorteioRoundTextColor] = useState<string>('#FFFFFF');
+  const [sorteioBgOverlayColor, setSorteioBgOverlayColor] = useState<string>('#000000');
+  const [sorteioBgOverlayOpacity, setSorteioBgOverlayOpacity] = useState<number>(0.75);
+  const [sorteioFont, setSorteioFont] = useState<string>('Montserrat');
+
+  // Sponsor Footer
+  const [sorteioSponsorMode, setSorteioSponsorMode] = useState<'rodeoapp' | 'custom' | 'none'>('rodeoapp');
+  const [sorteioCustomSponsorsLogo, setSorteioCustomSponsorsLogo] = useState<string>('');
+
+  // Accordions
+  const [isSorteioContentOpen, setIsSorteioContentOpen] = useState<boolean>(true);
+  const [isSorteioDesignOpen, setIsSorteioDesignOpen] = useState<boolean>(false);
+  const [isSorteioLogosOpen, setIsSorteioLogosOpen] = useState<boolean>(false);
+  const [isSorteioLayoutOpen, setIsSorteioLayoutOpen] = useState<boolean>(false);
+
+  // Fine tuning layout positions
+  const [sorteioBgX, setSorteioBgX] = useState<number>(0);
+  const [sorteioBgY, setSorteioBgY] = useState<number>(0);
+  const [sorteioBgScale, setSorteioBgScale] = useState<number>(1);
+
+  const [sorteioHeaderX, setSorteioHeaderX] = useState<number>(0);
+  const [sorteioHeaderY, setSorteioHeaderY] = useState<number>(0);
+  const [sorteioHeaderScale, setSorteioHeaderScale] = useState<number>(1);
+
+  const [sorteioTableX, setSorteioTableX] = useState<number>(0);
+  const [sorteioTableY, setSorteioTableY] = useState<number>(0);
+  const [sorteioTableScale, setSorteioTableScale] = useState<number>(1);
+  const [sorteioBoxHeight, setSorteioBoxHeight] = useState<number>(75);
+  const [sorteioBoxRadius, setSorteioBoxRadius] = useState<number>(20);
+  const [sorteioRowFontSize, setSorteioRowFontSize] = useState<number>(36);
+
+  const [sorteioFestaLogoX, setSorteioFestaLogoX] = useState<number>(0);
+  const [sorteioFestaLogoY, setSorteioFestaLogoY] = useState<number>(0);
+  const [sorteioFestaLogoScale, setSorteioFestaLogoScale] = useState<number>(1);
+
+  const [sorteioEtapaLogoX, setSorteioEtapaLogoX] = useState<number>(0);
+  const [sorteioEtapaLogoY, setSorteioEtapaLogoY] = useState<number>(0);
+  const [sorteioEtapaLogoScale, setSorteioEtapaLogoScale] = useState<number>(1);
+
+  const [sorteioRoundX, setSorteioRoundX] = useState<number>(0);
+  const [sorteioRoundY, setSorteioRoundY] = useState<number>(0);
+  const [sorteioRoundScale, setSorteioRoundScale] = useState<number>(1);
+
+  const handleResetSorteioLayout = () => {
+    setSorteioBgX(0);
+    setSorteioBgY(0);
+    setSorteioBgScale(1);
+    setSorteioHeaderX(0);
+    setSorteioHeaderY(0);
+    setSorteioHeaderScale(1);
+    setSorteioTableX(0);
+    setSorteioTableY(0);
+    setSorteioTableScale(1);
+    setSorteioBoxHeight(75);
+    setSorteioBoxRadius(20);
+    setSorteioRowFontSize(36);
+    setSorteioFestaLogoX(0);
+    setSorteioFestaLogoY(0);
+    setSorteioFestaLogoScale(1);
+    setSorteioEtapaLogoX(0);
+    setSorteioEtapaLogoY(0);
+    setSorteioEtapaLogoScale(1);
+    setSorteioRoundX(0);
+    setSorteioRoundY(0);
+    setSorteioRoundScale(1);
+  };
+
+  const handleAddSorteioRow = () => {
+    setSorteioItems([...sorteioItems, { col1: '', col2: '' }]);
+  };
+
+  const handleRemoveSorteioRow = (index: number) => {
+    setSorteioItems(sorteioItems.filter((_, i) => i !== index));
+  };
+
+  const handleSorteioItemChange = (index: number, field: 'col1' | 'col2', value: string) => {
+    const updated = [...sorteioItems];
+    updated[index][field] = value;
+    setSorteioItems(updated);
+  };
+
+  const handleAddExtraPng = (base64Url: string) => {
+    if (!base64Url) return;
+    const newId = `png-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    setSorteioExtraPngs([...sorteioExtraPngs, { id: newId, url: base64Url, scale: 1, x: 0, y: 0 }]);
+  };
+
+  const handleUpdateExtraPng = (id: string, field: 'scale' | 'x' | 'y', val: number) => {
+    setSorteioExtraPngs(sorteioExtraPngs.map(item => item.id === id ? { ...item, [field]: val } : item));
+  };
+
+  const handleRemoveExtraPng = (id: string) => {
+    setSorteioExtraPngs(sorteioExtraPngs.filter(item => item.id !== id));
+  };
+
+  const handleLoadSorteioFromEvent = (eventId: any) => {
+    const ev = events.find(e => String(e.id) === String(eventId));
+    if (!ev || !ev.detalhes) return;
+    const det = ev.detalhes;
+
+    if (det.logo) {
+      setSorteioFestaLogo(det.logo);
+      setSorteioShowFestaLogo(true);
+    }
+
+    if (Array.isArray(det.sorteios) && det.sorteios.length > 0) {
+      const s0 = det.sorteios[0];
+      if (s0.dia || s0.day) setSorteioDay((s0.dia || s0.day).toUpperCase());
+      const riders = s0.riders || s0.peoes || [];
+      const bulls = s0.bulls || s0.touros || [];
+      const assignments = s0.assignments || {};
+
+      const newItems: { col1: string; col2: string }[] = [];
+      riders.forEach((r: any, idx: number) => {
+        const bIdx = assignments[idx.toString()] !== undefined ? assignments[idx.toString()] : (assignments[idx] !== undefined ? assignments[idx] : idx);
+        const bObj = bulls[bIdx];
+        const pName = typeof r === 'string' ? r : (r?.nome || r?.name || '');
+        let bName = '';
+        let ciaName = '';
+
+        if (typeof bObj === 'string') {
+          bName = bObj;
+        } else if (typeof bObj === 'object' && bObj !== null) {
+          bName = bObj.nome || bObj.name || bObj.touro || '';
+          ciaName = bObj.cia || bObj.cia_nome || bObj.boiada || '';
+        }
+
+        if (pName || bName) {
+          newItems.push({
+            col1: (pName || bName).toUpperCase(),
+            col2: (ciaName || bName || '—').toUpperCase()
+          });
+        }
+      });
+
+      if (newItems.length > 0) setSorteioItems(newItems);
+    } else if (Array.isArray(det.notas) && det.notas.length > 0) {
+      const newItems = det.notas.map((n: any) => ({
+        col1: (n.peao || n.competidor || n.touro || '').toUpperCase(),
+        col2: (n.touro || n.cia || n.boiada || '—').toUpperCase()
+      })).filter((item: any) => item.col1 !== '');
+
+      if (newItems.length > 0) setSorteioItems(newItems);
+    }
+  };
+
   const handleResetLayout = () => {
     setBgX(0);
     setBgY(0);
@@ -2431,6 +2613,49 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                 </div>
+
+                <div 
+                  onClick={() => setSelectedArtTemplate('sorteio')}
+                  style={{
+                    background: '#151515',
+                    borderRadius: '16px',
+                    border: '2px solid var(--border-light)',
+                    padding: '1.5rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.transform = 'translateY(-5px)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border-light)';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  <div style={{ 
+                    height: '160px', 
+                    background: 'linear-gradient(135deg, #1e1e1e 0%, #111 100%)', 
+                    borderRadius: '12px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    fontSize: '2.5rem'
+                  }}>
+                    🎯
+                  </div>
+                  <div>
+                    <h3 style={{ margin: '0 0 0.5rem 0', color: 'white', fontSize: '1.2rem', fontWeight: 'bold' }}>Arte Sorteio</h3>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.4' }}>
+                      Gere posts de sorteio em formato 4:5 (Animal x Boiada / Competidor x Touro), com personalização total de cores, fontes, logos da festa/etapa, imagens PNG extras e patrocinadores.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -2446,6 +2671,7 @@ export default function AdminDashboard() {
                 </button>
                 <h2 style={{ margin: 0, fontSize: '1.5rem', textTransform: 'uppercase', color: 'var(--text-light)' }}>
                   {selectedArtTemplate === 'maior_da_noite' && 'Arte Maior da Noite'}
+                  {selectedArtTemplate === 'sorteio' && 'Arte Sorteio'}
                 </h2>
               </div>
 
@@ -2930,6 +3156,811 @@ export default function AdminDashboard() {
 
                     </div>
 
+                  </div>
+
+                </div>
+              )}
+
+              {selectedArtTemplate === 'sorteio' && (
+                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                  
+                  {/* Left Column: Form Controls */}
+                  <div style={{ flex: '1 1 420px', background: 'var(--bg-card)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <h3 style={{ textTransform: 'uppercase', margin: 0, color: 'var(--accent)', fontSize: '1.3rem' }}>Configurações do Sorteio</h3>
+
+                    {/* Auto Import from Event */}
+                    {events.length > 0 && (
+                      <div style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', padding: '1rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#d4af37', textTransform: 'uppercase' }}>
+                          ⚡ Carregar Dados de um Evento Cadastrado:
+                        </span>
+                        <select
+                          className="form-input"
+                          style={{ cursor: 'pointer', background: '#111' }}
+                          onChange={e => {
+                            if (e.target.value) handleLoadSorteioFromEvent(e.target.value);
+                          }}
+                        >
+                          <option value="">-- Selecione o Evento para Preencher a Tabela --</option>
+                          {events.map(ev => (
+                            <option key={ev.id} value={ev.id}>{ev.nome} ({ev.local || 'RODEIO'})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Accordion 1: Conteúdo & Textos */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div 
+                        onClick={() => setIsSorteioContentOpen(!isSorteioContentOpen)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          📝 1. Conteúdo & Textos do Sorteio
+                        </span>
+                        <span style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>{isSorteioContentOpen ? '▼' : '▶'}</span>
+                      </div>
+
+                      {isSorteioContentOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Título Principal</span>
+                              <input type="checkbox" checked={sorteioShowTitle} onChange={e => setSorteioShowTitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input type="text" className="form-input" value={sorteioTitle} onChange={e => setSorteioTitle(e.target.value)} disabled={!sorteioShowTitle} placeholder="Ex: SORTEIO" />
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Subtítulo / Modalidade</span>
+                              <input type="checkbox" checked={sorteioShowSubTitle} onChange={e => setSorteioShowSubTitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input type="text" className="form-input" value={sorteioSubTitle} onChange={e => setSorteioSubTitle(e.target.value)} disabled={!sorteioShowSubTitle} placeholder="Ex: RODEIO EM TOUROS" />
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Dia / Data</span>
+                                <input type="checkbox" checked={sorteioShowDay} onChange={e => setSorteioShowDay(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                              </label>
+                              <input type="text" className="form-input" value={sorteioDay} onChange={e => setSorteioDay(e.target.value)} disabled={!sorteioShowDay} placeholder="Ex: SEXTA-FEIRA" />
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Fase Lateral</span>
+                                <input type="checkbox" checked={sorteioShowRound} onChange={e => setSorteioShowRound(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                              </label>
+                              <input type="text" className="form-input" value={sorteioRound} onChange={e => setSorteioRound(e.target.value)} disabled={!sorteioShowRound} placeholder="Ex: 2º ROUND" />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label">Cabeçalho Coluna 1</label>
+                              <input type="text" className="form-input" value={sorteioCol1Header} onChange={e => setSorteioCol1Header(e.target.value)} placeholder="Ex: Animal" />
+                            </div>
+                            <div>
+                              <label className="form-label">Cabeçalho Coluna 2</label>
+                              <input type="text" className="form-input" value={sorteioCol2Header} onChange={e => setSorteioCol2Header(e.target.value)} placeholder="Ex: Boiada" />
+                            </div>
+                          </div>
+
+                          {/* Dynamic Rows Editor */}
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                                Lista de Linhas do Sorteio ({sorteioItems.length}):
+                              </span>
+                              <button className="btn btn-outline" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderColor: 'var(--accent)', color: 'var(--accent)' }} onClick={handleAddSorteioRow}>
+                                + Adicionar Linha
+                              </button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '0.3rem' }}>
+                              {sorteioItems.map((item, idx) => (
+                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 35px', gap: '0.5rem', alignItems: 'center' }}>
+                                  <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
+                                    value={item.col1} 
+                                    onChange={e => handleSorteioItemChange(idx, 'col1', e.target.value)} 
+                                    placeholder="Col 1 (Animal/Peão)"
+                                  />
+                                  <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
+                                    value={item.col2} 
+                                    onChange={e => handleSorteioItemChange(idx, 'col2', e.target.value)} 
+                                    placeholder="Col 2 (Boiada/Touro)"
+                                  />
+                                  <button 
+                                    onClick={() => handleRemoveSorteioRow(idx)}
+                                    style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '6px', cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    title="Remover linha"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 2: Cores e Fontes */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div 
+                        onClick={() => setIsSorteioDesignOpen(!isSorteioDesignOpen)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          🎨 2. Personalização de Cores & Fontes
+                        </span>
+                        <span style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>{isSorteioDesignOpen ? '▼' : '▶'}</span>
+                      </div>
+
+                      {isSorteioDesignOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div>
+                            <label className="form-label">Fonte da Arte</label>
+                            <select className="form-input" value={sorteioFont} onChange={e => setSorteioFont(e.target.value)}>
+                              <option value="Montserrat">Montserrat</option>
+                              <option value="Inter">Inter</option>
+                              <option value="Outfit">Outfit</option>
+                              <option value="Articulat CF">Articulat CF</option>
+                              <option value="Arial Black">Arial Black</option>
+                              <option value="Impact">Impact</option>
+                            </select>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label">Cor Primária (Cabeçalho)</label>
+                              <input type="color" className="form-input" style={{ height: '42px', padding: '2px', cursor: 'pointer' }} value={sorteioPrimaryColor} onChange={e => setSorteioPrimaryColor(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="form-label">Cor das Caixas da Tabela</label>
+                              <input type="color" className="form-input" style={{ height: '42px', padding: '2px', cursor: 'pointer' }} value={sorteioBoxBgColor} onChange={e => setSorteioBoxBgColor(e.target.value)} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label">Cor do Texto da Tabela</label>
+                              <input type="color" className="form-input" style={{ height: '42px', padding: '2px', cursor: 'pointer' }} value={sorteioItemTextColor} onChange={e => setSorteioItemTextColor(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="form-label">Cor do Rótulo Lateral</label>
+                              <input type="color" className="form-input" style={{ height: '42px', padding: '2px', cursor: 'pointer' }} value={sorteioRoundTextColor} onChange={e => setSorteioRoundTextColor(e.target.value)} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label">Cor de Fundo da Película</label>
+                              <input type="color" className="form-input" style={{ height: '42px', padding: '2px', cursor: 'pointer' }} value={sorteioBgOverlayColor} onChange={e => setSorteioBgOverlayColor(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="form-label">Opacidade do Fundo ({Math.round(sorteioBgOverlayOpacity * 100)}%)</label>
+                              <input type="range" min="0" max="1" step="0.05" value={sorteioBgOverlayOpacity} onChange={e => setSorteioBgOverlayOpacity(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 3: Imagens & PNGs Extras */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div 
+                        onClick={() => setIsSorteioLogosOpen(!isSorteioLogosOpen)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          🖼️ 3. Fotos, Logos & PNGs Extras
+                        </span>
+                        <span style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>{isSorteioLogosOpen ? '▼' : '▶'}</span>
+                      </div>
+
+                      {isSorteioLogosOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div>
+                            <label className="form-label">Foto de Fundo</label>
+                            <input type="file" accept="image/*" className="form-input" onChange={e => handlePhotoUpload(e, (b64) => setSorteioBgImage(b64))} />
+                            {sorteioBgImage && (
+                              <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setSorteioBgImage('')}>
+                                Remover Fundo
+                              </button>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Logo da Festa (Topo Direito)</span>
+                              <input type="checkbox" checked={sorteioShowFestaLogo} onChange={e => setSorteioShowFestaLogo(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input type="file" accept="image/*" className="form-input" disabled={!sorteioShowFestaLogo} onChange={e => handlePhotoUpload(e, (b64) => setSorteioFestaLogo(b64))} />
+                            {sorteioFestaLogo && sorteioShowFestaLogo && (
+                              <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setSorteioFestaLogo('')}>
+                                Remover Logo Festa
+                              </button>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Logo da Etapa / Circuito</span>
+                              <input type="checkbox" checked={sorteioShowEtapaLogo} onChange={e => setSorteioShowEtapaLogo(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
+                            </label>
+                            <input type="file" accept="image/*" className="form-input" disabled={!sorteioShowEtapaLogo} onChange={e => handlePhotoUpload(e, (b64) => setSorteioEtapaLogo(b64))} />
+                            {sorteioEtapaLogo && sorteioShowEtapaLogo && (
+                              <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setSorteioEtapaLogo('')}>
+                                Remover Logo Etapa
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Extra PNG Images Layer */}
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                              Imagens PNG Extras (Selos, Marcas, Assessorias):
+                            </span>
+                            <input type="file" accept="image/*" className="form-input" onChange={e => handlePhotoUpload(e, (b64) => handleAddExtraPng(b64))} />
+
+                            {sorteioExtraPngs.map((png, idx) => (
+                              <div key={png.id} style={{ background: 'rgba(0,0,0,0.4)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <img src={png.url} style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>PNG Extra #{idx + 1}</span>
+                                  </div>
+                                  <button style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }} onClick={() => handleRemoveExtraPng(png.id)}>
+                                    ✕ Excluir
+                                  </button>
+                                </div>
+                                <div>
+                                  <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Tamanho: {png.scale.toFixed(2)}x</span>
+                                  </label>
+                                  <input type="range" min="0.2" max="3" step="0.05" value={png.scale} onChange={e => handleUpdateExtraPng(png.id, 'scale', parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                  <div>
+                                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Mover X: {png.x}px</label>
+                                    <input type="range" min="-500" max="500" step="5" value={png.x} onChange={e => handleUpdateExtraPng(png.id, 'x', parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                                  </div>
+                                  <div>
+                                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Mover Y: {png.y}px</label>
+                                    <input type="range" min="-500" max="500" step="5" value={png.y} onChange={e => handleUpdateExtraPng(png.id, 'y', parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 4: Patrocinadores no Rodapé */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-light)' }}>
+                        🏷️ 4. Rodapé de Patrocinadores
+                      </span>
+                      <select className="form-input" value={sorteioSponsorMode} onChange={e => setSorteioSponsorMode(e.target.value as any)}>
+                        <option value="rodeoapp">Usar Patrocinadores Ativos do RodeoApp</option>
+                        <option value="custom">Upload de Faixa Personalizada de Patrocinadores</option>
+                        <option value="none">Sem Patrocinadores (Deixar sem nada)</option>
+                      </select>
+
+                      {sorteioSponsorMode === 'custom' && (
+                        <div>
+                          <label className="form-label">Imagem da Faixa de Patrocinadores</label>
+                          <input type="file" accept="image/*" className="form-input" onChange={e => handlePhotoUpload(e, (b64) => setSorteioCustomSponsorsLogo(b64))} />
+                          {sorteioCustomSponsorsLogo && (
+                            <button className="btn btn-outline" style={{ marginTop: '0.5rem', color: '#ef4444', borderColor: '#ef4444', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setSorteioCustomSponsorsLogo('')}>
+                              Remover Faixa Customizada
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 5: Ajustes Finos de Posições e Tamanhos */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div 
+                        onClick={() => setIsSorteioLayoutOpen(!isSorteioLayoutOpen)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          📐 5. Ajustes Finos de Posições & Tamanhos
+                        </span>
+                        <span style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>{isSorteioLayoutOpen ? '▼' : '▶'}</span>
+                      </div>
+
+                      {isSorteioLayoutOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          {/* Foto de fundo */}
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Foto de Fundo:</span>
+                            <div>
+                              <label className="form-label" style={{ fontSize: '0.78rem' }}>Zoom: {sorteioBgScale.toFixed(2)}x</label>
+                              <input type="range" min="0.5" max="3" step="0.05" value={sorteioBgScale} onChange={e => setSorteioBgScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Mover X: {sorteioBgX}px</label>
+                                <input type="range" min="-500" max="500" step="5" value={sorteioBgX} onChange={e => setSorteioBgX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Mover Y: {sorteioBgY}px</label>
+                                <input type="range" min="-500" max="500" step="5" value={sorteioBgY} onChange={e => setSorteioBgY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Cabeçalho */}
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Bloco do Título:</span>
+                            <div>
+                              <label className="form-label" style={{ fontSize: '0.78rem' }}>Tamanho: {sorteioHeaderScale.toFixed(2)}x</label>
+                              <input type="range" min="0.5" max="2" step="0.05" value={sorteioHeaderScale} onChange={e => setSorteioHeaderScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Mover X: {sorteioHeaderX}px</label>
+                                <input type="range" min="-200" max="500" step="5" value={sorteioHeaderX} onChange={e => setSorteioHeaderX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Mover Y: {sorteioHeaderY}px</label>
+                                <input type="range" min="-200" max="500" step="5" value={sorteioHeaderY} onChange={e => setSorteioHeaderY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tabela */}
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Tabela do Sorteio:</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Escala: {sorteioTableScale.toFixed(2)}x</label>
+                                <input type="range" min="0.5" max="1.5" step="0.05" value={sorteioTableScale} onChange={e => setSorteioTableScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Altura Caixas: {sorteioBoxHeight}px</label>
+                                <input type="range" min="40" max="120" step="2" value={sorteioBoxHeight} onChange={e => setSorteioBoxHeight(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Fonte Itens: {sorteioRowFontSize}px</label>
+                                <input type="range" min="20" max="50" step="1" value={sorteioRowFontSize} onChange={e => setSorteioRowFontSize(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Arredondamento: {sorteioBoxRadius}px</label>
+                                <input type="range" min="0" max="40" step="2" value={sorteioBoxRadius} onChange={e => setSorteioBoxRadius(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Mover X: {sorteioTableX}px</label>
+                                <input type="range" min="-300" max="300" step="5" value={sorteioTableX} onChange={e => setSorteioTableX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.78rem' }}>Mover Y: {sorteioTableY}px</label>
+                                <input type="range" min="-300" max="300" step="5" value={sorteioTableY} onChange={e => setSorteioTableY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Logo Festa & Etapa */}
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Logo Festa:</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Tam: {sorteioFestaLogoScale.toFixed(2)}x</label>
+                                <input type="range" min="0.3" max="2" step="0.05" value={sorteioFestaLogoScale} onChange={e => setSorteioFestaLogoScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>X: {sorteioFestaLogoX}px</label>
+                                <input type="range" min="-400" max="200" step="5" value={sorteioFestaLogoX} onChange={e => setSorteioFestaLogoX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Y: {sorteioFestaLogoY}px</label>
+                                <input type="range" min="-200" max="400" step="5" value={sorteioFestaLogoY} onChange={e => setSorteioFestaLogoY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Rótulo Lateral (2º Round):</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Tam: {sorteioRoundScale.toFixed(2)}x</label>
+                                <input type="range" min="0.3" max="2" step="0.05" value={sorteioRoundScale} onChange={e => setSorteioRoundScale(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>X: {sorteioRoundX}px</label>
+                                <input type="range" min="-300" max="300" step="5" value={sorteioRoundX} onChange={e => setSorteioRoundX(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Y: {sorteioRoundY}px</label>
+                                <input type="range" min="-300" max="300" step="5" value={sorteioRoundY} onChange={e => setSorteioRoundY(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          <button onClick={handleResetSorteioLayout} className="btn btn-outline" style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', color: '#999', borderColor: '#444' }}>
+                            Resetar Posições do Sorteio
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={handleDownloadHtmlArt} 
+                      className="btn btn-primary" 
+                      style={{ width: '100%', padding: '1rem', fontWeight: 'bold', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
+                      disabled={isGeneratingArt}
+                    >
+                      {isGeneratingArt ? 'Gerando Imagem...' : 'Baixar Arte Sorteio (Instagram)'}
+                    </button>
+                  </div>
+
+                  {/* Right Column: Interactive Canvas Preview */}
+                  <div style={{ flex: '1 1 420px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <h3 style={{ textTransform: 'uppercase', margin: 0, fontSize: '1.1rem', color: 'var(--text-muted)' }}>Pré-visualização Sorteio (4:5 Feed)</h3>
+                    
+                    <div style={{
+                      width: '400px',
+                      height: '500px',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: '16px',
+                      border: '1px solid var(--border-light)',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                      background: '#0d0d0d'
+                    }}>
+                      
+                      <div 
+                        id="instagram-art-canvas"
+                        style={{
+                          width: '1080px',
+                          height: '1350px',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          transform: 'scale(0.37037)',
+                          transformOrigin: 'top left',
+                          background: '#0d0d0d',
+                          fontFamily: sorteioFont === 'Articulat CF' ? "'Articulat CF - Heavy', 'Articulat CF', sans-serif" : `'${sorteioFont}', sans-serif`,
+                          color: 'white',
+                          userSelect: 'none',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {/* 1. Background Image */}
+                        {sorteioBgImage && (
+                          <img 
+                            src={sorteioBgImage} 
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '1080px',
+                              height: '1350px',
+                              objectFit: 'cover',
+                              transform: `translate(${sorteioBgX}px, ${sorteioBgY}px) scale(${sorteioBgScale})`,
+                              transformOrigin: 'center center',
+                              zIndex: 1
+                            }}
+                          />
+                        )}
+
+                        {/* 2. Background Dark Overlay */}
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: sorteioBgOverlayColor,
+                          opacity: sorteioBgOverlayOpacity,
+                          zIndex: 2
+                        }} />
+
+                        {/* 3. Top Left Header Badge */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '60px',
+                          left: '0px',
+                          zIndex: 10,
+                          transform: `translate(${sorteioHeaderX}px, ${sorteioHeaderY}px) scale(${sorteioHeaderScale})`,
+                          transformOrigin: 'top left',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start'
+                        }}>
+                          {sorteioShowTitle && sorteioTitle && (
+                            <div style={{
+                              background: sorteioPrimaryColor,
+                              color: sorteioTitleTextColor,
+                              padding: '16px 50px 16px 65px',
+                              fontSize: '76px',
+                              fontWeight: 900,
+                              fontStyle: 'italic',
+                              lineHeight: 1,
+                              letterSpacing: '-0.03em',
+                              textTransform: 'uppercase',
+                              borderRadius: '0 25px 0 0',
+                              boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                            }}>
+                              {sorteioTitle}
+                            </div>
+                          )}
+                          {sorteioShowSubTitle && sorteioSubTitle && (
+                            <div style={{
+                              background: 'rgba(0,0,0,0.85)',
+                              color: sorteioPrimaryColor,
+                              padding: '10px 40px 10px 65px',
+                              fontSize: '32px',
+                              fontWeight: 900,
+                              fontStyle: 'italic',
+                              letterSpacing: '0.04em',
+                              textTransform: 'uppercase',
+                              borderRadius: '0 0 20px 0',
+                              borderLeft: `6px solid ${sorteioPrimaryColor}`,
+                              boxShadow: '0 8px 20px rgba(0,0,0,0.4)'
+                            }}>
+                              {sorteioSubTitle}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 4. Top Right Festa Logo */}
+                        {sorteioShowFestaLogo && sorteioFestaLogo && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '55px',
+                            right: '65px',
+                            width: '260px',
+                            height: '180px',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            alignItems: 'center',
+                            zIndex: 10,
+                            transform: `translate(${sorteioFestaLogoX}px, ${sorteioFestaLogoY}px) scale(${sorteioFestaLogoScale})`,
+                            transformOrigin: 'top right'
+                          }}>
+                            <img src={sorteioFestaLogo} style={{ maxHeight: '180px', maxWidth: '260px', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.6))' }} />
+                          </div>
+                        )}
+
+                        {/* 5. Subheader Row: Day Pill + Etapa Logo */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '235px',
+                          left: '65px',
+                          right: '65px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          zIndex: 10
+                        }}>
+                          {sorteioShowDay && sorteioDay && (
+                            <div style={{
+                              background: 'rgba(255,255,255,0.92)',
+                              color: '#000',
+                              padding: '12px 35px',
+                              borderRadius: '12px',
+                              fontSize: '34px',
+                              fontWeight: 900,
+                              fontStyle: 'italic',
+                              letterSpacing: '0.05em',
+                              textTransform: 'uppercase',
+                              boxShadow: '0 6px 20px rgba(0,0,0,0.3)'
+                            }}>
+                              {sorteioDay}
+                            </div>
+                          )}
+
+                          {sorteioShowEtapaLogo && sorteioEtapaLogo && (
+                            <div style={{
+                              transform: `translate(${sorteioEtapaLogoX}px, ${sorteioEtapaLogoY}px) scale(${sorteioEtapaLogoScale})`,
+                              transformOrigin: 'right center'
+                            }}>
+                              <img src={sorteioEtapaLogo} style={{ maxHeight: '110px', maxWidth: '240px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))' }} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 6. Main Table Container: Headers + Rows + Right Side Round Label */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '360px',
+                          left: '65px',
+                          width: '950px',
+                          zIndex: 10,
+                          transform: `translate(${sorteioTableX}px, ${sorteioTableY}px) scale(${sorteioTableScale})`,
+                          transformOrigin: 'top left'
+                        }}>
+                          {/* Table Headers */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '20px',
+                            marginBottom: '16px',
+                            width: '780px'
+                          }}>
+                            <div style={{
+                              background: sorteioPrimaryColor,
+                              color: '#fff',
+                              padding: '14px 20px',
+                              borderRadius: `${sorteioBoxRadius}px`,
+                              textAlign: 'center',
+                              fontSize: '36px',
+                              fontWeight: 900,
+                              textTransform: 'uppercase',
+                              boxShadow: '0 6px 15px rgba(0,0,0,0.3)'
+                            }}>
+                              {sorteioCol1Header}
+                            </div>
+                            <div style={{
+                              background: sorteioPrimaryColor,
+                              color: '#fff',
+                              padding: '14px 20px',
+                              borderRadius: `${sorteioBoxRadius}px`,
+                              textAlign: 'center',
+                              fontSize: '36px',
+                              fontWeight: 900,
+                              textTransform: 'uppercase',
+                              boxShadow: '0 6px 15px rgba(0,0,0,0.3)'
+                            }}>
+                              {sorteioCol2Header}
+                            </div>
+                          </div>
+
+                          {/* Table Rows & Vertical Round Text */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '780px' }}>
+                              {sorteioItems.map((item, idx) => (
+                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                  <div style={{
+                                    background: sorteioBoxBgColor,
+                                    color: sorteioItemTextColor,
+                                    height: `${sorteioBoxHeight}px`,
+                                    borderRadius: `${sorteioBoxRadius}px`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '0 20px',
+                                    fontSize: `${sorteioRowFontSize}px`,
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '-0.02em',
+                                    textAlign: 'center',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis'
+                                  }}>
+                                    {item.col1}
+                                  </div>
+                                  <div style={{
+                                    background: sorteioBoxBgColor,
+                                    color: sorteioItemTextColor,
+                                    height: `${sorteioBoxHeight}px`,
+                                    borderRadius: `${sorteioBoxRadius}px`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '0 20px',
+                                    fontSize: `${sorteioRowFontSize}px`,
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '-0.02em',
+                                    textAlign: 'center',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis'
+                                  }}>
+                                    {item.col2}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Right Side Vertical Round Label */}
+                            {sorteioShowRound && sorteioRound && (
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                height: '100%',
+                                flex: 1,
+                                transform: `translate(${sorteioRoundX}px, ${sorteioRoundY}px) scale(${sorteioRoundScale})`,
+                                transformOrigin: 'center center'
+                              }}>
+                                <div style={{
+                                  transform: 'rotate(-90deg)',
+                                  whiteSpace: 'nowrap',
+                                  fontSize: '78px',
+                                  fontWeight: 900,
+                                  color: sorteioRoundTextColor,
+                                  letterSpacing: '0.02em',
+                                  textTransform: 'uppercase',
+                                  textShadow: '0 6px 20px rgba(0,0,0,0.8)'
+                                }}>
+                                  {sorteioRound}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 7. Extra PNGs Layer */}
+                        {sorteioExtraPngs.map(extra => (
+                          <div
+                            key={extra.id}
+                            style={{
+                              position: 'absolute',
+                              top: '50%',
+                              left: '50%',
+                              zIndex: 15,
+                              transform: `translate(-50%, -50%) translate(${extra.x}px, ${extra.y}px) scale(${extra.scale})`,
+                              transformOrigin: 'center center'
+                            }}
+                          >
+                            <img src={extra.url} style={{ maxHeight: '250px', maxWidth: '350px', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.6))' }} />
+                          </div>
+                        ))}
+
+                        {/* 8. Bottom Footer / Sponsors */}
+                        {sorteioSponsorMode !== 'none' && (
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '35px',
+                            left: 0,
+                            right: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '20px',
+                            zIndex: 10
+                          }}>
+                            {sorteioSponsorMode === 'custom' && sorteioCustomSponsorsLogo ? (
+                              <img src={sorteioCustomSponsorsLogo} style={{ maxHeight: '90px', maxWidth: '980px', objectFit: 'contain' }} />
+                            ) : (
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '40px',
+                                flexWrap: 'wrap',
+                                width: '100%',
+                                padding: '0 60px'
+                              }}>
+                                {patrocinios.filter(p => p.status === 'ativo').map((p, idx) => (
+                                  <img 
+                                    key={idx}
+                                    src={p.detalhes?.splash_app?.logo_url || p.logo_url} 
+                                    style={{
+                                      maxHeight: '60px',
+                                      maxWidth: '150px',
+                                      objectFit: 'contain',
+                                      filter: 'brightness(0) invert(1)'
+                                    }} 
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
                   </div>
 
                 </div>
