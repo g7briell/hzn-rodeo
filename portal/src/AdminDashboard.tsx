@@ -59,18 +59,18 @@ export default function AdminDashboard() {
   const [sorteioShowDay, setSorteioShowDay] = useState<boolean>(true);
   const [sorteioRound, setSorteioRound] = useState<string>('2º ROUND');
   const [sorteioShowRound, setSorteioShowRound] = useState<boolean>(true);
-  const [sorteioCol1Header, setSorteioCol1Header] = useState<string>('Animal');
-  const [sorteioCol2Header, setSorteioCol2Header] = useState<string>('Boiada');
 
-  const [sorteioItems, setSorteioItems] = useState<{ col1: string; col2: string }[]>([
-    { col1: 'ALEMAO', col2: 'WB' },
-    { col1: 'TALISMA', col2: '3 IRMAOS' },
-    { col1: 'K9', col2: '3 IRMAOS' },
-    { col1: 'MAL FALADO', col2: 'ESTRADEIRO' },
-    { col1: '10%', col2: 'WB' },
-    { col1: 'AFRICANO JR', col2: 'ESTRADEIRO' },
-    { col1: 'MEGATRON', col2: 'ESTRADEIRO' },
-    { col1: 'SINTONIA', col2: '3 IRMAOS' },
+  // Dynamic Multi-Column Table States
+  const [sorteioHeaders, setSorteioHeaders] = useState<string[]>(['Animal', 'Boiada']);
+  const [sorteioRows, setSorteioRows] = useState<string[][]>([
+    ['ALEMAO', 'WB'],
+    ['TALISMA', '3 IRMAOS'],
+    ['K9', '3 IRMAOS'],
+    ['MAL FALADO', 'ESTRADEIRO'],
+    ['10%', 'WB'],
+    ['AFRICANO JR', 'ESTRADEIRO'],
+    ['MEGATRON', 'ESTRADEIRO'],
+    ['SINTONIA', '3 IRMAOS'],
   ]);
 
   // Images & Logos
@@ -153,18 +153,41 @@ export default function AdminDashboard() {
     setSorteioRoundScale(1);
   };
 
+  const handleAddSorteioColumn = () => {
+    const newColName = `Coluna ${sorteioHeaders.length + 1}`;
+    setSorteioHeaders([...sorteioHeaders, newColName]);
+    setSorteioRows(sorteioRows.map(row => [...row, '']));
+  };
+
+  const handleRemoveSorteioColumn = (colIdx: number) => {
+    if (sorteioHeaders.length <= 1) {
+      alert('A tabela precisa ter pelo menos 1 coluna.');
+      return;
+    }
+    setSorteioHeaders(sorteioHeaders.filter((_, i) => i !== colIdx));
+    setSorteioRows(sorteioRows.map(row => row.filter((_, i) => i !== colIdx)));
+  };
+
+  const handleSorteioHeaderChange = (colIdx: number, val: string) => {
+    const updated = [...sorteioHeaders];
+    updated[colIdx] = val;
+    setSorteioHeaders(updated);
+  };
+
+  const handleSorteioCellChange = (rowIdx: number, colIdx: number, val: string) => {
+    const updated = [...sorteioRows];
+    updated[rowIdx] = [...updated[rowIdx]];
+    updated[rowIdx][colIdx] = val;
+    setSorteioRows(updated);
+  };
+
   const handleAddSorteioRow = () => {
-    setSorteioItems([...sorteioItems, { col1: '', col2: '' }]);
+    const emptyRow = sorteioHeaders.map(() => '');
+    setSorteioRows([...sorteioRows, emptyRow]);
   };
 
-  const handleRemoveSorteioRow = (index: number) => {
-    setSorteioItems(sorteioItems.filter((_, i) => i !== index));
-  };
-
-  const handleSorteioItemChange = (index: number, field: 'col1' | 'col2', value: string) => {
-    const updated = [...sorteioItems];
-    updated[index][field] = value;
-    setSorteioItems(updated);
+  const handleRemoveSorteioRow = (rowIdx: number) => {
+    setSorteioRows(sorteioRows.filter((_, i) => i !== rowIdx));
   };
 
   const handleAddExtraPng = (base64Url: string) => {
@@ -198,7 +221,7 @@ export default function AdminDashboard() {
       const bulls = s0.bulls || s0.touros || [];
       const assignments = s0.assignments || {};
 
-      const newItems: { col1: string; col2: string }[] = [];
+      const newRows: string[][] = [];
       riders.forEach((r: any, idx: number) => {
         const bIdx = assignments[idx.toString()] !== undefined ? assignments[idx.toString()] : (assignments[idx] !== undefined ? assignments[idx] : idx);
         const bObj = bulls[bIdx];
@@ -214,21 +237,27 @@ export default function AdminDashboard() {
         }
 
         if (pName || bName) {
-          newItems.push({
-            col1: (pName || bName).toUpperCase(),
-            col2: (ciaName || bName || '—').toUpperCase()
-          });
+          newRows.push([
+            (pName || bName).toUpperCase(),
+            (ciaName || bName || '—').toUpperCase()
+          ]);
         }
       });
 
-      if (newItems.length > 0) setSorteioItems(newItems);
+      if (newRows.length > 0) {
+        setSorteioHeaders(['Animal', 'Boiada']);
+        setSorteioRows(newRows);
+      }
     } else if (Array.isArray(det.notas) && det.notas.length > 0) {
-      const newItems = det.notas.map((n: any) => ({
-        col1: (n.peao || n.competidor || n.touro || '').toUpperCase(),
-        col2: (n.touro || n.cia || n.boiada || '—').toUpperCase()
-      })).filter((item: any) => item.col1 !== '');
+      const newRows = det.notas.map((n: any) => [
+        (n.peao || n.competidor || n.touro || '').toUpperCase(),
+        (n.touro || n.cia || n.boiada || '—').toUpperCase()
+      ]).filter((row: string[]) => row[0] !== '');
 
-      if (newItems.length > 0) setSorteioItems(newItems);
+      if (newRows.length > 0) {
+        setSorteioHeaders(['Animal', 'Boiada']);
+        setSorteioRows(newRows);
+      }
     }
   };
 
@@ -3211,7 +3240,7 @@ export default function AdminDashboard() {
                             <input type="text" className="form-input" value={sorteioTitle} onChange={e => setSorteioTitle(e.target.value)} disabled={!sorteioShowTitle} placeholder="Ex: SORTEIO" />
                           </div>
 
-                          <div>
+                        <div>
                             <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>Subtítulo / Modalidade</span>
                               <input type="checkbox" checked={sorteioShowSubTitle} onChange={e => setSorteioShowSubTitle(e.target.checked)} style={{ width: 'auto', cursor: 'pointer' }} />
@@ -3237,14 +3266,44 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div>
-                              <label className="form-label">Cabeçalho Coluna 1</label>
-                              <input type="text" className="form-input" value={sorteioCol1Header} onChange={e => setSorteioCol1Header(e.target.value)} placeholder="Ex: Animal" />
+                          {/* Dynamic Multi-Column Headers Manager */}
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                                Colunas da Tabela ({sorteioHeaders.length}):
+                              </span>
+                              <button 
+                                className="btn btn-outline" 
+                                style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', borderColor: 'var(--accent)', color: 'var(--accent)' }} 
+                                onClick={handleAddSorteioColumn}
+                              >
+                                + Adicionar Coluna
+                              </button>
                             </div>
-                            <div>
-                              <label className="form-label">Cabeçalho Coluna 2</label>
-                              <input type="text" className="form-input" value={sorteioCol2Header} onChange={e => setSorteioCol2Header(e.target.value)} placeholder="Ex: Boiada" />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              {sorteioHeaders.map((header, colIdx) => (
+                                <div key={colIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', width: '70px', fontWeight: 'bold' }}>Col {colIdx + 1}:</span>
+                                  <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', flex: 1 }}
+                                    value={header} 
+                                    onChange={e => handleSorteioHeaderChange(colIdx, e.target.value)} 
+                                    placeholder={`Nome da Coluna ${colIdx + 1}`}
+                                  />
+                                  {sorteioHeaders.length > 1 && (
+                                    <button 
+                                      onClick={() => handleRemoveSorteioColumn(colIdx)}
+                                      style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '6px', cursor: 'pointer', padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+                                      title="Remover Coluna"
+                                    >
+                                      ✕ Excluir
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           </div>
 
@@ -3252,35 +3311,33 @@ export default function AdminDashboard() {
                           <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-light)' }}>
-                                Lista de Linhas do Sorteio ({sorteioItems.length}):
+                                Lista de Linhas do Sorteio ({sorteioRows.length}):
                               </span>
-                              <button className="btn btn-outline" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderColor: 'var(--accent)', color: 'var(--accent)' }} onClick={handleAddSorteioRow}>
+                              <button className="btn btn-outline" style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem', borderColor: 'var(--accent)', color: 'var(--accent)' }} onClick={handleAddSorteioRow}>
                                 + Adicionar Linha
                               </button>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '280px', overflowY: 'auto', paddingRight: '0.3rem' }}>
-                              {sorteioItems.map((item, idx) => (
-                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 35px', gap: '0.5rem', alignItems: 'center' }}>
-                                  <input 
-                                    type="text" 
-                                    className="form-input" 
-                                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
-                                    value={item.col1} 
-                                    onChange={e => handleSorteioItemChange(idx, 'col1', e.target.value)} 
-                                    placeholder="Col 1 (Animal/Peão)"
-                                  />
-                                  <input 
-                                    type="text" 
-                                    className="form-input" 
-                                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
-                                    value={item.col2} 
-                                    onChange={e => handleSorteioItemChange(idx, 'col2', e.target.value)} 
-                                    placeholder="Col 2 (Boiada/Touro)"
-                                  />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '320px', overflowY: 'auto', paddingRight: '0.3rem' }}>
+                              {sorteioRows.map((row, rowIdx) => (
+                                <div key={rowIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', width: '22px' }}>#{rowIdx + 1}</span>
+                                  <div style={{ display: 'grid', gridTemplateColumns: sorteioHeaders.map(() => '1fr').join(' '), gap: '0.4rem', flex: 1 }}>
+                                    {row.map((cellVal, colIdx) => (
+                                      <input 
+                                        key={colIdx}
+                                        type="text" 
+                                        className="form-input" 
+                                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                                        value={cellVal} 
+                                        onChange={e => handleSorteioCellChange(rowIdx, colIdx, e.target.value)} 
+                                        placeholder={sorteioHeaders[colIdx] || `Col ${colIdx + 1}`}
+                                      />
+                                    ))}
+                                  </div>
                                   <button 
-                                    onClick={() => handleRemoveSorteioRow(idx)}
-                                    style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '6px', cursor: 'pointer', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => handleRemoveSorteioRow(rowIdx)}
+                                    style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '6px', cursor: 'pointer', padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                                     title="Remover linha"
                                   >
                                     ✕
@@ -3611,8 +3668,17 @@ export default function AdminDashboard() {
                     </button>
                   </div>
 
-                  {/* Right Column: Interactive Canvas Preview */}
-                  <div style={{ flex: '1 1 420px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                  {/* Right Column: Interactive Canvas Preview (FIXED/STICKY ON SCROLL) */}
+                  <div style={{ 
+                    flex: '1 1 420px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: '1rem',
+                    position: 'sticky',
+                    top: '2rem',
+                    alignSelf: 'flex-start'
+                  }}>
                     <h3 style={{ textTransform: 'uppercase', margin: 0, fontSize: '1.1rem', color: 'var(--text-muted)' }}>Pré-visualização Sorteio (4:5 Feed)</h3>
                     
                     <div style={{
@@ -3788,86 +3854,63 @@ export default function AdminDashboard() {
                           {/* Table Headers */}
                           <div style={{
                             display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
+                            gridTemplateColumns: sorteioHeaders.map(() => '1fr').join(' '),
                             gap: '20px',
                             marginBottom: '16px',
-                            width: '780px'
+                            width: sorteioShowRound && sorteioRound ? '780px' : '950px'
                           }}>
-                            <div style={{
-                              background: sorteioPrimaryColor,
-                              color: '#fff',
-                              padding: '14px 20px',
-                              borderRadius: `${sorteioBoxRadius}px`,
-                              textAlign: 'center',
-                              fontSize: '36px',
-                              fontWeight: 900,
-                              textTransform: 'uppercase',
-                              boxShadow: '0 6px 15px rgba(0,0,0,0.3)'
-                            }}>
-                              {sorteioCol1Header}
-                            </div>
-                            <div style={{
-                              background: sorteioPrimaryColor,
-                              color: '#fff',
-                              padding: '14px 20px',
-                              borderRadius: `${sorteioBoxRadius}px`,
-                              textAlign: 'center',
-                              fontSize: '36px',
-                              fontWeight: 900,
-                              textTransform: 'uppercase',
-                              boxShadow: '0 6px 15px rgba(0,0,0,0.3)'
-                            }}>
-                              {sorteioCol2Header}
-                            </div>
+                            {sorteioHeaders.map((headerText, colIdx) => (
+                              <div key={colIdx} style={{
+                                background: sorteioPrimaryColor,
+                                color: '#fff',
+                                padding: '14px 15px',
+                                borderRadius: `${sorteioBoxRadius}px`,
+                                textAlign: 'center',
+                                fontSize: sorteioHeaders.length > 2 ? '28px' : '36px',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                boxShadow: '0 6px 15px rgba(0,0,0,0.3)',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis'
+                              }}>
+                                {headerText}
+                              </div>
+                            ))}
                           </div>
 
                           {/* Table Rows & Vertical Round Text */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '780px' }}>
-                              {sorteioItems.map((item, idx) => (
-                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                  <div style={{
-                                    background: sorteioBoxBgColor,
-                                    color: sorteioItemTextColor,
-                                    height: `${sorteioBoxHeight}px`,
-                                    borderRadius: `${sorteioBoxRadius}px`,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '0 20px',
-                                    fontSize: `${sorteioRowFontSize}px`,
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '-0.02em',
-                                    textAlign: 'center',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                                    overflow: 'hidden',
-                                    whiteSpace: 'nowrap',
-                                    textOverflow: 'ellipsis'
-                                  }}>
-                                    {item.col1}
-                                  </div>
-                                  <div style={{
-                                    background: sorteioBoxBgColor,
-                                    color: sorteioItemTextColor,
-                                    height: `${sorteioBoxHeight}px`,
-                                    borderRadius: `${sorteioBoxRadius}px`,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '0 20px',
-                                    fontSize: `${sorteioRowFontSize}px`,
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '-0.02em',
-                                    textAlign: 'center',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                                    overflow: 'hidden',
-                                    whiteSpace: 'nowrap',
-                                    textOverflow: 'ellipsis'
-                                  }}>
-                                    {item.col2}
-                                  </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: sorteioShowRound && sorteioRound ? '780px' : '950px' }}>
+                              {sorteioRows.map((row, rIdx) => (
+                                <div key={rIdx} style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: sorteioHeaders.map(() => '1fr').join(' '),
+                                  gap: '20px'
+                                }}>
+                                  {row.map((cellVal, cIdx) => (
+                                    <div key={cIdx} style={{
+                                      background: sorteioBoxBgColor,
+                                      color: sorteioItemTextColor,
+                                      height: `${sorteioBoxHeight}px`,
+                                      borderRadius: `${sorteioBoxRadius}px`,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: '0 15px',
+                                      fontSize: sorteioHeaders.length > 2 ? `${Math.round(sorteioRowFontSize * 0.82)}px` : `${sorteioRowFontSize}px`,
+                                      fontWeight: 900,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '-0.02em',
+                                      textAlign: 'center',
+                                      boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                                      overflow: 'hidden',
+                                      whiteSpace: 'nowrap',
+                                      textOverflow: 'ellipsis'
+                                    }}>
+                                      {cellVal}
+                                    </div>
+                                  ))}
                                 </div>
                               ))}
                             </div>
