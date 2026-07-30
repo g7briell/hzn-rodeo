@@ -113,6 +113,7 @@ export default function AdminDashboard() {
   const [sorteioTableX, setSorteioTableX] = useState<number>(0);
   const [sorteioTableY, setSorteioTableY] = useState<number>(0);
   const [sorteioTableScale, setSorteioTableScale] = useState<number>(1);
+  const [sorteioTableWidth, setSorteioTableWidth] = useState<number>(950);
   const [sorteioBoxHeight, setSorteioBoxHeight] = useState<number>(75);
   const [sorteioBoxRadius, setSorteioBoxRadius] = useState<number>(20);
   const [sorteioRowFontSize, setSorteioRowFontSize] = useState<number>(36);
@@ -139,6 +140,7 @@ export default function AdminDashboard() {
     setSorteioTableX(0);
     setSorteioTableY(0);
     setSorteioTableScale(1);
+    setSorteioTableWidth(950);
     setSorteioBoxHeight(75);
     setSorteioBoxRadius(20);
     setSorteioRowFontSize(36);
@@ -3582,6 +3584,12 @@ export default function AdminDashboard() {
                           {/* Tabela */}
                           <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px' }}>
                             <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-light)' }}>Tabela do Sorteio:</span>
+                            <div style={{ marginBottom: '0.5rem' }}>
+                              <label className="form-label" style={{ fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Largura da Tabela: {sorteioTableWidth}px</span>
+                              </label>
+                              <input type="range" min="600" max="980" step="10" value={sorteioTableWidth} onChange={e => setSorteioTableWidth(parseInt(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
+                            </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                               <div>
                                 <label className="form-label" style={{ fontSize: '0.78rem' }}>Escala: {sorteioTableScale.toFixed(2)}x</label>
@@ -3841,12 +3849,12 @@ export default function AdminDashboard() {
                           )}
                         </div>
 
-                        {/* 6. Main Table Container: Headers + Rows + Right Side Round Label */}
+                        {/* 6. Main Table Container */}
                         <div style={{
                           position: 'absolute',
                           top: '360px',
                           left: '65px',
-                          width: '950px',
+                          width: `${sorteioTableWidth}px`,
                           zIndex: 10,
                           transform: `translate(${sorteioTableX}px, ${sorteioTableY}px) scale(${sorteioTableScale})`,
                           transformOrigin: 'top left'
@@ -3855,18 +3863,18 @@ export default function AdminDashboard() {
                           <div style={{
                             display: 'grid',
                             gridTemplateColumns: sorteioHeaders.map(() => '1fr').join(' '),
-                            gap: '20px',
+                            gap: '15px',
                             marginBottom: '16px',
-                            width: sorteioShowRound && sorteioRound ? '780px' : '950px'
+                            width: '100%'
                           }}>
                             {sorteioHeaders.map((headerText, colIdx) => (
                               <div key={colIdx} style={{
                                 background: sorteioPrimaryColor,
                                 color: '#fff',
-                                padding: '14px 15px',
+                                padding: '12px 6px',
                                 borderRadius: `${sorteioBoxRadius}px`,
                                 textAlign: 'center',
-                                fontSize: sorteioHeaders.length > 2 ? '28px' : '36px',
+                                fontSize: sorteioHeaders.length <= 2 ? '36px' : (sorteioHeaders.length === 3 ? '26px' : (sorteioHeaders.length === 4 ? '20px' : '16px')),
                                 fontWeight: 900,
                                 textTransform: 'uppercase',
                                 boxShadow: '0 6px 15px rgba(0,0,0,0.3)',
@@ -3879,69 +3887,67 @@ export default function AdminDashboard() {
                             ))}
                           </div>
 
-                          {/* Table Rows & Vertical Round Text */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: sorteioShowRound && sorteioRound ? '780px' : '950px' }}>
-                              {sorteioRows.map((row, rIdx) => (
-                                <div key={rIdx} style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: sorteioHeaders.map(() => '1fr').join(' '),
-                                  gap: '20px'
-                                }}>
-                                  {row.map((cellVal, cIdx) => (
-                                    <div key={cIdx} style={{
-                                      background: sorteioBoxBgColor,
-                                      color: sorteioItemTextColor,
-                                      height: `${sorteioBoxHeight}px`,
-                                      borderRadius: `${sorteioBoxRadius}px`,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      padding: '0 15px',
-                                      fontSize: sorteioHeaders.length > 2 ? `${Math.round(sorteioRowFontSize * 0.82)}px` : `${sorteioRowFontSize}px`,
-                                      fontWeight: 900,
-                                      textTransform: 'uppercase',
-                                      letterSpacing: '-0.02em',
-                                      textAlign: 'center',
-                                      boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                                      overflow: 'hidden',
-                                      whiteSpace: 'nowrap',
-                                      textOverflow: 'ellipsis'
-                                    }}>
-                                      {cellVal}
-                                    </div>
-                                  ))}
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Right Side Vertical Round Label */}
-                            {sorteioShowRound && sorteioRound && (
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                height: '100%',
-                                flex: 1,
-                                transform: `translate(${sorteioRoundX}px, ${sorteioRoundY}px) scale(${sorteioRoundScale})`,
-                                transformOrigin: 'center center'
+                          {/* Table Rows */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                            {sorteioRows.map((row, rIdx) => (
+                              <div key={rIdx} style={{
+                                display: 'grid',
+                                gridTemplateColumns: sorteioHeaders.map(() => '1fr').join(' '),
+                                gap: '15px'
                               }}>
-                                <div style={{
-                                  transform: 'rotate(-90deg)',
-                                  whiteSpace: 'nowrap',
-                                  fontSize: '78px',
-                                  fontWeight: 900,
-                                  color: sorteioRoundTextColor,
-                                  letterSpacing: '0.02em',
-                                  textTransform: 'uppercase',
-                                  textShadow: '0 6px 20px rgba(0,0,0,0.8)'
-                                }}>
-                                  {sorteioRound}
-                                </div>
+                                {row.map((cellVal, cIdx) => (
+                                  <div key={cIdx} style={{
+                                    background: sorteioBoxBgColor,
+                                    color: sorteioItemTextColor,
+                                    height: `${sorteioBoxHeight}px`,
+                                    borderRadius: `${sorteioBoxRadius}px`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '0 10px',
+                                    fontSize: sorteioHeaders.length <= 2 ? `${sorteioRowFontSize}px` : (sorteioHeaders.length === 3 ? `${Math.round(sorteioRowFontSize * 0.82)}px` : `${Math.round(sorteioRowFontSize * 0.68)}px`),
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '-0.02em',
+                                    textAlign: 'center',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis'
+                                  }}>
+                                    {cellVal}
+                                  </div>
+                                ))}
                               </div>
-                            )}
+                            ))}
                           </div>
                         </div>
+
+                        {/* Right Side Vertical Round Label (Positioned Independently / Floating) */}
+                        {sorteioShowRound && sorteioRound && (
+                          <div style={{
+                            position: 'absolute',
+                            right: '55px',
+                            top: '580px',
+                            zIndex: 12,
+                            transform: `translate(${sorteioRoundX}px, ${sorteioRoundY}px) scale(${sorteioRoundScale})`,
+                            transformOrigin: 'center right',
+                            pointerEvents: 'none'
+                          }}>
+                            <div style={{
+                              transform: 'rotate(-90deg)',
+                              whiteSpace: 'nowrap',
+                              fontSize: '78px',
+                              fontWeight: 900,
+                              color: sorteioRoundTextColor,
+                              letterSpacing: '0.02em',
+                              textTransform: 'uppercase',
+                              textShadow: '0 6px 20px rgba(0,0,0,0.85)'
+                            }}>
+                              {sorteioRound}
+                            </div>
+                          </div>
+                        )}
 
                         {/* 7. Extra PNGs Layer */}
                         {sorteioExtraPngs.map(extra => (
