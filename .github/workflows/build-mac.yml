@@ -41,12 +41,12 @@ jobs:
           VERSION=$(node -p "require('./client_app/package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Upload macOS release asset
+      - name: Upload macOS release assets
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: client_app/dist/HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}.zip
-          asset_name: HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}-mac.zip
+          file: client_app/dist/HZN-RodeoApp-Setup-*
+          file_glob: true
           tag: v${{ steps.get_version.outputs.VERSION }}
           overwrite: true
 
@@ -54,4 +54,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HZN-RodeoApp-macOS
-          path: client_app/dist/HZN-RodeoApp-Setup-*.zip
+          path: client_app/dist/HZN-RodeoApp-Setup-*
