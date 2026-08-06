@@ -1443,6 +1443,7 @@ export default function AdminDashboard() {
               <tr style={{ background: 'rgba(255,255,255,0.05)' }}>
                 <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Evento</th>
                 <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Cidade</th>
+                <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Diretor do Evento</th>
                 <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Data</th>
                 <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>Ações</th>
               </tr>
@@ -1452,6 +1453,7 @@ export default function AdminDashboard() {
                 <tr key={ev.id}>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.nome}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.local}</td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)', fontWeight: 'bold', color: 'var(--accent)' }}>{ev.detalhes?.diretor || ev.organizador_email || '—'}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>{ev.data_inicio}</td>
                   <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-light)' }}>
                     <button className="btn btn-outline" style={{ padding: '0.5rem 1rem' }} onClick={() => openEventModal(ev)}>Editar</button>
@@ -1485,9 +1487,15 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div>
-                <label className="form-label">Circuito</label>
-                <input className="form-input" value={editingEvent.detalhes?.circuito || ''} onChange={e => setEditingEvent({...editingEvent, detalhes: { ...editingEvent.detalhes, circuito: e.target.value }})} placeholder="Ex: Circuito Rancho Primavera" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Diretor do Evento</label>
+                  <input className="form-input" value={editingEvent.detalhes?.diretor || ''} onChange={e => setEditingEvent({...editingEvent, detalhes: { ...editingEvent.detalhes, diretor: e.target.value }})} placeholder="Ex: João da Silva" />
+                </div>
+                <div>
+                  <label className="form-label">Circuito</label>
+                  <input className="form-input" value={editingEvent.detalhes?.circuito || ''} onChange={e => setEditingEvent({...editingEvent, detalhes: { ...editingEvent.detalhes, circuito: e.target.value }})} placeholder="Ex: Circuito Rancho Primavera" />
+                </div>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px' }}>

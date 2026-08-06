@@ -2232,8 +2232,16 @@ ipcMain.handle('send-event-to-portal', async (event, { email, eventId }) => {
         if (!ev) throw new Error("Evento não encontrado localmente.");
 
         // Buscar nome do diretor
-        const { data: userLicense } = await supabase.from('licencas').select('nome').eq('email', email).single();
-        const diretorNome = userLicense ? userLicense.nome : email;
+        let diretorNome = ev.director || ev.diretor || '';
+        if (!diretorNome) {
+            try {
+                const { data: userLicense } = await supabase.from('licencas').select('nome').eq('email', email).maybeSingle();
+                if (userLicense && userLicense.nome) diretorNome = userLicense.nome;
+                else diretorNome = email;
+            } catch (e) {
+                diretorNome = email;
+            }
+        }
 
         const payload = {
             nome: ev.name,
@@ -2310,11 +2318,16 @@ ipcMain.handle('update-tablet-config', async (event, { email, eventId, tabletCon
         ev.tablet_config = tabletConfig;
         saveLocalData(email, localData);
 
-        let diretorNome = email;
-        try {
-            const { data: userLicense } = await supabase.from('licencas').select('nome').eq('email', email).maybeSingle();
-            if (userLicense && userLicense.nome) diretorNome = userLicense.nome;
-        } catch (e) {}
+        let diretorNome = ev.director || ev.diretor || '';
+        if (!diretorNome) {
+            try {
+                const { data: userLicense } = await supabase.from('licencas').select('nome').eq('email', email).maybeSingle();
+                if (userLicense && userLicense.nome) diretorNome = userLicense.nome;
+                else diretorNome = email;
+            } catch (e) {
+                diretorNome = email;
+            }
+        }
 
         let existingEvent = null;
         const { data: byEmailAndName } = await supabase.from('eventos_oficiais')

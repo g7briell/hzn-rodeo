@@ -2759,7 +2759,9 @@ export default function AdminDashboard() {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="font-black uppercase text-sm mb-1">{e.nome}</div>
-                            <div className="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">Organizador: {e.organizador_email}</div>
+                            <div className="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">
+                              Diretor: {(typeof e.detalhes === 'string' ? JSON.parse(e.detalhes) : e.detalhes)?.diretor || e.organizador_email}
+                            </div>
                             <div className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">{e.local} | {e.data_inicio} - {e.data_fim}</div>
                           </div>
                           
@@ -2796,7 +2798,9 @@ export default function AdminDashboard() {
                       <div key={e.id} className="bg-black border border-white/10 p-5 rounded-2xl flex justify-between items-center group hover:border-yellow-500/50 transition-all">
                         <div className="flex-1">
                           <div className="font-black uppercase text-sm mb-1">{e.nome}</div>
-                          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{e.local} | {e.data_inicio}</div>
+                          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                            {e.local} | {e.data_inicio} • <span className="text-yellow-500">Diretor: {(typeof e.detalhes === 'string' ? JSON.parse(e.detalhes) : e.detalhes)?.diretor || e.organizador_email}</span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="flex items-center bg-white/5 border border-white/10 rounded-xl px-3 py-1">

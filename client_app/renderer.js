@@ -1202,6 +1202,8 @@ window.openModalEventoDirect = async (id = null) => {
             document.getElementById('event-name').value = ev.name;
             document.getElementById('event-city').value = ev.city;
             document.getElementById('event-circuito').value = ev.circuito || '';
+            const dirInput = document.getElementById('event-director');
+            if (dirInput) dirInput.value = ev.director || ev.diretor || '';
             document.getElementById('event-days').value = ev.days;
             document.getElementById('event-judges').value = ev.judges;
             if (ev.logo) {
@@ -1412,11 +1414,15 @@ async function handleEventSubmit(e) {
         themeColor = extractDominantColor(previewImg);
     }
 
+    const eventDirectorVal = document.getElementById('event-director')?.value?.trim() || '';
+
     const eventData = { 
         type: document.getElementById('event-type').value, 
         name: document.getElementById('event-name').value, 
         city: document.getElementById('event-city').value, 
         circuito: document.getElementById('event-circuito').value, 
+        director: eventDirectorVal,
+        diretor: eventDirectorVal,
         days: document.getElementById('event-days').value, 
         judges: document.getElementById('event-judges').value, 
         logo: logoBase64,
