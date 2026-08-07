@@ -45,6 +45,14 @@ jobs:
           VERSION=$(node -p "require('./client_app/package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Create backward-compatible mac zip alias
+        run: |
+          cd client_app/dist
+          FIRST_ZIP=$(ls HZN-RodeoApp-Setup-*.zip 2>/dev/null | head -n 1)
+          if [ -n "$FIRST_ZIP" ]; then
+            cp "$FIRST_ZIP" "HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}-mac.zip"
+          fi
+
       - name: Upload macOS release zip files
         uses: svenstaro/upload-release-action@v2
         with:
