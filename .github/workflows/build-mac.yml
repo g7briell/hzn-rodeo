@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     runs-on: macos-latest
@@ -41,12 +45,22 @@ jobs:
           VERSION=$(node -p "require('./client_app/package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Upload macOS release assets
+      - name: Upload macOS release zip files
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: client_app/dist/HZN-RodeoApp-Setup-*
+          file: client_app/dist/*.zip
           file_glob: true
+          tag: v${{ steps.get_version.outputs.VERSION }}
+          overwrite: true
+
+      - name: Upload macOS latest-mac.yml (Auto-Updater)
+        uses: svenstaro/upload-release-action@v2
+        continue-on-error: true
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: client_app/dist/latest-mac.yml
+          asset_name: latest-mac.yml
           tag: v${{ steps.get_version.outputs.VERSION }}
           overwrite: true
 
@@ -54,4 +68,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HZN-RodeoApp-macOS
-          path: client_app/dist/HZN-RodeoApp-Setup-*
+          path: client_app/dist/*.zip

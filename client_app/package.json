@@ -1,6 +1,6 @@
 {
   "name": "hzn-rodeo-client",
-  "version": "1.0.108",
+  "version": "1.0.109",
   "description": "Rodeo System Client App",
   "main": "main.js",
   "scripts": {
@@ -44,9 +44,9 @@
     },
     "mac": {
       "target": [
-        "zip",
-        "dmg"
-      ]
+        "zip"
+      ],
+      "artifactName": "HZN-RodeoApp-Setup-${version}-${arch}.${ext}"
     },
     "extraResources": [
       {
