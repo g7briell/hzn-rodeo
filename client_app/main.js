@@ -1756,21 +1756,34 @@ function checkMacUpdates() {
             res.on('end', () => {
                 try {
                     const release = JSON.parse(data);
-                    const latestVersion = release.tag_name.replace(/^v/, '');
+                    const latestVersion = release.tag_name ? release.tag_name.replace(/^v/, '') : '';
                     const currentVersion = app.getVersion();
                     
+                    console.log(`[RODEOAPP MAC UPDATER] Latest tag: ${release.tag_name}, Current: ${currentVersion}`);
+
                     if (isNewerVersion(latestVersion, currentVersion)) {
-                        const zipAsset = release.assets.find(asset => asset.name.endsWith('.zip') && asset.name.toLowerCase().includes('mac'));
+                        const macArch = process.arch; // 'arm64' or 'x64'
+                        let zipAsset = release.assets.find(asset => 
+                            (asset.name.endsWith('.zip') || asset.name.endsWith('.dmg')) && asset.name.includes(macArch)
+                        );
+
+                        if (!zipAsset) {
+                            zipAsset = release.assets.find(asset => 
+                                (asset.name.endsWith('.zip') || asset.name.endsWith('.dmg')) && !asset.name.endsWith('.exe') && !asset.name.endsWith('.blockmap')
+                            );
+                        }
+
                         if (zipAsset) {
                             macUpdateInfo = {
                                 version: latestVersion,
-                                releaseName: release.name,
-                                releaseNotes: release.body,
+                                releaseName: release.name || `Versão ${latestVersion}`,
+                                releaseNotes: release.body || '',
                                 url: zipAsset.browser_download_url,
                                 size: zipAsset.size
                             };
                             resolve({ available: true, info: macUpdateInfo });
                         } else {
+                            console.warn('[RODEOAPP MAC UPDATER] Newer version tag found, but no matching macOS archive asset in release.');
                             resolve({ available: false });
                         }
                     } else {
