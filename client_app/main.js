@@ -49,8 +49,28 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false }
 });
 
+process.on('uncaughtException', (err) => {
+  console.error('[RODEOAPP MAIN] Uncaught Exception caught (prevented crash):', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[RODEOAPP MAIN] Unhandled Rejection caught (prevented crash):', reason?.message || reason);
+});
+
 let currentActiveEmail = null;
 let mainWindow = null;
+
+function safeSendToWindow(channel, data) {
+  try {
+    if (mainWindow && typeof mainWindow.isDestroyed === 'function' && !mainWindow.isDestroyed()) {
+      if (mainWindow.webContents && typeof mainWindow.webContents.isDestroyed === 'function' && !mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send(channel, data);
+      }
+    }
+  } catch (err) {
+    console.warn('[RODEOAPP MAIN] safeSendToWindow error suppressed:', err?.message || err);
+  }
+}
 
 // Escutar mudanças na tabela licencas via Supabase Realtime
 supabase
@@ -59,9 +79,11 @@ supabase
     'postgres_changes',
     { event: 'UPDATE', schema: 'public', table: 'licencas' },
     (payload) => {
-      console.log('RODEOAPP Realtime: Atualização detectada na tabela licencas:', payload.new);
-      if (mainWindow) {
-        mainWindow.webContents.send('license-realtime-update', payload.new);
+      try {
+        console.log('RODEOAPP Realtime: Atualização detectada na tabela licencas:', payload.new);
+        safeSendToWindow('license-realtime-update', payload.new);
+      } catch (e) {
+        console.warn('Realtime licencas callback error:', e);
       }
     }
   )
@@ -76,10 +98,12 @@ supabase
       'broadcast',
       { event: 'license-updated' },
       (payload) => {
-        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: Broadcast recebido no main.js! Evento: license-updated' });
-        console.log('RODEOAPP Realtime Broadcast: Sinal recebido:', payload.payload);
-        if (mainWindow) {
-          mainWindow.webContents.send('license-broadcast-signal', payload.payload);
+        try {
+          safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: Broadcast recebido no main.js! Evento: license-updated' });
+          console.log('RODEOAPP Realtime Broadcast: Sinal recebido:', payload.payload);
+          safeSendToWindow('license-broadcast-signal', payload.payload);
+        } catch (e) {
+          console.warn('License broadcast callback error:', e);
         }
       }
     )
@@ -94,35 +118,37 @@ supabase
       'broadcast',
       { event: 'force-update' },
       (payload) => {
-        if (mainWindow) {
-          mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: Broadcast recebido no main.js! Evento: force-update' });
-        }
-        
-        if (payload.payload && payload.payload.email === currentActiveEmail) {
-          if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: E-mail bateu! Chamando checkForUpdates...' });
-          if (process.platform === 'darwin') {
-              checkMacUpdates().then(res => {
-                  if (res.available) {
-                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-available', info: res.info });
-                  } else {
-                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-not-available', info: { version: app.getVersion() } });
-                  }
-              }).catch(err => {
-                  if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS check updates error: ' + err.message });
-              });
+        try {
+          safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: Broadcast recebido no main.js! Evento: force-update' });
+          
+          if (payload.payload && payload.payload.email === currentActiveEmail) {
+            safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: E-mail bateu! Chamando checkForUpdates...' });
+            if (process.platform === 'darwin') {
+                checkMacUpdates().then(res => {
+                    if (res.available) {
+                        safeSendToWindow('updater-event', { type: 'update-available', info: res.info });
+                    } else {
+                        safeSendToWindow('updater-event', { type: 'update-not-available', info: { version: app.getVersion() } });
+                    }
+                }).catch(err => {
+                    safeSendToWindow('updater-event', { type: 'error', message: 'macOS check updates error: ' + err.message });
+                });
+            } else {
+                try {
+                    autoUpdater.checkForUpdates().then(res => {
+                        safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
+                    }).catch(err => {
+                        safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates REJECTED: ' + err.message + ' ' + err.stack });
+                    });
+                } catch (e) {
+                    safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates SYNC ERROR: ' + e.message });
+                }
+            }
           } else {
-              try {
-                  autoUpdater.checkForUpdates().then(res => {
-                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
-                  }).catch(err => {
-                      if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates REJECTED: ' + err.message + ' ' + err.stack });
-                  });
-              } catch (e) {
-                  if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: checkForUpdates SYNC ERROR: ' + e.message });
-              }
+            safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: E-mail não bateu. Ignorando.' });
           }
-        } else {
-          if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: E-mail não bateu. Ignorando.' });
+        } catch (e) {
+          console.warn('Force update broadcast callback error:', e);
         }
       }
     )
@@ -1806,46 +1832,46 @@ function downloadMacUpdate(url, dest, onProgress) {
 }
 
 autoUpdater.on('update-available', (info) => {
-    if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-available', info });
+    safeSendToWindow('updater-event', { type: 'update-available', info });
 });
 
 autoUpdater.on('update-not-available', (info) => {
-    if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-not-available', info });
+    safeSendToWindow('updater-event', { type: 'update-not-available', info });
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
-    if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'download-progress', progress: progressObj });
+    safeSendToWindow('updater-event', { type: 'download-progress', progress: progressObj });
 });
 
 autoUpdater.on('update-downloaded', (info) => {
-    if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-downloaded', info });
+    safeSendToWindow('updater-event', { type: 'update-downloaded', info });
 });
 
 autoUpdater.on('error', (err) => {
-    if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: err.message });
+    safeSendToWindow('updater-event', { type: 'error', message: err.message });
 });
 
 ipcMain.handle('check-for-updates', () => {
     if (process.platform === 'darwin') {
-        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: Starting check-for-updates on macOS...' });
+        safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: Starting check-for-updates on macOS...' });
         checkMacUpdates().then(res => {
             if (res.available) {
-                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-available', info: res.info });
+                safeSendToWindow('updater-event', { type: 'update-available', info: res.info });
             } else {
-                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'update-not-available', info: { version: app.getVersion() } });
+                safeSendToWindow('updater-event', { type: 'update-not-available', info: { version: app.getVersion() } });
             }
         }).catch(err => {
-            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS check updates error: ' + err.message });
+            safeSendToWindow('updater-event', { type: 'error', message: 'macOS check updates error: ' + err.message });
         });
     } else {
         try {
             autoUpdater.checkForUpdates().then(res => {
-                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
+                safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates resolved: ' + (res ? 'Success' : 'Null') });
             }).catch(err => {
-                if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates REJECTED: ' + err.message });
+                safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates REJECTED: ' + err.message });
             });
         } catch (e) {
-            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates SYNC ERROR: ' + e.message });
+            safeSendToWindow('updater-event', { type: 'debug', message: 'RODEOAPP: IPC checkForUpdates SYNC ERROR: ' + e.message });
         }
     }
 });
@@ -1853,30 +1879,28 @@ ipcMain.handle('check-for-updates', () => {
 ipcMain.handle('download-update', () => {
     if (process.platform === 'darwin') {
         if (!macUpdateInfo) {
-            if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'No update info available to download.' });
+            safeSendToWindow('updater-event', { type: 'error', message: 'No update info available to download.' });
             return;
         }
-        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'debug', message: 'Starting macOS download from: ' + macUpdateInfo.url });
+        safeSendToWindow('updater-event', { type: 'debug', message: 'Starting macOS download from: ' + macUpdateInfo.url });
         
         const tempDir = app.getPath('temp');
         macDownloadPath = path.join(tempDir, `HZN-RodeoApp-Setup-${macUpdateInfo.version}.zip`);
         
         downloadMacUpdate(macUpdateInfo.url, macDownloadPath, (progress) => {
-            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
-                mainWindow.webContents.send('updater-event', {
-                    type: 'download-progress',
-                    progress: {
-                        percent: progress.percent,
-                        transferred: progress.transferred,
-                        total: progress.total,
-                        bytesPerSecond: 0
-                    }
-                });
-            }
+            safeSendToWindow('updater-event', {
+                type: 'download-progress',
+                progress: {
+                    percent: progress.percent,
+                    transferred: progress.transferred,
+                    total: progress.total,
+                    bytesPerSecond: 0
+                }
+            });
         }).then(() => {
-            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('updater-event', { type: 'update-downloaded', info: macUpdateInfo });
+            safeSendToWindow('updater-event', { type: 'update-downloaded', info: macUpdateInfo });
         }).catch(err => {
-            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS download error: ' + err.message });
+            safeSendToWindow('updater-event', { type: 'error', message: 'macOS download error: ' + err.message });
         });
     } else {
         autoUpdater.downloadUpdate();
@@ -1972,7 +1996,7 @@ open "${appBundlePath}"
         
         app.quit();
     } catch (e) {
-        if (mainWindow) mainWindow.webContents.send('updater-event', { type: 'error', message: 'macOS install error: ' + e.message });
+        safeSendToWindow('updater-event', { type: 'error', message: 'macOS install error: ' + e.message });
     }
 }
 
@@ -1981,8 +2005,8 @@ app.on('ready', () => {
     setTimeout(() => {
         if (process.platform === 'darwin') {
             checkMacUpdates().then(res => {
-                if (res.available && mainWindow) {
-                    mainWindow.webContents.send('updater-event', { type: 'update-available', info: res.info });
+                if (res.available) {
+                    safeSendToWindow('updater-event', { type: 'update-available', info: res.info });
                 }
             }).catch(e => console.log('Error checking mac updates:', e));
         } else {
