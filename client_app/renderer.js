@@ -1749,14 +1749,12 @@ function renderStep3() {
 window.validateAndGoToReRide = () => {
     sorteioData.riders = Array.from(document.querySelectorAll('.rider-checkbox:checked')).map(cb => ({ nome: cb.dataset.nome, cidade: cb.dataset.cidade }));
     const bullCheckboxes = Array.from(document.querySelectorAll('.bull-checkbox:checked'));
-    const selectedBulls = [];
     
     if (sorteioData.riders.length === 0) return alert("Selecione os competidores no passo anterior!");
     if (bullCheckboxes.length !== sorteioData.riders.length) {
         return alert(`A quantidade de touros principais (${bullCheckboxes.length}) deve ser exatamente igual a quantidade de competidores (${sorteioData.riders.length})!`);
     }
 
-    for (const cb of bullCheckboxes) {
     sorteioData.bulls = bullCheckboxes.map(cb => ({ nome: cb.dataset.nome, cia: cb.dataset.cia }));
     goToStep('reride');
 };
@@ -1776,18 +1774,11 @@ function renderStepReRide() {
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                     ${availableTouros.map(t => {
                         return `
-                        <div class="bull-card-wrapper bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-xl flex flex-col gap-3 hover:border-red-500/50 transition-all">
-                            <label class="flex items-center gap-3 cursor-pointer">
+                        <div class="bull-card-wrapper bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-xl flex items-center gap-3 hover:border-red-500/50 transition-all">
+                            <label class="flex items-center gap-3 cursor-pointer w-full">
                                 <input type="checkbox" class="reride-checkbox w-5 h-5 rounded-lg accent-red-500 flex-shrink-0" data-nome="${t}" data-cia="${b.nome}">
                                 <span class="text-xs font-black text-white uppercase truncate">${t}</span>
                             </label>
-                                    <span class="text-[10px] font-black text-emerald-500">E</span>
-                                </label>
-                                <label class="flex-1 flex items-center justify-center gap-1 bg-black/50 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-all">
-                                    <input type="radio" name="lado-reride-${b.nome}-${t}" value="D" class="accent-red-500 w-3 h-3" onchange="this.closest('.bull-card-wrapper').querySelector('input[type=checkbox]').checked = true;">
-                                    <span class="text-[10px] font-black text-red-500">C</span>
-                                </label>
-                            </div>
                         </div>`;
                     }).join('')}
                 </div>
