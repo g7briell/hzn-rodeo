@@ -7,6 +7,13 @@
 
   console.log('RODEOAPP WEB MODE: Initializing browser polyfill for web.rodeoapp.pro');
 
+  const SUPABASE_APIKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
+  const SUPABASE_HEADERS = {
+    'apikey': SUPABASE_APIKEY,
+    'Authorization': 'Bearer ' + SUPABASE_APIKEY,
+    'Content-Type': 'application/json'
+  };
+
   function getLocalHWID() {
     let hwid = localStorage.getItem('hzn_web_hwid');
     if (!hwid) {
@@ -27,27 +34,54 @@
     
     validateLicense: async (payload) => {
       try {
-        const response = await fetch('https://api.rodeoapp.pro/rest/v1/licencas?select=*&email=eq.' + encodeURIComponent(payload.email), {
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw'
-          }
-        });
-        const data = await response.json();
-        if (data && data.length > 0) {
-          const lic = data[0];
-          return {
-            valid: lic.status === 'ativo',
-            status: lic.status,
-            esporte: lic.esporte || 'RODEIO_EM_TOUROS',
-            diasRestantes: lic.dias_restantes || 30,
-            nome: lic.nome || 'Usuário Web'
-          };
+        const cleanEmail = (payload.email || '').trim().toLowerCase();
+        const cleanKey = (payload.key || '').trim().toUpperCase();
+        const hwid = payload.hwid || getLocalHWID();
+
+        const url = `https://api.rodeoapp.pro/rest/v1/licencas?select=*&email=ilike.${encodeURIComponent(cleanEmail)}&key_code=eq.${encodeURIComponent(cleanKey)}`;
+        const res = await fetch(url, { headers: SUPABASE_HEADERS });
+        const dataList = await res.json();
+
+        if (!dataList || !Array.isArray(dataList) || dataList.length === 0) {
+          return { success: false, message: 'E-mail ou Chave inválidos.' };
         }
-        return { valid: false, message: 'Licença não encontrada.' };
-      } catch (e) {
-        console.warn('validateLicense web error:', e);
-        return { valid: true, status: 'ativo', esporte: 'RODEIO_EM_TOUROS', diasRestantes: 30 };
+
+        let data = dataList[0];
+
+        if (!data.is_active) {
+          return { success: false, message: 'Esta licença foi desativada.' };
+        }
+
+        if (data.data_ativacao) {
+          const expiry = new Date(data.data_ativacao);
+          expiry.setDate(expiry.getDate() + (data.dias_validos || 30));
+          if (expiry.getTime() < new Date().getTime()) {
+            return { success: false, message: 'Plano expirado. Renove sua licença.' };
+          }
+        }
+
+        if (!data.is_used) {
+          const patchRes = await fetch(`https://api.rodeoapp.pro/rest/v1/licencas?id=eq.${data.id}`, {
+            method: 'PATCH',
+            headers: { ...SUPABASE_HEADERS, 'Prefer': 'return=representation' },
+            body: JSON.stringify({
+              is_used: true,
+              hwid: hwid,
+              data_ativacao: new Date().toISOString(),
+              app_version: 'Web'
+            })
+          });
+          const updated = await patchRes.json();
+          if (updated && Array.isArray(updated) && updated.length > 0) data = updated[0];
+        }
+
+        return {
+          success: true,
+          data: data
+        };
+      } catch (err) {
+        console.error('Web validateLicense error:', err);
+        return { success: false, message: 'Erro ao conectar ao servidor de licenças.' };
       }
     },
 
