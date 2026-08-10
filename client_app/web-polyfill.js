@@ -85,7 +85,28 @@
       }
     },
 
-    sendHeartbeat: async (payload) => ({ success: true }),
+    sendHeartbeat: async (payload) => {
+      try {
+        const cleanEmail = (payload.email || '').trim().toLowerCase();
+        const cleanKey = (payload.key || '').trim().toUpperCase();
+        if (!cleanEmail || !cleanKey) return { valid: true };
+
+        const url = `https://api.rodeoapp.pro/rest/v1/licencas?select=is_active,dias_validos,data_ativacao,esportes&email=ilike.${encodeURIComponent(cleanEmail)}&key_code=eq.${encodeURIComponent(cleanKey)}`;
+        const res = await fetch(url, { headers: SUPABASE_HEADERS });
+        const dataList = await res.json();
+
+        if (!dataList || !Array.isArray(dataList) || dataList.length === 0) {
+          return { valid: false, reason: 'deleted' };
+        }
+        const data = dataList[0];
+        if (!data.is_active) {
+          return { valid: false, reason: 'disabled' };
+        }
+        return { valid: true, data: data };
+      } catch (err) {
+        return { valid: true };
+      }
+    },
     onLicenseRealtimeUpdate: (callback) => {},
     onLicenseBroadcastSignal: (callback) => {},
 
