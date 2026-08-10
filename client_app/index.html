@@ -1420,68 +1420,68 @@
     </div>
 
     <!-- Sorteio Manual View (Wizard) -->
-    <div id="sorteio-manual-view" class="fixed inset-0 z-[90] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
-        <div class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-6">
-                <button onclick="closeSorteioManual()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                <h2 class="text-5xl font-black italic tracking-tighter uppercase text-white">SORTEIO MANUAL</h2>
+    <div id="sorteio-manual-view" class="fixed inset-0 z-[90] bg-[#000000] flex flex-col hidden p-4 sm:p-8 md:p-12 overflow-y-auto">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <div class="flex items-center gap-3 sm:gap-6">
+                <button onclick="closeSorteioManual()" class="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <h2 class="text-xl sm:text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-white whitespace-normal sm:whitespace-nowrap">SORTEIO MANUAL</h2>
             </div>
-            <div id="sorteio-counters" class="hidden flex items-center gap-6 bg-slate-900/50 border border-slate-800 p-4 px-8 rounded-[2rem]">
-                <div class="text-center"><div class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Peões</div><div id="count-riders" class="text-2xl font-black text-white">0</div></div>
+            <div id="sorteio-counters" class="hidden flex items-center gap-4 sm:gap-6 bg-slate-900/50 border border-slate-800 p-3 sm:p-4 px-4 sm:px-8 rounded-[1.5rem] sm:rounded-[2rem] w-full sm:w-auto justify-between sm:justify-start">
+                <div class="text-center"><div class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Peões</div><div id="count-riders" class="text-xl sm:text-2xl font-black text-white">0</div></div>
                 <div class="w-px h-8 bg-slate-800"></div>
-                <div class="text-center"><div class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Touros</div><div id="count-bulls" class="text-2xl font-black text-white">0</div></div>
-                <div id="reride-alert" class="hidden bg-yellow-500/10 border border-yellow-500/20 px-4 py-2 rounded-xl"><span class="text-yellow-500 font-black text-xs uppercase tracking-tighter" id="reride-text">0 RE-RIDES</span></div>
+                <div class="text-center"><div class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Touros</div><div id="count-bulls" class="text-xl sm:text-2xl font-black text-white">0</div></div>
+                <div id="reride-alert" class="hidden bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl"><span class="text-yellow-500 font-black text-[10px] sm:text-xs uppercase tracking-tighter" id="reride-text">0 RE-RIDES</span></div>
             </div>
         </div>
         <div id="step-1" class="sorteio-step flex-1 flex flex-col items-center justify-center">
-            <h3 class="text-2xl font-black text-slate-500 mb-10 uppercase tracking-[0.3em]">Selecione o Dia</h3>
-            <div id="days-container" class="grid grid-cols-4 gap-6 w-full max-w-4xl"></div>
+            <h3 class="text-xl sm:text-2xl font-black text-slate-500 mb-6 sm:mb-10 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Selecione o Dia</h3>
+            <div id="days-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-4xl"></div>
         </div>
         <div id="step-2" class="sorteio-step flex-1 hidden">
-            <div class="flex justify-between items-center mb-8"><h3 class="text-2xl font-black italic uppercase text-white">Selecionar Competidores</h3><button onclick="selectAllRiders()" class="bg-yellow-500 text-black px-6 py-2 rounded-xl font-black text-[10px] uppercase">Selecionar Todos</button></div>
-            <div id="riders-selection-list" class="grid grid-cols-3 gap-4"></div>
-            <div class="mt-12 flex justify-between"><button onclick="goToStep(1)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="goToStep(3)" class="bg-yellow-500 px-12 py-5 rounded-2xl font-black text-black shadow-xl uppercase">Próximo</button></div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8"><h3 class="text-xl sm:text-2xl font-black italic uppercase text-white">Selecionar Competidores</h3><button onclick="selectAllRiders()" class="bg-yellow-500 text-black px-4 sm:px-6 py-2 rounded-xl font-black text-[10px] uppercase w-full sm:w-auto">Selecionar Todos</button></div>
+            <div id="riders-selection-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4"></div>
+            <div class="mt-8 sm:mt-12 flex justify-between gap-4"><button onclick="goToStep(1)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="goToStep(3)" class="bg-yellow-500 px-8 sm:px-12 py-3.5 sm:py-5 rounded-2xl font-black text-black shadow-xl uppercase text-xs sm:text-base">Próximo</button></div>
         </div>
         <div id="step-3" class="sorteio-step flex-1 hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-black italic uppercase text-white">Selecionar Touros</h3>
-                <input type="text" id="search-bulls-step3" placeholder="Buscar touro ou cia..." class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-yellow-500 transition-all w-64" onkeyup="filterBullsStep3()">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <h3 class="text-xl sm:text-2xl font-black italic uppercase text-white">Selecionar Touros</h3>
+                <input type="text" id="search-bulls-step3" placeholder="Buscar touro ou cia..." class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-yellow-500 transition-all w-full sm:w-64" onkeyup="filterBullsStep3()">
             </div>
-            <div id="bulls-selection-list" class="space-y-8 max-h-[50vh] overflow-y-auto pr-2 custom-scroll"></div>
-            <div class="mt-12 flex justify-between"><button onclick="goToStep(2)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="validateAndGoToReRide()" class="bg-yellow-500 px-12 py-5 rounded-2xl font-black text-black shadow-xl uppercase">Próximo (Re-Rides)</button></div>
+            <div id="bulls-selection-list" class="space-y-6 sm:space-y-8 max-h-[50vh] overflow-y-auto pr-2 custom-scroll"></div>
+            <div class="mt-8 sm:mt-12 flex justify-between gap-4"><button onclick="goToStep(2)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="validateAndGoToReRide()" class="bg-yellow-500 px-8 sm:px-12 py-3.5 sm:py-5 rounded-2xl font-black text-black shadow-xl uppercase text-xs sm:text-base">Próximo (Re-Rides)</button></div>
         </div>
         <div id="step-reride" class="sorteio-step flex-1 hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-black italic uppercase text-red-500">Selecionar Touros Re-Ride</h3>
-                <input type="text" id="search-bulls-reride" placeholder="Buscar touro ou cia..." class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-red-500 transition-all w-64" onkeyup="filterBullsReRide()">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <h3 class="text-xl sm:text-2xl font-black italic uppercase text-red-500">Selecionar Touros Re-Ride</h3>
+                <input type="text" id="search-bulls-reride" placeholder="Buscar touro ou cia..." class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-red-500 transition-all w-full sm:w-64" onkeyup="filterBullsReRide()">
             </div>
             <p class="text-slate-400 font-bold text-[10px] uppercase mb-4 tracking-widest">Os touros selecionados entrarão como reservas (R1, R2...)</p>
-            <div id="bulls-reride-list" class="space-y-8 max-h-[50vh] overflow-y-auto pr-2 custom-scroll"></div>
-            <div class="mt-12 flex justify-between"><button onclick="goToStep(3)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="generateDrawListWithReRides()" class="bg-red-500 hover:bg-red-600 px-12 py-5 rounded-2xl font-black text-white shadow-xl uppercase transition-all">Gerar Lista de Sorteio</button></div>
+            <div id="bulls-reride-list" class="space-y-6 sm:space-y-8 max-h-[50vh] overflow-y-auto pr-2 custom-scroll"></div>
+            <div class="mt-8 sm:mt-12 flex justify-between gap-4"><button onclick="goToStep(3)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button><button onclick="generateDrawListWithReRides()" class="bg-red-500 hover:bg-red-600 px-8 sm:px-12 py-3.5 sm:py-5 rounded-2xl font-black text-white shadow-xl uppercase text-xs sm:text-base transition-all">Gerar Lista de Sorteio</button></div>
         </div>
         <div id="step-4" class="sorteio-step flex-1 hidden">
-            <h3 class="text-3xl font-black italic uppercase text-white mb-10">Lista para Sorteio</h3>
-            <div id="final-draw-list" class="grid grid-cols-2 gap-4"></div>
-            <div class="mt-12 flex justify-between"><button onclick="goToStep(3)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button>
-                <div class="flex gap-4">
-                    <button onclick="exportToExcel()" class="bg-emerald-600 px-8 py-4 rounded-2xl font-black text-white text-xs uppercase tracking-widest">Exportar Excel</button>
-                    <button onclick="confirmContinueToStep5()" class="bg-yellow-500 px-12 py-4 rounded-2xl font-black text-black text-xs uppercase tracking-widest">Continuar</button>
+            <h3 class="text-2xl sm:text-3xl font-black italic uppercase text-white mb-6 sm:mb-10">Lista para Sorteio</h3>
+            <div id="final-draw-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"></div>
+            <div class="mt-8 sm:mt-12 flex justify-between gap-4"><button onclick="goToStep(3)" class="text-slate-500 font-bold uppercase text-xs">Voltar</button>
+                <div class="flex gap-2 sm:gap-4">
+                    <button onclick="exportToExcel()" class="bg-emerald-600 px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-black text-white text-[10px] sm:text-xs uppercase tracking-widest">Exportar Excel</button>
+                    <button onclick="confirmContinueToStep5()" class="bg-yellow-500 px-6 sm:px-12 py-3 sm:py-4 rounded-2xl font-black text-black text-[10px] sm:text-xs uppercase tracking-widest">Continuar</button>
                 </div>
             </div>
         </div>
         <div id="step-5" class="sorteio-step flex-1 hidden">
-             <h3 class="text-3xl font-black italic uppercase text-white mb-10 text-left">Vincular Sorteio</h3>
+             <h3 class="text-2xl sm:text-3xl font-black italic uppercase text-white mb-6 sm:mb-10 text-left">Vincular Sorteio</h3>
              <div id="assignment-list" class="space-y-4 max-w-4xl mx-auto"></div>
-             <div class="mt-12 flex justify-end"><button id="btn-finish-assignment" onclick="goToStep(6)" class="bg-yellow-500 px-12 py-5 rounded-2xl font-black text-black shadow-xl uppercase" disabled>Ver Confrontos</button></div>
+             <div class="mt-8 sm:mt-12 flex justify-end"><button id="btn-finish-assignment" onclick="goToStep(6)" class="bg-yellow-500 px-8 sm:px-12 py-3.5 sm:py-5 rounded-2xl font-black text-black shadow-xl uppercase text-xs sm:text-base" disabled>Ver Confrontos</button></div>
         </div>
         <div id="step-6" class="sorteio-step flex-1 hidden">
-            <div class="flex justify-between items-center mb-10"><h3 class="text-3xl font-black italic uppercase text-yellow-500">Confrontos Definidos</h3>
-                <div class="flex gap-4">
-                    <button onclick="exportConfrontos()" class="bg-emerald-600 px-8 py-4 rounded-2xl font-black text-white text-xs uppercase">Exportar Sorteio</button>
-                    <button onclick="closeSorteioManual()" class="bg-yellow-500 px-12 py-4 rounded-2xl font-black text-black text-xs uppercase">Finalizar</button>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-10"><h3 class="text-2xl sm:text-3xl font-black italic uppercase text-yellow-500">Confrontos Definidos</h3>
+                <div class="flex gap-2 sm:gap-4 w-full sm:w-auto">
+                    <button onclick="exportConfrontos()" class="flex-1 sm:flex-none bg-emerald-600 px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-black text-white text-[10px] sm:text-xs uppercase">Exportar Sorteio</button>
+                    <button onclick="closeSorteioManual()" class="flex-1 sm:flex-none bg-yellow-500 px-6 sm:px-12 py-3 sm:py-4 rounded-2xl font-black text-black text-[10px] sm:text-xs uppercase">Finalizar</button>
                 </div>
             </div>
-            <div id="confrontos-list" class="grid grid-cols-2 gap-4"></div>
+            <div id="confrontos-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"></div>
         </div>
     </div>
 

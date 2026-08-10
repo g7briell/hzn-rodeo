@@ -1757,18 +1757,7 @@ window.validateAndGoToReRide = () => {
     }
 
     for (const cb of bullCheckboxes) {
-        const nome = cb.dataset.nome;
-        const cia = cb.dataset.cia;
-        const ladoRadio = document.querySelector(`input[name="lado-main-${cia}-${nome}"]:checked`);
-        
-        if (!ladoRadio) {
-            return alert(`Você selecionou o touro principal "${nome}" da cia "${cia}", mas esqueceu de escolher o LADO (E ou D)!`);
-        }
-        
-        selectedBulls.push({ nome, cia, lado: ladoRadio.value });
-    }
-
-    sorteioData.bulls = selectedBulls; // Salva os touros principais com o lado
+    sorteioData.bulls = bullCheckboxes.map(cb => ({ nome: cb.dataset.nome, cia: cb.dataset.cia }));
     goToStep('reride');
 };
 
@@ -1782,19 +1771,16 @@ function renderStepReRide() {
         const availableTouros = b.touros.filter(t => !mainBullNames.includes(t));
         if (availableTouros.length > 0) {
             html += `
-            <div class="glass p-8 rounded-[2.5rem] border-white/5 bull-container">
-                <h4 class="text-xs font-black text-red-500 uppercase tracking-widest mb-6">${b.nome}</h4>
-                <div class="grid grid-cols-4 gap-4">
+            <div class="glass p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border-white/5 bull-container">
+                <h4 class="text-xs font-black text-red-500 uppercase tracking-widest mb-4 sm:mb-6">${b.nome}</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                     ${availableTouros.map(t => {
                         return `
-                        <div class="bull-card-wrapper bg-slate-950/50 border border-slate-800 p-4 rounded-xl flex flex-col gap-3 hover:border-red-500/50 transition-all">
+                        <div class="bull-card-wrapper bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-xl flex flex-col gap-3 hover:border-red-500/50 transition-all">
                             <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" class="reride-checkbox w-5 h-5 rounded-lg accent-red-500" data-nome="${t}" data-cia="${b.nome}">
+                                <input type="checkbox" class="reride-checkbox w-5 h-5 rounded-lg accent-red-500 flex-shrink-0" data-nome="${t}" data-cia="${b.nome}">
                                 <span class="text-xs font-black text-white uppercase truncate">${t}</span>
                             </label>
-                            <div class="flex gap-2">
-                                <label class="flex-1 flex items-center justify-center gap-1 bg-black/50 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-all">
-                                    <input type="radio" name="lado-reride-${b.nome}-${t}" value="E" class="accent-emerald-500 w-3 h-3" onchange="this.closest('.bull-card-wrapper').querySelector('input[type=checkbox]').checked = true;">
                                     <span class="text-[10px] font-black text-emerald-500">E</span>
                                 </label>
                                 <label class="flex-1 flex items-center justify-center gap-1 bg-black/50 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-all">
