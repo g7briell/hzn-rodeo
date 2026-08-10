@@ -2529,31 +2529,48 @@ ipcMain.handle('share-event-to-cloud', async (event, { email, eventId, password 
 // Puxar evento existente da nuvem usando ID e Senha
 ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password }) => {
     try {
+        const cleanShareId = (shareId || '').trim().toLowerCase();
+        const cleanPassword = (password || '').trim();
+
+        if (!cleanShareId || !cleanPassword) {
+            throw new Error("Por favor, preencha o ID do evento e a Senha.");
+        }
+
         const { data: events, error } = await supabase.from('eventos_oficiais')
             .select('*')
-            .eq('detalhes->>share_id', shareId.trim())
-            .eq('detalhes->>share_password', password.trim())
-            .limit(1);
+            .eq('status', 'compartilhado')
+            .order('created_at', { ascending: false })
+            .limit(200);
 
-        if (error) throw error;
-        if (!events || events.length === 0) {
+        if (error) {
+            console.error("Supabase query error in pull-event-from-cloud:", error);
+            throw new Error(error.message || "Falha ao conectar com o banco de dados na nuvem.");
+        }
+
+        const cloudEvent = (events || []).find(e => {
+            const det = e.detalhes || {};
+            const sId = String(det.share_id || '').trim().toLowerCase();
+            const sPass = String(det.share_password || '').trim();
+            return sId === cleanShareId && sPass === cleanPassword;
+        });
+
+        if (!cloudEvent) {
             throw new Error("ID do evento ou senha inválidos.");
         }
 
-        const cloudEvent = events[0];
-        const localDataObj = cloudEvent.detalhes.localData;
+        const localDataObj = cloudEvent.detalhes ? cloudEvent.detalhes.localData : null;
         if (!localDataObj) {
-            throw new Error("Dados do evento corrompidos na nuvem.");
+            throw new Error("Dados do evento corrompidos ou incompletos na nuvem.");
         }
 
         // Adiciona ou atualiza no banco local
         const localData = getLocalData(email, currentSportSession);
         
         // Verifica se já existe localmente
-        const existingIndex = localData.eventos.findIndex(e => e.id === localDataObj.id || (e.share_id && e.share_id === localDataObj.share_id));
+        const existingIndex = localData.eventos.findIndex(e => e.id === localDataObj.id || (e.share_id && e.share_id.toLowerCase() === cleanShareId));
         
-        localDataObj.share_id = shareId;
-        localDataObj.share_password = password;
+        localDataObj.share_id = shareId.trim();
+        localDataObj.share_password = password.trim();
 
         if (existingIndex > -1) {
             localData.eventos[existingIndex] = localDataObj;
@@ -2565,7 +2582,7 @@ ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password
         return { success: true, eventName: localDataObj.name, sport: currentSportSession };
     } catch (e) {
         console.error("Erro ao importar evento da nuvem:", e);
-        return { success: false, error: e.message };
+        return { success: false, error: e.message || String(e) };
     }
 });
 

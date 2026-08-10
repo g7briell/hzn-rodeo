@@ -321,29 +321,38 @@
     },
     pullEventFromCloud: async ({ email, shareId, password }) => {
       try {
-        const cleanShareId = (shareId || '').trim();
+        const cleanShareId = (shareId || '').trim().toLowerCase();
         const cleanPass = (password || '').trim();
 
-        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&limit=100`;
+        if (!cleanShareId || !cleanPass) {
+          throw new Error("Por favor, preencha o ID do evento e a Senha.");
+        }
+
+        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&status=eq.compartilhado&order=created_at.desc&limit=200`;
         const res = await fetch(url, { headers: SUPABASE_HEADERS });
         const list = await res.json();
 
-        const cloudEvent = (list || []).find(e => 
-          e.detalhes && 
-          String(e.detalhes.share_id).trim() === cleanShareId && 
-          String(e.detalhes.share_password).trim() === cleanPass
-        );
+        if (!list || !Array.isArray(list)) {
+          throw new Error("Falha ao conectar com o banco de dados na nuvem.");
+        }
+
+        const cloudEvent = list.find(e => {
+          const det = e.detalhes || {};
+          const sId = String(det.share_id || '').trim().toLowerCase();
+          const sPass = String(det.share_password || '').trim();
+          return sId === cleanShareId && sPass === cleanPass;
+        });
 
         if (!cloudEvent || !cloudEvent.detalhes || !cloudEvent.detalhes.localData) {
           throw new Error("ID do evento ou senha inválidos.");
         }
 
         const localDataObj = cloudEvent.detalhes.localData;
-        localDataObj.share_id = cleanShareId;
-        localDataObj.share_password = cleanPass;
+        localDataObj.share_id = shareId.trim();
+        localDataObj.share_password = password.trim();
 
         const events = await window.electronAPI.getLocalEvents(email);
-        const existingIdx = events.findIndex(e => e.id === localDataObj.id || e.share_id === cleanShareId);
+        const existingIdx = events.findIndex(e => e.id === localDataObj.id || (e.share_id && e.share_id.toLowerCase() === cleanShareId));
 
         if (existingIdx > -1) {
           events[existingIdx] = localDataObj;
@@ -355,7 +364,7 @@
         return { success: true, eventName: localDataObj.name };
       } catch (e) {
         console.error("Erro ao importar evento da nuvem (web):", e);
-        return { success: false, error: e.message };
+        return { success: false, error: e.message || String(e) };
       }
     },
     sendOverlayCommand: () => {},
