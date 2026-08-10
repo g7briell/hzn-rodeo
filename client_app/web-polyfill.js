@@ -159,7 +159,36 @@
               const cloudLocal = cloudEv.detalhes.localData;
               const idx = localEvents.findIndex(l => l.id === cloudLocal.id || (l.share_id && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id));
               if (idx > -1) {
-                localEvents[idx] = { ...localEvents[idx], ...cloudLocal };
+                // Mesclagem inteligente profunda
+                const localEv = localEvents[idx];
+                const merged = { ...localEv, ...cloudLocal };
+
+                if (Array.isArray(localEv.peoes) || Array.isArray(cloudLocal.peoes)) {
+                  const peaoMap = new Map();
+                  (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').toLowerCase(), p));
+                  (cloudLocal.peoes || []).forEach(p => {
+                    const k = (p.id || p.nome || '').toLowerCase();
+                    if (peaoMap.has(k)) peaoMap.set(k, { ...peaoMap.get(k), ...p });
+                    else peaoMap.set(k, p);
+                  });
+                  merged.peoes = Array.from(peaoMap.values());
+                }
+
+                if (Array.isArray(localEv.boiadas) || Array.isArray(cloudLocal.boiadas)) {
+                  const boiadaMap = new Map();
+                  (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').toLowerCase(), b));
+                  (cloudLocal.boiadas || []).forEach(b => {
+                    const k = (b.nome || '').toLowerCase();
+                    if (boiadaMap.has(k)) {
+                      const ex = boiadaMap.get(k);
+                      const allT = Array.from(new Set([...(ex.touros || []), ...(b.touros || [])]));
+                      boiadaMap.set(k, { ...ex, ...b, touros: allT });
+                    } else boiadaMap.set(k, b);
+                  });
+                  merged.boiadas = Array.from(boiadaMap.values());
+                }
+
+                localEvents[idx] = merged;
               } else if (cloudEv.organizador_email === cleanEmail) {
                 localEvents.push(cloudLocal);
               }

@@ -2586,6 +2586,63 @@ ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password
     }
 });
 
+function mergeEventObjects(localEv, cloudEv) {
+    if (!localEv) return cloudEv;
+    if (!cloudEv) return localEv;
+
+    const merged = { ...localEv, ...cloudEv };
+
+    // Mescla peões (preserva pontos/tempos do mais completo)
+    if (Array.isArray(localEv.peoes) || Array.isArray(cloudEv.peoes)) {
+        const peaoMap = new Map();
+        (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').toLowerCase(), p));
+        (cloudEv.peoes || []).forEach(p => {
+            const key = (p.id || p.nome || '').toLowerCase();
+            if (peaoMap.has(key)) {
+                peaoMap.set(key, { ...peaoMap.get(key), ...p });
+            } else {
+                peaoMap.set(key, p);
+            }
+        });
+        merged.peoes = Array.from(peaoMap.values());
+    }
+
+    // Mescla boiadas e touros sem apagar itens
+    if (Array.isArray(localEv.boiadas) || Array.isArray(cloudEv.boiadas)) {
+        const boiadaMap = new Map();
+        (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').toLowerCase(), b));
+        (cloudEv.boiadas || []).forEach(b => {
+            const key = (b.nome || '').toLowerCase();
+            if (boiadaMap.has(key)) {
+                const existing = boiadaMap.get(key);
+                const allTouros = Array.from(new Set([...(existing.touros || []), ...(b.touros || [])]));
+                boiadaMap.set(key, { ...existing, ...b, touros: allTouros });
+            } else {
+                boiadaMap.set(key, b);
+            }
+        });
+        merged.boiadas = Array.from(boiadaMap.values());
+    }
+
+    // Mescla juízes
+    if (Array.isArray(localEv.juizes) || Array.isArray(cloudEv.juizes)) {
+        const jMap = new Map();
+        (localEv.juizes || []).forEach(j => jMap.set((j.nome || j || '').toLowerCase(), j));
+        (cloudEv.juizes || []).forEach(j => jMap.set((j.nome || j || '').toLowerCase(), j));
+        merged.juizes = Array.from(jMap.values());
+    }
+
+    // Mescla sorteios
+    if (Array.isArray(localEv.sorteios) || Array.isArray(cloudEv.sorteios)) {
+        const sMap = new Map();
+        (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
+        (cloudEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
+        merged.sorteios = Array.from(sMap.values());
+    }
+
+    return merged;
+}
+
 // Sincronizar todos os eventos do usuário com a nuvem
 ipcMain.handle('sync-user-cloud-events', async (event, email) => {
     try {
@@ -2608,7 +2665,7 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
                     const cloudLocal = cloudEv.detalhes.localData;
                     const idx = localData.eventos.findIndex(l => l.id === cloudLocal.id || (l.share_id && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id));
                     if (idx > -1) {
-                        localData.eventos[idx] = { ...localData.eventos[idx], ...cloudLocal };
+                        localData.eventos[idx] = mergeEventObjects(localData.eventos[idx], cloudLocal);
                     } else if (cloudEv.organizador_email === cleanEmail) {
                         localData.eventos.push(cloudLocal);
                     }
