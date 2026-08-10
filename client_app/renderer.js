@@ -1625,6 +1625,7 @@ window.hideAllModalsAndViews = () => {
         'modal-settings', 'modal-global-peao', 'modal-global-boiada',
         'overlay-settings-list-screen', 'overlay-settings-config-screen',
         'modal-tablet-control', 'modal-import-pdf', 'modal-transmissao-eventos',
+        'modal-choose-import', 'modal-photo-notes', 'modal-ocr-progress', 'modal-review-photo-notes',
         'event-control-view', 'transmissao-event-view', 'home-screen', 'sport-select-screen',
         'intro-screen', 'transmissao-screen', 'content-view'
     ];
@@ -1648,6 +1649,448 @@ window.closeEventControl = () => {
     } else {
         if (homeScreen) homeScreen.classList.remove('hidden');
     }
+};
+
+// ==========================================
+// IMPORTAR INFORMAÇÕES - LEITURA DE PLANILHA DE NOTAS POR FOTO / CÂMERA (OCR)
+// ==========================================
+
+let currentPhotoNotesImageBase64 = null;
+let cameraMediaStream = null;
+
+window.openImportChoiceModal = () => {
+    const modal = document.getElementById('modal-choose-import');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.selectImportOption = (type) => {
+    const modalChoice = document.getElementById('modal-choose-import');
+    if (modalChoice) modalChoice.classList.add('hidden');
+
+    if (type === 'pdf') {
+        const modalPdf = document.getElementById('modal-import-pdf');
+        if (modalPdf) modalPdf.classList.remove('hidden');
+    } else if (type === 'photo') {
+        openPhotoNotesModal();
+    }
+};
+
+window.openPhotoNotesModal = () => {
+    if (!currentEvent) return alert("Abra um evento primeiro para importar notas por foto.");
+    
+    currentPhotoNotesImageBase64 = null;
+    stopCameraStream();
+
+    const previewContainer = document.getElementById('photo-notes-preview-container');
+    const cameraContainer = document.getElementById('camera-stream-container');
+    if (previewContainer) previewContainer.classList.add('hidden');
+    if (cameraContainer) cameraContainer.classList.add('hidden');
+
+    populatePhotoNotesSelectors();
+
+    const modal = document.getElementById('modal-photo-notes');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closePhotoNotesModal = () => {
+    stopCameraStream();
+    const modal = document.getElementById('modal-photo-notes');
+    if (modal) modal.classList.add('hidden');
+};
+
+function populatePhotoNotesSelectors() {
+    const daySelect = document.getElementById('photo-notes-day-select');
+    const judgeSelect = document.getElementById('photo-notes-judge-select');
+
+    if (daySelect) {
+        const daysCount = parseInt((currentEvent && currentEvent.days) || '3', 10) || 3;
+        let dayHtml = '';
+        for (let d = 1; d <= daysCount; d++) {
+            dayHtml += `<option value="${d}">Dia ${d}</option>`;
+        }
+        daySelect.innerHTML = dayHtml;
+    }
+
+    if (judgeSelect) {
+        const juizes = (currentEvent && currentEvent.juizes) || [];
+        if (juizes.length === 0) {
+            judgeSelect.innerHTML = `<option value="Juiz Único">Juiz Único (Padrão)</option>`;
+        } else {
+            judgeSelect.innerHTML = juizes.map((j, idx) => {
+                const jName = typeof j === 'string' ? j : (j.nome || `Juiz ${idx + 1}`);
+                return `<option value="${jName}">Juiz ${idx + 1}: ${jName}</option>`;
+            }).join('');
+        }
+    }
+}
+
+window.triggerPhotoFileInput = () => {
+    const fileInput = document.getElementById('photo-notes-file-input');
+    if (fileInput) fileInput.click();
+};
+
+window.handlePhotoNotesFileSelect = (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    stopCameraStream();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        currentPhotoNotesImageBase64 = e.target.result;
+        showPhotoNotesPreview(currentPhotoNotesImageBase64);
+    };
+    reader.readAsDataURL(file);
+};
+
+window.toggleCameraMode = async () => {
+    const cameraContainer = document.getElementById('camera-stream-container');
+    const video = document.getElementById('photo-camera-video');
+
+    if (cameraMediaStream) {
+        stopCameraStream();
+        return;
+    }
+
+    try {
+        cameraMediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        if (video) {
+            video.srcObject = cameraMediaStream;
+            video.play();
+        }
+        if (cameraContainer) cameraContainer.classList.remove('hidden');
+    } catch (err) {
+        console.error("Erro ao acessar câmera:", err);
+        alert("Não foi possível acessar a câmera do dispositivo: " + (err.message || err));
+    }
+};
+
+function stopCameraStream() {
+    if (cameraMediaStream) {
+        cameraMediaStream.getTracks().forEach(track => track.stop());
+        cameraMediaStream = null;
+    }
+    const cameraContainer = document.getElementById('camera-stream-container');
+    if (cameraContainer) cameraContainer.classList.add('hidden');
+}
+
+window.captureCameraSnapshot = () => {
+    const video = document.getElementById('photo-camera-video');
+    if (!video || !cameraMediaStream) return alert("Câmera não está ativa.");
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    currentPhotoNotesImageBase64 = canvas.toDataURL('image/jpeg', 0.95);
+    stopCameraStream();
+    showPhotoNotesPreview(currentPhotoNotesImageBase64);
+};
+
+function showPhotoNotesPreview(imageSrc) {
+    const imgEl = document.getElementById('photo-notes-preview-img');
+    const container = document.getElementById('photo-notes-preview-container');
+    if (imgEl) imgEl.src = imageSrc;
+    if (container) container.classList.remove('hidden');
+}
+
+function preprocessImageForOCR(imageSrc) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(2000 / Math.max(img.width, img.height), 2.0);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const contrast = 1.6; 
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+            
+            for (let i = 0; i < data.length; i += 4) {
+                let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                gray = factor * (gray - 128) + 128;
+                let val = gray < 140 ? 0 : 255;
+                data[i] = val;
+                data[i + 1] = val;
+                data[i + 2] = val;
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = imageSrc;
+    });
+}
+
+window.startPhotoNotesOCRProcessing = async () => {
+    if (!currentPhotoNotesImageBase64) return alert("Selecione ou tire uma foto da planilha primeiro.");
+
+    closePhotoNotesModal();
+
+    const modalProgress = document.getElementById('modal-ocr-progress');
+    const progressBar = document.getElementById('ocr-progress-bar');
+    const progressText = document.getElementById('ocr-progress-step-text');
+    
+    if (modalProgress) modalProgress.classList.remove('hidden');
+
+    const updateProgress = (pct, text) => {
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (progressText) progressText.innerText = text;
+    };
+
+    try {
+        updateProgress(15, "1/5. Upload da imagem da planilha...");
+        await new Promise(r => setTimeout(r, 400));
+
+        updateProgress(40, "2/5. Pré-processando contraste e nitidez...");
+        const processedImage = await preprocessImageForOCR(currentPhotoNotesImageBase64);
+
+        updateProgress(70, "3/5. Executando leitura de números das notas (OCR)...");
+
+        let ocrText = '';
+        if (window.Tesseract) {
+            const worker = await Tesseract.createWorker('por');
+            await worker.setParameters({
+                tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .,/-\n'
+            });
+            const ret = await worker.recognize(processedImage);
+            ocrText = ret.data.text;
+            await worker.terminate();
+        } else {
+            throw new Error("Biblioteca OCR Tesseract não foi carregada.");
+        }
+
+        updateProgress(90, "4/5. Associando competidores e notas dos juízes...");
+        await new Promise(r => setTimeout(r, 300));
+
+        const dayVal = parseInt(document.getElementById('photo-notes-day-select').value || '1', 10);
+        const judgeVal = document.getElementById('photo-notes-judge-select').value || 'Juiz Único';
+
+        const extractedRows = parsePhotoNotesOCRText(ocrText, judgeVal, dayVal);
+
+        updateProgress(100, "5/5. Concluído com sucesso!");
+        await new Promise(r => setTimeout(r, 300));
+
+        if (modalProgress) modalProgress.classList.add('hidden');
+
+        openPhotoNotesReviewModal(extractedRows, dayVal, judgeVal);
+    } catch (err) {
+        console.error("Erro na leitura OCR da planilha:", err);
+        if (modalProgress) modalProgress.classList.add('hidden');
+        alert("Falha na leitura da planilha: " + (err.message || err));
+    }
+};
+
+function parsePhotoNotesOCRText(text, judgeName, dayVal) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const peoesList = (currentEvent && currentEvent.peoes) ? currentEvent.peoes : [];
+    const results = [];
+
+    lines.forEach(line => {
+        const numMatches = line.match(/\b([1-9]\d(?:\.\d)?)\b/g);
+        if (numMatches && numMatches.length > 0) {
+            const numbers = numMatches.map(n => parseFloat(n)).filter(n => n >= 10 && n <= 100);
+            if (numbers.length > 0) {
+                let cleanText = line.replace(/[\d\.,\/\\-]/g, ' ').trim();
+                let matchedPeao = null;
+
+                if (cleanText.length >= 3) {
+                    matchedPeao = peoesList.find(p => {
+                        const pName = (p.nome || '').toLowerCase();
+                        const cText = cleanText.toLowerCase();
+                        return pName.includes(cText) || cText.includes(pName) || levDistance(pName, cText) < 4;
+                    });
+                }
+
+                let notaPeao = 0;
+                let notaTouro = 0;
+                let notaTotal = 0;
+
+                if (numbers.length >= 2) {
+                    notaPeao = numbers[0];
+                    notaTouro = numbers[1];
+                    notaTotal = notaPeao + notaTouro;
+                } else if (numbers.length === 1) {
+                    if (numbers[0] >= 40) {
+                        notaTotal = numbers[0];
+                        notaPeao = Math.round(numbers[0] / 2 * 10) / 10;
+                        notaTouro = Math.round(numbers[0] / 2 * 10) / 10;
+                    } else {
+                        notaPeao = numbers[0];
+                        notaTotal = numbers[0];
+                    }
+                }
+
+                results.push({
+                    peaoNome: matchedPeao ? matchedPeao.nome : (cleanText || 'Competidor Não Identificado'),
+                    peaoCidade: matchedPeao ? matchedPeao.cidade : '',
+                    notaPeao: notaPeao,
+                    notaTouro: notaTouro,
+                    notaTotal: notaTotal,
+                    juiz: judgeName,
+                    day: dayVal
+                });
+            }
+        }
+    });
+
+    if (results.length === 0 && peoesList.length > 0) {
+        peoesList.forEach(p => {
+            results.push({
+                peaoNome: p.nome,
+                peaoCidade: p.cidade || '',
+                notaPeao: 0,
+                notaTouro: 0,
+                notaTotal: 0,
+                juiz: judgeName,
+                day: dayVal
+            });
+        });
+    }
+
+    return results;
+}
+
+function levDistance(a, b) {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
+
+let photoNotesReviewState = { day: 1, judge: '', rows: [] };
+
+function openPhotoNotesReviewModal(rows, dayVal, judgeVal) {
+    photoNotesReviewState = { day: dayVal, judge: judgeVal, rows: rows };
+
+    const subtitle = document.getElementById('review-photo-notes-subtitle');
+    if (subtitle) subtitle.innerText = `Planilha do Dia ${dayVal} • ${judgeVal}`;
+
+    renderPhotoNotesReviewTable();
+
+    const modal = document.getElementById('modal-review-photo-notes');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderPhotoNotesReviewTable() {
+    const tbody = document.getElementById('photo-notes-review-tbody');
+    if (!tbody) return;
+
+    const peoesList = (currentEvent && currentEvent.peoes) ? currentEvent.peoes : [];
+
+    let html = photoNotesReviewState.rows.map((row, idx) => {
+        return `
+        <tr class="hover:bg-slate-800/30 transition-colors">
+            <td class="p-3">
+                <select onchange="updatePhotoNotesReviewRow(${idx}, 'peaoNome', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-bold outline-none focus:border-yellow-500">
+                    ${peoesList.map(p => `<option value="${p.nome}" ${p.nome === row.peaoNome ? 'selected' : ''}>${p.nome} (${p.cidade || 'S/C'})</option>`).join('')}
+                    ${!peoesList.some(p => p.nome === row.peaoNome) ? `<option value="${row.peaoNome}" selected>${row.peaoNome}</option>` : ''}
+                </select>
+            </td>
+            <td class="p-3 text-center">
+                <input type="number" step="0.5" value="${row.notaPeao || 0}" onchange="updatePhotoNotesReviewRow(${idx}, 'notaPeao', this.value)" class="w-20 bg-slate-950 border border-slate-800 rounded-lg p-2 text-center text-white font-black outline-none focus:border-yellow-500">
+            </td>
+            <td class="p-3 text-center">
+                <input type="number" step="0.5" value="${row.notaTouro || 0}" onchange="updatePhotoNotesReviewRow(${idx}, 'notaTouro', this.value)" class="w-20 bg-slate-950 border border-slate-800 rounded-lg p-2 text-center text-white font-black outline-none focus:border-yellow-500">
+            </td>
+            <td class="p-3 text-center font-black text-yellow-500 text-sm">
+                ${((parseFloat(row.notaPeao) || 0) + (parseFloat(row.notaTouro) || 0)).toFixed(1)}
+            </td>
+            <td class="p-3 text-center">
+                <button onclick="removeReviewRow(${idx})" class="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Remover">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    tbody.innerHTML = html || '<tr><td colspan="5" class="text-center p-6 text-slate-500 font-bold">Nenhum registro extraído. Adicione uma linha manualmente.</td></tr>';
+}
+
+window.updatePhotoNotesReviewRow = (idx, field, val) => {
+    if (!photoNotesReviewState.rows[idx]) return;
+    if (field === 'notaPeao' || field === 'notaTouro') {
+        photoNotesReviewState.rows[idx][field] = parseFloat(val) || 0;
+        photoNotesReviewState.rows[idx].notaTotal = (parseFloat(photoNotesReviewState.rows[idx].notaPeao) || 0) + (parseFloat(photoNotesReviewState.rows[idx].notaTouro) || 0);
+    } else {
+        photoNotesReviewState.rows[idx][field] = val;
+    }
+    renderPhotoNotesReviewTable();
+};
+
+window.addManualReviewRow = () => {
+    const firstPeao = (currentEvent && currentEvent.peoes && currentEvent.peoes.length > 0) ? currentEvent.peoes[0].nome : 'Competidor Manual';
+    photoNotesReviewState.rows.push({
+        peaoNome: firstPeao,
+        notaPeao: 20,
+        notaTouro: 20,
+        notaTotal: 40,
+        juiz: photoNotesReviewState.judge,
+        day: photoNotesReviewState.day
+    });
+    renderPhotoNotesReviewTable();
+};
+
+window.removeReviewRow = (idx) => {
+    photoNotesReviewState.rows.splice(idx, 1);
+    renderPhotoNotesReviewTable();
+};
+
+window.confirmAndSavePhotoNotes = async () => {
+    if (!currentEvent) return;
+
+    const email = getCurrentUserEmail();
+    const day = photoNotesReviewState.day;
+
+    if (!currentEvent.notas) currentEvent.notas = [];
+
+    photoNotesReviewState.rows.forEach(r => {
+        const total = (parseFloat(r.notaPeao) || 0) + (parseFloat(r.notaTouro) || 0);
+        const existingIdx = currentEvent.notas.findIndex(n => n.day == day && n.peaoNome === r.peaoNome && (!n.juiz || n.juiz === r.juiz));
+
+        if (existingIdx > -1) {
+            currentEvent.notas[existingIdx].notaPeao = r.notaPeao;
+            currentEvent.notas[existingIdx].notaTouro = r.notaTouro;
+            currentEvent.notas[existingIdx].notaTotal = total;
+            currentEvent.notas[existingIdx].juiz = r.juiz;
+        } else {
+            currentEvent.notas.push({
+                day: day,
+                peaoNome: r.peaoNome,
+                notaPeao: r.notaPeao,
+                notaTouro: r.notaTouro,
+                notaTotal: total,
+                juiz: r.juiz
+            });
+        }
+    });
+
+    await window.electronAPI.updateLocalEvent(email, currentEvent);
+
+    document.getElementById('modal-review-photo-notes').classList.add('hidden');
+    alert(`As notas da planilha do ${photoNotesReviewState.judge} (Dia ${day}) foram salvas com sucesso!`);
+
+    openNotasSummaryModal();
 };
 
 // Sorteio Manual

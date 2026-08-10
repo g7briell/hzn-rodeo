@@ -638,10 +638,10 @@
                 <h3 class="font-black text-xl text-white uppercase tracking-tighter">RANKINGS</h3>
             </button>
             
-            <!-- Botão Importar PDF -->
-            <button id="control-btn-import-pdf" onclick="document.getElementById('modal-import-pdf').classList.remove('hidden')" class="glass p-8 rounded-[2.5rem] border-yellow-500/30 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all group text-left">
+            <!-- Botão Importar Informações -->
+            <button id="control-btn-import-pdf" onclick="openImportChoiceModal()" class="glass p-8 rounded-[2.5rem] border-yellow-500/30 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all group text-left">
                 <div class="w-14 h-14 bg-yellow-500/20 rounded-2xl mb-6 flex items-center justify-center border border-yellow-500/50 group-hover:scale-110 transition-transform"><svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-                <h3 class="font-black text-xl text-yellow-500 uppercase tracking-tighter">IMPORTAR PDF</h3>
+                <h3 class="font-black text-xl text-yellow-500 uppercase tracking-tighter">IMPORTAR INFORMAÇÕES</h3>
             </button>
 
             <!-- Botão Controle Tablet (Exclusivo g7briell@hotmail.com ou Admin) -->
@@ -696,9 +696,9 @@
                 <div class="w-10 h-10 bg-pink-500/10 rounded-xl mb-4 flex items-center justify-center border border-pink-500/20"><svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
                 <h3 class="font-black text-sm text-white uppercase tracking-tighter">RANKINGS</h3>
             </button>
-            <button onclick="document.getElementById('modal-import-pdf').classList.remove('hidden')" class="glass p-6 rounded-[2rem] border-yellow-500/30 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all group text-left">
+            <button onclick="openImportChoiceModal()" class="glass p-6 rounded-[2rem] border-yellow-500/30 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all group text-left">
                 <div class="w-10 h-10 bg-yellow-500/20 rounded-xl mb-4 flex items-center justify-center border border-yellow-500/50"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-                <h3 class="font-black text-sm text-yellow-500 uppercase tracking-tighter">IMPORTAR PDF</h3>
+                <h3 class="font-black text-sm text-yellow-500 uppercase tracking-tighter">IMPORTAR INFORMAÇÕES</h3>
             </button>
         </div>
 
@@ -2135,7 +2135,184 @@
         </div>
     </div>
 
+    <!-- MODAL OPÇÕES DE IMPORTAÇÃO (CHOICE) -->
+    <div id="modal-choose-import" class="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl relative">
+            <div class="p-8 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-black italic uppercase text-yellow-500 tracking-tighter">IMPORTAR INFORMAÇÕES</h2>
+                    <p class="text-slate-400 font-bold uppercase tracking-widest text-xs mt-1">Escolha a origem dos dados do evento</p>
+                </div>
+                <button onclick="document.getElementById('modal-choose-import').classList.add('hidden')" class="p-3 bg-slate-950 border border-slate-800 rounded-2xl text-slate-500 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div class="p-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <!-- Opção 1: PDF -->
+                <button onclick="selectImportOption('pdf')" class="glass p-8 rounded-[2rem] border border-slate-800 hover:border-yellow-500/80 hover:bg-yellow-500/10 transition-all text-left flex flex-col justify-between group">
+                    <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl mb-6 flex items-center justify-center border border-yellow-500/20 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-lg text-white uppercase tracking-tighter">IMPORTAR DE PDF</h3>
+                        <p class="text-xs text-slate-400 mt-2 font-medium">Extrair sorteios ou súmulas diretamente de arquivos em PDF.</p>
+                    </div>
+                </button>
+
+                <!-- Opção 2: Foto/Câmera de Planilha de Notas -->
+                <button onclick="selectImportOption('photo')" class="glass p-8 rounded-[2rem] border border-slate-800 hover:border-emerald-500/80 hover:bg-emerald-500/10 transition-all text-left flex flex-col justify-between group">
+                    <div class="w-14 h-14 bg-emerald-500/10 rounded-2xl mb-6 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-lg text-emerald-400 uppercase tracking-tighter">NOTAS POR FOTO / CÂMERA</h3>
+                        <p class="text-xs text-slate-400 mt-2 font-medium">Tirar foto da planilha física de notas dos juízes com leitura automática.</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CAPTURA DE FOTO DE PLANILHA DE NOTAS -->
+    <div id="modal-photo-notes" class="fixed inset-0 z-[160] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 hidden overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden flex flex-col shadow-2xl max-h-[90vh]">
+            <div class="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-black italic uppercase text-emerald-400 tracking-tighter">LEITURA DE PLANILHA DOS JUÍZES</h2>
+                    <p class="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mt-1">Capture ou selecione a foto das notas dos juízes</p>
+                </div>
+                <button onclick="closePhotoNotesModal()" class="p-3 bg-slate-950 border border-slate-800 rounded-2xl text-slate-500 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 sm:p-8 space-y-6 overflow-y-auto custom-scroll">
+                <!-- Alerta Informativo -->
+                <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl text-xs text-emerald-300 font-medium">
+                    ⚠️ <strong>ATENÇÃO:</strong> Esta função fará a leitura exclusiva das <strong>NOTAS DOS JUÍZES</strong>. O sistema reconhecerá os nomes dos competidores e atribuirá as respectivas notas.
+                </div>
+
+                <!-- Seletores de Dia e Juiz -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Dia do Evento:</label>
+                        <select id="photo-notes-day-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white font-bold text-xs outline-none focus:border-emerald-500">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Juiz da Planilha:</label>
+                        <select id="photo-notes-judge-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white font-bold text-xs outline-none focus:border-emerald-500">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Botoes de Ação (Tirar Foto ou Enviar Foto) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button onclick="triggerPhotoFileInput()" class="bg-slate-950 border border-slate-800 hover:border-emerald-500/50 p-4 rounded-2xl text-center cursor-pointer group transition-all">
+                        <div class="text-emerald-400 font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            ENVIAR FOTO DO DISPOSITIVO
+                        </div>
+                        <input type="file" id="photo-notes-file-input" accept="image/*" class="hidden" onchange="handlePhotoNotesFileSelect(event)">
+                    </button>
+
+                    <button onclick="toggleCameraMode()" class="bg-emerald-600 hover:bg-emerald-500 p-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg active:scale-95">
+                        <div class="text-black font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            TIRAR FOTO COM A CÂMERA
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Preview de Vídeo da Câmera -->
+                <div id="camera-stream-container" class="hidden flex flex-col items-center gap-4 bg-black/60 p-4 rounded-2xl border border-slate-800">
+                    <video id="photo-camera-video" autoplay playsinline class="w-full max-h-72 rounded-xl object-cover border border-emerald-500/30"></video>
+                    <button onclick="captureCameraSnapshot()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-8 py-3.5 rounded-xl uppercase text-xs tracking-widest shadow-xl active:scale-95">
+                        📸 CAPTURAR PLANILHA AGORA
+                    </button>
+                </div>
+
+                <!-- Preview da Imagem Selecionada -->
+                <div id="photo-notes-preview-container" class="hidden flex flex-col items-center gap-4 bg-black/50 p-4 rounded-2xl border border-slate-800">
+                    <img id="photo-notes-preview-img" class="max-h-64 rounded-xl object-contain border border-white/10">
+                    <button onclick="startPhotoNotesOCRProcessing()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl transition-all active:scale-95">
+                        🤖 LER PLANILHA DE NOTAS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE PROGRESSO DO OCR -->
+    <div id="modal-ocr-progress" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md p-8 text-center space-y-6 shadow-2xl">
+            <div class="w-16 h-16 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 text-yellow-500 mx-auto animate-bounce">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            
+            <div>
+                <h3 class="text-2xl font-black italic uppercase text-white tracking-tighter">PROCESSANDO LEITURA</h3>
+                <p id="ocr-progress-step-text" class="text-xs font-bold text-yellow-500 uppercase tracking-widest mt-2">Iniciando análise da foto...</p>
+            </div>
+
+            <!-- Barra de Progresso Animada -->
+            <div class="w-full bg-slate-950 border border-slate-800 rounded-full h-4 overflow-hidden p-0.5">
+                <div id="ocr-progress-bar" class="bg-gradient-to-r from-yellow-500 to-emerald-400 h-full rounded-full transition-all duration-300" style="width: 10%"></div>
+            </div>
+
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Aguarde enquanto a inteligência reconhece os números e competidores.</p>
+        </div>
+    </div>
+
+    <!-- MODAL DE REVISÃO E EDIÇÃO DAS NOTAS LIDAS -->
+    <div id="modal-review-photo-notes" class="fixed inset-0 z-[210] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 hidden overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-4xl overflow-hidden flex flex-col shadow-2xl max-h-[90vh]">
+            <div class="p-6 sm:p-8 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-black italic uppercase text-yellow-500 tracking-tighter">CONFERIR NOTAS LIDAS DA PLANILHA</h2>
+                    <p id="review-photo-notes-subtitle" class="text-slate-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mt-1">Verifique ou corrija qualquer nota antes de confirmar</p>
+                </div>
+                <button onclick="document.getElementById('modal-review-photo-notes').classList.add('hidden')" class="p-3 bg-slate-950 border border-slate-800 rounded-2xl text-slate-500 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 sm:p-8 space-y-6 overflow-y-auto custom-scroll">
+                <div class="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl text-xs text-yellow-300 font-medium">
+                    ✏️ <strong>REVISÃO AUTOMÁTICA:</strong> O sistema identificou os registros abaixo. Você pode ajustar qualquer número ou alterar o competidor caso necessário.
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                <th class="p-3">Competidor (Peão)</th>
+                                <th class="p-3 text-center">Nota Peão</th>
+                                <th class="p-3 text-center">Nota Touro</th>
+                                <th class="p-3 text-center">Nota Total</th>
+                                <th class="p-3 text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="photo-notes-review-tbody" class="divide-y divide-slate-800/50 text-xs">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-between items-center pt-4">
+                    <button onclick="addManualReviewRow()" class="bg-slate-950 border border-slate-800 hover:bg-slate-800 px-4 py-2.5 rounded-xl font-bold text-xs text-white uppercase tracking-wider">
+                        + Adicionar Linha
+                    </button>
+                    <button onclick="confirmAndSavePhotoNotes()" class="bg-emerald-500 hover:bg-emerald-400 px-8 py-4 rounded-2xl font-black text-black text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95">
+                        CONFIRMAR E SALVAR NOTAS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 <script src="web-polyfill.js"></script>
 <script src="renderer.js"></script>
 <script src="pdf_parser.js"></script>
