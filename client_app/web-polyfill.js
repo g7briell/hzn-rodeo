@@ -28,8 +28,10 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
+  const CURRENT_WEB_VERSION = '1.0.122';
+
   window.electronAPI = {
-    getAppVersion: async () => '1.0.112 Web',
+    getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
     getHWID: async () => getLocalHWID(),
     
     validateLicense: async (payload) => {
@@ -68,7 +70,7 @@
               is_used: true,
               hwid: hwid,
               data_ativacao: new Date().toISOString(),
-              app_version: 'Web'
+              app_version: CURRENT_WEB_VERSION + ' Web'
             })
           });
           const updated = await patchRes.json();
