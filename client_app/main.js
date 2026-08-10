@@ -2466,28 +2466,47 @@ ipcMain.handle('share-event-to-cloud', async (event, { email, eventId, password 
             saveLocalData(email, localData);
         }
 
+        // Deep clone localData object and sanitize heavy/redundant base64 media to avoid payload bloat & statement timeout
+        const sanitizedEv = JSON.parse(JSON.stringify(ev));
+        if (sanitizedEv.overlaySettings) {
+            delete sanitizedEv.overlaySettings.mediaData;
+        }
+
         const payload = {
             nome: ev.name,
-            data_inicio: ev.days + ' dias',
+            data_inicio: (ev.days || '3') + ' dias',
             data_fim: '',
-            local: ev.city,
+            local: ev.city || '',
             organizador_email: email,
             status: 'compartilhado',
             detalhes: {
                 share_id: ev.share_id,
                 share_password: password,
                 sport: currentSportSession,
-                localData: ev
+                localData: sanitizedEv
             }
         };
 
-        // Procurar por evento oficial existente usando o share_id no JSONB detalhes
-        const { data: existingEvents } = await supabase.from('eventos_oficiais')
+        // Query by organizador_email + nome OR share_id efficiently to prevent statement timeout
+        let existingEvent = null;
+        const { data: byEmailAndName } = await supabase.from('eventos_oficiais')
             .select('id')
-            .eq('detalhes->>share_id', ev.share_id)
+            .eq('organizador_email', email)
+            .ilike('nome', ev.name.trim())
+            .order('created_at', { ascending: false })
             .limit(1);
 
-        const existingEvent = existingEvents && existingEvents.length > 0 ? existingEvents[0] : null;
+        if (byEmailAndName && byEmailAndName.length > 0) {
+            existingEvent = byEmailAndName[0];
+        } else {
+            const { data: existingEvents } = await supabase.from('eventos_oficiais')
+                .select('id')
+                .eq('detalhes->>share_id', ev.share_id)
+                .limit(1);
+            if (existingEvents && existingEvents.length > 0) {
+                existingEvent = existingEvents[0];
+            }
+        }
 
         if (existingEvent) {
             const { error } = await supabase.from('eventos_oficiais')

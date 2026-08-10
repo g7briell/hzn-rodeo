@@ -255,8 +255,109 @@
     sendEventToPortal: async () => ({ success: true }),
     checkDbConnection: async () => ({ success: true }),
     getOnlineCompetitors: async () => [],
-    shareEventToCloud: async () => ({ success: true }),
-    pullEventFromCloud: async () => ({ success: false, message: 'Recurso disponível na versão desktop.' }),
+    shareEventToCloud: async ({ email, eventId, password }) => {
+      try {
+        const events = await window.electronAPI.getLocalEvents(email);
+        const ev = events.find(e => e.id === eventId);
+        if (!ev) throw new Error("Evento não encontrado localmente.");
+
+        if (!ev.share_id) {
+          const cleanName = ev.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const randNum = Math.floor(10000000 + Math.random() * 90000000);
+          ev.share_id = `${cleanName}-${randNum}`;
+          ev.share_password = password;
+          await window.electronAPI.updateLocalEvent({ email, updatedEvent: ev, id: ev.id });
+        } else {
+          ev.share_password = password;
+          await window.electronAPI.updateLocalEvent({ email, updatedEvent: ev, id: ev.id });
+        }
+
+        const sanitizedEv = JSON.parse(JSON.stringify(ev));
+        if (sanitizedEv.overlaySettings) {
+          delete sanitizedEv.overlaySettings.mediaData;
+        }
+
+        const payload = {
+          nome: ev.name,
+          data_inicio: (ev.days || '3') + ' dias',
+          data_fim: '',
+          local: ev.city || '',
+          organizador_email: email,
+          status: 'compartilhado',
+          detalhes: {
+            share_id: ev.share_id,
+            share_password: password,
+            sport: 'rodeio',
+            localData: sanitizedEv
+          }
+        };
+
+        const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=eq.${encodeURIComponent(email)}&nome=ilike.${encodeURIComponent(ev.name.trim())}&limit=1`;
+        const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
+        const checkList = await checkRes.json();
+
+        let existingId = (checkList && checkList.length > 0) ? checkList[0].id : null;
+
+        if (existingId) {
+          await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${existingId}`, {
+            method: 'PATCH',
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(payload)
+          });
+        } else {
+          payload.id = 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 8);
+          await fetch('https://api.rodeoapp.pro/rest/v1/eventos_oficiais', {
+            method: 'POST',
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(payload)
+          });
+        }
+
+        return { success: true, shareId: ev.share_id };
+      } catch (e) {
+        console.error("Erro ao compartilhar evento na nuvem (web):", e);
+        return { success: false, error: e.message };
+      }
+    },
+    pullEventFromCloud: async ({ email, shareId, password }) => {
+      try {
+        const cleanShareId = (shareId || '').trim();
+        const cleanPass = (password || '').trim();
+
+        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&limit=100`;
+        const res = await fetch(url, { headers: SUPABASE_HEADERS });
+        const list = await res.json();
+
+        const cloudEvent = (list || []).find(e => 
+          e.detalhes && 
+          String(e.detalhes.share_id).trim() === cleanShareId && 
+          String(e.detalhes.share_password).trim() === cleanPass
+        );
+
+        if (!cloudEvent || !cloudEvent.detalhes || !cloudEvent.detalhes.localData) {
+          throw new Error("ID do evento ou senha inválidos.");
+        }
+
+        const localDataObj = cloudEvent.detalhes.localData;
+        localDataObj.share_id = cleanShareId;
+        localDataObj.share_password = cleanPass;
+
+        const events = await window.electronAPI.getLocalEvents(email);
+        const existingIdx = events.findIndex(e => e.id === localDataObj.id || e.share_id === cleanShareId);
+
+        if (existingIdx > -1) {
+          events[existingIdx] = localDataObj;
+          await window.electronAPI.updateLocalEvent({ email, updatedEvent: localDataObj, id: localDataObj.id });
+        } else {
+          await window.electronAPI.saveLocalEvent({ email, newEvent: localDataObj });
+        }
+
+        return { success: true, eventName: localDataObj.name };
+      } catch (e) {
+        console.error("Erro ao importar evento da nuvem (web):", e);
+        return { success: false, error: e.message };
+      }
+    },
     sendOverlayCommand: () => {},
     uploadMedia: async () => ({ success: false }),
     deleteMedia: async () => ({ success: true }),
