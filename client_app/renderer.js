@@ -1142,35 +1142,35 @@ async function renderEvents() {
     const email = getCurrentUserEmail();
     const viewBody = document.getElementById('view-body');
     const eventos = await window.electronAPI.getLocalEvents(email);
-    let html = `<div class="grid grid-cols-2 gap-8"><button onclick="openModalEvento()" class="glass p-10 rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-slate-800 hover:border-accent transition-all group"><div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></div><span class="font-bold text-slate-400 uppercase text-xs tracking-widest">Criar Novo Evento</span></button>`;
+    let html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8"><button onclick="openModalEvento()" class="glass p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-slate-800 hover:border-accent transition-all group min-h-[160px]"><div class="w-14 h-14 sm:w-16 sm:h-16 bg-accent/10 rounded-full flex items-center justify-center mb-3 sm:mb-4"><svg class="w-7 h-7 sm:w-8 sm:h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></div><span class="font-bold text-slate-400 uppercase text-xs tracking-widest">Criar Novo Evento</span></button>`;
     
     eventos.forEach(ev => { 
         html += `<div class="relative group">
-            <div onclick="openEventControl('${ev.id}')" class="w-full cursor-pointer glass p-10 rounded-[2.5rem] border-white/5 flex justify-between items-start text-left hover:border-accent transition-all">
-                <div class="flex gap-6 items-start">
-                    ${ev.logo ? `<img src="${ev.logo}" class="w-20 h-20 object-contain rounded-2xl bg-black/40 p-2 border border-white/10 shadow-lg">` : `<div class="w-20 h-20 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-slate-700 font-black italic text-xs">LOGO</div>`}
-                    <div>
-                        <div class="text-[10px] font-black text-accent uppercase tracking-widest mb-2">${ev.type}</div>
-                        <h4 class="text-3xl font-black italic mb-1 uppercase tracking-tighter">${ev.name}</h4>
+            <div onclick="openEventControl('${ev.id}')" class="w-full cursor-pointer glass p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border-white/5 flex flex-col sm:flex-row justify-between items-start text-left hover:border-accent transition-all gap-4">
+                <div class="flex gap-4 sm:gap-6 items-start w-full">
+                    ${ev.logo ? `<img src="${ev.logo}" class="w-14 h-14 sm:w-20 sm:h-20 object-contain rounded-2xl bg-black/40 p-2 border border-white/10 shadow-lg flex-shrink-0">` : `<div class="w-14 h-14 sm:w-20 sm:h-20 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-slate-700 font-black italic text-[10px] sm:text-xs flex-shrink-0">LOGO</div>`}
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[10px] font-black text-accent uppercase tracking-widest mb-1 sm:mb-2">${ev.type}</div>
+                        <h4 class="text-xl sm:text-3xl font-black italic mb-1 uppercase tracking-tighter truncate">${ev.name}</h4>
                         <div class="flex gap-2 flex-wrap items-center mt-2 mb-2">
-                            <button onclick="event.stopPropagation(); sendEventToPortal('${ev.id}')" class="bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-blue-500/20 shadow-lg w-fit">
+                            <button onclick="event.stopPropagation(); sendEventToPortal('${ev.id}')" class="bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 border border-blue-500/20 shadow-lg w-fit">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 8m4-4v12"/></svg>
-                                Enviar pro Portal Oficial
+                                Portal
                             </button>
-                            <button onclick="event.stopPropagation(); promptShareEvent('${ev.id}')" class="bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-green-500/20 shadow-lg w-fit">
+                            <button onclick="event.stopPropagation(); promptShareEvent('${ev.id}')" class="bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 border border-green-500/20 shadow-lg w-fit">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 10.742a3 3 0 11-2.2-.075m.93 1.185l6.164 2.739m0 0a3 3 0 11-.412 1.411m-.518-2.58l-6.164-2.74"/></svg>
-                                Compartilhar Evento
+                                Compartilhar
                             </button>
                         </div>
-                        ${ev.share_id ? `<div class="text-[10px] font-bold text-slate-500 font-mono tracking-wider mb-2">ID COMPARTILHADO: ${ev.share_id}</div>` : ''}
-                        <p class="text-slate-500 font-bold text-sm uppercase">${ev.city}</p>
+                        ${ev.share_id ? `<div class="text-[10px] font-bold text-slate-500 font-mono tracking-wider mb-1 truncate">ID: ${ev.share_id}</div>` : ''}
+                        <p class="text-slate-500 font-bold text-xs sm:text-sm uppercase">${ev.city}</p>
                     </div>
                 </div>
-                <div class="text-xs font-black bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">${ev.days}D / ${ev.judges}J</div>
+                <div class="text-xs font-black bg-slate-950 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-800 self-end sm:self-start">${ev.days}D / ${ev.judges}J</div>
             </div>
-            <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                <button onclick="openModalEvento('${ev.id}')" class="p-3 bg-yellow-500/10 text-yellow-500 rounded-xl hover:bg-yellow-500 hover:text-black transition-all shadow-xl border border-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>
-                <button onclick="deleteEvent('${ev.id}')" class="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-xl border border-red-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+            <div class="absolute top-4 right-4 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                <button onclick="openModalEvento('${ev.id}')" class="p-2 sm:p-3 bg-yellow-500/10 text-yellow-500 rounded-xl hover:bg-yellow-500 hover:text-black transition-all shadow-xl border border-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>
+                <button onclick="deleteEvent('${ev.id}')" class="p-2 sm:p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-xl border border-red-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
             </div>
         </div>`; 
     });
@@ -2708,11 +2708,11 @@ window.openListPeoes = () => {
     const container = document.getElementById('peoes-table-container'); const peoes = currentEvent.peoes || [];
     if (peoes.length === 0) { if (container) container.innerHTML = `<div class="p-20 text-center text-slate-500 italic font-bold">Nenhum peão cadastrado.</div>`; }
     else {
-        let html = `<table class="w-full text-left"><thead class="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest"><tr><th class="px-8 py-6">NOME</th><th class="px-8 py-6">CIDADE</th><th class="px-8 py-6">PONTOS</th><th class="px-8 py-6 text-right">AÇÕES</th></tr></thead><tbody class="divide-y divide-slate-800/50">`;
+        let html = `<table class="w-full text-left"><thead class="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest"><tr><th class="px-4 py-4 sm:px-8 sm:py-6">NOME</th><th class="px-4 py-4 sm:px-8 sm:py-6">CIDADE</th><th class="px-4 py-4 sm:px-8 sm:py-6">PONTOS</th><th class="px-4 py-4 sm:px-8 sm:py-6 text-right">AÇÕES</th></tr></thead><tbody class="divide-y divide-slate-800/50">`;
         peoes.forEach((p, idx) => { 
             const pts = (p.score || 0).toFixed(2);
             const tempo = (p.tempoAcumulado && p.tempoAcumulado > 0 && p.score === 0) ? `<span class="text-[10px] text-slate-500 ml-2">(${p.tempoAcumulado.toFixed(2)}s)</span>` : '';
-            html += `<tr class="hover:bg-slate-800/20"><td class="px-8 py-6 font-bold text-white uppercase">${p.nome}</td><td class="px-8 py-6 text-slate-400 font-medium uppercase">${p.cidade}</td><td class="px-8 py-6 font-mono text-xs text-yellow-500">${pts} ${tempo}</td><td class="px-8 py-6 text-right space-x-2"><button onclick="openModalPeao(${idx})" class="p-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button><button onclick="deletePeao(${idx})" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>`; 
+            html += `<tr class="hover:bg-slate-800/20"><td class="px-4 py-4 sm:px-8 sm:py-6 font-bold text-white uppercase text-xs sm:text-base">${p.nome}</td><td class="px-4 py-4 sm:px-8 sm:py-6 text-slate-400 font-medium uppercase text-xs sm:text-base">${p.cidade}</td><td class="px-4 py-4 sm:px-8 sm:py-6 font-mono text-xs sm:text-sm text-yellow-500">${pts} ${tempo}</td><td class="px-4 py-4 sm:px-8 sm:py-6 text-right space-x-1 sm:space-x-2"><button onclick="openModalPeao(${idx})" class="p-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button><button onclick="deletePeao(${idx})" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>`; 
         });
         if (container) container.innerHTML = html + `</tbody></table>`;
     }

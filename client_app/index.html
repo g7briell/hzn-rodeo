@@ -1715,51 +1715,51 @@
         </div>
     </div>
 
-    <div id="list-peoes-view" class="fixed inset-0 z-[200] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
-        <div class="flex items-center justify-between mb-12"><h2 class="text-5xl font-black italic tracking-tighter uppercase text-white">LISTA DE PEÕES</h2><button onclick="closeListPeoes()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-        <div class="overflow-x-auto scroll-custom">
-            <div id="peoes-table-container" class="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden min-w-[800px]"></div>
+    <div id="list-peoes-view" class="fixed inset-0 z-[200] bg-[#000000] flex flex-col hidden p-4 sm:p-8 md:p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-6 sm:mb-12"><h2 class="text-2xl sm:text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-white">LISTA DE PEÕES</h2><button onclick="closeListPeoes()" class="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+        <div class="w-full overflow-x-auto scroll-custom">
+            <div id="peoes-table-container" class="bg-slate-900/40 border border-slate-800 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden min-w-full sm:min-w-[650px]"></div>
         </div>
     </div>
 
-    <div id="list-boiadas-view" class="fixed inset-0 z-[200] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
-        <div class="flex items-center justify-between mb-12"><h2 class="text-5xl font-black italic tracking-tighter uppercase text-yellow-500">LISTA DE CIAS</h2><button onclick="closeListBoiadas()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-        <div id="boiadas-cards-container" class="grid grid-cols-3 gap-8"></div>
+    <div id="list-boiadas-view" class="fixed inset-0 z-[200] bg-[#000000] flex flex-col hidden p-4 sm:p-8 md:p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-6 sm:mb-12"><h2 class="text-2xl sm:text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-yellow-500">LISTA DE CIAS</h2><button onclick="closeListBoiadas()" class="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+        <div id="boiadas-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8"></div>
     </div>
 
     <!-- Lista de Sorteios -->
-    <div id="list-sorteios-view" class="fixed inset-0 z-[200] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
-        <div class="flex items-center justify-between mb-12"><h2 class="text-5xl font-black italic tracking-tighter uppercase text-white">SORTEIOS REALIZADOS</h2><button onclick="closeSorteiosList()" class="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
-        <div id="sorteios-table-container" class="grid grid-cols-3 gap-8"></div>
+    <div id="list-sorteios-view" class="fixed inset-0 z-[200] bg-[#000000] flex flex-col hidden p-4 sm:p-8 md:p-12 overflow-y-auto">
+        <div class="flex items-center justify-between mb-6 sm:mb-12"><h2 class="text-2xl sm:text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-white">SORTEIOS REALIZADOS</h2><button onclick="closeSorteiosList()" class="p-3 sm:p-4 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500 hover:text-white"><svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+        <div id="sorteios-table-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8"></div>
     </div>
 
     <!-- MODAL BULK PEOES -->
-    <div id="modal-bulk-peoes" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] hidden flex items-center justify-center p-6 text-left">
-        <div class="bg-slate-900 w-full max-w-6xl rounded-[3rem] p-12 border border-white/10 shadow-2xl relative">
-            <div class="flex justify-between items-center mb-10">
+    <div id="modal-bulk-peoes" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] hidden flex items-center justify-center p-4 sm:p-6 text-left">
+        <div class="bg-slate-900 w-full max-w-6xl rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-12 border border-white/10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6 sm:mb-10">
                 <div>
-                    <h2 class="text-4xl font-black italic uppercase text-white tracking-tighter">Carregar Lista de Peões</h2>
+                    <h2 class="text-2xl sm:text-4xl font-black italic uppercase text-white tracking-tighter">Carregar Lista de Peões</h2>
                     <p class="text-slate-500 font-bold uppercase text-[10px] mt-2 italic">Cada linha representa um competidor. O sistema irá sincronizar as 3 colunas.</p>
                 </div>
-                <button onclick="closeModalBulkPeoes()" class="text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <button onclick="closeModalBulkPeoes()" class="text-slate-500 hover:text-white"><svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             
-            <div class="grid grid-cols-3 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
                 <div>
                     <label class="block text-[10px] font-black text-accent uppercase mb-3 ml-2">Nomes</label>
-                    <textarea id="bulk-peao-names" placeholder="Nome do Peão 1\nNome do Peão 2" class="w-full h-80 bg-black border border-white/5 rounded-3xl p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
+                    <textarea id="bulk-peao-names" placeholder="Nome do Peão 1&#10;Nome do Peão 2" class="w-full h-48 sm:h-80 bg-black border border-white/5 rounded-3xl p-4 sm:p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-black text-accent uppercase mb-3 ml-2">Cidades</label>
-                    <textarea id="bulk-peao-cities" placeholder="Cidade 1\nCidade 2" class="w-full h-80 bg-black border border-white/5 rounded-3xl p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
+                    <textarea id="bulk-peao-cities" placeholder="Cidade 1&#10;Cidade 2" class="w-full h-48 sm:h-80 bg-black border border-white/5 rounded-3xl p-4 sm:p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] font-black text-accent uppercase mb-3 ml-2">CPFs (Opcional)</label>
-                    <textarea id="bulk-peao-cpfs" placeholder="CPF 1\nCPF 2" class="w-full h-80 bg-black border border-white/5 rounded-3xl p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
+                    <textarea id="bulk-peao-cpfs" placeholder="CPF 1&#10;CPF 2" class="w-full h-48 sm:h-80 bg-black border border-white/5 rounded-3xl p-4 sm:p-6 text-white font-bold focus:border-accent outline-none resize-none"></textarea>
                 </div>
             </div>
 
-            <button onclick="saveBulkPeoes()" class="w-full bg-accent text-black font-black py-6 rounded-[2rem] uppercase tracking-widest shadow-2xl hover:scale-[1.02] transition-all">Salvar Lista Completa</button>
+            <button onclick="saveBulkPeoes()" class="w-full bg-accent text-black font-black py-4 sm:py-6 rounded-[1.5rem] sm:rounded-[2rem] uppercase tracking-widest shadow-2xl hover:scale-[1.02] transition-all">Salvar Lista Completa</button>
         </div>
     </div>
 
