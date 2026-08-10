@@ -17,12 +17,43 @@
             background-color: #000000; 
             color: #f8fafc; 
             font-family: 'Inter', sans-serif; 
-            overflow: hidden;
+            overflow-x: hidden;
         }
         .glass { 
             background: rgba(10, 10, 10, 0.8); 
             backdrop-filter: blur(20px); 
             border: 1px solid rgba(var(--event-accent-rgb), 0.1); 
+        }
+
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+                padding: 0.5rem !important;
+            }
+            .glass {
+                border-radius: 1.5rem !important;
+                padding: 1.25rem !important;
+            }
+            #login-screen, #sport-select-screen, #transmissao-screen, #home-screen {
+                padding: 1.25rem !important;
+                border-radius: 1.75rem !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                width: calc(100% - 1rem) !important;
+            }
+            #content-view, #event-control-view, #transmissao-event-view, #modal-transmissao-eventos {
+                padding: 0.75rem !important;
+            }
+            table {
+                display: block !important;
+                overflow-x: auto !important;
+                white-space: nowrap !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            h1, h2 {
+                word-break: break-word;
+            }
         }
         
         /* Custom Scrollbar Premium */
@@ -367,7 +398,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
             <!-- Botão Rodeio -->
             <button id="btn-sport-rodeio" onclick="selectSport('rodeio')" class="glass p-6 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group text-left relative overflow-hidden flex flex-col justify-between min-h-[220px] sport-anim-item sport-anim-card-1">
                 <div class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
@@ -445,7 +476,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
             <!-- Botão Eventos -->
             <button onclick="openTransmissaoEventsModal()" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.2s">
                 <div class="w-16 h-16 bg-yellow-500/10 rounded-3xl flex items-center justify-center mb-10 border border-yellow-500/20 group-hover:scale-110 transition-all">
@@ -479,11 +510,11 @@
     </div>
 
     <!-- Tela Principal (Home) -->
-    <div id="home-screen" class="max-w-5xl w-full glass p-12 rounded-[3rem] shadow-2xl relative z-10 hidden">
-        <div class="flex items-center justify-between mb-16 reveal-item">
+    <div id="home-screen" class="max-w-5xl w-full glass p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] shadow-2xl relative z-10 hidden">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 sm:mb-16 reveal-item">
             <div class="flex flex-col items-start gap-2">
-                <img src="assets/header_logo.png" class="h-14 w-auto object-contain">
-                <div class="flex items-center gap-2 ml-1">
+                <img src="assets/header_logo.png" class="h-10 sm:h-14 w-auto object-contain">
+                <div class="flex flex-wrap items-center gap-2 ml-1">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
                     <p class="text-[9px] font-black text-emerald-500 uppercase tracking-[0.3em]">SISTEMA ATIVO</p>
                     <span class="w-1.5 h-1.5 bg-slate-800 rounded-full mx-1"></span>
@@ -492,23 +523,25 @@
                     <span id="sport-active-badge" class="text-[9px] font-black bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded uppercase tracking-wider ml-2">RODEO</span>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <div id="days-badge" class="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-wider">
+            <div class="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                <div id="days-badge" class="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider">
                     -- dias restantes
                 </div>
-                <button onclick="backToSports()" class="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 p-3 rounded-2xl hover:bg-yellow-500 hover:text-black transition-all group shadow-lg" title="Mudar de Esporte">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-                </button>
-                <button onclick="openSettingsModal()" class="bg-slate-800 text-slate-400 border border-slate-700 p-3 rounded-2xl hover:bg-slate-700 hover:text-white transition-all group shadow-lg" title="Configurações">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                </button>
-                <button onclick="confirmLogout()" class="bg-red-500/10 text-red-500 border border-red-500/20 p-3 rounded-2xl hover:bg-red-500 hover:text-white transition-all group shadow-lg" title="Sair do Sistema">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="backToSports()" class="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 p-3 rounded-2xl hover:bg-yellow-500 hover:text-black transition-all group shadow-lg" title="Mudar de Esporte">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <button onclick="openSettingsModal()" class="bg-slate-800 text-slate-400 border border-slate-700 p-3 rounded-2xl hover:bg-slate-700 hover:text-white transition-all group shadow-lg" title="Configurações">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    <button onclick="confirmLogout()" class="bg-red-500/10 text-red-500 border border-red-500/20 p-3 rounded-2xl hover:bg-red-500 hover:text-white transition-all group shadow-lg" title="Sair do Sistema">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
             <button onclick="openTab('eventos')" class="glass p-10 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/10 transition-all group reveal-item text-left relative overflow-hidden" style="transition-delay: 0.2s">
                 <div class="w-16 h-16 bg-yellow-500/10 rounded-2xl mb-8 flex items-center justify-center border border-yellow-500/30 group-hover:scale-110 transition-transform">
                     <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -547,24 +580,24 @@
     </div>
 
     <!-- Tela de Controle do Evento (Interna) -->
-    <div id="event-control-view" class="fixed inset-0 z-[80] bg-[#000000] flex flex-col hidden p-12 overflow-y-auto">
-        <div class="flex items-center justify-between mb-12 text-left">
+    <div id="event-control-view" class="fixed inset-0 z-[80] bg-[#000000] flex flex-col hidden p-4 sm:p-8 md:p-12 overflow-y-auto">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-12 text-left">
             <div>
-                <button onclick="closeEventControl()" class="text-slate-500 hover:text-white flex items-center gap-2 mb-4 font-bold text-xs uppercase tracking-widest">
+                <button onclick="closeEventControl()" class="text-slate-500 hover:text-white flex items-center gap-2 mb-3 sm:mb-4 font-bold text-xs uppercase tracking-widest">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                     Voltar aos Eventos
                 </button>
-                <h2 id="control-event-name" class="text-6xl font-black italic tracking-tighter uppercase text-white">NOME DO EVENTO</h2>
-                <p id="control-event-info" class="text-accent font-black uppercase tracking-[0.4em] text-[10px] mt-4">CIDADE - 0 DIAS - 0 JUIZES</p>
+                <h2 id="control-event-name" class="text-3xl sm:text-5xl md:text-6xl font-black italic tracking-tighter uppercase text-white">NOME DO EVENTO</h2>
+                <p id="control-event-info" class="text-accent font-black uppercase tracking-[0.4em] text-[10px] mt-2 sm:mt-4">CIDADE - 0 DIAS - 0 JUIZES</p>
             </div>
             <div>
-                <button onclick="window.sendEventToPortal(currentEvent.id)" id="btn-sync-dashboard" class="bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 border border-blue-500/30 shadow-lg hover:scale-[1.02] transition-all">
+                <button onclick="window.sendEventToPortal(currentEvent.id)" id="btn-sync-dashboard" class="bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 border border-blue-500/30 shadow-lg hover:scale-[1.02] transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     Sincronizar Portal
                 </button>
             </div>
         </div>
-        <div class="grid grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             <!-- Botão Cadastro -->
             <button id="control-btn-cadastro" onclick="document.getElementById('modal-menu-cadastro').classList.remove('hidden')" class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-accent/50 hover:bg-accent/10 transition-all group text-left">
                 <div class="w-14 h-14 bg-accent/10 rounded-2xl mb-6 flex items-center justify-center border border-accent/20"><svg class="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg></div>
