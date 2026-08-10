@@ -350,39 +350,169 @@ ipcMain.handle('get-local-events', (event, email) => {
   return getLocalData(email).eventos;
 });
 
-ipcMain.handle('save-local-event', (event, { email, newEvent }) => {
-  const data = getLocalData(email);
+ipcMain.handle('save-local-event', async (event, arg1, arg2) => {
+  let email = '';
+  let newEvent = null;
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    email = arg1.email;
+    newEvent = arg1.newEvent || arg1.eventData || arg1.updatedEvent;
+  } else {
+    email = arg1;
+    newEvent = arg2;
+  }
+  const cleanEmail = (email || '').trim();
+  if (!cleanEmail || !newEvent) return { success: false, error: "Dados inválidos." };
+
+  const data = getLocalData(cleanEmail);
   const eventToSave = {
     ...newEvent,
-    id: Date.now().toString(),
-    created_at: new Date().toISOString()
+    id: newEvent.id || Date.now().toString(),
+    created_at: newEvent.created_at || new Date().toISOString()
   };
-  data.eventos.push(eventToSave);
-  saveLocalData(email, data);
+
+  const existingIdx = data.eventos.findIndex(e => String(e.id) === String(eventToSave.id) || (e.name && newEvent.name && e.name.toLowerCase() === newEvent.name.toLowerCase()));
+  if (existingIdx > -1) {
+    data.eventos[existingIdx] = eventToSave;
+  } else {
+    data.eventos.push(eventToSave);
+  }
+  saveLocalData(cleanEmail, data);
+
+  try {
+    const sanitizedEv = JSON.parse(JSON.stringify(eventToSave));
+    if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
+
+    const payload = {
+      nome: eventToSave.name,
+      data_inicio: (eventToSave.days || '3') + ' dias',
+      data_fim: '',
+      local: eventToSave.city || '',
+      organizador_email: cleanEmail,
+      status: eventToSave.share_id ? 'compartilhado' : 'ativo',
+      detalhes: {
+        share_id: eventToSave.share_id || '',
+        share_password: eventToSave.share_password || '',
+        sport: 'rodeio',
+        localData: sanitizedEv
+      }
+    };
+
+    const { data: existing } = await supabase.from('eventos_oficiais')
+      .select('id')
+      .eq('organizador_email', cleanEmail)
+      .ilike('nome', eventToSave.name.trim())
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase.from('eventos_oficiais').update(payload).eq('id', existing[0].id);
+    } else {
+      payload.id = require('crypto').randomUUID();
+      await supabase.from('eventos_oficiais').insert([payload]);
+    }
+  } catch (err) {
+    console.error("Cloud push background error in main.js:", err);
+  }
+
   return { success: true, event: eventToSave };
 });
 
-ipcMain.handle('update-local-event', (event, { email, updatedEvent }) => {
-  const data = getLocalData(email);
-  const index = data.eventos.findIndex(e => String(e.id) === String(updatedEvent.id));
-  if (index !== -1) {
-    data.eventos[index] = { ...data.eventos[index], ...updatedEvent };
-    saveLocalData(email, data);
-    return { success: true };
+ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
+  let email = '';
+  let updatedEvent = null;
+
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    email = arg1.email;
+    updatedEvent = arg1.updatedEvent || arg1.newEvent || arg1.eventData;
+  } else if (typeof arg2 === 'object' && arg2 !== null) {
+    email = arg1;
+    updatedEvent = arg2;
+  } else {
+    email = arg1;
+    updatedEvent = arg3;
   }
-  return { success: false };
+
+  const cleanEmail = (email || '').trim();
+  if (!cleanEmail || !updatedEvent) return { success: false, error: "Dados inválidos para atualizar." };
+
+  const data = getLocalData(cleanEmail);
+  let found = false;
+  data.eventos = data.eventos.map(e => {
+    if (String(e.id) === String(updatedEvent.id) || (e.name && updatedEvent.name && e.name.toLowerCase() === updatedEvent.name.toLowerCase())) {
+      found = true;
+      return { ...e, ...updatedEvent };
+    }
+    return e;
+  });
+
+  if (!found) {
+    data.eventos.push(updatedEvent);
+  }
+  saveLocalData(cleanEmail, data);
+
+  try {
+    const sanitizedEv = JSON.parse(JSON.stringify(updatedEvent));
+    if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
+
+    const payload = {
+      nome: updatedEvent.name,
+      local: updatedEvent.city || '',
+      organizador_email: cleanEmail,
+      detalhes: {
+        share_id: updatedEvent.share_id || '',
+        share_password: updatedEvent.share_password || '',
+        sport: 'rodeio',
+        localData: sanitizedEv
+      }
+    };
+
+    const { data: existing } = await supabase.from('eventos_oficiais')
+      .select('id')
+      .eq('organizador_email', cleanEmail)
+      .ilike('nome', updatedEvent.name.trim())
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase.from('eventos_oficiais').update(payload).eq('id', existing[0].id);
+    } else {
+      payload.id = require('crypto').randomUUID();
+      await supabase.from('eventos_oficiais').insert([payload]);
+    }
+  } catch (err) {
+    console.error("Cloud update background error in main.js:", err);
+  }
+
+  return { success: true };
 });
 
-  ipcMain.handle('delete-local-event', (event, { email, id }) => {
-    const data = getLocalData(email);
-    const index = data.eventos.findIndex(e => e.id === id);
-    if (index !== -1) {
-      data.eventos.splice(index, 1);
-      saveLocalData(email, data);
-      return { success: true };
+ipcMain.handle('delete-local-event', async (event, arg1, arg2) => {
+  let email = '';
+  let targetId = '';
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    email = arg1.email;
+    targetId = arg1.id;
+  } else {
+    email = arg1;
+    targetId = arg2;
+  }
+  const cleanEmail = (email || '').trim();
+  const data = getLocalData(cleanEmail);
+  const target = data.eventos.find(e => String(e.id) === String(targetId));
+  data.eventos = data.eventos.filter(e => String(e.id) !== String(targetId));
+  saveLocalData(cleanEmail, data);
+
+  if (target) {
+    try {
+      await supabase.from('eventos_oficiais')
+        .delete()
+        .eq('organizador_email', cleanEmail)
+        .ilike('nome', target.name.trim());
+    } catch (err) {
+      console.error("Cloud delete error:", err);
     }
-    return { success: false };
-  });
+  }
+
+  return { success: true };
+});
 
   // Global Internal Database
   ipcMain.handle('get-global-data', (event, email) => {
