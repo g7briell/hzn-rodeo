@@ -100,13 +100,22 @@ window.syncUserEventsWithCloud = async () => {
     const email = getCurrentUserEmail();
     if (!email) return;
 
-    updateConnectionStatus('syncing');
     try {
         if (window.electronAPI.syncUserCloudEvents) {
             const res = await window.electronAPI.syncUserCloudEvents(email);
             if (res && res.success) {
                 updateConnectionStatus('synced');
                 renderEvents();
+
+                // Atualiza o evento ativo na tela com dados mesclados da nuvem
+                if (currentEvent) {
+                    const allEvs = await window.electronAPI.getLocalEvents(email);
+                    const freshEv = (allEvs || []).find(e => e.id === currentEvent.id || (e.share_id && currentEvent.share_id && e.share_id === currentEvent.share_id));
+                    if (freshEv) {
+                        currentEvent = freshEv;
+                        refreshActiveViewData();
+                    }
+                }
             } else {
                 updateConnectionStatus('error', res ? res.error : "Erro ao sincronizar eventos com a nuvem.");
             }
@@ -118,6 +127,46 @@ window.syncUserEventsWithCloud = async () => {
         updateConnectionStatus('error', e.message || String(e));
     }
 };
+
+function refreshActiveViewData() {
+    if (!currentEvent) return;
+
+    // Atualiza estatísticas do cabeçalho do evento
+    const infoEl = document.getElementById('control-event-info');
+    if (infoEl) {
+        const jCount = currentEvent.juizes ? currentEvent.juizes.length : (currentEvent.judges || 0);
+        infoEl.innerText = `${currentEvent.city || ''} - ${currentEvent.days || 3} DIAS - ${jCount} JUIZES`;
+    }
+
+    // Atualiza modais que estejam abertos na tela em tempo real
+    const modalJuizes = document.getElementById('modal-list-juizes');
+    if (modalJuizes && !modalJuizes.classList.contains('hidden')) {
+        openListJuizes();
+    }
+
+    const modalPeoes = document.getElementById('modal-list-peoes');
+    if (modalPeoes && !modalPeoes.classList.contains('hidden')) {
+        openListPeoes();
+    }
+
+    const modalBoiadas = document.getElementById('modal-list-boiadas');
+    if (modalBoiadas && !modalBoiadas.classList.contains('hidden')) {
+        openListBoiadas();
+    }
+}
+
+// Loop de Sincronização em Tempo Real (a cada 3 segundos)
+let realtimeSyncInterval = null;
+function startRealtimeSyncLoop() {
+    if (realtimeSyncInterval) clearInterval(realtimeSyncInterval);
+    realtimeSyncInterval = setInterval(() => {
+        if (navigator.onLine && getCurrentUserEmail()) {
+            window.syncUserEventsWithCloud();
+        }
+    }, 3000);
+}
+
+startRealtimeSyncLoop();
 
 async function verifyConnection() {
     updateConnectionStatus('syncing');
@@ -3304,6 +3353,7 @@ window.saveJuiz = async (e) => {
     }
     
     await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
+    await window.syncUserEventsWithCloud();
     document.getElementById('modal-juiz').classList.add('hidden');
     openListJuizes();
 };
@@ -3312,6 +3362,7 @@ window.deleteJuiz = async (idx) => {
     if (confirm("Excluir este Juiz?")) {
         currentEvent.juizes.splice(idx, 1);
         await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
+        await window.syncUserEventsWithCloud();
         openListJuizes();
     }
 };

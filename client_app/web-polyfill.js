@@ -190,6 +190,33 @@
                   merged.boiadas = Array.from(boiadaMap.values());
                 }
 
+                if (Array.isArray(localEv.juizes) || Array.isArray(cloudLocal.juizes)) {
+                  const jMap = new Map();
+                  (localEv.juizes || []).forEach(j => {
+                    const name = typeof j === 'string' ? j : (j.nome || '');
+                    if (name) jMap.set(name.toLowerCase(), typeof j === 'string' ? { nome: name } : j);
+                  });
+                  (cloudLocal.juizes || []).forEach(j => {
+                    const name = typeof j === 'string' ? j : (j.nome || '');
+                    if (name) jMap.set(name.toLowerCase(), typeof j === 'string' ? { nome: name } : j);
+                  });
+                  merged.juizes = Array.from(jMap.values());
+                }
+
+                if (Array.isArray(localEv.sorteios) || Array.isArray(cloudLocal.sorteios)) {
+                  const sMap = new Map();
+                  (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
+                  (cloudLocal.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
+                  merged.sorteios = Array.from(sMap.values());
+                }
+
+                if (Array.isArray(localEv.notas) || Array.isArray(cloudLocal.notas)) {
+                  const nMap = new Map();
+                  (localEv.notas || []).forEach(n => nMap.set(`${n.day}_${n.peaoNome}_${n.juiz || ''}`.toLowerCase(), n));
+                  (cloudLocal.notas || []).forEach(n => nMap.set(`${n.day}_${n.peaoNome}_${n.juiz || ''}`.toLowerCase(), n));
+                  merged.notas = Array.from(nMap.values());
+                }
+
                 localEvents[idx] = merged;
               } else if (cloudEv.organizador_email === cleanEmail) {
                 localEvents.push(cloudLocal);
