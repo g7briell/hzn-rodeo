@@ -462,8 +462,10 @@
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
                     <p class="text-[9px] font-black text-emerald-500 uppercase tracking-[0.3em]">MÓDULO TRANSMISSÃO</p>
                     <span class="w-1.5 h-1.5 bg-slate-800 rounded-full mx-1"></span>
-                    <span id="transmissao-db-status-dot" class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]"></span>
-                    <p id="transmissao-db-status-text" class="text-[9px] font-black text-yellow-500 uppercase tracking-[0.3em]">CONECTANDO BANCO</p>
+                    <div onclick="handleSyncStatusClick()" class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-all py-1 px-1.5 rounded-lg hover:bg-white/5" title="Clique para ver o status de sincronização">
+                        <span id="transmissao-db-status-dot" class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]"></span>
+                        <p id="transmissao-db-status-text" class="text-[9px] font-black text-yellow-500 uppercase tracking-[0.3em]">CONECTANDO BANCO</p>
+                    </div>
                 </div>
             </div>
             <div class="flex items-center gap-4">
@@ -518,8 +520,10 @@
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
                     <p class="text-[9px] font-black text-emerald-500 uppercase tracking-[0.3em]">SISTEMA ATIVO</p>
                     <span class="w-1.5 h-1.5 bg-slate-800 rounded-full mx-1"></span>
-                    <span id="db-status-dot" class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]"></span>
-                    <p id="db-status-text" class="text-[9px] font-black text-yellow-500 uppercase tracking-[0.3em]">CONECTANDO BANCO</p>
+                    <div onclick="handleSyncStatusClick()" class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-all py-1 px-1.5 rounded-lg hover:bg-white/5" title="Clique para ver o status de sincronização">
+                        <span id="db-status-dot" class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]"></span>
+                        <p id="db-status-text" class="text-[9px] font-black text-yellow-500 uppercase tracking-[0.3em]">CONECTANDO BANCO</p>
+                    </div>
                     <span id="sport-active-badge" class="text-[9px] font-black bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded uppercase tracking-wider ml-2">RODEO</span>
                 </div>
             </div>
@@ -2102,7 +2106,33 @@
         </div>
         <button id="btn-install-update" onclick="window.electronAPI.quitAndInstall()" class="mt-2 w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-4 rounded-xl text-xs uppercase tracking-widest hidden transition-colors shadow-xl shadow-emerald-500/20">
             Instalar Agora
-        </button>
+    <!-- Modal Diagnóstico de Erro de Sincronização -->
+    <div id="modal-sync-error" class="fixed inset-0 z-[350] bg-black/90 backdrop-blur-xl flex items-center justify-center hidden p-6 text-left">
+        <div class="bg-slate-900 border border-red-500/30 w-full max-w-lg rounded-[2rem] p-8 shadow-2xl relative">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/30 text-red-500 flex-shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black italic uppercase text-white tracking-tighter">Status da Sincronização</h3>
+                    <p id="sync-error-modal-subtitle" class="text-xs font-bold text-red-400 uppercase tracking-wider mt-0.5">Diagnóstico de Conexão com a Nuvem</p>
+                </div>
+            </div>
+            
+            <div class="bg-black/60 border border-white/5 rounded-2xl p-5 mb-6 text-xs text-slate-300 font-mono overflow-y-auto max-h-48 scroll-custom space-y-2">
+                <div class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Detalhes Técnicos:</div>
+                <div id="sync-error-modal-message" class="text-red-400 font-bold break-words">Nenhum erro registrado no momento.</div>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="retrySync()" class="flex-1 bg-yellow-500 hover:bg-yellow-400 py-3.5 rounded-xl font-black text-black uppercase text-xs tracking-wider transition-all active:scale-95 shadow-lg">
+                    Tentar Novamente
+                </button>
+                <button onclick="document.getElementById('modal-sync-error').classList.add('hidden')" class="bg-slate-950 border border-slate-800 hover:bg-slate-800 px-6 py-3.5 rounded-xl text-xs font-black uppercase text-white transition-all active:scale-95">
+                    Fechar
+                </button>
+            </div>
+        </div>
     </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

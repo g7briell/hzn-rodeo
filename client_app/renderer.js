@@ -36,7 +36,13 @@ let currentSport = 'rodeio';
 let globalPeoes = [];
 let globalBoiadas = [];
 
-function updateConnectionStatus(status) {
+window.lastSyncStatus = 'connecting';
+window.lastSyncErrorDetails = '';
+
+function updateConnectionStatus(status, errorDetails = '') {
+    window.lastSyncStatus = status;
+    if (errorDetails) window.lastSyncErrorDetails = errorDetails;
+
     const dots = [document.getElementById('db-status-dot'), document.getElementById('transmissao-db-status-dot')];
     const texts = [document.getElementById('db-status-text'), document.getElementById('transmissao-db-status-text')];
     
@@ -47,34 +53,84 @@ function updateConnectionStatus(status) {
         dot.className = "w-2 h-2 rounded-full animate-pulse";
         text.className = "text-[9px] font-black uppercase tracking-[0.3em]";
         
-        if (status === 'connected') {
+        if (status === 'connected' || status === 'synced') {
             dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
             text.classList.add('text-emerald-500');
-            text.innerText = "BANCO ONLINE";
-        } else if (status === 'connecting') {
+            text.innerText = "SINCRONIZADO";
+        } else if (status === 'connecting' || status === 'syncing') {
             dot.classList.add('bg-yellow-500', 'shadow-[0_0_10px_rgba(234,179,8,0.5)]');
             text.classList.add('text-yellow-500');
-            text.innerText = "CONECTANDO BANCO";
+            text.innerText = "SINCRONIZANDO...";
         } else {
             dot.classList.add('bg-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.5)]');
             text.classList.add('text-red-500');
-            text.innerText = "BANCO OFFLINE";
+            text.innerText = "ERRO SINCRONIZAÇÃO";
         }
     });
 }
 
+window.handleSyncStatusClick = () => {
+    const modalMsg = document.getElementById('sync-error-modal-message');
+    const modalSubtitle = document.getElementById('sync-error-modal-subtitle');
+    const modal = document.getElementById('modal-sync-error');
+    
+    if (!modal) return;
+    
+    if (window.lastSyncStatus === 'connected' || window.lastSyncStatus === 'synced') {
+        if (modalSubtitle) modalSubtitle.innerText = "Status: Conectado e Sincronizado";
+        if (modalMsg) modalMsg.innerHTML = `<span class="text-emerald-400 font-bold">🟢 Todos os eventos e alterações estão 100% salvos e sincronizados com a nuvem no seu e-mail (${getCurrentUserEmail()}).</span>`;
+    } else if (window.lastSyncStatus === 'connecting' || window.lastSyncStatus === 'syncing') {
+        if (modalSubtitle) modalSubtitle.innerText = "Status: Sincronizando com a Nuvem";
+        if (modalMsg) modalMsg.innerHTML = `<span class="text-yellow-400 font-bold">🟡 O sistema está enviando/recebendo atualizações do banco de dados na nuvem neste momento...</span>`;
+    } else {
+        if (modalSubtitle) modalSubtitle.innerText = "Status: Erro de Sincronização / Conexão";
+        if (modalMsg) modalMsg.innerText = window.lastSyncErrorDetails || "Não foi possível conectar ou enviar alterações para o banco de dados na nuvem. Verifique sua conexão de internet.";
+    }
+    
+    modal.classList.remove('hidden');
+};
+
+window.retrySync = async () => {
+    const modal = document.getElementById('modal-sync-error');
+    if (modal) modal.classList.add('hidden');
+    await window.syncUserEventsWithCloud();
+};
+
+window.syncUserEventsWithCloud = async () => {
+    const email = getCurrentUserEmail();
+    if (!email) return;
+
+    updateConnectionStatus('syncing');
+    try {
+        if (window.electronAPI.syncUserCloudEvents) {
+            const res = await window.electronAPI.syncUserCloudEvents(email);
+            if (res && res.success) {
+                updateConnectionStatus('synced');
+                renderEvents();
+            } else {
+                updateConnectionStatus('error', res ? res.error : "Erro ao sincronizar eventos com a nuvem.");
+            }
+        } else {
+            updateConnectionStatus('synced');
+        }
+    } catch (e) {
+        console.error("Erro na sincronização automática dos eventos:", e);
+        updateConnectionStatus('error', e.message || String(e));
+    }
+};
+
 async function verifyConnection() {
-    updateConnectionStatus('connecting');
+    updateConnectionStatus('syncing');
     if (!navigator.onLine) {
-        updateConnectionStatus('offline');
+        updateConnectionStatus('error', 'Sem conexão com a internet.');
         return false;
     }
     const connected = await window.electronAPI.checkDbConnection();
     if (connected) {
-        updateConnectionStatus('connected');
+        await window.syncUserEventsWithCloud();
         return true;
     } else {
-        updateConnectionStatus('offline');
+        updateConnectionStatus('error', 'Não foi possível estabelecer resposta com o banco de dados.');
         return false;
     }
 }

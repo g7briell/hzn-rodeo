@@ -2586,6 +2586,44 @@ ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password
     }
 });
 
+// Sincronizar todos os eventos do usuário com a nuvem
+ipcMain.handle('sync-user-cloud-events', async (event, email) => {
+    try {
+        const cleanEmail = (email || '').trim();
+        if (!cleanEmail) return { success: false, error: "E-mail do usuário não informado." };
+
+        const { data: cloudEvents, error } = await supabase.from('eventos_oficiais')
+            .select('*')
+            .or(`organizador_email.eq.${cleanEmail},status.eq.compartilhado`)
+            .limit(200);
+
+        if (error) throw error;
+
+        const localData = getLocalData(cleanEmail, currentSportSession);
+        localData.eventos = localData.eventos || [];
+
+        if (Array.isArray(cloudEvents)) {
+            cloudEvents.forEach(cloudEv => {
+                if (cloudEv.detalhes && cloudEv.detalhes.localData) {
+                    const cloudLocal = cloudEv.detalhes.localData;
+                    const idx = localData.eventos.findIndex(l => l.id === cloudLocal.id || (l.share_id && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id));
+                    if (idx > -1) {
+                        localData.eventos[idx] = { ...localData.eventos[idx], ...cloudLocal };
+                    } else if (cloudEv.organizador_email === cleanEmail) {
+                        localData.eventos.push(cloudLocal);
+                    }
+                }
+            });
+            saveLocalData(cleanEmail, localData, currentSportSession);
+        }
+
+        return { success: true };
+    } catch (e) {
+        console.error("Erro ao sincronizar eventos do usuário na nuvem:", e);
+        return { success: false, error: e.message || String(e) };
+    }
+});
+
 // Verificar conexão com banco online
 ipcMain.handle('check-db-connection', async () => {
     try {

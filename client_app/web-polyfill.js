@@ -138,12 +138,74 @@
         return [];
       }
     },
+    syncUserCloudEvents: async (email) => {
+      try {
+        const cleanEmail = (email || '').trim();
+        if (!cleanEmail) return { success: false, error: "Email do usuário não informado." };
+
+        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&or=(organizador_email.eq.${encodeURIComponent(cleanEmail)},status.eq.compartilhado)&limit=200`;
+        const res = await fetch(url, { headers: SUPABASE_HEADERS });
+        if (!res.ok) {
+          throw new Error(`Erro no servidor de banco de dados (${res.status} ${res.statusText})`);
+        }
+        const cloudEvents = await res.json();
+
+        const key = getStorageKey(cleanEmail, 'events');
+        let localEvents = JSON.parse(localStorage.getItem(key) || '[]');
+
+        if (Array.isArray(cloudEvents)) {
+          cloudEvents.forEach(cloudEv => {
+            if (cloudEv.detalhes && cloudEv.detalhes.localData) {
+              const cloudLocal = cloudEv.detalhes.localData;
+              const idx = localEvents.findIndex(l => l.id === cloudLocal.id || (l.share_id && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id));
+              if (idx > -1) {
+                localEvents[idx] = { ...localEvents[idx], ...cloudLocal };
+              } else if (cloudEv.organizador_email === cleanEmail) {
+                localEvents.push(cloudLocal);
+              }
+            }
+          });
+          localStorage.setItem(key, JSON.stringify(localEvents));
+        }
+
+        return { success: true };
+      } catch (e) {
+        console.error("Erro em syncUserCloudEvents (web):", e);
+        return { success: false, error: e.message || String(e) };
+      }
+    },
     saveLocalEvent: async ({ email, newEvent }) => {
       try {
         const key = getStorageKey(email, 'events');
         const current = JSON.parse(localStorage.getItem(key) || '[]');
         current.push(newEvent);
         localStorage.setItem(key, JSON.stringify(current));
+
+        const sanitizedEv = JSON.parse(JSON.stringify(newEvent));
+        if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
+
+        const payload = {
+          id: 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 8),
+          nome: newEvent.name,
+          data_inicio: (newEvent.days || '3') + ' dias',
+          data_fim: '',
+          local: newEvent.city || '',
+          organizador_email: email,
+          status: newEvent.share_id ? 'compartilhado' : 'ativo',
+          detalhes: {
+            share_id: newEvent.share_id || '',
+            share_password: newEvent.share_password || '',
+            sport: 'rodeio',
+            localData: sanitizedEv
+          }
+        };
+
+        fetch('https://api.rodeoapp.pro/rest/v1/eventos_oficiais', {
+          method: 'POST',
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify(payload)
+        }).catch(err => console.error("Cloud push background error:", err));
+
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message };
@@ -156,6 +218,37 @@
         const targetId = (updatedEvent && updatedEvent.id) || id;
         current = current.map(ev => (ev.id === targetId) ? (updatedEvent || ev) : ev);
         localStorage.setItem(key, JSON.stringify(current));
+
+        if (updatedEvent) {
+          const sanitizedEv = JSON.parse(JSON.stringify(updatedEvent));
+          if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
+
+          const payload = {
+            nome: updatedEvent.name,
+            local: updatedEvent.city || '',
+            organizador_email: email,
+            detalhes: {
+              share_id: updatedEvent.share_id || '',
+              share_password: updatedEvent.share_password || '',
+              sport: 'rodeio',
+              localData: sanitizedEv
+            }
+          };
+
+          const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=eq.${encodeURIComponent(email)}&nome=ilike.${encodeURIComponent(updatedEvent.name.trim())}&limit=1`;
+          fetch(checkUrl, { headers: SUPABASE_HEADERS })
+            .then(res => res.json())
+            .then(list => {
+              if (list && list.length > 0) {
+                fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${list[0].id}`, {
+                  method: 'PATCH',
+                  headers: SUPABASE_HEADERS,
+                  body: JSON.stringify(payload)
+                });
+              }
+            }).catch(err => console.error("Cloud patch background error:", err));
+        }
+
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message };
@@ -165,8 +258,16 @@
       try {
         const key = getStorageKey(email, 'events');
         let current = JSON.parse(localStorage.getItem(key) || '[]');
+        const target = current.find(ev => ev.id === id);
         current = current.filter(ev => ev.id !== id);
         localStorage.setItem(key, JSON.stringify(current));
+
+        if (target) {
+          const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?organizador_email=eq.${encodeURIComponent(email)}&nome=ilike.${encodeURIComponent(target.name.trim())}`;
+          fetch(checkUrl, { method: 'DELETE', headers: SUPABASE_HEADERS })
+            .catch(err => console.error("Cloud delete background error:", err));
+        }
+
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message };
