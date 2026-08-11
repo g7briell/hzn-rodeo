@@ -2043,7 +2043,19 @@ function openPhotoNotesReviewModal(rows, dayVal, judgeVal) {
 
 function renderPhotoNotesReviewTable() {
     const tbody = document.getElementById('photo-notes-review-tbody');
+    const tableHeader = document.querySelector('#modal-review-photo-notes table thead tr');
     if (!tbody) return;
+
+    const judgeName = photoNotesReviewState.judge || 'Juiz 1';
+    if (tableHeader) {
+        tableHeader.innerHTML = `
+            <th class="p-3">Competidor (Peão)</th>
+            <th class="p-3 text-center text-emerald-400">Nota Peão (${judgeName})</th>
+            <th class="p-3 text-center text-yellow-400">Nota Touro (${judgeName})</th>
+            <th class="p-3 text-center text-white font-black">Nota Total</th>
+            <th class="p-3 text-center">Ação</th>
+        `;
+    }
 
     const peoesList = (currentEvent && currentEvent.peoes) ? currentEvent.peoes : [];
 
@@ -4765,39 +4777,161 @@ window.confirmRerideNow = async (launchNow) => {
     }
 };
 
+function getScoresForRiderAndBull(peaoNome, bullNome, dayVal) {
+    if (!currentEvent || !currentEvent.notas) {
+        return { j1_peao: 0, j1_touro: 0, j2_peao: 0, j2_touro: 0, totalPeao: 0, totalTouro: 0, totalScore: 0, tempo: 0 };
+    }
+
+    const dayStr = String(dayVal || '1');
+    const peaoLower = (peaoNome || '').trim().toLowerCase();
+
+    const juizesList = (currentEvent.juizes && currentEvent.juizes.length > 0)
+        ? currentEvent.juizes.map((j, i) => typeof j === 'string' ? j : (j.nome || `Juiz ${i+1}`))
+        : ['Juiz 1', 'Juiz 2'];
+
+    let j1p = 0, j1t = 0, j2p = 0, j2t = 0, tempo = 0;
+
+    const notaManual = currentEvent.notas.find(n => 
+        ((n.peao || n.peaoNome || '').trim().toLowerCase() === peaoLower) &&
+        (String(n.dia || n.day) === dayStr) &&
+        (n.status === 'ativa' || !n.status)
+    );
+
+    if (notaManual && (notaManual.j1_peao !== undefined || notaManual.j1_touro !== undefined || notaManual.totalPeao !== undefined || notaManual.notaPeao !== undefined)) {
+        j1p = parseFloat(notaManual.j1_peao || notaManual.notaPeao) || 0;
+        j1t = parseFloat(notaManual.j1_touro || notaManual.notaTouro) || 0;
+        j2p = parseFloat(notaManual.j2_peao) || 0;
+        j2t = parseFloat(notaManual.j2_touro) || 0;
+        tempo = parseFloat(notaManual.tempo) || 8.00;
+
+        if (j1p === 0 && j2p === 0 && notaManual.totalPeao > 0) j1p = notaManual.totalPeao;
+        if (j1t === 0 && j2t === 0 && notaManual.totalTouro > 0) j1t = notaManual.totalTouro;
+    } else {
+        const j1Match = currentEvent.notas.find(n => 
+            ((n.peao || n.peaoNome || '').trim().toLowerCase() === peaoLower) &&
+            String(n.dia || n.day) === dayStr &&
+            (n.juiz === juizesList[0] || (n.juiz && n.juiz.toLowerCase().includes('1')))
+        );
+        if (j1Match) {
+            j1p = parseFloat(j1Match.notaPeao || j1Match.j1_peao) || 0;
+            j1t = parseFloat(j1Match.notaTouro || j1Match.j1_touro) || 0;
+        }
+
+        const j2Match = currentEvent.notas.find(n => 
+            ((n.peao || n.peaoNome || '').trim().toLowerCase() === peaoLower) &&
+            String(n.dia || n.day) === dayStr &&
+            (n.juiz === juizesList[1] || (n.juiz && n.juiz.toLowerCase().includes('2')))
+        );
+        if (j2Match) {
+            j2p = parseFloat(j2Match.notaPeao || j2Match.j2_peao) || 0;
+            j2t = parseFloat(j2Match.notaTouro || j2Match.j2_touro) || 0;
+        }
+    }
+
+    const totalPeao = j1p + j2p;
+    const totalTouro = j1t + j2t;
+    const totalScore = totalPeao + totalTouro;
+
+    return { j1_peao: j1p, j1_touro: j1t, j2_peao: j2p, j2_touro: j2t, totalPeao, totalTouro, totalScore, tempo };
+}
+
+window.openNotasSummaryModal = () => {
+    window.finishScoringFlow();
+};
+
 window.finishScoringFlow = () => {
     const tbody = document.getElementById('notas-summary-tbody');
+    const tableHeader = document.querySelector('#modal-notas-summary table thead');
+    if (!tbody) return;
+
+    const juizes = (currentEvent && currentEvent.juizes && currentEvent.juizes.length > 0)
+        ? currentEvent.juizes.map((j, i) => typeof j === 'string' ? j : (j.nome || `Juiz ${i+1}`))
+        : ['Juiz 1', 'Juiz 2'];
+
+    const j1Name = juizes[0] || 'Juiz 1';
+    const j2Name = juizes[1] || 'Juiz 2';
+    const isMultiJudge = juizes.length >= 2 || (currentEvent && parseInt(currentEvent.judges, 10) >= 2);
+
+    if (tableHeader) {
+        if (isMultiJudge) {
+            tableHeader.innerHTML = `
+                <tr class="text-[10px] font-black uppercase tracking-widest border-b border-slate-800 text-slate-400">
+                    <th class="py-4 px-3">POS</th>
+                    <th class="py-4 px-3">Competidor</th>
+                    <th class="py-4 px-3">Touro</th>
+                    <th class="py-4 px-3 text-center">Tempo</th>
+                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/5">Peão (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/5">Touro (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/5">Peão (${j2Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/5">Touro (${j2Name})</th>
+                    <th class="py-4 px-3 text-center text-white font-black bg-blue-500/10">Total Peão</th>
+                    <th class="py-4 px-3 text-center text-white font-black bg-blue-500/10">Total Touro</th>
+                    <th class="py-4 px-3 text-center text-yellow-500 font-black text-xs bg-yellow-500/10">Nota Final</th>
+                </tr>
+            `;
+        } else {
+            tableHeader.innerHTML = `
+                <tr class="text-[10px] font-black uppercase tracking-widest border-b border-slate-800 text-slate-400">
+                    <th class="py-4 px-3">POS</th>
+                    <th class="py-4 px-3">Competidor</th>
+                    <th class="py-4 px-3">Touro</th>
+                    <th class="py-4 px-3 text-center">Tempo</th>
+                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/5">Nota Peão (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/5">Nota Touro (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-500 font-black text-xs bg-yellow-500/10">Nota Final</th>
+                </tr>
+            `;
+        }
+    }
+
     tbody.innerHTML = '';
     
-    notasState.sorteio.riders.forEach((r, idx) => {
-        const bull = notasState.sorteio.bulls[notasState.sorteio.assignments[idx]];
-        const notaAtiva = (currentEvent.notas || []).find(n => n.peao === r.nome && n.touro === bull.nome && n.dia === notasState.day && n.status === 'ativa');
-        
-        let tempoHtml = '-', peaoHtml = '-', touroHtml = '-';
-        if (notaAtiva) {
-            tempoHtml = notaAtiva.tempo.toFixed(2);
-            peaoHtml = `<span class="${notaAtiva.totalPeao > 0 ? 'text-white' : 'text-slate-500'}">${notaAtiva.totalPeao.toFixed(2)}</span>`;
-            touroHtml = `<span class="text-yellow-500">${notaAtiva.totalTouro.toFixed(2)}</span>`;
-        } else {
-            const notaSub = (currentEvent.notas || []).find(n => n.peao === r.nome && n.touro === bull.nome && n.dia === notasState.day && n.status !== 'ativa');
-            if (notaSub) {
-                tempoHtml = '<span class="text-red-500">RE-RIDE</span>';
-                peaoHtml = '-'; touroHtml = '-';
+    if (notasState && notasState.sorteio && notasState.sorteio.riders) {
+        notasState.sorteio.riders.forEach((r, idx) => {
+            const bull = (notasState.sorteio.bulls && notasState.sorteio.assignments) ? (notasState.sorteio.bulls[notasState.sorteio.assignments[idx]] || { nome: '-' }) : { nome: '-' };
+            const scores = getScoresForRiderAndBull(r.nome, bull.nome, notasState.day);
+
+            let tempoHtml = scores.tempo > 0 ? scores.tempo.toFixed(2) : '-';
+            let j1p = scores.j1_peao > 0 ? `<span class="text-emerald-400 font-bold">${scores.j1_peao.toFixed(2)}</span>` : '-';
+            let j1t = scores.j1_touro > 0 ? `<span class="text-yellow-400 font-bold">${scores.j1_touro.toFixed(2)}</span>` : '-';
+            let j2p = scores.j2_peao > 0 ? `<span class="text-emerald-400 font-bold">${scores.j2_peao.toFixed(2)}</span>` : '-';
+            let j2t = scores.j2_touro > 0 ? `<span class="text-yellow-400 font-bold">${scores.j2_touro.toFixed(2)}</span>` : '-';
+            let totP = scores.totalPeao > 0 ? `<span class="text-white font-bold">${scores.totalPeao.toFixed(2)}</span>` : '-';
+            let totT = scores.totalTouro > 0 ? `<span class="text-yellow-500 font-bold">${scores.totalTouro.toFixed(2)}</span>` : '-';
+            let finalScore = scores.totalScore > 0 ? `<span class="text-yellow-400 font-black text-base">${scores.totalScore.toFixed(2)}</span>` : '-';
+
+            if (isMultiJudge) {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/20 text-xs transition-colors">
+                        <td class="py-3 px-3 text-slate-500 font-bold">${idx+1}</td>
+                        <td class="py-3 px-3 font-bold text-white">${r.nome} ${r.isReride ? '<span class="bg-red-500 px-1.5 py-0.5 rounded text-[8px] text-white ml-1">RE-RIDE</span>' : ''}</td>
+                        <td class="py-3 px-3 text-slate-400 font-medium">${bull.nome}</td>
+                        <td class="py-3 px-3 text-center font-black">${tempoHtml}</td>
+                        <td class="py-3 px-3 text-center bg-emerald-500/5">${j1p}</td>
+                        <td class="py-3 px-3 text-center bg-yellow-500/5">${j1t}</td>
+                        <td class="py-3 px-3 text-center bg-emerald-500/5">${j2p}</td>
+                        <td class="py-3 px-3 text-center bg-yellow-500/5">${j2t}</td>
+                        <td class="py-3 px-3 text-center font-bold bg-blue-500/5">${totP}</td>
+                        <td class="py-3 px-3 text-center font-bold bg-blue-500/5">${totT}</td>
+                        <td class="py-3 px-3 text-center font-black bg-yellow-500/10">${finalScore}</td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/20 text-xs transition-colors">
+                        <td class="py-3 px-3 text-slate-500 font-bold">${idx+1}</td>
+                        <td class="py-3 px-3 font-bold text-white">${r.nome} ${r.isReride ? '<span class="bg-red-500 px-1.5 py-0.5 rounded text-[8px] text-white ml-1">RE-RIDE</span>' : ''}</td>
+                        <td class="py-3 px-3 text-slate-400 font-medium">${bull.nome}</td>
+                        <td class="py-3 px-3 text-center font-black">${tempoHtml}</td>
+                        <td class="py-3 px-3 text-center bg-emerald-500/5">${j1p}</td>
+                        <td class="py-3 px-3 text-center bg-yellow-500/5">${j1t}</td>
+                        <td class="py-3 px-3 text-center font-black bg-yellow-500/10">${finalScore}</td>
+                    </tr>
+                `;
             }
-        }
-        
-        tbody.innerHTML += `
-            <tr class="hover:bg-slate-800/20">
-                <td class="py-4 px-4 text-slate-500">${idx+1}</td>
-                <td class="py-4 px-4">${r.nome} ${r.isReride ? '<span class="bg-red-500 px-1.5 rounded text-[8px] text-white ml-2">RE-RIDE</span>' : ''}</td>
-                <td class="py-4 px-4 text-slate-400">${bull.nome}</td>
-                <td class="py-4 px-4 text-center font-black">${tempoHtml}</td>
-                <td class="py-4 px-4 text-center font-black text-lg">${peaoHtml}</td>
-                <td class="py-4 px-4 text-center font-black text-lg">${touroHtml}</td>
-            </tr>
-        `;
-    });
-    
+        });
+    }
+
     document.getElementById('modal-notas-summary').classList.remove('hidden');
 };
 
