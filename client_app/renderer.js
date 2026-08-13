@@ -1311,7 +1311,11 @@ async function renderEvents() {
     const eventos = await window.electronAPI.getLocalEvents(email);
     let html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8"><button onclick="openModalEvento()" class="glass p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-slate-800 hover:border-accent transition-all group min-h-[160px]"><div class="w-14 h-14 sm:w-16 sm:h-16 bg-accent/10 rounded-full flex items-center justify-center mb-3 sm:mb-4"><svg class="w-7 h-7 sm:w-8 sm:h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></div><span class="font-bold text-slate-400 uppercase text-xs tracking-widest">Criar Novo Evento</span></button>`;
     
-    eventos.forEach(ev => { 
+    eventos.forEach((ev, idx) => { 
+        if (!ev.id || ev.id === 'undefined') {
+            ev.id = 'evt_' + Date.now().toString() + '_' + idx;
+            window.electronAPI.updateLocalEvent(email, ev);
+        }
         html += `<div class="relative group">
             <div onclick="openEventControl('${ev.id}')" class="w-full cursor-pointer glass p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border-white/5 flex flex-col sm:flex-row justify-between items-start text-left hover:border-accent transition-all gap-4">
                 <div class="flex gap-4 sm:gap-6 items-start w-full">
@@ -1603,8 +1607,11 @@ async function handleEventSubmit(e) {
         const existing = eventos.find(e => e.id === editingEventId);
         res = await window.electronAPI.updateLocalEvent(email, { ...existing, ...eventData });
     } else {
+        const newId = 'evt_' + Date.now().toString() + '_' + Math.random().toString(36).substring(2, 7);
         res = await window.electronAPI.saveLocalEvent(email, { 
             ...eventData,
+            id: newId,
+            created_at: new Date().toISOString(),
             peoes: [], boiadas: [], juizes: [], sorteios: [], notas: [] 
         });
     }
@@ -1668,8 +1675,19 @@ window.generateDrawList = () => {
 window.openEventControl = async (id) => {
     const email = getCurrentUserEmail();
     const eventos = await window.electronAPI.getLocalEvents(email);
-    currentEvent = eventos.find(e => e.id === id);
+    currentEvent = eventos.find(e => 
+        (e.id && id && String(e.id) === String(id)) ||
+        (id === 'undefined' && e.name) ||
+        (id && e.share_id && e.share_id === id)
+    );
+    if (!currentEvent && eventos.length > 0 && (!id || id === 'undefined')) {
+        currentEvent = eventos[0];
+    }
     if (!currentEvent) return;
+    if (!currentEvent.id || currentEvent.id === 'undefined') {
+        currentEvent.id = 'evt_' + Date.now().toString();
+        await window.electronAPI.updateLocalEvent(email, currentEvent);
+    }
     window.currentEvent = currentEvent;
 
     toggleSupportBtn(false);

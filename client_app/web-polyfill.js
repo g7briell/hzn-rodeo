@@ -270,18 +270,24 @@
         const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail || !newEvent) return { success: false, error: "Dados inválidos para salvar evento." };
 
+        const eventToSave = {
+          ...newEvent,
+          id: newEvent.id || ('web_' + Date.now().toString() + '_' + Math.random().toString(36).substring(2, 7)),
+          created_at: newEvent.created_at || new Date().toISOString()
+        };
+
         const key = getStorageKey(cleanEmail, 'events');
         const current = JSON.parse(localStorage.getItem(key) || '[]');
         
-        const existingIdx = current.findIndex(e => String(e.id) === String(newEvent.id) || (e.name && newEvent.name && e.name.toLowerCase() === newEvent.name.toLowerCase()));
+        const existingIdx = current.findIndex(e => (e.id && String(e.id) === String(eventToSave.id)) || (e.name && eventToSave.name && e.name.toLowerCase() === eventToSave.name.toLowerCase()));
         if (existingIdx > -1) {
-          current[existingIdx] = newEvent;
+          current[existingIdx] = eventToSave;
         } else {
-          current.push(newEvent);
+          current.push(eventToSave);
         }
         localStorage.setItem(key, JSON.stringify(current));
 
-        const sanitizedEv = JSON.parse(JSON.stringify(newEvent));
+        const sanitizedEv = JSON.parse(JSON.stringify(eventToSave));
         if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
 
         const payload = {

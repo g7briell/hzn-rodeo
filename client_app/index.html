@@ -198,27 +198,27 @@
     </a>
 
     <!-- Modal de Cadastro de Evento -->
-    <div id="modal-evento" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden">
-        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
-            <button onclick="closeModalEvento()" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-            <h2 class="text-3xl font-black italic mb-8 uppercase text-yellow-500">CRIAR NOVO EVENTO</h2>
-            <form id="form-evento" class="space-y-6">
+    <div id="modal-evento" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 hidden overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 md:p-10 rounded-[2rem] sm:rounded-[3rem] max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl relative my-auto">
+            <button onclick="closeModalEvento()" class="absolute top-6 right-6 text-slate-500 hover:text-white z-20"><svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-2xl sm:text-3xl font-black italic mb-4 sm:mb-6 uppercase text-yellow-500 pr-10">CRIAR NOVO EVENTO</h2>
+            <form id="form-evento" class="space-y-3 sm:space-y-4 overflow-y-auto pr-1 flex-1">
                 <!-- Upload de Logo -->
-                <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-3xl p-6 hover:border-yellow-500/50 transition-all group relative overflow-hidden">
+                <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-2xl p-3 sm:p-4 hover:border-yellow-500/50 transition-all group relative overflow-hidden bg-slate-950/40">
                     <input type="file" id="event-logo-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10">
                     <div id="logo-preview-container" class="text-center">
-                        <div class="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                            <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                         </div>
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo do Evento</p>
+                        <p class="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo do Evento (Opcional)</p>
                     </div>
                     <img id="logo-preview-img" class="absolute inset-0 w-full h-full object-cover hidden">
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div class="space-y-1">
                         <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Tipo</label>
-                        <select id="event-type" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none">
+                        <select id="event-type" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none text-xs sm:text-sm">
                             <option value="RODEIO">RODEIO</option>
                             <option value="PROVA">PROVA</option>
                             <option value="OUTRO">OUTRO</option>
@@ -226,17 +226,19 @@
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-black text-slate-500 uppercase ml-2">Nome</label>
-                        <input type="text" id="event-name" placeholder="Ex: Barretos" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                        <input type="text" id="event-name" placeholder="Ex: Barretos" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-xs sm:text-sm" required>
                     </div>
                 </div>
-                <input type="text" id="event-city" placeholder="Cidade / UF" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
-                <input type="text" id="event-circuito" placeholder="Circuito (Ex: Circuito Rancho Primavera)" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500">
-                <input type="text" id="event-director" placeholder="Diretor do Evento (Ex: João da Silva)" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500">
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="number" id="event-days" placeholder="Dias" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
-                    <input type="number" id="event-judges" placeholder="Juízes" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500" required>
+                <input type="text" id="event-city" placeholder="Cidade / UF" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-xs sm:text-sm" required>
+                <input type="text" id="event-circuito" placeholder="Circuito (Ex: Circuito Rancho Primavera)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-xs sm:text-sm">
+                <input type="text" id="event-director" placeholder="Diretor do Evento (Ex: João da Silva)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-xs sm:text-sm">
+                <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                    <input type="number" id="event-days" placeholder="Dias" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-xs sm:text-sm" required>
+                    <input type="number" id="event-judges" placeholder="Juízes" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-yellow-500 text-xs sm:text-sm" required>
                 </div>
-                <button type="submit" id="btn-submit-evento" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-black uppercase shadow-xl transition-all active:scale-95">CRIAR EVENTO</button>
+                <div class="pt-2">
+                    <button type="submit" id="btn-submit-evento" class="w-full bg-yellow-500 hover:bg-yellow-400 py-4 sm:py-4.5 rounded-xl sm:rounded-2xl font-black text-black uppercase shadow-xl transition-all active:scale-95 text-xs sm:text-sm tracking-wider">CRIAR EVENTO</button>
+                </div>
             </form>
         </div>
     </div>
