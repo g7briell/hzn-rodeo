@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.132';
+  const CURRENT_WEB_VERSION = '1.0.133';
 
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
@@ -543,6 +543,17 @@
       try {
         const filename = defaultName || 'Relatorio.pdf';
         
+        // Carrega html2pdf dinamicamente se necessário
+        if (typeof window.html2pdf !== 'function') {
+          await new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+          });
+        }
+
         if (typeof window.html2pdf === 'function') {
           const container = document.createElement('div');
           container.style.position = 'fixed';
@@ -555,7 +566,7 @@
           document.body.appendChild(container);
 
           const opt = {
-            margin: [8, 8, 8, 8],
+            margin: [6, 6, 6, 6],
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
@@ -567,19 +578,30 @@
           return { success: true };
         }
 
-        // Fallback para impressão do navegador
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(htmlContent);
-          printWindow.document.close();
-          printWindow.focus();
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
-          return { success: true };
-        }
+        // Fallback limpo: cria iframe isolado com APENAS o relatório (sem overlay de "Gerando PDF")
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
 
-        return { success: false, message: 'Não foi possível gerar o PDF no navegador.' };
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+
+        setTimeout(() => {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          setTimeout(() => {
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
+          }, 3000);
+        }, 500);
+
+        return { success: true };
       } catch (err) {
         console.error('Erro ao gerar PDF na web:', err);
         return { success: false, message: err.message || String(err) };
@@ -588,6 +610,16 @@
 
     exportSorteioExcel: async (payload) => {
       try {
+        if (typeof window.XLSX === 'undefined') {
+          await new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+          });
+        }
+
         const sorteioData = payload.sorteioData || payload;
         const eventName = sorteioData.eventName || 'Evento';
         const day = sorteioData.day || 'Dia';
@@ -648,6 +680,16 @@
 
     exportBoiadasExcel: async (payload) => {
       try {
+        if (typeof window.XLSX === 'undefined') {
+          await new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+          });
+        }
+
         const sorteioData = payload.sorteioData || payload;
         const day = sorteioData.day || 'Dia';
         const bulls = sorteioData.bulls || [];
@@ -680,6 +722,16 @@
 
     exportJuizesExcel: async ({ sorteioData, eventName, day, juizNome }) => {
       try {
+        if (typeof window.XLSX === 'undefined') {
+          await new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+          });
+        }
+
         if (typeof window.XLSX !== 'undefined') {
           const rows = [
             ["RODEOAPP - PLANILHA DE NOTAS DO JUIZ"],
@@ -722,6 +774,16 @@
 
     exportOrdemExcel: async (payload) => {
       try {
+        if (typeof window.XLSX === 'undefined') {
+          await new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+          });
+        }
+
         const { eventName, day, data } = payload;
         if (typeof window.XLSX !== 'undefined') {
           const rows = [
@@ -761,6 +823,16 @@
 
     exportRankingExcel: async (payload) => {
       try {
+        if (typeof window.XLSX === 'undefined') {
+          await new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+          });
+        }
+
         const { eventName, day, data } = payload;
         if (typeof window.XLSX !== 'undefined') {
           const rows = [
@@ -796,28 +868,40 @@
 
     exportMelhorCia: async ({ eventName, data, format }) => {
       try {
-        if (format === 'excel' && typeof window.XLSX !== 'undefined') {
-          const rows = [
-            ["RODEOAPP - RANKING DE MELHOR COMPANHIA"],
-            ["EVENTO:", eventName || ''],
-            [],
-            ["POS", "COMPANHIA", "MÉDIA", "TOTAL DE TOUROS"]
-          ];
+        if (format === 'excel') {
+          if (typeof window.XLSX === 'undefined') {
+            await new Promise((resolve) => {
+              const s = document.createElement('script');
+              s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+              s.onload = () => resolve(true);
+              s.onerror = () => resolve(false);
+              document.head.appendChild(s);
+            });
+          }
 
-          (data || []).forEach((item, idx) => {
-            rows.push([
-              idx + 1,
-              item.nome || item.cia || '',
-              typeof item.media === 'number' ? item.media.toFixed(2) : (item.media || '0.00'),
-              item.tourosCount || (item.touros ? item.touros.length : '') || ''
-            ]);
-          });
+          if (typeof window.XLSX !== 'undefined') {
+            const rows = [
+              ["RODEOAPP - RANKING DE MELHOR COMPANHIA"],
+              ["EVENTO:", eventName || ''],
+              [],
+              ["POS", "COMPANHIA", "MÉDIA", "TOTAL DE TOUROS"]
+            ];
 
-          const ws = window.XLSX.utils.aoa_to_sheet(rows);
-          const wb = window.XLSX.utils.book_new();
-          window.XLSX.utils.book_append_sheet(wb, ws, "Melhor Cia");
-          window.XLSX.writeFile(wb, `Melhor_Cia_${(eventName || 'Evento').replace(/\s+/g, '_')}.xlsx`);
-          return { success: true };
+            (data || []).forEach((item, idx) => {
+              rows.push([
+                idx + 1,
+                item.nome || item.cia || '',
+                typeof item.media === 'number' ? item.media.toFixed(2) : (item.media || '0.00'),
+                item.tourosCount || (item.touros ? item.touros.length : '') || ''
+              ]);
+            });
+
+            const ws = window.XLSX.utils.aoa_to_sheet(rows);
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Melhor Cia");
+            window.XLSX.writeFile(wb, `Melhor_Cia_${(eventName || 'Evento').replace(/\s+/g, '_')}.xlsx`);
+            return { success: true };
+          }
         }
 
         // Se formato PDF na web
@@ -854,29 +938,41 @@
 
     exportMelhorAnimal: async ({ eventName, data, format }) => {
       try {
-        if (format === 'excel' && typeof window.XLSX !== 'undefined') {
-          const rows = [
-            ["RODEOAPP - RANKING DE MELHOR ANIMAL / TOURO"],
-            ["EVENTO:", eventName || ''],
-            [],
-            ["POS", "ANIMAL / TOURO", "COMPANHIA", "SAÍDAS", "MÉDIA"]
-          ];
+        if (format === 'excel') {
+          if (typeof window.XLSX === 'undefined') {
+            await new Promise((resolve) => {
+              const s = document.createElement('script');
+              s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+              s.onload = () => resolve(true);
+              s.onerror = () => resolve(false);
+              document.head.appendChild(s);
+            });
+          }
 
-          (data || []).forEach((item, idx) => {
-            rows.push([
-              idx + 1,
-              item.nome || '',
-              item.cia || '',
-              item.saidas || 0,
-              typeof item.media === 'number' ? item.media.toFixed(2) : (item.media || '0.00')
-            ]);
-          });
+          if (typeof window.XLSX !== 'undefined') {
+            const rows = [
+              ["RODEOAPP - RANKING DE MELHOR ANIMAL / TOURO"],
+              ["EVENTO:", eventName || ''],
+              [],
+              ["POS", "ANIMAL / TOURO", "COMPANHIA", "SAÍDAS", "MÉDIA"]
+            ];
 
-          const ws = window.XLSX.utils.aoa_to_sheet(rows);
-          const wb = window.XLSX.utils.book_new();
-          window.XLSX.utils.book_append_sheet(wb, ws, "Melhor Animal");
-          window.XLSX.writeFile(wb, `Melhor_Animal_${(eventName || 'Evento').replace(/\s+/g, '_')}.xlsx`);
-          return { success: true };
+            (data || []).forEach((item, idx) => {
+              rows.push([
+                idx + 1,
+                item.nome || '',
+                item.cia || '',
+                item.saidas || 0,
+                typeof item.media === 'number' ? item.media.toFixed(2) : (item.media || '0.00')
+              ]);
+            });
+
+            const ws = window.XLSX.utils.aoa_to_sheet(rows);
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Melhor Animal");
+            window.XLSX.writeFile(wb, `Melhor_Animal_${(eventName || 'Evento').replace(/\s+/g, '_')}.xlsx`);
+            return { success: true };
+          }
         }
 
         // Se formato PDF na web
