@@ -3405,7 +3405,8 @@ window.openModalJuiz = (idx = null) => {
 
 window.saveJuiz = async (e) => {
     e.preventDefault();
-    const nome = document.getElementById('juiz-nome').value;
+    const nome = document.getElementById('juiz-nome').value.trim();
+    if (!nome) return;
     
     currentEvent.juizes = currentEvent.juizes || [];
     
@@ -3415,18 +3416,16 @@ window.saveJuiz = async (e) => {
         currentEvent.juizes.push({ nome });
     }
     
-    await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
-    await window.syncUserEventsWithCloud();
     document.getElementById('modal-juiz').classList.add('hidden');
     openListJuizes();
+    await window.persistAndSyncEvent(currentEvent);
 };
 
 window.deleteJuiz = async (idx) => {
     if (confirm("Excluir este Juiz?")) {
         currentEvent.juizes.splice(idx, 1);
-        await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
-        await window.syncUserEventsWithCloud();
         openListJuizes();
+        await window.persistAndSyncEvent(currentEvent);
     }
 };
 

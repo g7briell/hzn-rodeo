@@ -360,7 +360,7 @@ ipcMain.handle('save-local-event', async (event, arg1, arg2) => {
     email = arg1;
     newEvent = arg2;
   }
-  const cleanEmail = (email || '').trim();
+  const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail || !newEvent) return { success: false, error: "Dados inválidos." };
 
   const data = getLocalData(cleanEmail);
@@ -392,21 +392,36 @@ ipcMain.handle('save-local-event', async (event, arg1, arg2) => {
       detalhes: {
         share_id: eventToSave.share_id || '',
         share_password: eventToSave.share_password || '',
-        sport: 'rodeio',
+        sport: currentSportSession || 'rodeio',
         localData: sanitizedEv
       }
     };
 
-    const { data: existing } = await supabase.from('eventos_oficiais')
-      .select('id')
-      .eq('organizador_email', cleanEmail)
-      .ilike('nome', eventToSave.name.trim())
-      .limit(1);
+    let existing = null;
+    if (eventToSave.id && /^[0-9a-f-]{36}$/i.test(String(eventToSave.id))) {
+      const { data: byId } = await supabase.from('eventos_oficiais').select('id').eq('id', eventToSave.id).limit(1);
+      if (byId && byId.length > 0) existing = byId;
+    }
+    if (!existing && eventToSave.share_id) {
+      const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', eventToSave.share_id).limit(1);
+      if (byShare && byShare.length > 0) existing = byShare;
+    }
+    if (!existing) {
+      const { data: byEmailName } = await supabase.from('eventos_oficiais')
+        .select('id')
+        .ilike('organizador_email', cleanEmail)
+        .ilike('nome', eventToSave.name.trim())
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (byEmailName && byEmailName.length > 0) existing = byEmailName;
+    }
 
     if (existing && existing.length > 0) {
       await supabase.from('eventos_oficiais').update(payload).eq('id', existing[0].id);
+      eventToSave.id = existing[0].id;
     } else {
       payload.id = require('crypto').randomUUID();
+      eventToSave.id = payload.id;
       await supabase.from('eventos_oficiais').insert([payload]);
     }
   } catch (err) {
@@ -431,7 +446,7 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
     updatedEvent = arg3;
   }
 
-  const cleanEmail = (email || '').trim();
+  const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail || !updatedEvent) return { success: false, error: "Dados inválidos para atualizar." };
 
   const data = getLocalData(cleanEmail);
@@ -457,19 +472,33 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
       nome: updatedEvent.name,
       local: updatedEvent.city || '',
       organizador_email: cleanEmail,
+      status: updatedEvent.share_id ? 'compartilhado' : 'ativo',
       detalhes: {
         share_id: updatedEvent.share_id || '',
         share_password: updatedEvent.share_password || '',
-        sport: 'rodeio',
+        sport: currentSportSession || 'rodeio',
         localData: sanitizedEv
       }
     };
 
-    const { data: existing } = await supabase.from('eventos_oficiais')
-      .select('id')
-      .eq('organizador_email', cleanEmail)
-      .ilike('nome', updatedEvent.name.trim())
-      .limit(1);
+    let existing = null;
+    if (updatedEvent.id && /^[0-9a-f-]{36}$/i.test(String(updatedEvent.id))) {
+      const { data: byId } = await supabase.from('eventos_oficiais').select('id').eq('id', updatedEvent.id).limit(1);
+      if (byId && byId.length > 0) existing = byId;
+    }
+    if (!existing && updatedEvent.share_id) {
+      const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', updatedEvent.share_id).limit(1);
+      if (byShare && byShare.length > 0) existing = byShare;
+    }
+    if (!existing) {
+      const { data: byEmailName } = await supabase.from('eventos_oficiais')
+        .select('id')
+        .ilike('organizador_email', cleanEmail)
+        .ilike('nome', updatedEvent.name.trim())
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (byEmailName && byEmailName.length > 0) existing = byEmailName;
+    }
 
     if (existing && existing.length > 0) {
       await supabase.from('eventos_oficiais').update(payload).eq('id', existing[0].id);

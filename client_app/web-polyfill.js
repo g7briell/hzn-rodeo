@@ -267,13 +267,13 @@
           newEvent = arg2;
         }
 
-        const cleanEmail = (email || '').trim();
+        const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail || !newEvent) return { success: false, error: "Dados inválidos para salvar evento." };
 
         const key = getStorageKey(cleanEmail, 'events');
         const current = JSON.parse(localStorage.getItem(key) || '[]');
         
-        const existingIdx = current.findIndex(e => e.id === newEvent.id || (e.name && newEvent.name && e.name.toLowerCase() === newEvent.name.toLowerCase()));
+        const existingIdx = current.findIndex(e => String(e.id) === String(newEvent.id) || (e.name && newEvent.name && e.name.toLowerCase() === newEvent.name.toLowerCase()));
         if (existingIdx > -1) {
           current[existingIdx] = newEvent;
         } else {
@@ -299,12 +299,26 @@
           }
         };
 
-        const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=eq.${encodeURIComponent(cleanEmail)}&nome=ilike.${encodeURIComponent(newEvent.name.trim())}&limit=1`;
-        const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
-        const checkList = await checkRes.json();
+        let targetRecordId = null;
+        if (newEvent.id && /^[0-9a-f-]{36}$/i.test(String(newEvent.id))) {
+          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&id=eq.${encodeURIComponent(newEvent.id)}&limit=1`, { headers: SUPABASE_HEADERS });
+          const checkList = await checkRes.json();
+          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
+        }
+        if (!targetRecordId && newEvent.share_id) {
+          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&detalhes->>share_id=eq.${encodeURIComponent(newEvent.share_id)}&limit=1`, { headers: SUPABASE_HEADERS });
+          const checkList = await checkRes.json();
+          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
+        }
+        if (!targetRecordId) {
+          const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=ilike.${encodeURIComponent(cleanEmail)}&nome=ilike.${encodeURIComponent(newEvent.name.trim())}&order=created_at.desc&limit=1`;
+          const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
+          const checkList = await checkRes.json();
+          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
+        }
 
-        if (checkList && checkList.length > 0) {
-          await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${checkList[0].id}`, {
+        if (targetRecordId) {
+          await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${targetRecordId}`, {
             method: 'PATCH',
             headers: SUPABASE_HEADERS,
             body: JSON.stringify(payload)
@@ -340,7 +354,7 @@
           updatedEvent = arg3;
         }
 
-        const cleanEmail = (email || '').trim();
+        const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail || !updatedEvent) return { success: false, error: "Dados inválidos para atualizar evento." };
 
         const key = getStorageKey(cleanEmail, 'events');
@@ -349,7 +363,7 @@
         
         let found = false;
         current = current.map(ev => {
-          if (ev.id === targetId || (ev.name && updatedEvent.name && ev.name.toLowerCase() === updatedEvent.name.toLowerCase())) {
+          if (String(ev.id) === String(targetId) || (ev.name && updatedEvent.name && ev.name.toLowerCase() === updatedEvent.name.toLowerCase())) {
             found = true;
             return updatedEvent;
           }
@@ -369,6 +383,7 @@
           nome: updatedEvent.name,
           local: updatedEvent.city || '',
           organizador_email: cleanEmail,
+          status: updatedEvent.share_id ? 'compartilhado' : 'ativo',
           detalhes: {
             share_id: updatedEvent.share_id || '',
             share_password: updatedEvent.share_password || '',
@@ -377,12 +392,26 @@
           }
         };
 
-        const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=eq.${encodeURIComponent(cleanEmail)}&nome=ilike.${encodeURIComponent(updatedEvent.name.trim())}&limit=1`;
-        const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
-        const checkList = await checkRes.json();
+        let targetRecordId = null;
+        if (updatedEvent.id && /^[0-9a-f-]{36}$/i.test(String(updatedEvent.id))) {
+          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&id=eq.${encodeURIComponent(updatedEvent.id)}&limit=1`, { headers: SUPABASE_HEADERS });
+          const checkList = await checkRes.json();
+          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
+        }
+        if (!targetRecordId && updatedEvent.share_id) {
+          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&detalhes->>share_id=eq.${encodeURIComponent(updatedEvent.share_id)}&limit=1`, { headers: SUPABASE_HEADERS });
+          const checkList = await checkRes.json();
+          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
+        }
+        if (!targetRecordId) {
+          const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=ilike.${encodeURIComponent(cleanEmail)}&nome=ilike.${encodeURIComponent(updatedEvent.name.trim())}&order=created_at.desc&limit=1`;
+          const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
+          const checkList = await checkRes.json();
+          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
+        }
 
-        if (checkList && checkList.length > 0) {
-          await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${checkList[0].id}`, {
+        if (targetRecordId) {
+          await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${targetRecordId}`, {
             method: 'PATCH',
             headers: SUPABASE_HEADERS,
             body: JSON.stringify(payload)
