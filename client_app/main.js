@@ -2720,14 +2720,14 @@ function mergeEventObjects(localEv, cloudEv) {
     if (!localEv) return cloudEv;
     if (!cloudEv) return localEv;
 
-    const merged = { ...localEv, ...cloudEv };
+    const merged = { ...cloudEv, ...localEv };
 
-    // Mescla peões (preserva pontos/tempos do mais completo)
+    // Mescla peões (preserva dados de ambos)
     if (Array.isArray(localEv.peoes) || Array.isArray(cloudEv.peoes)) {
         const peaoMap = new Map();
-        (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').toLowerCase(), p));
+        (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').trim().toLowerCase(), p));
         (cloudEv.peoes || []).forEach(p => {
-            const key = (p.id || p.nome || '').toLowerCase();
+            const key = (p.id || p.nome || '').trim().toLowerCase();
             if (peaoMap.has(key)) {
                 peaoMap.set(key, { ...peaoMap.get(key), ...p });
             } else {
@@ -2740,9 +2740,9 @@ function mergeEventObjects(localEv, cloudEv) {
     // Mescla boiadas e touros sem apagar itens
     if (Array.isArray(localEv.boiadas) || Array.isArray(cloudEv.boiadas)) {
         const boiadaMap = new Map();
-        (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').toLowerCase(), b));
+        (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').trim().toLowerCase(), b));
         (cloudEv.boiadas || []).forEach(b => {
-            const key = (b.nome || '').toLowerCase();
+            const key = (b.nome || '').trim().toLowerCase();
             if (boiadaMap.has(key)) {
                 const existing = boiadaMap.get(key);
                 const allTouros = Array.from(new Set([...(existing.touros || []), ...(b.touros || [])]));
@@ -2757,17 +2757,31 @@ function mergeEventObjects(localEv, cloudEv) {
     // Mescla juízes
     if (Array.isArray(localEv.juizes) || Array.isArray(cloudEv.juizes)) {
         const jMap = new Map();
-        (localEv.juizes || []).forEach(j => jMap.set((j.nome || j || '').toLowerCase(), j));
-        (cloudEv.juizes || []).forEach(j => jMap.set((j.nome || j || '').toLowerCase(), j));
+        (localEv.juizes || []).forEach(j => {
+            const name = typeof j === 'string' ? j : (j.nome || '');
+            if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
+        });
+        (cloudEv.juizes || []).forEach(j => {
+            const name = typeof j === 'string' ? j : (j.nome || '');
+            if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
+        });
         merged.juizes = Array.from(jMap.values());
     }
 
     // Mescla sorteios
     if (Array.isArray(localEv.sorteios) || Array.isArray(cloudEv.sorteios)) {
         const sMap = new Map();
-        (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
-        (cloudEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
+        (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
+        (cloudEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
         merged.sorteios = Array.from(sMap.values());
+    }
+
+    // Mescla notas
+    if (Array.isArray(localEv.notas) || Array.isArray(cloudEv.notas)) {
+        const nMap = new Map();
+        (localEv.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
+        (cloudEv.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
+        merged.notas = Array.from(nMap.values());
     }
 
     return merged;
@@ -2776,13 +2790,14 @@ function mergeEventObjects(localEv, cloudEv) {
 // Sincronizar todos os eventos do usuário com a nuvem
 ipcMain.handle('sync-user-cloud-events', async (event, email) => {
     try {
-        const cleanEmail = (email || '').trim();
+        const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail) return { success: false, error: "E-mail do usuário não informado." };
 
         const { data: cloudEvents, error } = await supabase.from('eventos_oficiais')
             .select('*')
-            .or(`organizador_email.eq.${cleanEmail},status.eq.compartilhado`)
-            .limit(200);
+            .or(`organizador_email.ilike.${cleanEmail},status.eq.compartilhado`)
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (error) throw error;
 
@@ -2791,14 +2806,37 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
 
         if (Array.isArray(cloudEvents)) {
             cloudEvents.forEach(cloudEv => {
+                let cloudLocal = null;
                 if (cloudEv.detalhes && cloudEv.detalhes.localData) {
-                    const cloudLocal = cloudEv.detalhes.localData;
-                    const idx = localData.eventos.findIndex(l => l.id === cloudLocal.id || (l.share_id && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id));
-                    if (idx > -1) {
-                        localData.eventos[idx] = mergeEventObjects(localData.eventos[idx], cloudLocal);
-                    } else if (cloudEv.organizador_email === cleanEmail) {
-                        localData.eventos.push(cloudLocal);
-                    }
+                    cloudLocal = cloudEv.detalhes.localData;
+                } else {
+                    cloudLocal = {
+                        id: cloudEv.id,
+                        name: cloudEv.nome || 'Evento',
+                        city: cloudEv.local || '',
+                        days: parseInt(cloudEv.data_inicio) || 3,
+                        judges: (cloudEv.detalhes && cloudEv.detalhes.juizes) ? cloudEv.detalhes.juizes.length : 2,
+                        peoes: (cloudEv.detalhes && (cloudEv.detalhes.peoes || cloudEv.detalhes.ranking)) || [],
+                        boiadas: (cloudEv.detalhes && cloudEv.detalhes.boiadas) || [],
+                        juizes: (cloudEv.detalhes && cloudEv.detalhes.juizes) || [],
+                        sorteios: (cloudEv.detalhes && cloudEv.detalhes.sorteios) || [],
+                        notas: (cloudEv.detalhes && cloudEv.detalhes.notas) || [],
+                        share_id: (cloudEv.detalhes && cloudEv.detalhes.share_id) || '',
+                        share_password: (cloudEv.detalhes && cloudEv.detalhes.share_password) || ''
+                    };
+                }
+
+                const idx = localData.eventos.findIndex(l => 
+                    (l.id && cloudLocal.id && String(l.id) === String(cloudLocal.id)) ||
+                    (l.id && cloudEv.id && String(l.id) === String(cloudEv.id)) ||
+                    (l.share_id && cloudEv.detalhes && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id) ||
+                    (l.name && cloudLocal.name && l.name.trim().toLowerCase() === cloudLocal.name.trim().toLowerCase())
+                );
+
+                if (idx > -1) {
+                    localData.eventos[idx] = mergeEventObjects(localData.eventos[idx], cloudLocal);
+                } else {
+                    localData.eventos.push(cloudLocal);
                 }
             });
             saveLocalData(cleanEmail, localData, currentSportSession);

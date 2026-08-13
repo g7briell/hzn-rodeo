@@ -110,7 +110,11 @@ window.syncUserEventsWithCloud = async () => {
                 // Atualiza o evento ativo na tela com dados mesclados da nuvem
                 if (currentEvent) {
                     const allEvs = await window.electronAPI.getLocalEvents(email);
-                    const freshEv = (allEvs || []).find(e => e.id === currentEvent.id || (e.share_id && currentEvent.share_id && e.share_id === currentEvent.share_id));
+                    const freshEv = (allEvs || []).find(e => 
+                        (e.id && currentEvent.id && String(e.id) === String(currentEvent.id)) || 
+                        (e.share_id && currentEvent.share_id && e.share_id === currentEvent.share_id) ||
+                        (e.name && currentEvent.name && e.name.trim().toLowerCase() === currentEvent.name.trim().toLowerCase())
+                    );
                     if (freshEv) {
                         currentEvent = freshEv;
                         refreshActiveViewData();
@@ -128,34 +132,77 @@ window.syncUserEventsWithCloud = async () => {
     }
 };
 
+window.persistAndSyncEvent = async (eventObj) => {
+    const email = getCurrentUserEmail();
+    if (!email || !eventObj) return;
+    try {
+        await window.electronAPI.updateLocalEvent(email, eventObj);
+        await window.syncUserEventsWithCloud();
+    } catch (err) {
+        console.error("Erro ao persistir e sincronizar evento:", err);
+    }
+};
+
 function refreshActiveViewData() {
     if (!currentEvent) return;
 
-    // Atualiza estatísticas do cabeçalho do evento
+    // Atualiza cabeçalhos do evento
     const infoEl = document.getElementById('control-event-info');
     if (infoEl) {
         const jCount = currentEvent.juizes ? currentEvent.juizes.length : (currentEvent.judges || 0);
         infoEl.innerText = `${currentEvent.city || ''} - ${currentEvent.days || 3} DIAS - ${jCount} JUIZES`;
     }
 
-    // Atualiza modais que estejam abertos na tela em tempo real
+    // 1. Lista de Peões (Tela cheia)
+    const listPeoesView = document.getElementById('list-peoes-view');
+    if (listPeoesView && !listPeoesView.classList.contains('hidden')) {
+        openListPeoes();
+    }
+
+    // 2. Modal de Juízes
     const modalJuizes = document.getElementById('modal-list-juizes');
     if (modalJuizes && !modalJuizes.classList.contains('hidden')) {
         openListJuizes();
     }
 
-    const modalPeoes = document.getElementById('modal-list-peoes');
-    if (modalPeoes && !modalPeoes.classList.contains('hidden')) {
-        openListPeoes();
+    // 3. Lista de Boiadas (Tela cheia)
+    const listBoiadasView = document.getElementById('list-boiadas-view');
+    if (listBoiadasView && !listBoiadasView.classList.contains('hidden')) {
+        openListBoiadas();
     }
 
-    const modalBoiadas = document.getElementById('modal-list-boiadas');
-    if (modalBoiadas && !modalBoiadas.classList.contains('hidden')) {
-        openListBoiadas();
+    // 4. Lista de Sorteios Realizados (Tela cheia)
+    const listSorteiosView = document.getElementById('list-sorteios-view');
+    if (listSorteiosView && !listSorteiosView.classList.contains('hidden')) {
+        openSorteiosList();
+    }
+
+    // 5. Tela de Lançamento de Notas / Cards (Tela cheia)
+    const viewNotasList = document.getElementById('view-notas-list');
+    if (viewNotasList && !viewNotasList.classList.contains('hidden')) {
+        renderNotasCards();
+    }
+
+    // 6. Tela de Ranking Atualizado (Tela cheia)
+    const rankingView = document.getElementById('ranking-view');
+    if (rankingView && !rankingView.classList.contains('hidden')) {
+        renderRanking('geral');
+    }
+
+    // 7. Tela de Ranking de Animais (Tela cheia)
+    const rankingAnimaisView = document.getElementById('ranking-animais-view');
+    if (rankingAnimaisView && !rankingAnimaisView.classList.contains('hidden')) {
+        renderRankingAnimais();
+    }
+
+    // 8. Modal de Conferência de Notas
+    const modalNotasSummary = document.getElementById('modal-notas-summary');
+    if (modalNotasSummary && !modalNotasSummary.classList.contains('hidden')) {
+        window.finishScoringFlow();
     }
 }
 
-// Loop de Sincronização em Tempo Real (a cada 3 segundos)
+// Loop de Sincronização em Tempo Real Ultra-Rápido (a cada 1.5 segundos)
 let realtimeSyncInterval = null;
 function startRealtimeSyncLoop() {
     if (realtimeSyncInterval) clearInterval(realtimeSyncInterval);
@@ -163,7 +210,7 @@ function startRealtimeSyncLoop() {
         if (navigator.onLine && getCurrentUserEmail()) {
             window.syncUserEventsWithCloud();
         }
-    }, 3000);
+    }, 1500);
 }
 
 startRealtimeSyncLoop();
@@ -1038,6 +1085,11 @@ function showHome(expiryOrDays, nome) {
     daysBadgeInterval = setInterval(updateDaysBadge, 60000);
     toggleSupportBtn(true);
     document.querySelectorAll('.reveal-item').forEach(item => item.classList.add('animate-reveal')); 
+
+    renderEvents();
+    if (navigator.onLine) {
+        window.syncUserEventsWithCloud().then(() => renderEvents());
+    }
 }
 
 function startSecurityChecks(email, key, expiry) {
@@ -1352,6 +1404,7 @@ window.deleteEvent = async (id) => {
     await window.electronAPI.deleteLocalEvent(email, id);
     if (editingEventId === id) closeEventControl();
     renderEvents();
+    window.syncUserEventsWithCloud().then(() => renderEvents());
 };
 
 window.exportBullsToExcel = () => {
@@ -1551,6 +1604,7 @@ async function handleEventSubmit(e) {
     if (res.success) {
         closeModalEvento();
         renderEvents();
+        window.syncUserEventsWithCloud().then(() => renderEvents());
     }
 }
 
@@ -2146,7 +2200,7 @@ window.confirmAndSavePhotoNotes = async () => {
         }
     });
 
-    await window.electronAPI.updateLocalEvent(email, currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
 
     document.getElementById('modal-review-photo-notes').classList.add('hidden');
     alert(`As notas da planilha do ${photoNotesReviewState.judge} (Dia ${day}) foram salvas com sucesso!`);
@@ -3075,7 +3129,7 @@ async function saveDrawToEvent() {
     const existingIdx = currentEvent.sorteios.findIndex(s => s.day.toUpperCase() === sorteioData.day.toUpperCase());
     if (existingIdx !== -1) currentEvent.sorteios[existingIdx] = drawToSave;
     else currentEvent.sorteios.push(drawToSave);
-    await window.electronAPI.updateLocalEvent(email, currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
 }
 
 function askBullName(msg) {
@@ -3169,7 +3223,7 @@ window.triggerReride = async () => {
 
         // 5. Salvar e Atualizar
         currentEvent.sorteios[sorteioIdx] = sorteio;
-        await window.electronAPI.updateLocalEvent(email, currentEvent);
+        await window.persistAndSyncEvent(currentEvent);
         
         alert("RE-RIDE GERADO!\nO card antigo ficou cinza e o novo está no final da lista.");
         closeScoringPopup();
@@ -3180,7 +3234,6 @@ window.triggerReride = async () => {
 };
 
 window.saveScoring = async () => {
-    const email = getCurrentUserEmail();
     const sorteio = currentEvent.sorteios.find(s => s.day === scoringState.day);
     const r = sorteio.riders[scoringState.matchupIdx];
     
@@ -3201,7 +3254,7 @@ window.saveScoring = async () => {
     if (idx > -1) currentEvent.notas[idx] = nota;
     else currentEvent.notas.push(nota);
 
-    await window.electronAPI.updateLocalEvent(email, currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
     closeScoringPopup();
     renderScoringList(scoringState.day);
 };
@@ -3236,7 +3289,7 @@ window.closeSorteiosList = () => { const lv = document.getElementById('list-sort
 
 window.reExportSorteio = (idx) => { const s = currentEvent.sorteios[idx]; sorteioData = { day: s.day, riders: s.riders, bulls: s.bulls, assignments: s.assignments }; window.exportConfrontos(); };
 
-window.deleteSorteio = async (idx) => { if (confirm("Tem certeza que deseja excluir este sorteio?")) { const email = getCurrentUserEmail(); currentEvent.sorteios.splice(idx, 1); await window.electronAPI.updateLocalEvent(email, currentEvent); openSorteiosList(); } };
+window.deleteSorteio = async (idx) => { if (confirm("Tem certeza que deseja excluir este sorteio?")) { currentEvent.sorteios.splice(idx, 1); await window.persistAndSyncEvent(currentEvent); openSorteiosList(); } };
 
 // Modais e Listas
 window.openModalPeao = (idx = null) => { editingPeaoIdx = idx; const title = document.querySelector('#modal-peao h2'); if (idx !== null) { const p = currentEvent.peoes[idx]; document.getElementById('peao-name').value = p.nome; document.getElementById('peao-city').value = p.cidade; document.getElementById('peao-cpf').value = p.cpf || ''; if (title) title.innerText = "EDITAR PEÃO"; } else { const fp = document.getElementById('form-peao'); if (fp) fp.reset(); if (title) title.innerText = "CADASTRAR PEÃO"; } const mp = document.getElementById('modal-peao'); if (mp) mp.classList.remove('hidden'); };
@@ -3291,7 +3344,7 @@ window.saveBulkPeoes = async () => {
     }));
 
     currentEvent.peoes = [...(currentEvent.peoes || []), ...newPeoes];
-    await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
     
     closeModalBulkPeoes();
     closeModalPeao();
@@ -3320,10 +3373,8 @@ window.openModalBoiada = (idx = null) => {
 };
 window.closeModalBoiada = () => { const mb = document.getElementById('modal-boiada'); if (mb) mb.classList.add('hidden'); };
 
-
-
-window.deletePeao = async (idx) => { if (confirm('Excluir este peão?')) { const email = getCurrentUserEmail(); currentEvent.peoes.splice(idx, 1); await window.electronAPI.updateLocalEvent(email, currentEvent); openListPeoes(); } };
-window.deleteBoiada = async (idx) => { if (confirm('Excluir esta boiada?')) { const email = getCurrentUserEmail(); currentEvent.boiadas.splice(idx, 1); await window.electronAPI.updateLocalEvent(email, currentEvent); openListBoiadas(); } };
+window.deletePeao = async (idx) => { if (confirm('Excluir este peão?')) { currentEvent.peoes.splice(idx, 1); await window.persistAndSyncEvent(currentEvent); openListPeoes(); } };
+window.deleteBoiada = async (idx) => { if (confirm('Excluir esta boiada?')) { currentEvent.boiadas.splice(idx, 1); await window.persistAndSyncEvent(currentEvent); openListBoiadas(); } };
 
 let editingJuizIdx = null;
 
@@ -3638,7 +3689,7 @@ document.getElementById('form-peao').addEventListener('submit', async (e) => {
         peao.score = currentEvent.peoes[editingPeaoIdx].score || 0; 
         currentEvent.peoes[editingPeaoIdx] = peao; 
     } else currentEvent.peoes.push(peao); 
-    await window.electronAPI.updateLocalEvent(email, currentEvent); 
+    await window.persistAndSyncEvent(currentEvent); 
     await window.electronAPI.saveGlobalPeao(email, peao);
     fetchGlobalData();
     closeModalPeao(); 
@@ -3671,7 +3722,7 @@ document.getElementById('form-boiada').addEventListener('submit', async (e) => {
     } else {
         currentEvent.boiadas.push(cia); 
     }
-    await window.electronAPI.updateLocalEvent(email, currentEvent); 
+    await window.persistAndSyncEvent(currentEvent); 
     await window.electronAPI.saveGlobalBoiada(email, cia);
     fetchGlobalData();
     closeModalBoiada(); 
@@ -4610,7 +4661,7 @@ window.saveNewScore = async () => {
     currentEvent.notas = currentEvent.notas.filter(n => !(n.peao === r.nome && n.dia === notasState.day && n.status === 'ativa'));
     currentEvent.notas.push(novaNota);
     
-    await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
     
     document.getElementById('modal-scoring-new').classList.add('hidden');
     renderNotasCards();
@@ -4665,7 +4716,7 @@ window.processRerideScoreAndOpenBullSelection = async () => {
     currentEvent.notas = currentEvent.notas || [];
     currentEvent.notas = currentEvent.notas.filter(n => !(n.peao === r.nome && n.dia === notasState.day && n.status === 'ativa'));
     currentEvent.notas.push(novaNota);
-    await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
     
     document.getElementById('modal-reride-bull').classList.remove('hidden');
     filterRerideBulls();
@@ -4765,7 +4816,7 @@ window.confirmRerideNow = async (launchNow) => {
     
     const sorteioIdx = currentEvent.sorteios.findIndex(s => s.day === notasState.day);
     currentEvent.sorteios[sorteioIdx] = notasState.sorteio;
-    await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
     
     document.getElementById('modal-reride-confirm').classList.add('hidden');
     
@@ -4956,7 +5007,7 @@ window.lancarNotasRanking = async () => {
         p.tempoAcumulado = tempoAcumulado;
     });
     
-    await window.electronAPI.updateLocalEvent(getCurrentUserEmail(), currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
     
     alert(`As notas do dia ${notasState.day} foram lançadas com sucesso e o Ranking do Evento foi atualizado!`);
     closeNotasView();
@@ -5726,7 +5777,7 @@ window.importCloudBoiada = async (boiadaData) => {
     });
     
     const email = getCurrentUserEmail();
-    await window.electronAPI.updateLocalEvent(email, currentEvent);
+    await window.persistAndSyncEvent(currentEvent);
     
     document.getElementById('modal-cloud-boiadas').classList.add('hidden');
     document.getElementById('modal-boiada').classList.add('hidden');

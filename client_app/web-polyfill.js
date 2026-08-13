@@ -142,10 +142,10 @@
     },
     syncUserCloudEvents: async (email) => {
       try {
-        const cleanEmail = (email || '').trim();
+        const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail) return { success: false, error: "Email do usuário não informado." };
 
-        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&or=(organizador_email.eq.${encodeURIComponent(cleanEmail)},status.eq.compartilhado)&limit=200`;
+        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&or=(organizador_email.ilike.${encodeURIComponent(cleanEmail)},status.eq.compartilhado)&order=created_at.desc&limit=500`;
         const res = await fetch(url, { headers: SUPABASE_HEADERS });
         if (!res.ok) {
           throw new Error(`Erro no servidor de banco de dados (${res.status} ${res.statusText})`);
@@ -157,70 +157,92 @@
 
         if (Array.isArray(cloudEvents)) {
           cloudEvents.forEach(cloudEv => {
+            let cloudLocal = null;
             if (cloudEv.detalhes && cloudEv.detalhes.localData) {
-              const cloudLocal = cloudEv.detalhes.localData;
-              const idx = localEvents.findIndex(l => l.id === cloudLocal.id || (l.share_id && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id));
-              if (idx > -1) {
-                // Mesclagem inteligente profunda
-                const localEv = localEvents[idx];
-                const merged = { ...localEv, ...cloudLocal };
+              cloudLocal = cloudEv.detalhes.localData;
+            } else {
+              cloudLocal = {
+                id: cloudEv.id,
+                name: cloudEv.nome || 'Evento',
+                city: cloudEv.local || '',
+                days: parseInt(cloudEv.data_inicio) || 3,
+                judges: (cloudEv.detalhes && cloudEv.detalhes.juizes) ? cloudEv.detalhes.juizes.length : 2,
+                peoes: (cloudEv.detalhes && (cloudEv.detalhes.peoes || cloudEv.detalhes.ranking)) || [],
+                boiadas: (cloudEv.detalhes && cloudEv.detalhes.boiadas) || [],
+                juizes: (cloudEv.detalhes && cloudEv.detalhes.juizes) || [],
+                sorteios: (cloudEv.detalhes && cloudEv.detalhes.sorteios) || [],
+                notas: (cloudEv.detalhes && cloudEv.detalhes.notas) || [],
+                share_id: (cloudEv.detalhes && cloudEv.detalhes.share_id) || '',
+                share_password: (cloudEv.detalhes && cloudEv.detalhes.share_password) || ''
+              };
+            }
 
-                if (Array.isArray(localEv.peoes) || Array.isArray(cloudLocal.peoes)) {
-                  const peaoMap = new Map();
-                  (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').toLowerCase(), p));
-                  (cloudLocal.peoes || []).forEach(p => {
-                    const k = (p.id || p.nome || '').toLowerCase();
-                    if (peaoMap.has(k)) peaoMap.set(k, { ...peaoMap.get(k), ...p });
-                    else peaoMap.set(k, p);
-                  });
-                  merged.peoes = Array.from(peaoMap.values());
-                }
+            const idx = localEvents.findIndex(l => 
+              (l.id && cloudLocal.id && String(l.id) === String(cloudLocal.id)) ||
+              (l.id && cloudEv.id && String(l.id) === String(cloudEv.id)) ||
+              (l.share_id && cloudEv.detalhes && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id) ||
+              (l.name && cloudLocal.name && l.name.trim().toLowerCase() === cloudLocal.name.trim().toLowerCase())
+            );
 
-                if (Array.isArray(localEv.boiadas) || Array.isArray(cloudLocal.boiadas)) {
-                  const boiadaMap = new Map();
-                  (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').toLowerCase(), b));
-                  (cloudLocal.boiadas || []).forEach(b => {
-                    const k = (b.nome || '').toLowerCase();
-                    if (boiadaMap.has(k)) {
-                      const ex = boiadaMap.get(k);
-                      const allT = Array.from(new Set([...(ex.touros || []), ...(b.touros || [])]));
-                      boiadaMap.set(k, { ...ex, ...b, touros: allT });
-                    } else boiadaMap.set(k, b);
-                  });
-                  merged.boiadas = Array.from(boiadaMap.values());
-                }
+            if (idx > -1) {
+              const localEv = localEvents[idx];
+              const merged = { ...cloudLocal, ...localEv };
 
-                if (Array.isArray(localEv.juizes) || Array.isArray(cloudLocal.juizes)) {
-                  const jMap = new Map();
-                  (localEv.juizes || []).forEach(j => {
-                    const name = typeof j === 'string' ? j : (j.nome || '');
-                    if (name) jMap.set(name.toLowerCase(), typeof j === 'string' ? { nome: name } : j);
-                  });
-                  (cloudLocal.juizes || []).forEach(j => {
-                    const name = typeof j === 'string' ? j : (j.nome || '');
-                    if (name) jMap.set(name.toLowerCase(), typeof j === 'string' ? { nome: name } : j);
-                  });
-                  merged.juizes = Array.from(jMap.values());
-                }
-
-                if (Array.isArray(localEv.sorteios) || Array.isArray(cloudLocal.sorteios)) {
-                  const sMap = new Map();
-                  (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
-                  (cloudLocal.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').toLowerCase(), s));
-                  merged.sorteios = Array.from(sMap.values());
-                }
-
-                if (Array.isArray(localEv.notas) || Array.isArray(cloudLocal.notas)) {
-                  const nMap = new Map();
-                  (localEv.notas || []).forEach(n => nMap.set(`${n.day}_${n.peaoNome}_${n.juiz || ''}`.toLowerCase(), n));
-                  (cloudLocal.notas || []).forEach(n => nMap.set(`${n.day}_${n.peaoNome}_${n.juiz || ''}`.toLowerCase(), n));
-                  merged.notas = Array.from(nMap.values());
-                }
-
-                localEvents[idx] = merged;
-              } else if (cloudEv.organizador_email === cleanEmail) {
-                localEvents.push(cloudLocal);
+              if (Array.isArray(localEv.peoes) || Array.isArray(cloudLocal.peoes)) {
+                const peaoMap = new Map();
+                (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').trim().toLowerCase(), p));
+                (cloudLocal.peoes || []).forEach(p => {
+                  const k = (p.id || p.nome || '').trim().toLowerCase();
+                  if (peaoMap.has(k)) peaoMap.set(k, { ...peaoMap.get(k), ...p });
+                  else peaoMap.set(k, p);
+                });
+                merged.peoes = Array.from(peaoMap.values());
               }
+
+              if (Array.isArray(localEv.boiadas) || Array.isArray(cloudLocal.boiadas)) {
+                const boiadaMap = new Map();
+                (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').trim().toLowerCase(), b));
+                (cloudLocal.boiadas || []).forEach(b => {
+                  const k = (b.nome || '').trim().toLowerCase();
+                  if (boiadaMap.has(k)) {
+                    const ex = boiadaMap.get(k);
+                    const allT = Array.from(new Set([...(ex.touros || []), ...(b.touros || [])]));
+                    boiadaMap.set(k, { ...ex, ...b, touros: allT });
+                  } else boiadaMap.set(k, b);
+                });
+                merged.boiadas = Array.from(boiadaMap.values());
+              }
+
+              if (Array.isArray(localEv.juizes) || Array.isArray(cloudLocal.juizes)) {
+                const jMap = new Map();
+                (localEv.juizes || []).forEach(j => {
+                  const name = typeof j === 'string' ? j : (j.nome || '');
+                  if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
+                });
+                (cloudLocal.juizes || []).forEach(j => {
+                  const name = typeof j === 'string' ? j : (j.nome || '');
+                  if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
+                });
+                merged.juizes = Array.from(jMap.values());
+              }
+
+              if (Array.isArray(localEv.sorteios) || Array.isArray(cloudLocal.sorteios)) {
+                const sMap = new Map();
+                (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
+                (cloudLocal.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
+                merged.sorteios = Array.from(sMap.values());
+              }
+
+              if (Array.isArray(localEv.notas) || Array.isArray(cloudLocal.notas)) {
+                const nMap = new Map();
+                (localEv.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
+                (cloudLocal.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
+                merged.notas = Array.from(nMap.values());
+              }
+
+              localEvents[idx] = merged;
+            } else {
+              localEvents.push(cloudLocal);
             }
           });
           localStorage.setItem(key, JSON.stringify(localEvents));
