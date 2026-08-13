@@ -538,15 +538,387 @@
     // Exports and Tools
     getAppLogo: async () => '',
     getPdfLogo: async () => '',
-    exportSorteioExcel: async () => { window.print(); return { success: true }; },
-    exportBoiadasExcel: async () => { window.print(); return { success: true }; },
-    exportJuizesExcel: async () => { window.print(); return { success: true }; },
-    exportOrdemExcel: async () => { window.print(); return { success: true }; },
-    exportRankingExcel: async () => { window.print(); return { success: true }; },
-    exportPDF: async () => { window.print(); return { success: true }; },
-    exportContracts: async () => { alert('Exportação de contratos é exclusiva do App Desktop.'); return { success: false }; },
-    exportMelhorCia: async () => { window.print(); return { success: true }; },
-    exportMelhorAnimal: async () => { window.print(); return { success: true }; },
+
+    exportPDF: async ({ htmlContent, defaultName }) => {
+      try {
+        const filename = defaultName || 'Relatorio.pdf';
+        
+        if (typeof window.html2pdf === 'function') {
+          const container = document.createElement('div');
+          container.style.position = 'fixed';
+          container.style.top = '-99999px';
+          container.style.left = '-99999px';
+          container.style.width = '1120px';
+          container.style.backgroundColor = '#ffffff';
+          container.style.color = '#000000';
+          container.innerHTML = htmlContent;
+          document.body.appendChild(container);
+
+          const opt = {
+            margin: [8, 8, 8, 8],
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+          };
+
+          await window.html2pdf().set(opt).from(container).save();
+          document.body.removeChild(container);
+          return { success: true };
+        }
+
+        // Fallback para impressão do navegador
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(htmlContent);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+          return { success: true };
+        }
+
+        return { success: false, message: 'Não foi possível gerar o PDF no navegador.' };
+      } catch (err) {
+        console.error('Erro ao gerar PDF na web:', err);
+        return { success: false, message: err.message || String(err) };
+      }
+    },
+
+    exportSorteioExcel: async (payload) => {
+      try {
+        const sorteioData = payload.sorteioData || payload;
+        const eventName = sorteioData.eventName || 'Evento';
+        const day = sorteioData.day || 'Dia';
+        
+        if (typeof window.XLSX !== 'undefined') {
+          const rows = [
+            ["RODEOAPP - RELATÓRIO OFICIAL DE SORTEIO"],
+            ["EVENTO:", eventName, "ETAPA / DIA:", day],
+            [],
+            ["ORDEM", "COMPETIDOR", "CIDADE / UF", "TOURO", "COMPANHIA", "LADO"]
+          ];
+
+          const riders = sorteioData.riders || [];
+          const bulls = sorteioData.bulls || [];
+          const assignments = sorteioData.assignments || {};
+
+          riders.forEach((rider, idx) => {
+            const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+            const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
+            rows.push([
+              idx + 1,
+              rider.nome || '',
+              rider.cidade || '',
+              bull.nome || '',
+              bull.cia || '',
+              bull.lado || ''
+            ]);
+          });
+
+          if (bulls.length > riders.length) {
+            rows.push([]);
+            rows.push(["--- TOUROS DE RE-RIDE / RESERVAS ---"]);
+            rows.push(["Nº", "TOURO", "COMPANHIA", "LADO"]);
+            for (let i = riders.length; i < bulls.length; i++) {
+              const b = bulls[i];
+              rows.push([
+                `R${i - riders.length + 1}`,
+                b.nome || '',
+                b.cia || '',
+                b.lado || ''
+              ]);
+            }
+          }
+
+          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+          const wb = window.XLSX.utils.book_new();
+          window.XLSX.utils.book_append_sheet(wb, ws, "Sorteio");
+          window.XLSX.writeFile(wb, `Sorteio_${eventName.replace(/\s+/g, '_')}_${day.replace(/\s+/g, '_')}.xlsx`);
+          return { success: true };
+        }
+
+        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+      } catch (err) {
+        console.error('Erro ao gerar Excel de Sorteio:', err);
+        return { success: false, message: err.message };
+      }
+    },
+
+    exportBoiadasExcel: async (payload) => {
+      try {
+        const sorteioData = payload.sorteioData || payload;
+        const day = sorteioData.day || 'Dia';
+        const bulls = sorteioData.bulls || [];
+
+        if (typeof window.XLSX !== 'undefined') {
+          const rows = [
+            ["RODEOAPP - LISTA DE BOIADA / TOUROS"],
+            ["ETAPA / DIA:", day],
+            [],
+            ["Nº", "TOURO", "COMPANHIA", "LADO"]
+          ];
+
+          bulls.forEach((b, idx) => {
+            rows.push([idx + 1, b.nome || '', b.cia || '', b.lado || '']);
+          });
+
+          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+          const wb = window.XLSX.utils.book_new();
+          window.XLSX.utils.book_append_sheet(wb, ws, "Boiada");
+          window.XLSX.writeFile(wb, `Boiada_${day.replace(/\s+/g, '_')}.xlsx`);
+          return { success: true };
+        }
+
+        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+      } catch (err) {
+        console.error('Erro ao gerar Excel de Boiadas:', err);
+        return { success: false, message: err.message };
+      }
+    },
+
+    exportJuizesExcel: async ({ sorteioData, eventName, day, juizNome }) => {
+      try {
+        if (typeof window.XLSX !== 'undefined') {
+          const rows = [
+            ["RODEOAPP - PLANILHA DE NOTAS DO JUIZ"],
+            ["JUIZ:", (juizNome || 'JUIZ').toUpperCase(), "EVENTO:", eventName || '', "DIA:", day || ''],
+            [],
+            ["ORDEM", "COMPETIDOR", "CIDADE", "TOURO", "COMPANHIA", "LADO", "NOTA PEÃO", "NOTA TOURO", "TOTAL"]
+          ];
+
+          const riders = sorteioData.riders || [];
+          const bulls = sorteioData.bulls || [];
+          const assignments = sorteioData.assignments || {};
+
+          riders.forEach((rider, idx) => {
+            const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+            const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
+            rows.push([
+              idx + 1,
+              rider.nome || '',
+              rider.cidade || '',
+              bull.nome || '',
+              bull.cia || '',
+              bull.lado || '',
+              '', '', ''
+            ]);
+          });
+
+          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+          const wb = window.XLSX.utils.book_new();
+          window.XLSX.utils.book_append_sheet(wb, ws, "Notas Juiz");
+          window.XLSX.writeFile(wb, `Juiz_${(juizNome || 'Juiz').replace(/\s+/g, '_')}_${(day || 'Dia').replace(/\s+/g, '_')}.xlsx`);
+          return { success: true };
+        }
+
+        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+      } catch (err) {
+        console.error('Erro ao gerar Excel de Juízes:', err);
+        return { success: false, message: err.message };
+      }
+    },
+
+    exportOrdemExcel: async (payload) => {
+      try {
+        const { eventName, day, data } = payload;
+        if (typeof window.XLSX !== 'undefined') {
+          const rows = [
+            ["RODEOAPP - ORDEM DE ENTRADA OFICIAL"],
+            ["EVENTO:", eventName || '', "ETAPA / DIA:", day || ''],
+            [],
+            ["ORDEM", "COMPETIDOR", "CIDADE", "TOURO", "COMPANHIA", "LADO", "TEMPO", "NOTA", "STATUS"]
+          ];
+
+          (data || []).forEach((item, idx) => {
+            rows.push([
+              item.ordem || (idx + 1),
+              item.riderNome || item.peao || '',
+              item.riderCidade || item.cidade || '',
+              item.bullNome || item.touro || '',
+              item.bullCia || item.cia || '',
+              item.bullLado || item.lado || '',
+              item.tempo || '',
+              item.score || item.nota || '',
+              item.status || ''
+            ]);
+          });
+
+          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+          const wb = window.XLSX.utils.book_new();
+          window.XLSX.utils.book_append_sheet(wb, ws, "Ordem");
+          window.XLSX.writeFile(wb, `Ordem_${(day || 'Dia').replace(/\s+/g, '_')}.xlsx`);
+          return { success: true };
+        }
+
+        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+      } catch (err) {
+        console.error('Erro ao gerar Excel de Ordem:', err);
+        return { success: false, message: err.message };
+      }
+    },
+
+    exportRankingExcel: async (payload) => {
+      try {
+        const { eventName, day, data } = payload;
+        if (typeof window.XLSX !== 'undefined') {
+          const rows = [
+            ["RODEOAPP - RANKING GERAL OFICIAL"],
+            ["EVENTO:", eventName || '', "ETAPA:", day || 'GERAL'],
+            [],
+            ["POS", "COMPETIDOR", "CIDADE", "PONTUAÇÃO TOTAL", "TEMPO ACUMULADO"]
+          ];
+
+          (data || []).forEach((item, idx) => {
+            rows.push([
+              idx + 1,
+              item.nome || '',
+              item.cidade || '',
+              typeof item.score === 'number' ? item.score.toFixed(2) : (item.score || '0.00'),
+              typeof item.tempoAcumulado === 'number' ? item.tempoAcumulado.toFixed(2) : (item.tempoAcumulado || item.tempo || '0.00')
+            ]);
+          });
+
+          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+          const wb = window.XLSX.utils.book_new();
+          window.XLSX.utils.book_append_sheet(wb, ws, "Ranking");
+          window.XLSX.writeFile(wb, `Ranking_${(eventName || 'Evento').replace(/\s+/g, '_')}_${(day || 'Geral').replace(/\s+/g, '_')}.xlsx`);
+          return { success: true };
+        }
+
+        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+      } catch (err) {
+        console.error('Erro ao gerar Excel de Ranking:', err);
+        return { success: false, message: err.message };
+      }
+    },
+
+    exportMelhorCia: async ({ eventName, data, format }) => {
+      try {
+        if (format === 'excel' && typeof window.XLSX !== 'undefined') {
+          const rows = [
+            ["RODEOAPP - RANKING DE MELHOR COMPANHIA"],
+            ["EVENTO:", eventName || ''],
+            [],
+            ["POS", "COMPANHIA", "MÉDIA", "TOTAL DE TOUROS"]
+          ];
+
+          (data || []).forEach((item, idx) => {
+            rows.push([
+              idx + 1,
+              item.nome || item.cia || '',
+              typeof item.media === 'number' ? item.media.toFixed(2) : (item.media || '0.00'),
+              item.tourosCount || (item.touros ? item.touros.length : '') || ''
+            ]);
+          });
+
+          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+          const wb = window.XLSX.utils.book_new();
+          window.XLSX.utils.book_append_sheet(wb, ws, "Melhor Cia");
+          window.XLSX.writeFile(wb, `Melhor_Cia_${(eventName || 'Evento').replace(/\s+/g, '_')}.xlsx`);
+          return { success: true };
+        }
+
+        // Se formato PDF na web
+        const html = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1 style="text-align: center; margin-bottom: 5px;">RODEOAPP - MELHOR COMPANHIA</h1>
+            <h3 style="text-align: center; color: #666; margin-bottom: 20px;">${eventName || 'EVENTO'}</h3>
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="background-color: #f2f2f2; border-bottom: 2px solid #333;">
+                  <th style="padding: 10px; width: 60px;">POS</th>
+                  <th style="padding: 10px;">COMPANHIA</th>
+                  <th style="padding: 10px; text-align: right;">MÉDIA</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data || []).map((item, idx) => `
+                  <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 10px; font-weight: bold;">${idx + 1}º</td>
+                    <td style="padding: 10px;">${item.nome || item.cia || ''}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold;">${typeof item.media === 'number' ? item.media.toFixed(2) : item.media}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        return window.electronAPI.exportPDF({ htmlContent: html, defaultName: `Melhor_Cia_${(eventName || 'Evento').replace(/\s+/g, '_')}.pdf` });
+      } catch (err) {
+        console.error('Erro ao exportar Melhor Cia:', err);
+        return { success: false, message: err.message };
+      }
+    },
+
+    exportMelhorAnimal: async ({ eventName, data, format }) => {
+      try {
+        if (format === 'excel' && typeof window.XLSX !== 'undefined') {
+          const rows = [
+            ["RODEOAPP - RANKING DE MELHOR ANIMAL / TOURO"],
+            ["EVENTO:", eventName || ''],
+            [],
+            ["POS", "ANIMAL / TOURO", "COMPANHIA", "SAÍDAS", "MÉDIA"]
+          ];
+
+          (data || []).forEach((item, idx) => {
+            rows.push([
+              idx + 1,
+              item.nome || '',
+              item.cia || '',
+              item.saidas || 0,
+              typeof item.media === 'number' ? item.media.toFixed(2) : (item.media || '0.00')
+            ]);
+          });
+
+          const ws = window.XLSX.utils.aoa_to_sheet(rows);
+          const wb = window.XLSX.utils.book_new();
+          window.XLSX.utils.book_append_sheet(wb, ws, "Melhor Animal");
+          window.XLSX.writeFile(wb, `Melhor_Animal_${(eventName || 'Evento').replace(/\s+/g, '_')}.xlsx`);
+          return { success: true };
+        }
+
+        // Se formato PDF na web
+        const html = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1 style="text-align: center; margin-bottom: 5px;">RODEOAPP - MELHOR ANIMAL</h1>
+            <h3 style="text-align: center; color: #666; margin-bottom: 20px;">${eventName || 'EVENTO'}</h3>
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="background-color: #f2f2f2; border-bottom: 2px solid #333;">
+                  <th style="padding: 10px; width: 60px;">POS</th>
+                  <th style="padding: 10px;">ANIMAL</th>
+                  <th style="padding: 10px;">COMPANHIA</th>
+                  <th style="padding: 10px; text-align: center;">SAÍDAS</th>
+                  <th style="padding: 10px; text-align: right;">MÉDIA</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data || []).map((item, idx) => `
+                  <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 10px; font-weight: bold;">${idx + 1}º</td>
+                    <td style="padding: 10px;">${item.nome || ''}</td>
+                    <td style="padding: 10px;">${item.cia || ''}</td>
+                    <td style="padding: 10px; text-align: center;">${item.saidas || 0}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold;">${typeof item.media === 'number' ? item.media.toFixed(2) : item.media}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        return window.electronAPI.exportPDF({ htmlContent: html, defaultName: `Melhor_Animal_${(eventName || 'Evento').replace(/\s+/g, '_')}.pdf` });
+      } catch (err) {
+        console.error('Erro ao exportar Melhor Animal:', err);
+        return { success: false, message: err.message };
+      }
+    },
+
+    exportContracts: async () => {
+      alert('Exportação de contratos em arquivo Word (.docx) é exclusiva do App Desktop.');
+      return { success: false };
+    },
     sendEventToPortal: async () => ({ success: true }),
     checkDbConnection: async () => ({ success: true }),
     getOnlineCompetitors: async () => [],
