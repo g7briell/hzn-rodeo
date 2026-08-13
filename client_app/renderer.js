@@ -3245,11 +3245,11 @@ window.openListPeoes = () => {
     const container = document.getElementById('peoes-table-container'); const peoes = currentEvent.peoes || [];
     if (peoes.length === 0) { if (container) container.innerHTML = `<div class="p-20 text-center text-slate-500 italic font-bold">Nenhum peão cadastrado.</div>`; }
     else {
-        let html = `<table class="w-full text-left"><thead class="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest"><tr><th class="px-4 py-4 sm:px-8 sm:py-6">NOME</th><th class="px-4 py-4 sm:px-8 sm:py-6">CIDADE</th><th class="px-4 py-4 sm:px-8 sm:py-6">PONTOS</th><th class="px-4 py-4 sm:px-8 sm:py-6 text-right">AÇÕES</th></tr></thead><tbody class="divide-y divide-slate-800/50">`;
+        let html = `<table class="w-full text-left"><thead class="bg-slate-950/50 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest"><tr><th class="px-3 py-3 sm:px-8 sm:py-6">NOME</th><th class="px-3 py-3 sm:px-8 sm:py-6">CIDADE</th><th class="px-3 py-3 sm:px-8 sm:py-6">PONTOS</th><th class="px-2 py-3 sm:px-8 sm:py-6 text-right">AÇÕES</th></tr></thead><tbody class="divide-y divide-slate-800/50">`;
         peoes.forEach((p, idx) => { 
             const pts = (p.score || 0).toFixed(2);
-            const tempo = (p.tempoAcumulado && p.tempoAcumulado > 0 && p.score === 0) ? `<span class="text-[10px] text-slate-500 ml-2">(${p.tempoAcumulado.toFixed(2)}s)</span>` : '';
-            html += `<tr class="hover:bg-slate-800/20"><td class="px-4 py-4 sm:px-8 sm:py-6 font-bold text-white uppercase text-xs sm:text-base">${p.nome}</td><td class="px-4 py-4 sm:px-8 sm:py-6 text-slate-400 font-medium uppercase text-xs sm:text-base">${p.cidade}</td><td class="px-4 py-4 sm:px-8 sm:py-6 font-mono text-xs sm:text-sm text-yellow-500">${pts} ${tempo}</td><td class="px-4 py-4 sm:px-8 sm:py-6 text-right space-x-1 sm:space-x-2"><button onclick="openModalPeao(${idx})" class="p-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button><button onclick="deletePeao(${idx})" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>`; 
+            const tempo = (p.tempoAcumulado && p.tempoAcumulado > 0 && p.score === 0) ? `<span class="text-[9px] sm:text-[10px] text-slate-500 ml-1">(${p.tempoAcumulado.toFixed(2)}s)</span>` : '';
+            html += `<tr class="hover:bg-slate-800/20"><td class="px-3 py-3 sm:px-8 sm:py-6 font-bold text-white uppercase text-xs sm:text-base truncate max-w-[130px] sm:max-w-none">${p.nome}</td><td class="px-3 py-3 sm:px-8 sm:py-6 text-slate-400 font-medium uppercase text-[10px] sm:text-base truncate max-w-[90px] sm:max-w-none">${p.cidade}</td><td class="px-3 py-3 sm:px-8 sm:py-6 font-mono text-[10px] sm:text-sm text-yellow-500 whitespace-nowrap">${pts} ${tempo}</td><td class="px-2 py-3 sm:px-8 sm:py-6 text-right space-x-1 sm:space-x-2 whitespace-nowrap"><button onclick="openModalPeao(${idx})" class="p-1.5 sm:p-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20"><svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button><button onclick="deletePeao(${idx})" class="p-1.5 sm:p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20"><svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>`; 
         });
         if (container) container.innerHTML = html + `</tbody></table>`;
     }
@@ -3734,12 +3734,12 @@ window.renderRanking = (filter = 'geral') => {
     }
     
     if (rankingData.length === 0) { if (container) container.innerHTML = `<div class="p-20 text-center text-slate-500 italic font-bold">Nenhum competidor cadastrado.</div>`; return; }
-    let html = `<table class="w-full text-left border-collapse"><thead class="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest"><tr><th class="px-8 py-6 w-20">POS</th><th class="px-8 py-6">COMPETIDOR</th><th class="px-8 py-6">CIDADE</th><th class="px-8 py-6 text-right">PONTOS</th></tr></thead><tbody class="divide-y divide-slate-800/50">`;
+    let html = `<table class="w-full text-left border-collapse"><thead class="bg-slate-950/50 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest"><tr><th class="px-3 py-3 sm:px-8 sm:py-6 w-12 sm:w-20">POS</th><th class="px-3 py-3 sm:px-8 sm:py-6">COMPETIDOR</th><th class="px-3 py-3 sm:px-8 sm:py-6">CIDADE</th><th class="px-3 py-3 sm:px-8 sm:py-6 text-right">PONTOS</th></tr></thead><tbody class="divide-y divide-slate-800/50">`;
     rankingData.forEach((p, idx) => {
         const pos = hasScores ? `${idx + 1}º` : '---'; const isPodium = hasScores && idx < 3;
         const rowClass = isPodium ? (idx === 0 ? 'bg-yellow-500/5' : 'bg-slate-800/10') : 'hover:bg-slate-800/20';
         const posClass = idx === 0 ? 'text-yellow-500 font-black' : (idx < 3 ? 'text-white font-black' : 'text-slate-500 font-bold');
-        html += `<tr class="${rowClass} transition-colors"><td class="px-8 py-6 ${posClass} italic text-xl">${pos}</td><td class="px-8 py-6"><div class="font-black text-white uppercase text-lg tracking-tighter">${p.nome}</div></td><td class="px-8 py-6 text-slate-500 font-bold uppercase text-xs">${p.cidade}</td><td class="px-8 py-6 text-right"><div class="text-2xl font-black italic ${p.totalPoints > 0 ? 'text-yellow-500' : 'text-slate-700'}">${p.totalPoints.toFixed(2)}</div></td></tr>`;
+        html += `<tr class="${rowClass} transition-colors"><td class="px-3 py-3 sm:px-8 sm:py-6 ${posClass} italic text-sm sm:text-xl">${pos}</td><td class="px-3 py-3 sm:px-8 sm:py-6"><div class="font-black text-white uppercase text-xs sm:text-lg tracking-tighter truncate max-w-[140px] sm:max-w-none">${p.nome}</div></td><td class="px-3 py-3 sm:px-8 sm:py-6 text-slate-500 font-bold uppercase text-[10px] sm:text-xs truncate max-w-[100px] sm:max-w-none">${p.cidade}</td><td class="px-3 py-3 sm:px-8 sm:py-6 text-right"><div class="text-sm sm:text-2xl font-black italic ${p.totalPoints > 0 ? 'text-yellow-500' : 'text-slate-700'}">${p.totalPoints.toFixed(2)}</div></td></tr>`;
     });
     if (container) container.innerHTML = html + `</tbody></table>`;
 };
@@ -5344,13 +5344,13 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
     const isTouro = type === 'touro';
     
     let html = `<table class="w-full text-left border-collapse">
-        <thead class="bg-slate-950/50 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+        <thead class="bg-slate-950/50 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">
             <tr>
-                <th class="px-8 py-6 w-20">POS</th>
-                <th class="px-8 py-6">${isTouro ? 'TOURO' : 'BOIADA (CIA)'}</th>
-                ${isTouro ? '<th class="px-8 py-6">CIA</th>' : ''}
-                <th class="px-8 py-6 text-center w-32">SAÍDAS</th>
-                <th class="px-8 py-6 text-right w-32">MÉDIA</th>
+                <th class="px-3 py-3 sm:px-8 sm:py-6 w-12 sm:w-20">POS</th>
+                <th class="px-3 py-3 sm:px-8 sm:py-6">${isTouro ? 'TOURO' : 'BOIADA (CIA)'}</th>
+                ${isTouro ? '<th class="px-3 py-3 sm:px-8 sm:py-6">CIA</th>' : ''}
+                <th class="px-3 py-3 sm:px-8 sm:py-6 text-center w-16 sm:w-32">SAÍDAS</th>
+                <th class="px-3 py-3 sm:px-8 sm:py-6 text-right w-20 sm:w-32">MÉDIA</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-slate-800/50">`;
@@ -5362,12 +5362,12 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
         const posClass = idx === 0 ? 'text-emerald-500 font-black' : (idx < 3 ? 'text-white font-black' : 'text-slate-500 font-bold');
         
         html += `<tr class="${rowClass} transition-colors">
-            <td class="px-8 py-6 ${posClass} italic text-xl">${pos}</td>
-            <td class="px-8 py-6"><div class="font-black text-white uppercase text-lg tracking-tighter">${item.nome}</div></td>
-            ${isTouro ? `<td class="px-8 py-6 text-slate-500 font-bold uppercase text-xs">${item.cia}</td>` : ''}
-            <td class="px-8 py-6 text-center text-slate-300 font-bold">${item.saidas}</td>
-            <td class="px-8 py-6 text-right">
-                <div class="text-2xl font-black italic text-emerald-500">${item.media.toFixed(2)}</div>
+            <td class="px-3 py-3 sm:px-8 sm:py-6 ${posClass} italic text-sm sm:text-xl">${pos}</td>
+            <td class="px-3 py-3 sm:px-8 sm:py-6"><div class="font-black text-white uppercase text-xs sm:text-lg tracking-tighter truncate max-w-[140px] sm:max-w-none">${item.nome}</div></td>
+            ${isTouro ? `<td class="px-3 py-3 sm:px-8 sm:py-6 text-slate-500 font-bold uppercase text-[10px] sm:text-xs truncate max-w-[100px] sm:max-w-none">${item.cia}</td>` : ''}
+            <td class="px-3 py-3 sm:px-8 sm:py-6 text-center text-slate-300 font-bold text-xs sm:text-base">${item.saidas}</td>
+            <td class="px-3 py-3 sm:px-8 sm:py-6 text-right">
+                <div class="text-sm sm:text-2xl font-black italic text-emerald-500">${item.media.toFixed(2)}</div>
             </td>
         </tr>`;
     });
