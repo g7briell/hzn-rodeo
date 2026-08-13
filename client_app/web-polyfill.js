@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.122';
+  const CURRENT_WEB_VERSION = '1.0.132';
 
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
