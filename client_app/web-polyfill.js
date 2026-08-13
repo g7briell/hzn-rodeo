@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.134';
+  const CURRENT_WEB_VERSION = '1.0.135';
 
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
@@ -542,7 +542,8 @@
     exportPDF: async ({ htmlContent, defaultName }) => {
       try {
         const filename = defaultName || 'Relatorio.pdf';
-        
+        const isLandscape = htmlContent.includes('size: landscape') || htmlContent.includes('landscape');
+
         // Carrega html2pdf dinamicamente se necessário
         if (typeof window.html2pdf !== 'function') {
           await new Promise((resolve) => {
@@ -560,11 +561,11 @@
           container.style.position = 'fixed';
           container.style.top = '0';
           container.style.left = '0';
-          container.style.width = '1080px';
+          container.style.width = isLandscape ? '1120px' : '820px';
           container.style.zIndex = '9999999';
           container.style.backgroundColor = '#ffffff';
           container.style.color = '#000000';
-          container.style.padding = '10px';
+          container.style.padding = '15px';
           container.style.overflow = 'visible';
 
           // Parseia o HTML recebido para extrair styles e body
@@ -582,9 +583,7 @@
           document.body.appendChild(container);
 
           // Aguarda reflow do navegador
-          await new Promise(r => setTimeout(r, 200));
-
-          const isLandscape = htmlContent.includes('size: landscape') || htmlContent.includes('landscape');
+          await new Promise(r => setTimeout(r, 350));
 
           const opt = {
             margin: [4, 4, 4, 4],
@@ -596,7 +595,8 @@
               letterRendering: true, 
               backgroundColor: '#ffffff',
               scrollY: 0,
-              scrollX: 0
+              scrollX: 0,
+              windowWidth: isLandscape ? 1200 : 900
             },
             jsPDF: { 
               unit: 'mm', 
@@ -605,7 +605,20 @@
             }
           };
 
-          await window.html2pdf().set(opt).from(container).save();
+          // Gera o Blob garantindo que a compilação esteja 100% concluída antes de remover o container
+          const pdfBlob = await window.html2pdf().set(opt).from(container).output('blob');
+
+          // Cria link de download e dispara o salvamento do arquivo
+          const blobUrl = URL.createObjectURL(pdfBlob);
+          const downloadLink = document.createElement('a');
+          downloadLink.href = blobUrl;
+          downloadLink.download = filename;
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+          // Remove o container apenas após o arquivo ser gerado
           if (document.body.contains(container)) document.body.removeChild(container);
           return { success: true };
         }
