@@ -43,28 +43,36 @@ function updateConnectionStatus(status, errorDetails = '') {
     window.lastSyncStatus = status;
     if (errorDetails) window.lastSyncErrorDetails = errorDetails;
 
-    const dots = [document.getElementById('db-status-dot'), document.getElementById('transmissao-db-status-dot')];
-    const texts = [document.getElementById('db-status-text'), document.getElementById('transmissao-db-status-text')];
+    const dots = [
+        document.getElementById('db-status-dot'), 
+        document.getElementById('transmissao-db-status-dot'),
+        document.getElementById('event-sync-dot')
+    ];
+    const texts = [
+        document.getElementById('db-status-text'), 
+        document.getElementById('transmissao-db-status-text'),
+        document.getElementById('event-sync-text')
+    ];
     
     dots.forEach((dot, idx) => {
         const text = texts[idx];
         if (!dot || !text) return;
         
-        dot.className = "w-2 h-2 rounded-full animate-pulse";
-        text.className = "text-[9px] font-black uppercase tracking-[0.3em]";
+        dot.className = "w-3 h-3 rounded-full transition-all";
+        text.className = "text-[9px] font-black uppercase tracking-[0.3em] transition-all";
         
         if (status === 'connected' || status === 'synced') {
-            dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.5)]');
-            text.classList.add('text-emerald-500');
+            dot.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.8)]');
+            text.classList.add('text-emerald-400');
             text.innerText = "SINCRONIZADO";
         } else if (status === 'connecting' || status === 'syncing') {
-            dot.classList.add('bg-yellow-500', 'shadow-[0_0_10px_rgba(234,179,8,0.5)]');
-            text.classList.add('text-yellow-500');
+            dot.classList.add('bg-yellow-500', 'shadow-[0_0_10px_rgba(234,179,8,0.8)]', 'animate-pulse');
+            text.classList.add('text-yellow-400');
             text.innerText = "SINCRONIZANDO...";
         } else {
-            dot.classList.add('bg-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.5)]');
-            text.classList.add('text-red-500');
-            text.innerText = "ERRO SINCRONIZAÇÃO";
+            dot.classList.add('bg-red-500', 'shadow-[0_0_10px_rgba(239,68,68,0.8)]', 'animate-bounce');
+            text.classList.add('text-red-400');
+            text.innerText = "NÃO SINCRONIZADO";
         }
     });
 }
@@ -93,6 +101,7 @@ window.handleSyncStatusClick = () => {
 window.retrySync = async () => {
     const modal = document.getElementById('modal-sync-error');
     if (modal) modal.classList.add('hidden');
+    await window.verifyConnection();
     await window.syncUserEventsWithCloud();
 };
 
@@ -101,7 +110,8 @@ window.syncUserEventsWithCloud = async () => {
     if (!email) return;
 
     try {
-        if (window.electronAPI.syncUserCloudEvents) {
+        updateConnectionStatus('syncing');
+        if (window.electronAPI && window.electronAPI.syncUserCloudEvents) {
             const res = await window.electronAPI.syncUserCloudEvents(email);
             if (res && res.success) {
                 updateConnectionStatus('synced');
@@ -1712,6 +1722,8 @@ window.openEventControl = async (id) => {
     }
 
     if (eventControlView) eventControlView.classList.remove('hidden');
+    updateConnectionStatus(window.lastSyncStatus || 'synced');
+    window.syncUserEventsWithCloud();
 };
 
 window.hideAllModalsAndViews = () => {
