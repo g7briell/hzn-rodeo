@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.133';
+  const CURRENT_WEB_VERSION = '1.0.134';
 
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
@@ -556,25 +556,57 @@
 
         if (typeof window.html2pdf === 'function') {
           const container = document.createElement('div');
+          container.id = 'pdf-render-temp-container';
           container.style.position = 'fixed';
-          container.style.top = '-99999px';
-          container.style.left = '-99999px';
-          container.style.width = '1120px';
+          container.style.top = '0';
+          container.style.left = '0';
+          container.style.width = '1080px';
+          container.style.zIndex = '9999999';
           container.style.backgroundColor = '#ffffff';
           container.style.color = '#000000';
-          container.innerHTML = htmlContent;
+          container.style.padding = '10px';
+          container.style.overflow = 'visible';
+
+          // Parseia o HTML recebido para extrair styles e body
+          const parser = new DOMParser();
+          const parsedDoc = parser.parseFromString(htmlContent, 'text/html');
+
+          // Clona todos os elementos de style
+          const styles = parsedDoc.querySelectorAll('style');
+          styles.forEach(st => container.appendChild(st.cloneNode(true)));
+
+          // Clona todos os nós filhos do body
+          const bodyNodes = parsedDoc.body.childNodes;
+          Array.from(bodyNodes).forEach(node => container.appendChild(node.cloneNode(true)));
+
           document.body.appendChild(container);
 
+          // Aguarda reflow do navegador
+          await new Promise(r => setTimeout(r, 200));
+
+          const isLandscape = htmlContent.includes('size: landscape') || htmlContent.includes('landscape');
+
           const opt = {
-            margin: [6, 6, 6, 6],
+            margin: [4, 4, 4, 4],
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            html2canvas: { 
+              scale: 2, 
+              useCORS: true, 
+              letterRendering: true, 
+              backgroundColor: '#ffffff',
+              scrollY: 0,
+              scrollX: 0
+            },
+            jsPDF: { 
+              unit: 'mm', 
+              format: 'a4', 
+              orientation: isLandscape ? 'landscape' : 'portrait' 
+            }
           };
 
           await window.html2pdf().set(opt).from(container).save();
-          document.body.removeChild(container);
+          if (document.body.contains(container)) document.body.removeChild(container);
           return { success: true };
         }
 
