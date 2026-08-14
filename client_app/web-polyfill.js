@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.135';
+  const CURRENT_WEB_VERSION = '1.0.136';
 
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
@@ -542,7 +542,7 @@
     exportPDF: async ({ htmlContent, defaultName }) => {
       try {
         const filename = defaultName || 'Relatorio.pdf';
-        const isLandscape = htmlContent.includes('size: landscape') || htmlContent.includes('landscape');
+        const isLandscape = htmlContent.includes('size: landscape') || htmlContent.includes('landscape') || htmlContent.includes('A4 landscape');
 
         // Carrega html2pdf dinamicamente se necessário
         if (typeof window.html2pdf !== 'function') {
@@ -555,100 +555,131 @@
           });
         }
 
+        let pdfGeneratedSuccessfully = false;
+
         if (typeof window.html2pdf === 'function') {
-          const container = document.createElement('div');
-          container.id = 'pdf-render-temp-container';
-          container.style.position = 'fixed';
-          container.style.top = '0';
-          container.style.left = '0';
-          container.style.width = isLandscape ? '1120px' : '820px';
-          container.style.zIndex = '9999999';
-          container.style.backgroundColor = '#ffffff';
-          container.style.color = '#000000';
-          container.style.padding = '15px';
-          container.style.overflow = 'visible';
+          try {
+            const container = document.createElement('div');
+            container.id = 'pdf-render-temp-container';
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = isLandscape ? '1120px' : '820px';
+            container.style.zIndex = '9999999';
+            container.style.backgroundColor = '#ffffff';
+            container.style.color = '#000000';
+            container.style.padding = '15px';
+            container.style.boxSizing = 'border-box';
+            container.style.overflow = 'visible';
 
-          // Parseia o HTML recebido para extrair styles e body
-          const parser = new DOMParser();
-          const parsedDoc = parser.parseFromString(htmlContent, 'text/html');
+            // Parseia o HTML para extrair estilos e conteúdo limpos
+            const parser = new DOMParser();
+            const parsedDoc = parser.parseFromString(htmlContent, 'text/html');
 
-          // Clona todos os elementos de style
-          const styles = parsedDoc.querySelectorAll('style');
-          styles.forEach(st => container.appendChild(st.cloneNode(true)));
+            // Limpa regras @page dos estilos que quebram o html2canvas
+            parsedDoc.querySelectorAll('style').forEach(st => {
+              const cleanedCss = st.innerHTML.replace(/@page[^{]*\{[^}]*\}/gi, '');
+              const newStyle = document.createElement('style');
+              newStyle.innerHTML = cleanedCss;
+              container.appendChild(newStyle);
+            });
 
-          // Clona todos os nós filhos do body
-          const bodyNodes = parsedDoc.body.childNodes;
-          Array.from(bodyNodes).forEach(node => container.appendChild(node.cloneNode(true)));
+            // Extrai nós do body
+            const bodyContent = parsedDoc.body ? parsedDoc.body.children : [];
+            Array.from(bodyContent).forEach(node => container.appendChild(node.cloneNode(true)));
 
-          document.body.appendChild(container);
+            document.body.appendChild(container);
+            await new Promise(r => setTimeout(r, 400));
 
-          // Aguarda reflow do navegador
-          await new Promise(r => setTimeout(r, 350));
+            const opt = {
+              margin: [4, 4, 4, 4],
+              filename: filename,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { 
+                scale: 1.5, 
+                useCORS: true, 
+                letterRendering: true, 
+                backgroundColor: '#ffffff',
+                scrollY: 0,
+                scrollX: 0,
+                windowWidth: isLandscape ? 1200 : 900
+              },
+              jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: isLandscape ? 'landscape' : 'portrait' 
+              }
+            };
 
-          const opt = {
-            margin: [4, 4, 4, 4],
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-              scale: 2, 
-              useCORS: true, 
-              letterRendering: true, 
-              backgroundColor: '#ffffff',
-              scrollY: 0,
-              scrollX: 0,
-              windowWidth: isLandscape ? 1200 : 900
-            },
-            jsPDF: { 
-              unit: 'mm', 
-              format: 'a4', 
-              orientation: isLandscape ? 'landscape' : 'portrait' 
+            const pdfBlob = await window.html2pdf().set(opt).from(container).output('blob');
+            if (document.body.contains(container)) document.body.removeChild(container);
+
+            if (pdfBlob && pdfBlob.size > 2500) {
+              const blobUrl = URL.createObjectURL(pdfBlob);
+              const downloadLink = document.createElement('a');
+              downloadLink.href = blobUrl;
+              downloadLink.download = filename;
+              document.body.appendChild(downloadLink);
+              downloadLink.click();
+              document.body.removeChild(downloadLink);
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+              pdfGeneratedSuccessfully = true;
+              return { success: true };
             }
-          };
+          } catch (canvasErr) {
+            console.warn('html2pdf gerou erro, acionando visualizador nativo:', canvasErr);
+          }
+        }
 
-          // Gera o Blob garantindo que a compilação esteja 100% concluída antes de remover o container
-          const pdfBlob = await window.html2pdf().set(opt).from(container).output('blob');
+        // Se o download direto não foi disparado, abre janela com o relatório e botão de impressão/salvar
+        const printWin = window.open('', '_blank');
+        if (printWin) {
+          const actionHeader = `
+            <div id="no-print-bar" style="position: fixed; top: 0; left: 0; right: 0; background: #0f172a; color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; z-index: 99999; box-shadow: 0 4px 20px rgba(0,0,0,0.5); font-family: sans-serif;">
+              <div style="font-weight: 900; font-size: 16px; color: #eab308; display: flex; align-items: center; gap: 8px;">
+                <span>RODEOAPP</span>
+                <span style="color: #94a3b8; font-size: 13px; font-weight: normal;">| ${filename}</span>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button onclick="window.print()" style="background: #eab308; color: #000; font-weight: 900; padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; text-transform: uppercase;">
+                  🖨️ IMPRIMIR / SALVAR COMO PDF
+                </button>
+                <button onclick="window.close()" style="background: #334155; color: white; font-weight: bold; padding: 10px 16px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px;">
+                  FECHAR
+                </button>
+              </div>
+            </div>
+            <style>
+              @media print {
+                #no-print-bar { display: none !important; }
+                body { padding-top: 0 !important; }
+              }
+              body { padding-top: 60px !important; }
+            </style>
+          `;
 
-          // Cria link de download e dispara o salvamento do arquivo
-          const blobUrl = URL.createObjectURL(pdfBlob);
-          const downloadLink = document.createElement('a');
-          downloadLink.href = blobUrl;
-          downloadLink.download = filename;
-          document.body.appendChild(downloadLink);
-          downloadLink.click();
-          document.body.removeChild(downloadLink);
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+          let finalHtml = htmlContent;
+          if (finalHtml.includes('<body')) {
+            finalHtml = finalHtml.replace(/<body[^>]*>/i, (match) => match + actionHeader);
+          } else {
+            finalHtml = actionHeader + finalHtml;
+          }
 
-          // Remove o container apenas após o arquivo ser gerado
-          if (document.body.contains(container)) document.body.removeChild(container);
+          printWin.document.open();
+          printWin.document.write(finalHtml);
+          printWin.document.close();
+
+          setTimeout(() => {
+            printWin.focus();
+            printWin.print();
+          }, 600);
+
           return { success: true };
         }
 
-        // Fallback limpo: cria iframe isolado com APENAS o relatório (sem overlay de "Gerando PDF")
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        document.body.appendChild(iframe);
-
-        const doc = iframe.contentWindow.document;
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
-
-        setTimeout(() => {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-          setTimeout(() => {
-            if (document.body.contains(iframe)) document.body.removeChild(iframe);
-          }, 3000);
-        }, 500);
-
-        return { success: true };
+        return { success: false, message: 'Não foi possível gerar o PDF.' };
       } catch (err) {
-        console.error('Erro ao gerar PDF na web:', err);
+        console.error('Erro fatal ao exportar PDF:', err);
         return { success: false, message: err.message || String(err) };
       }
     },
@@ -665,45 +696,45 @@
           });
         }
 
-        const sorteioData = payload.sorteioData || payload;
-        const eventName = sorteioData.eventName || 'Evento';
-        const day = sorteioData.day || 'Dia';
-        
+        const sData = payload.sorteioData || payload;
+        const eventName = payload.eventName || sData.eventName || 'Evento';
+        const day = payload.day || sData.day || 'Dia';
+        const riders = sData.riders || [];
+        const bulls = sData.bulls || [];
+        const assignments = sData.assignments || {};
+
         if (typeof window.XLSX !== 'undefined') {
           const rows = [
             ["RODEOAPP - RELATÓRIO OFICIAL DE SORTEIO"],
             ["EVENTO:", eventName, "ETAPA / DIA:", day],
             [],
-            ["ORDEM", "COMPETIDOR", "CIDADE / UF", "TOURO", "COMPANHIA", "LADO"]
+            ["ORDEM", "COMPETIDOR", "CIDADE / UF", "ACUMULADO", "TOURO", "COMPANHIA", "LADO"]
           ];
-
-          const riders = sorteioData.riders || [];
-          const bulls = sorteioData.bulls || [];
-          const assignments = sorteioData.assignments || {};
 
           riders.forEach((rider, idx) => {
             const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
             const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
             rows.push([
               idx + 1,
-              rider.nome || '',
-              rider.cidade || '',
-              bull.nome || '',
-              bull.cia || '',
+              (rider.nome || '').toUpperCase(),
+              (rider.cidade || '').toUpperCase(),
+              rider.acumulado || '0,00',
+              (bull.nome || '').toUpperCase(),
+              (bull.cia || '').toUpperCase(),
               bull.lado || ''
             ]);
           });
 
           if (bulls.length > riders.length) {
             rows.push([]);
-            rows.push(["--- TOUROS DE RE-RIDE / RESERVAS ---"]);
+            rows.push(["--- TOUROS RESERVAS / RE-RIDE ---"]);
             rows.push(["Nº", "TOURO", "COMPANHIA", "LADO"]);
             for (let i = riders.length; i < bulls.length; i++) {
               const b = bulls[i];
               rows.push([
                 `R${i - riders.length + 1}`,
-                b.nome || '',
-                b.cia || '',
+                (b.nome || '').toUpperCase(),
+                (b.cia || '').toUpperCase(),
                 b.lado || ''
               ]);
             }
@@ -735,9 +766,9 @@
           });
         }
 
-        const sorteioData = payload.sorteioData || payload;
-        const day = sorteioData.day || 'Dia';
-        const bulls = sorteioData.bulls || [];
+        const sData = payload.sorteioData || payload;
+        const day = sData.day || payload.day || 'Dia';
+        const bulls = sData.bulls || [];
 
         if (typeof window.XLSX !== 'undefined') {
           const rows = [
@@ -748,7 +779,7 @@
           ];
 
           bulls.forEach((b, idx) => {
-            rows.push([idx + 1, b.nome || '', b.cia || '', b.lado || '']);
+            rows.push([idx + 1, (b.nome || '').toUpperCase(), (b.cia || '').toUpperCase(), b.lado || '']);
           });
 
           const ws = window.XLSX.utils.aoa_to_sheet(rows);
@@ -777,27 +808,29 @@
           });
         }
 
+        const sData = sorteioData || {};
+        const riders = sData.riders || [];
+        const bulls = sData.bulls || [];
+        const assignments = sData.assignments || {};
+
         if (typeof window.XLSX !== 'undefined') {
           const rows = [
             ["RODEOAPP - PLANILHA DE NOTAS DO JUIZ"],
             ["JUIZ:", (juizNome || 'JUIZ').toUpperCase(), "EVENTO:", eventName || '', "DIA:", day || ''],
             [],
-            ["ORDEM", "COMPETIDOR", "CIDADE", "TOURO", "COMPANHIA", "LADO", "NOTA PEÃO", "NOTA TOURO", "TOTAL"]
+            ["ORDEM", "COMPETIDOR", "CIDADE", "ACUMULADO", "TOURO", "COMPANHIA", "LADO", "NOTA PEÃO", "NOTA TOURO", "TOTAL"]
           ];
-
-          const riders = sorteioData.riders || [];
-          const bulls = sorteioData.bulls || [];
-          const assignments = sorteioData.assignments || {};
 
           riders.forEach((rider, idx) => {
             const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
             const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
             rows.push([
               idx + 1,
-              rider.nome || '',
-              rider.cidade || '',
-              bull.nome || '',
-              bull.cia || '',
+              (rider.nome || '').toUpperCase(),
+              (rider.cidade || '').toUpperCase(),
+              rider.acumulado || '0,00',
+              (bull.nome || '').toUpperCase(),
+              (bull.cia || '').toUpperCase(),
               bull.lado || '',
               '', '', ''
             ]);
@@ -841,10 +874,10 @@
           (data || []).forEach((item, idx) => {
             rows.push([
               item.ordem || (idx + 1),
-              item.riderNome || item.peao || '',
-              item.riderCidade || item.cidade || '',
-              item.bullNome || item.touro || '',
-              item.bullCia || item.cia || '',
+              (item.riderNome || item.peao || item.nome || '').toUpperCase(),
+              (item.riderCidade || item.cidade || '').toUpperCase(),
+              (item.bullNome || item.touro || '').toUpperCase(),
+              (item.bullCia || item.cia || '').toUpperCase(),
               item.bullLado || item.lado || '',
               item.tempo || '',
               item.score || item.nota || '',
@@ -879,21 +912,33 @@
         }
 
         const { eventName, day, data } = payload;
+        const rawData = data || {};
+        const rowsData = Array.isArray(rawData) ? rawData : (rawData.rows || []);
+        const colsDays = Array.isArray(rawData.columnsDays) ? rawData.columnsDays : [];
+
         if (typeof window.XLSX !== 'undefined') {
+          const headerRow = ["POS", "COMPETIDOR", "CIDADE / UF", ...colsDays, "PONTUAÇÃO TOTAL", "TEMPO ACUMULADO"];
           const rows = [
             ["RODEOAPP - RANKING GERAL OFICIAL"],
             ["EVENTO:", eventName || '', "ETAPA:", day || 'GERAL'],
             [],
-            ["POS", "COMPETIDOR", "CIDADE", "PONTUAÇÃO TOTAL", "TEMPO ACUMULADO"]
+            headerRow
           ];
 
-          (data || []).forEach((item, idx) => {
+          rowsData.forEach((item, idx) => {
+            const hasScore = (item.totalPoints && item.totalPoints > 0) || (item.score && item.score > 0) || (item.tempoAcumulado && item.tempoAcumulado > 0);
+            const posStr = hasScore ? `${idx + 1}º` : '---';
+            const daysColsValues = colsDays.map(d => (item.daysScores && item.daysScores[d]) ? item.daysScores[d] : '-');
+            const totalScore = item.totalPoints !== undefined ? item.totalPoints : (item.score !== undefined ? item.score : 0);
+            const tempoAcum = item.tempoAcumulado !== undefined ? item.tempoAcumulado : (item.tempo !== undefined ? item.tempo : 0);
+
             rows.push([
-              idx + 1,
-              item.nome || '',
-              item.cidade || '',
-              typeof item.score === 'number' ? item.score.toFixed(2) : (item.score || '0.00'),
-              typeof item.tempoAcumulado === 'number' ? item.tempoAcumulado.toFixed(2) : (item.tempoAcumulado || item.tempo || '0.00')
+              posStr,
+              (item.nome || '').toUpperCase(),
+              (item.cidade || '---').toUpperCase(),
+              ...daysColsValues,
+              typeof totalScore === 'number' ? totalScore.toFixed(2) : totalScore,
+              typeof tempoAcum === 'number' ? tempoAcum.toFixed(2) : tempoAcum
             ]);
           });
 
