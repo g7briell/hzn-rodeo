@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.138';
+  const CURRENT_WEB_VERSION = '1.0.139';
 
   // Helper: garante que SheetJS está carregado antes de qualquer exportação
   const _ensureXLSX = () => new Promise((resolve) => {
@@ -575,61 +575,111 @@
       try {
         const filename = defaultName || 'Relatorio.pdf';
         const isLandscape = htmlContent.includes('landscape');
+        const orientStyle = isLandscape
+          ? '@page { size: A4 landscape; margin: 10mm; }'
+          : '@page { size: A4 portrait; margin: 10mm; }';
 
-        // MÉTODO PRINCIPAL: Abre nova janela com o relatório completo + barra de ação
-        // Este método é 100% confiável em todos os navegadores e gera PDF perfeito via Ctrl+P
-        const printWin = window.open('', '_blank', 'width=1000,height=750,scrollbars=yes');
-        if (printWin) {
-          const orientStyle = isLandscape
-            ? '@page { size: A4 landscape; margin: 10mm; }'
-            : '@page { size: A4 portrait; margin: 10mm; }';
-
-          const actionBar = `
-            <div id="rapp-bar" style="position:fixed;top:0;left:0;right:0;background:#0f172a;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;z-index:99999;box-shadow:0 2px 12px rgba(0,0,0,0.6);font-family:Arial,sans-serif;">
-              <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-weight:900;color:#eab308;font-size:18px;">🤠</span>
-                <div>
-                  <div style="font-weight:900;font-size:14px;color:#fff;">RODEOAPP</div>
-                  <div style="font-size:11px;color:#64748b;">${filename}</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;">
-                <button onclick="window.print()" style="background:#eab308;color:#000;font-weight:900;padding:10px 24px;border:none;border-radius:8px;cursor:pointer;font-size:14px;letter-spacing:1px;">
-                  🖨️ SALVAR / IMPRIMIR PDF
-                </button>
-                <button onclick="window.close()" style="background:#1e293b;color:#94a3b8;font-weight:bold;padding:10px 16px;border:1px solid #334155;border-radius:8px;cursor:pointer;font-size:13px;">
-                  ✕ FECHAR
-                </button>
+        // -------------------------------------------------------
+        // Barra de ação RODEOAPP (aparece na janela, some na impressão)
+        // -------------------------------------------------------
+        const actionBar = `
+          <div id="rapp-bar" style="position:fixed;top:0;left:0;right:0;background:#0f172a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.7);font-family:Arial,sans-serif;min-height:58px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-weight:900;color:#eab308;font-size:22px;">🤠</span>
+              <div>
+                <div style="font-weight:900;font-size:15px;color:#fff;letter-spacing:1px;">RODEOAPP</div>
+                <div style="font-size:11px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${filename}</div>
               </div>
             </div>
-            <style>
-              #rapp-bar { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-              @media print { #rapp-bar { display: none !important; } body { padding-top: 0 !important; } }
-              body { padding-top: 62px !important; }
-              ${orientStyle}
-            </style>`;
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button onclick="window.print()" style="background:#eab308;color:#000;font-weight:900;padding:10px 22px;border:none;border-radius:8px;cursor:pointer;font-size:14px;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;">
+                🖨️ SALVAR / IMPRIMIR PDF
+              </button>
+              <button onclick="window.close()" style="background:#1e293b;color:#94a3b8;font-weight:bold;padding:10px 14px;border:1px solid #334155;border-radius:8px;cursor:pointer;font-size:20px;line-height:1;">✕</button>
+            </div>
+          </div>
+          <style>
+            #rapp-bar * { box-sizing: border-box; }
+            @media print {
+              #rapp-bar { display: none !important; }
+              body { padding-top: 0 !important; margin: 0 !important; }
+            }
+            body { padding-top: 66px; margin: 0; }
+            ${orientStyle}
+          </style>`;
 
-          // Injeta a barra de ação dentro do <body>
-          let finalHtml = htmlContent;
-          if (/<body[^>]*>/i.test(finalHtml)) {
-            finalHtml = finalHtml.replace(/<body([^>]*)>/i, `<body$1>${actionBar}`);
-          } else {
-            finalHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${actionBar}${finalHtml}</body></html>`;
+        // Injeta a barra no HTML do relatório
+        let finalHtml = htmlContent;
+        if (/<body[^>]*>/i.test(finalHtml)) {
+          finalHtml = finalHtml.replace(/<body([^>]*)>/i, `<body$1>${actionBar}`);
+        } else {
+          finalHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${actionBar}${finalHtml}</body></html>`;
+        }
+
+        // -------------------------------------------------------
+        // MOBILE: usa Web Share API (abre menu nativo de compartilhar/salvar)
+        // -------------------------------------------------------
+        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile && navigator.share) {
+          try {
+            // Cria um blob HTML para compartilhar (será reconhecido como documento)
+            const blob = new Blob([finalHtml], { type: 'text/html' });
+            const file = new File([blob], filename.replace('.pdf', '.html'), { type: 'text/html' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({ files: [file], title: filename });
+              return { success: true };
+            }
+            // Share sem arquivo (abre opções de compartilhar)
+            await navigator.share({
+              title: 'RODEOAPP - ' + filename,
+              text: 'Relatório gerado pelo RODEOAPP'
+            });
+            return { success: true };
+          } catch (shareErr) {
+            if (shareErr.name !== 'AbortError') console.warn('Web Share falhou, usando fallback:', shareErr.message);
+            // Continua para o método de window.open
           }
+        }
 
+        // -------------------------------------------------------
+        // DESKTOP: abre nova janela com preview e barra de ação
+        // -------------------------------------------------------
+        const printWin = window.open('', '_blank', 'width=1050,height=800,scrollbars=yes,resizable=yes');
+        if (printWin && !printWin.closed) {
           printWin.document.open();
           printWin.document.write(finalHtml);
           printWin.document.close();
-
-          // Foca na janela para o usuário interagir
-          setTimeout(() => { try { printWin.focus(); } catch(e) {} }, 300);
-
+          setTimeout(() => { try { printWin.focus(); } catch(e) {} }, 200);
           return { success: true };
         }
 
-        // FALLBACK: se popup foi bloqueado, tenta iframe oculto para imprimir
-        return { success: false, message: 'Popup bloqueado pelo navegador. Por favor, habilite popups para rodeoapp.pro nas configurações do navegador.' };
+        // -------------------------------------------------------
+        // FALLBACK: popup bloqueado → abre overlay na própria página
+        // -------------------------------------------------------
+        const overlay = document.createElement('div');
+        overlay.id = 'rapp-pdf-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#fff;z-index:999999;overflow:auto;';
 
+        const closeBtn = `<div id="rapp-overlay-bar" style="position:sticky;top:0;background:#0f172a;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;z-index:9999;">
+          <span style="font-weight:900;color:#eab308;font-family:Arial,sans-serif;">🤠 RODEOAPP</span>
+          <div style="display:flex;gap:8px;">
+            <button onclick="window.print()" style="background:#eab308;color:#000;font-weight:900;padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-family:Arial,sans-serif;">🖨️ IMPRIMIR / SALVAR PDF</button>
+            <button onclick="document.getElementById('rapp-pdf-overlay').remove()" style="background:#334155;color:#fff;font-weight:bold;padding:8px 14px;border:none;border-radius:6px;cursor:pointer;font-family:Arial,sans-serif;">✕ FECHAR</button>
+          </div>
+        </div>`;
+
+        const parser = new DOMParser();
+        const parsed = parser.parseFromString(htmlContent, 'text/html');
+        const content = document.createElement('div');
+        content.style.cssText = 'padding:20px;color:#000;background:#fff;';
+        parsed.querySelectorAll('style').forEach(st => content.appendChild(st.cloneNode(true)));
+        Array.from(parsed.body.children).forEach(n => content.appendChild(n.cloneNode(true)));
+
+        overlay.innerHTML = closeBtn;
+        overlay.appendChild(content);
+        document.body.appendChild(overlay);
+
+        return { success: true };
       } catch (err) {
         console.error('Erro fatal ao exportar PDF:', err);
         return { success: false, message: err.message || String(err) };
