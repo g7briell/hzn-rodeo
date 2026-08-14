@@ -28,7 +28,39 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.137';
+  const CURRENT_WEB_VERSION = '1.0.138';
+
+  // Helper: garante que SheetJS está carregado antes de qualquer exportação
+  const _ensureXLSX = () => new Promise((resolve) => {
+    if (typeof window.XLSX !== 'undefined') { resolve(true); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+
+  // Helper: formata o lado do touro
+  const _formatLado = (s) => {
+    if (!s) return '';
+    const l = s.toLowerCase();
+    if (l === 'direito' || l === 'd') return 'Certo (C)';
+    if (l === 'esquerdo' || l === 'e') return 'Errado (E)';
+    return s.toUpperCase();
+  };
+
+  // Helper: tenta fazer fetch de um template .xlsx e retorna workbook ou null
+  const _fetchTemplate = async (filename) => {
+    try {
+      const resp = await fetch(filename);
+      if (!resp.ok) return null;
+      const buf = await resp.arrayBuffer();
+      return window.XLSX.read(buf, { type: 'array', cellStyles: true });
+    } catch (e) {
+      console.warn(`Template ${filename} não disponível:`, e.message);
+      return null;
+    }
+  };
 
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
@@ -606,16 +638,7 @@
 
     exportSorteioExcel: async (payload) => {
       try {
-        if (typeof window.XLSX === 'undefined') {
-          await new Promise((resolve) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-            s.onload = () => resolve(true);
-            s.onerror = () => resolve(false);
-            document.head.appendChild(s);
-          });
-        }
-
+        await _ensureXLSX();
         const sData = payload.sorteioData || payload;
         const eventName = payload.eventName || sData.eventName || 'Evento';
         const day = payload.day || sData.day || 'Dia';
@@ -623,51 +646,115 @@
         const bulls = sData.bulls || [];
         const assignments = sData.assignments || {};
 
-        if (typeof window.XLSX !== 'undefined') {
-          const rows = [
-            ["RODEOAPP - RELATÓRIO OFICIAL DE SORTEIO"],
-            ["EVENTO:", eventName, "ETAPA / DIA:", day],
-            [],
-            ["ORDEM", "COMPETIDOR", "CIDADE / UF", "ACUMULADO", "TOURO", "COMPANHIA", "LADO"]
-          ];
+        const formatLado = (s) => {
+          if (!s) return '';
+          const l = s.toLowerCase();
+          if (l === 'direito' || l === 'd') return 'Certo (C)';
+          if (l === 'esquerdo' || l === 'e') return 'Errado (E)';
+          return s.toUpperCase();
+        };
 
-          riders.forEach((rider, idx) => {
-            const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
-            const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
-            rows.push([
-              idx + 1,
-              (rider.nome || '').toUpperCase(),
-              (rider.cidade || '').toUpperCase(),
-              rider.acumulado || '0,00',
-              (bull.nome || '').toUpperCase(),
-              (bull.cia || '').toUpperCase(),
-              bull.lado || ''
-            ]);
-          });
+        // Tenta usar o template real via fetch
+        try {
+          const resp = await fetch('molde_sorteio.xlsx');
+          if (resp.ok) {
+            const arrayBuffer = await resp.arrayBuffer();
+            const wb = window.XLSX.read(arrayBuffer, { type: 'array', cellStyles: true });
+            const ws = wb.Sheets[wb.SheetNames[0]];
 
-          if (bulls.length > riders.length) {
-            rows.push([]);
-            rows.push(["--- TOUROS RESERVAS / RE-RIDE ---"]);
-            rows.push(["Nº", "TOURO", "COMPANHIA", "LADO"]);
-            for (let i = riders.length; i < bulls.length; i++) {
-              const b = bulls[i];
-              rows.push([
-                `R${i - riders.length + 1}`,
-                (b.nome || '').toUpperCase(),
-                (b.cia || '').toUpperCase(),
-                b.lado || ''
-              ]);
+            // Lê estilos das linhas de template (linha 3=competidor, 4=reserva header, 5=reserva data, 6=footer)
+            // e preenche a partir da linha 3
+            let currentRow = 3;
+            const getRowStyle = (rowNum) => {
+              const styleRow = {};
+              for (let c = 1; c <= 7; c++) {
+                const addr = window.XLSX.utils.encode_cell({ r: rowNum - 1, c: c - 1 });
+                if (ws[addr]) styleRow[c] = ws[addr].s;
+              }
+              return styleRow;
+            };
+            const compStyle = getRowStyle(3);
+            const resHeaderStyle = getRowStyle(4);
+            const resDataStyle = getRowStyle(5);
+            const footerStyle = getRowStyle(6);
+
+            // Remove linhas de template (3..12) deixando cabeçalho 1-2
+            const range = window.XLSX.utils.decode_range(ws['!ref'] || 'A1:G12');
+
+            const writeRow = (rowIdx, values, styles) => {
+              values.forEach((val, colIdx) => {
+                const addr = window.XLSX.utils.encode_cell({ r: rowIdx - 1, c: colIdx });
+                ws[addr] = { v: val, t: typeof val === 'number' ? 'n' : 's', s: styles ? styles[colIdx + 1] : undefined };
+              });
+            };
+
+            // Apaga linhas de template
+            for (let r = 3; r <= 12; r++) {
+              for (let c = 1; c <= 7; c++) {
+                delete ws[window.XLSX.utils.encode_cell({ r: r - 1, c: c - 1 })];
+              }
             }
-          }
 
-          const ws = window.XLSX.utils.aoa_to_sheet(rows);
-          const wb = window.XLSX.utils.book_new();
-          window.XLSX.utils.book_append_sheet(wb, ws, "Sorteio");
-          window.XLSX.writeFile(wb, `Sorteio_${eventName.replace(/\s+/g, '_')}_${day.replace(/\s+/g, '_')}.xlsx`);
-          return { success: true };
+            // Preenche competidores
+            riders.forEach((rider, idx) => {
+              const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+              const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
+              writeRow(currentRow, [
+                idx + 1,
+                (rider.nome || '').toUpperCase(),
+                (rider.cidade || '').toUpperCase(),
+                rider.acumulado || '0,00',
+                (bull.nome || '').toUpperCase(),
+                (bull.cia || '').toUpperCase(),
+                formatLado(bull.lado)
+              ], compStyle);
+              currentRow++;
+            });
+
+            // Re-rides/reservas
+            if (bulls.length > riders.length) {
+              writeRow(currentRow, ['', '', '', '', 'RESERVAS / RE-RIDE', '', ''], resHeaderStyle);
+              currentRow++;
+              bulls.slice(riders.length).forEach((b, idx) => {
+                writeRow(currentRow, ['', '', '', '', (b.nome || '').toUpperCase(), (b.cia || '').toUpperCase(), formatLado(b.lado)], resDataStyle);
+                currentRow++;
+              });
+            }
+
+            // Footer
+            writeRow(currentRow, ['RODEOAPP - rodeoapp.pro', '', '', '', '', '', ''], footerStyle);
+
+            // Atualiza range
+            ws['!ref'] = window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: currentRow - 1, c: 6 } });
+
+            window.XLSX.writeFile(wb, `Sorteio_${eventName.replace(/\s+/g, '_')}_${day.replace(/\s+/g, '_')}.xlsx`);
+            return { success: true };
+          }
+        } catch (fetchErr) {
+          console.warn('Template não disponível via fetch, gerando sem template:', fetchErr.message);
         }
 
-        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+        // Fallback: gera sem template
+        const rows = [
+          ["RODEOAPP - RELATÓRIO OFICIAL DE SORTEIO"],
+          ["EVENTO:", eventName, "ETAPA / DIA:", day],
+          [],
+          ["ORDEM", "COMPETIDOR", "CIDADE / UF", "ACUMULADO", "TOURO", "COMPANHIA", "LADO"]
+        ];
+        riders.forEach((rider, idx) => {
+          const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+          const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
+          rows.push([idx + 1, (rider.nome || '').toUpperCase(), (rider.cidade || '').toUpperCase(), rider.acumulado || '0,00', (bull.nome || '').toUpperCase(), (bull.cia || '').toUpperCase(), formatLado(bull.lado)]);
+        });
+        if (bulls.length > riders.length) {
+          rows.push([]); rows.push(['--- RESERVAS / RE-RIDE ---']); rows.push(['Nº', 'TOURO', 'COMPANHIA', 'LADO']);
+          bulls.slice(riders.length).forEach((b, i) => rows.push([`R${i+1}`, (b.nome||'').toUpperCase(), (b.cia||'').toUpperCase(), formatLado(b.lado)]));
+        }
+        const ws2 = window.XLSX.utils.aoa_to_sheet(rows);
+        const wb2 = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb2, ws2, "Sorteio");
+        window.XLSX.writeFile(wb2, `Sorteio_${eventName.replace(/\s+/g, '_')}_${day.replace(/\s+/g, '_')}.xlsx`);
+        return { success: true };
       } catch (err) {
         console.error('Erro ao gerar Excel de Sorteio:', err);
         return { success: false, message: err.message };
@@ -676,40 +763,49 @@
 
     exportBoiadasExcel: async (payload) => {
       try {
-        if (typeof window.XLSX === 'undefined') {
-          await new Promise((resolve) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-            s.onload = () => resolve(true);
-            s.onerror = () => resolve(false);
-            document.head.appendChild(s);
-          });
-        }
-
+        await _ensureXLSX();
         const sData = payload.sorteioData || payload;
         const day = sData.day || payload.day || 'Dia';
+        const totalRiders = (sData.riders || []).length;
         const bulls = sData.bulls || [];
 
-        if (typeof window.XLSX !== 'undefined') {
-          const rows = [
-            ["RODEOAPP - LISTA DE BOIADA / TOUROS"],
-            ["ETAPA / DIA:", day],
-            [],
-            ["Nº", "TOURO", "COMPANHIA", "LADO"]
-          ];
-
-          bulls.forEach((b, idx) => {
-            rows.push([idx + 1, (b.nome || '').toUpperCase(), (b.cia || '').toUpperCase(), b.lado || '']);
+        // Tenta usar template real
+        const wb = await _fetchTemplate('listtourossorteio.xlsx');
+        if (wb) {
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          // Captura estilos das linhas de template
+          const getStyle = (r) => { const st = {}; for (let c=1;c<=4;c++){const a=window.XLSX.utils.encode_cell({r:r-1,c:c-1});if(ws[a])st[c]=ws[a].s;} return st; };
+          const normalStyle = getStyle(4);
+          const resHdrStyle = getStyle(5);
+          const resDataStyle = getStyle(6);
+          const footerStyle = getStyle(7);
+          // Limpa linhas de template
+          for (let r=4;r<=13;r++) for(let c=1;c<=4;c++) delete ws[window.XLSX.utils.encode_cell({r:r-1,c:c-1})];
+          let cr = 4;
+          const wr = (row, vals, styles) => vals.forEach((v,i)=>{ const a=window.XLSX.utils.encode_cell({r:row-1,c:i}); ws[a]={v,t:typeof v==='number'?'n':'s',s:styles?styles[i+1]:undefined}; });
+          // Touros normais
+          bulls.slice(0, totalRiders || bulls.length).forEach((b, idx) => {
+            wr(cr, [idx+1, (b.nome||'').toUpperCase(), (b.cia||'').toUpperCase(), _formatLado(b.lado)], normalStyle);
+            cr++;
           });
-
-          const ws = window.XLSX.utils.aoa_to_sheet(rows);
-          const wb = window.XLSX.utils.book_new();
-          window.XLSX.utils.book_append_sheet(wb, ws, "Boiada");
+          // Re-rides
+          if (bulls.length > totalRiders && totalRiders > 0) {
+            wr(cr, ['', 'RESERVAS / RE-RIDE', '', ''], resHdrStyle); cr++;
+            bulls.slice(totalRiders).forEach((b,i)=>{ wr(cr,[`R${i+1}`,(b.nome||'').toUpperCase(),(b.cia||'').toUpperCase(),_formatLado(b.lado)],resDataStyle); cr++; });
+          }
+          wr(cr, ['RODEOAPP - rodeoapp.pro','','',''], footerStyle);
+          ws['!ref'] = window.XLSX.utils.encode_range({s:{r:0,c:0},e:{r:cr-1,c:3}});
           window.XLSX.writeFile(wb, `Boiada_${day.replace(/\s+/g, '_')}.xlsx`);
           return { success: true };
         }
 
-        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+        // Fallback
+        const rows = [["RODEOAPP - LISTA DE BOIADA"],["DIA:", day],[],["Nº","TOURO","COMPANHIA","LADO"]];
+        bulls.forEach((b,idx)=>rows.push([idx+1,(b.nome||'').toUpperCase(),(b.cia||'').toUpperCase(),_formatLado(b.lado)]));
+        const ws2=window.XLSX.utils.aoa_to_sheet(rows); const wb2=window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb2,ws2,"Boiada");
+        window.XLSX.writeFile(wb2,`Boiada_${day.replace(/\s+/g,'_')}.xlsx`);
+        return { success: true };
       } catch (err) {
         console.error('Erro ao gerar Excel de Boiadas:', err);
         return { success: false, message: err.message };
@@ -718,52 +814,49 @@
 
     exportJuizesExcel: async ({ sorteioData, eventName, day, juizNome }) => {
       try {
-        if (typeof window.XLSX === 'undefined') {
-          await new Promise((resolve) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-            s.onload = () => resolve(true);
-            s.onerror = () => resolve(false);
-            document.head.appendChild(s);
-          });
-        }
-
+        await _ensureXLSX();
         const sData = sorteioData || {};
         const riders = sData.riders || [];
         const bulls = sData.bulls || [];
         const assignments = sData.assignments || {};
 
-        if (typeof window.XLSX !== 'undefined') {
-          const rows = [
-            ["RODEOAPP - PLANILHA DE NOTAS DO JUIZ"],
-            ["JUIZ:", (juizNome || 'JUIZ').toUpperCase(), "EVENTO:", eventName || '', "DIA:", day || ''],
-            [],
-            ["ORDEM", "COMPETIDOR", "CIDADE", "ACUMULADO", "TOURO", "COMPANHIA", "LADO", "NOTA PEÃO", "NOTA TOURO", "TOTAL"]
-          ];
-
+        // Tenta usar template real
+        const wb = await _fetchTemplate('moldejuiz_sorteio.xlsx');
+        if (wb) {
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const getStyle = (r) => { const st={}; for(let c=1;c<=9;c++){const a=window.XLSX.utils.encode_cell({r:r-1,c:c-1});if(ws[a])st[c]=ws[a].s;} return st; };
+          const rowStyle = getStyle(3);
+          // Limpa linhas de template (3 em diante)
+          for(let r=3;r<=15;r++) for(let c=1;c<=9;c++) delete ws[window.XLSX.utils.encode_cell({r:r-1,c:c-1})];
+          let cr = 3;
+          const wr = (row,vals,styles) => vals.forEach((v,i)=>{ const a=window.XLSX.utils.encode_cell({r:row-1,c:i}); ws[a]={v,t:typeof v==='number'?'n':'s',s:styles?styles[i+1]:undefined}; });
           riders.forEach((rider, idx) => {
             const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
             const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
-            rows.push([
-              idx + 1,
-              (rider.nome || '').toUpperCase(),
-              (rider.cidade || '').toUpperCase(),
-              rider.acumulado || '0,00',
-              (bull.nome || '').toUpperCase(),
-              (bull.cia || '').toUpperCase(),
-              bull.lado || '',
-              '', '', ''
-            ]);
+            wr(cr, [
+              idx+1,
+              (rider.nome||'').toUpperCase(),
+              (rider.cidade||'').toUpperCase(),
+              rider.acumulado||'0,00',
+              (bull.nome||'').toUpperCase(),
+              (bull.cia||'').toUpperCase(),
+              _formatLado(bull.lado),
+              '', ''
+            ], rowStyle);
+            cr++;
           });
-
-          const ws = window.XLSX.utils.aoa_to_sheet(rows);
-          const wb = window.XLSX.utils.book_new();
-          window.XLSX.utils.book_append_sheet(wb, ws, "Notas Juiz");
-          window.XLSX.writeFile(wb, `Juiz_${(juizNome || 'Juiz').replace(/\s+/g, '_')}_${(day || 'Dia').replace(/\s+/g, '_')}.xlsx`);
+          ws['!ref'] = window.XLSX.utils.encode_range({s:{r:0,c:0},e:{r:cr-1,c:8}});
+          window.XLSX.writeFile(wb, `Juiz_${(juizNome||'Juiz').replace(/\s+/g,'_')}_${(day||'Dia').replace(/\s+/g,'_')}.xlsx`);
           return { success: true };
         }
 
-        return { success: false, message: 'Biblioteca de Excel não carregada.' };
+        // Fallback
+        const rows=[["RODEOAPP - PLANILHA JUIZ"],["JUIZ:",juizNome||'',"EVENTO:",eventName||'',"DIA:",day||''],[],["ORDEM","COMPETIDOR","CIDADE","ACUMULADO","TOURO","COMPANHIA","LADO","NOTA P","NOTA T"]];
+        riders.forEach((rider,idx)=>{ const bIdx=assignments[idx]!==undefined?assignments[idx]:idx; const bull=bulls[bIdx]||{nome:'---',cia:'---',lado:'---'}; rows.push([idx+1,(rider.nome||'').toUpperCase(),(rider.cidade||'').toUpperCase(),rider.acumulado||'0,00',(bull.nome||'').toUpperCase(),(bull.cia||'').toUpperCase(),_formatLado(bull.lado),'','']); });
+        const ws2=window.XLSX.utils.aoa_to_sheet(rows); const wb2=window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb2,ws2,"Notas Juiz");
+        window.XLSX.writeFile(wb2,`Juiz_${(juizNome||'Juiz').replace(/\s+/g,'_')}_${(day||'Dia').replace(/\s+/g,'_')}.xlsx`);
+        return { success: true };
       } catch (err) {
         console.error('Erro ao gerar Excel de Juízes:', err);
         return { success: false, message: err.message };
