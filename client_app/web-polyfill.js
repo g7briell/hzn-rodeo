@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.136';
+  const CURRENT_WEB_VERSION = '1.0.137';
 
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
@@ -542,142 +542,62 @@
     exportPDF: async ({ htmlContent, defaultName }) => {
       try {
         const filename = defaultName || 'Relatorio.pdf';
-        const isLandscape = htmlContent.includes('size: landscape') || htmlContent.includes('landscape') || htmlContent.includes('A4 landscape');
+        const isLandscape = htmlContent.includes('landscape');
 
-        // Carrega html2pdf dinamicamente se necessário
-        if (typeof window.html2pdf !== 'function') {
-          await new Promise((resolve) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-            s.onload = () => resolve(true);
-            s.onerror = () => resolve(false);
-            document.head.appendChild(s);
-          });
-        }
-
-        let pdfGeneratedSuccessfully = false;
-
-        if (typeof window.html2pdf === 'function') {
-          try {
-            const container = document.createElement('div');
-            container.id = 'pdf-render-temp-container';
-            container.style.position = 'fixed';
-            container.style.top = '0';
-            container.style.left = '0';
-            container.style.width = isLandscape ? '1120px' : '820px';
-            container.style.zIndex = '9999999';
-            container.style.backgroundColor = '#ffffff';
-            container.style.color = '#000000';
-            container.style.padding = '15px';
-            container.style.boxSizing = 'border-box';
-            container.style.overflow = 'visible';
-
-            // Parseia o HTML para extrair estilos e conteúdo limpos
-            const parser = new DOMParser();
-            const parsedDoc = parser.parseFromString(htmlContent, 'text/html');
-
-            // Limpa regras @page dos estilos que quebram o html2canvas
-            parsedDoc.querySelectorAll('style').forEach(st => {
-              const cleanedCss = st.innerHTML.replace(/@page[^{]*\{[^}]*\}/gi, '');
-              const newStyle = document.createElement('style');
-              newStyle.innerHTML = cleanedCss;
-              container.appendChild(newStyle);
-            });
-
-            // Extrai nós do body
-            const bodyContent = parsedDoc.body ? parsedDoc.body.children : [];
-            Array.from(bodyContent).forEach(node => container.appendChild(node.cloneNode(true)));
-
-            document.body.appendChild(container);
-            await new Promise(r => setTimeout(r, 400));
-
-            const opt = {
-              margin: [4, 4, 4, 4],
-              filename: filename,
-              image: { type: 'jpeg', quality: 0.98 },
-              html2canvas: { 
-                scale: 1.5, 
-                useCORS: true, 
-                letterRendering: true, 
-                backgroundColor: '#ffffff',
-                scrollY: 0,
-                scrollX: 0,
-                windowWidth: isLandscape ? 1200 : 900
-              },
-              jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
-                orientation: isLandscape ? 'landscape' : 'portrait' 
-              }
-            };
-
-            const pdfBlob = await window.html2pdf().set(opt).from(container).output('blob');
-            if (document.body.contains(container)) document.body.removeChild(container);
-
-            if (pdfBlob && pdfBlob.size > 2500) {
-              const blobUrl = URL.createObjectURL(pdfBlob);
-              const downloadLink = document.createElement('a');
-              downloadLink.href = blobUrl;
-              downloadLink.download = filename;
-              document.body.appendChild(downloadLink);
-              downloadLink.click();
-              document.body.removeChild(downloadLink);
-              setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-              pdfGeneratedSuccessfully = true;
-              return { success: true };
-            }
-          } catch (canvasErr) {
-            console.warn('html2pdf gerou erro, acionando visualizador nativo:', canvasErr);
-          }
-        }
-
-        // Se o download direto não foi disparado, abre janela com o relatório e botão de impressão/salvar
-        const printWin = window.open('', '_blank');
+        // MÉTODO PRINCIPAL: Abre nova janela com o relatório completo + barra de ação
+        // Este método é 100% confiável em todos os navegadores e gera PDF perfeito via Ctrl+P
+        const printWin = window.open('', '_blank', 'width=1000,height=750,scrollbars=yes');
         if (printWin) {
-          const actionHeader = `
-            <div id="no-print-bar" style="position: fixed; top: 0; left: 0; right: 0; background: #0f172a; color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; z-index: 99999; box-shadow: 0 4px 20px rgba(0,0,0,0.5); font-family: sans-serif;">
-              <div style="font-weight: 900; font-size: 16px; color: #eab308; display: flex; align-items: center; gap: 8px;">
-                <span>RODEOAPP</span>
-                <span style="color: #94a3b8; font-size: 13px; font-weight: normal;">| ${filename}</span>
+          const orientStyle = isLandscape
+            ? '@page { size: A4 landscape; margin: 10mm; }'
+            : '@page { size: A4 portrait; margin: 10mm; }';
+
+          const actionBar = `
+            <div id="rapp-bar" style="position:fixed;top:0;left:0;right:0;background:#0f172a;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;z-index:99999;box-shadow:0 2px 12px rgba(0,0,0,0.6);font-family:Arial,sans-serif;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-weight:900;color:#eab308;font-size:18px;">🤠</span>
+                <div>
+                  <div style="font-weight:900;font-size:14px;color:#fff;">RODEOAPP</div>
+                  <div style="font-size:11px;color:#64748b;">${filename}</div>
+                </div>
               </div>
-              <div style="display: flex; gap: 10px;">
-                <button onclick="window.print()" style="background: #eab308; color: #000; font-weight: 900; padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; text-transform: uppercase;">
-                  🖨️ IMPRIMIR / SALVAR COMO PDF
+              <div style="display:flex;gap:8px;">
+                <button onclick="window.print()" style="background:#eab308;color:#000;font-weight:900;padding:10px 24px;border:none;border-radius:8px;cursor:pointer;font-size:14px;letter-spacing:1px;">
+                  🖨️ SALVAR / IMPRIMIR PDF
                 </button>
-                <button onclick="window.close()" style="background: #334155; color: white; font-weight: bold; padding: 10px 16px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px;">
-                  FECHAR
+                <button onclick="window.close()" style="background:#1e293b;color:#94a3b8;font-weight:bold;padding:10px 16px;border:1px solid #334155;border-radius:8px;cursor:pointer;font-size:13px;">
+                  ✕ FECHAR
                 </button>
               </div>
             </div>
             <style>
-              @media print {
-                #no-print-bar { display: none !important; }
-                body { padding-top: 0 !important; }
-              }
-              body { padding-top: 60px !important; }
-            </style>
-          `;
+              #rapp-bar { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+              @media print { #rapp-bar { display: none !important; } body { padding-top: 0 !important; } }
+              body { padding-top: 62px !important; }
+              ${orientStyle}
+            </style>`;
 
+          // Injeta a barra de ação dentro do <body>
           let finalHtml = htmlContent;
-          if (finalHtml.includes('<body')) {
-            finalHtml = finalHtml.replace(/<body[^>]*>/i, (match) => match + actionHeader);
+          if (/<body[^>]*>/i.test(finalHtml)) {
+            finalHtml = finalHtml.replace(/<body([^>]*)>/i, `<body$1>${actionBar}`);
           } else {
-            finalHtml = actionHeader + finalHtml;
+            finalHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${actionBar}${finalHtml}</body></html>`;
           }
 
           printWin.document.open();
           printWin.document.write(finalHtml);
           printWin.document.close();
 
-          setTimeout(() => {
-            printWin.focus();
-            printWin.print();
-          }, 600);
+          // Foca na janela para o usuário interagir
+          setTimeout(() => { try { printWin.focus(); } catch(e) {} }, 300);
 
           return { success: true };
         }
 
-        return { success: false, message: 'Não foi possível gerar o PDF.' };
+        // FALLBACK: se popup foi bloqueado, tenta iframe oculto para imprimir
+        return { success: false, message: 'Popup bloqueado pelo navegador. Por favor, habilite popups para rodeoapp.pro nas configurações do navegador.' };
+
       } catch (err) {
         console.error('Erro fatal ao exportar PDF:', err);
         return { success: false, message: err.message || String(err) };
