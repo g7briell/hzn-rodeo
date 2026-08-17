@@ -153,6 +153,9 @@ window.persistAndSyncEvent = async (eventObj) => {
     }
 };
 
+// Guarda índice do sorteio detalhado aberto (para restaurar após sync)
+let _openSorteioDetailIdx = null;
+
 function refreshActiveViewData() {
     if (!currentEvent) return;
 
@@ -163,10 +166,13 @@ function refreshActiveViewData() {
         infoEl.innerText = `${currentEvent.city || ''} - ${currentEvent.days || 3} DIAS - ${jCount} JUIZES`;
     }
 
-    // 1. Lista de Peões (Tela cheia)
+    // 1. Lista de Peões (Tela cheia) — preserva scroll
     const listPeoesView = document.getElementById('list-peoes-view');
     if (listPeoesView && !listPeoesView.classList.contains('hidden')) {
+        const scrollEl = listPeoesView.querySelector('[id$="-container"]') || listPeoesView;
+        const savedScroll = scrollEl.scrollTop;
         openListPeoes();
+        requestAnimationFrame(() => { scrollEl.scrollTop = savedScroll; });
     }
 
     // 2. Modal de Juízes
@@ -175,52 +181,77 @@ function refreshActiveViewData() {
         openListJuizes();
     }
 
-    // 3. Lista de Boiadas (Tela cheia)
+    // 3. Lista de Boiadas (Tela cheia) — preserva scroll
     const listBoiadasView = document.getElementById('list-boiadas-view');
     if (listBoiadasView && !listBoiadasView.classList.contains('hidden')) {
+        const scrollEl = listBoiadasView.querySelector('[id$="-container"]') || listBoiadasView;
+        const savedScroll = scrollEl.scrollTop;
         openListBoiadas();
+        requestAnimationFrame(() => { scrollEl.scrollTop = savedScroll; });
     }
 
-    // 4. Lista de Sorteios Realizados (Tela cheia)
+    // 4. Lista de Sorteios Realizados — preserva estado: se detalhes de um sorteio estão abertos,
+    //    re-abre o mesmo sorteio; se estava na lista, restaura scroll
     const listSorteiosView = document.getElementById('list-sorteios-view');
     if (listSorteiosView && !listSorteiosView.classList.contains('hidden')) {
-        openSorteiosList();
+        const container = document.getElementById('sorteios-table-container');
+        const savedScroll = container ? container.scrollTop : 0;
+        if (_openSorteioDetailIdx !== null && currentEvent.sorteios && currentEvent.sorteios[_openSorteioDetailIdx]) {
+            // Estava vendo detalhes de um sorteio específico — re-abre o mesmo
+            window.viewDrawDetails(_openSorteioDetailIdx);
+        } else {
+            // Estava na lista de cards — re-renderiza e restaura scroll
+            openSorteiosList();
+            requestAnimationFrame(() => { if (container) container.scrollTop = savedScroll; });
+        }
     }
 
-    // 5. Tela de Lançamento de Notas / Cards (Tela cheia)
+    // 5. Tela de Lançamento de Notas / Cards — preserva scroll
     const viewNotasList = document.getElementById('view-notas-list');
     if (viewNotasList && !viewNotasList.classList.contains('hidden')) {
+        const scrollEl = viewNotasList.querySelector('[id$="-container"]') || viewNotasList;
+        const savedScroll = scrollEl.scrollTop;
         renderNotasCards();
+        requestAnimationFrame(() => { scrollEl.scrollTop = savedScroll; });
     }
 
-    // 6. Tela de Ranking Atualizado (Tela cheia)
+    // 6. Tela de Ranking — preserva scroll
     const rankingView = document.getElementById('ranking-view');
     if (rankingView && !rankingView.classList.contains('hidden')) {
+        const savedScroll = rankingView.scrollTop;
         renderRanking('geral');
+        requestAnimationFrame(() => { rankingView.scrollTop = savedScroll; });
     }
 
-    // 7. Tela de Ranking de Animais (Tela cheia)
+    // 7. Tela de Ranking de Animais — preserva scroll
     const rankingAnimaisView = document.getElementById('ranking-animais-view');
     if (rankingAnimaisView && !rankingAnimaisView.classList.contains('hidden')) {
+        const savedScroll = rankingAnimaisView.scrollTop;
         renderRankingAnimais();
+        requestAnimationFrame(() => { rankingAnimaisView.scrollTop = savedScroll; });
     }
 
-    // 8. Modal de Conferência de Notas
+    // 8. Modal de Conferência de Notas — não re-renderiza durante flow ativo
     const modalNotasSummary = document.getElementById('modal-notas-summary');
     if (modalNotasSummary && !modalNotasSummary.classList.contains('hidden')) {
         window.finishScoringFlow();
     }
 }
 
-// Loop de Sincronização em Tempo Real Ultra-Rápido (a cada 1.5 segundos)
+// Loop de Sincronização em Tempo Real (a cada 8 segundos para não interferir na UX)
 let realtimeSyncInterval = null;
 function startRealtimeSyncLoop() {
     if (realtimeSyncInterval) clearInterval(realtimeSyncInterval);
     realtimeSyncInterval = setInterval(() => {
-        if (navigator.onLine && getCurrentUserEmail()) {
-            window.syncUserEventsWithCloud();
-        }
-    }, 1500);
+        if (!navigator.onLine || !getCurrentUserEmail()) return;
+        // Não sincroniza se o usuário está no meio de um sorteio manual (step > 1)
+        const sorteioView = document.getElementById('sorteio-manual-view');
+        const step1 = document.getElementById('step-1');
+        const inSorteioFlow = sorteioView && !sorteioView.classList.contains('hidden') &&
+                              step1 && step1.classList.contains('hidden');
+        if (inSorteioFlow) return;
+        window.syncUserEventsWithCloud();
+    }, 8000);
 }
 
 startRealtimeSyncLoop();
@@ -3300,6 +3331,7 @@ function renderStep6() {
 
 // Histórico de Sorteios
 window.openSorteiosList = () => {
+    _openSorteioDetailIdx = null; // usuário voltou à lista
     const container = document.getElementById('sorteios-table-container');
     const sorteios = currentEvent.sorteios || [];
     if (sorteios.length === 0) { if (container) container.innerHTML = `<div class="col-span-3 p-20 text-center text-slate-500 italic font-bold">Nenhum sorteio realizado ainda.</div>`; }
@@ -3308,6 +3340,7 @@ window.openSorteiosList = () => {
 };
 
 window.viewDrawDetails = (idx) => {
+    _openSorteioDetailIdx = idx; // guarda qual detalhe está aberto
     const s = currentEvent.sorteios[idx];
     const container = document.getElementById('sorteios-table-container');
     const deleteBtn = currentSport === 'transmissao' ? '' : `<button onclick="deleteSorteio(${idx})" class="bg-red-500/10 text-red-500 px-4 py-3 rounded-xl hover:bg-red-500 hover:text-white transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`;
