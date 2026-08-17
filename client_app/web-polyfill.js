@@ -28,7 +28,7 @@
     return `hzn_${cleanEmail}_${key}`;
   }
 
-  const CURRENT_WEB_VERSION = '1.0.140';
+  const CURRENT_WEB_VERSION = '1.0.141';
 
   // Helper: garante que SheetJS está carregado antes de qualquer exportação
   const _ensureXLSX = () => new Promise((resolve) => {
@@ -569,7 +569,19 @@
 
     // Exports and Tools
     getAppLogo: async () => '',
-    getPdfLogo: async () => '',
+    getPdfLogo: async () => {
+      try {
+        const resp = await fetch('assets/rodeoapplogo_branca.png');
+        if (!resp.ok) return '';
+        const blob = await resp.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        });
+      } catch(e) { return ''; }
+    },
 
     exportPDF: async ({ htmlContent, defaultName }) => {
       try {
@@ -579,18 +591,8 @@
           ? '@page { size: A4 landscape; margin: 8mm; }'
           : '@page { size: A4 portrait; margin: 8mm; }';
 
-        // Remove qualquer loader overlay que possa estar bloqueando
-        document.querySelectorAll('[style*="position:fixed"][style*="rgba(0,0,0"]').forEach(el => {
-          try { el.remove(); } catch(e) {}
-        });
-
-        // Prepara o HTML final com as styles de impressão
-        const printStyles = `<style>
-          ${orientStyle}
-          @media print { body { margin: 0 !important; padding: 0 !important; } }
-          body { margin: 0; padding: 0; background: #fff; color: #000; }
-        </style>`;
-
+        // Injeta estilos de impressão no HTML
+        const printStyles = `<style>${orientStyle} @media print{body{margin:0!important;padding:0!important;}} body{margin:0;padding:0;background:#fff;color:#000;}</style>`;
         let finalHtml = htmlContent;
         if (/<\/head>/i.test(finalHtml)) {
           finalHtml = finalHtml.replace(/<\/head>/i, printStyles + '</head>');
@@ -600,9 +602,7 @@
           finalHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">${printStyles}</head><body>${finalHtml}</body></html>`;
         }
 
-        // -------------------------------------------------------
-        // MOBILE: usa Web Share API
-        // -------------------------------------------------------
+        // MOBILE: Web Share API
         const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (isMobile && navigator.share) {
           try {
@@ -614,60 +614,73 @@
             }
           } catch (shareErr) {
             if (shareErr.name === 'AbortError') return { success: true };
-            console.warn('Web Share falhou:', shareErr.message);
           }
         }
 
-        // -------------------------------------------------------
-        // DESKTOP + MOBILE FALLBACK: iframe overlay na própria página
-        // Não depende de window.open, não pode ser bloqueado por popup blocker
-        // -------------------------------------------------------
+        // DESKTOP: iframe overlay na própria página
+        // IMPORTANTE: NÃO removemos o loader do renderer.js aqui!
+        // O renderer.js vai removê-lo depois que retornarmos { success: true }.
+        // Usamos setTimeout para mostrar nosso overlay APÓS o loader ser removido.
+        const blobUrl = URL.createObjectURL(new Blob([finalHtml], { type: 'text/html;charset=utf-8' }));
 
-        // Remove overlay anterior se existir
-        const existing = document.getElementById('rapp-pdf-viewer');
-        if (existing) existing.remove();
+        setTimeout(() => {
+          // Remove viewer anterior
+          const existing = document.getElementById('rapp-pdf-viewer');
+          if (existing) existing.remove();
 
-        // Cria overlay container
-        const overlay = document.createElement('div');
-        overlay.id = 'rapp-pdf-viewer';
-        overlay.style.cssText = [
-          'position:fixed', 'top:0', 'left:0', 'width:100vw', 'height:100vh',
-          'background:#1e293b', 'z-index:2147483647', 'display:flex',
-          'flex-direction:column', 'font-family:Arial,sans-serif'
-        ].join(';');
+          // Cria o overlay
+          const overlay = document.createElement('div');
+          overlay.id = 'rapp-pdf-viewer';
+          overlay.style.position = 'fixed';
+          overlay.style.top = '0';
+          overlay.style.left = '0';
+          overlay.style.width = '100vw';
+          overlay.style.height = '100vh';
+          overlay.style.background = '#1e293b';
+          overlay.style.zIndex = '2147483647';
+          overlay.style.display = 'flex';
+          overlay.style.flexDirection = 'column';
+          overlay.style.fontFamily = 'Arial, sans-serif';
 
-        // Barra preta RODEOAPP
-        overlay.innerHTML = `
-          <div style="background:#0f172a;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,0.8);min-height:54px;">
+          // Barra preta RODEOAPP
+          const bar = document.createElement('div');
+          bar.style.cssText = 'background:#0f172a;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,0.9);min-height:56px;';
+          bar.innerHTML = `
             <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:20px;">🤠</span>
+              <span style="font-size:22px;">🤠</span>
               <div>
                 <div style="font-weight:900;font-size:14px;color:#fff;letter-spacing:1px;">RODEOAPP</div>
-                <div style="font-size:10px;color:#64748b;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${filename}</div>
+                <div style="font-size:10px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${filename}</div>
               </div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
-              <button id="rapp-print-btn" style="background:#eab308;color:#000;font-weight:900;padding:9px 18px;border:none;border-radius:7px;cursor:pointer;font-size:13px;white-space:nowrap;">🖨️ IMPRIMIR / SALVAR PDF</button>
-              <button id="rapp-close-btn" style="background:#1e293b;color:#fff;font-weight:900;padding:9px 12px;border:1px solid #334155;border-radius:7px;cursor:pointer;font-size:18px;line-height:1;">✕</button>
-            </div>
-          </div>
-          <iframe id="rapp-pdf-iframe" style="flex:1;border:none;background:#fff;" srcdoc=""></iframe>`;
+              <button id="rapp-print-btn" style="background:#eab308;color:#000;font-weight:900;padding:10px 18px;border:none;border-radius:7px;cursor:pointer;font-size:13px;white-space:nowrap;">🖨️ IMPRIMIR / SALVAR PDF</button>
+              <button id="rapp-close-btn" style="background:#334155;color:#fff;font-weight:900;padding:10px 13px;border:1px solid #475569;border-radius:7px;cursor:pointer;font-size:18px;line-height:1;">✕</button>
+            </div>`;
 
-        document.body.appendChild(overlay);
+          // iframe para o relatório
+          const iframe = document.createElement('iframe');
+          iframe.id = 'rapp-pdf-iframe';
+          iframe.style.cssText = 'flex:1;border:none;background:#fff;width:100%;';
+          iframe.src = blobUrl;
+          iframe.onload = () => setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
 
-        // Eventos dos botões
-        document.getElementById('rapp-close-btn').onclick = () => overlay.remove();
-        document.getElementById('rapp-print-btn').onclick = () => {
-          const iframe = document.getElementById('rapp-pdf-iframe');
-          if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-          }
-        };
+          overlay.appendChild(bar);
+          overlay.appendChild(iframe);
+          document.body.appendChild(overlay);
 
-        // Carrega o HTML no iframe via srcdoc (sem popup)
-        const iframe = document.getElementById('rapp-pdf-iframe');
-        iframe.srcdoc = finalHtml;
+          // Botão fechar
+          document.getElementById('rapp-close-btn').onclick = () => overlay.remove();
+
+          // Botão imprimir/salvar → dispara impressão do iframe
+          document.getElementById('rapp-print-btn').onclick = () => {
+            const fr = document.getElementById('rapp-pdf-iframe');
+            if (fr && fr.contentWindow) {
+              fr.contentWindow.focus();
+              fr.contentWindow.print();
+            }
+          };
+        }, 400); // 400ms: tempo suficiente para o renderer.js remover o loader
 
         return { success: true };
 
