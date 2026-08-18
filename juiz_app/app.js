@@ -1461,9 +1461,11 @@ function getMatchupScoresMap(riderName, day) {
 function showWaitingOtherJudgeModal(scoresMap, totalExpected) {
     const container = document.getElementById('waiting-judges-status-list');
     const juizes = getJudgesListNormalized();
+    const currentJudgeIdx = window.state.currentJudge ? window.state.currentJudge.idx : -1;
 
     container.innerHTML = juizes.map((j, idx) => {
-        const isDone = Boolean(scoresMap[idx] && scoresMap[idx].enviado);
+        const isMyJudgeSubmitted = (idx === currentJudgeIdx && window.state.waitingMatchup);
+        const isDone = Boolean((scoresMap[idx] && scoresMap[idx].enviado) || isMyJudgeSubmitted);
         const statusText = isDone ? '✅ AVALIAÇÃO CONCLUÍDA' : '⏳ AGUARDANDO NOTA...';
         const colorClass = isDone ? 'text-emerald-400 border-emerald-500/30 bg-emerald-950/20' : 'text-amber-400 border-amber-500/30 bg-amber-950/20 animate-pulse';
 
@@ -1489,7 +1491,21 @@ function startWaitingPollInterval() {
         try {
             const cloudEvent = await fetchCloudEventByShare(window.state.shareId, window.state.sharePassword);
             if (cloudEvent) {
-                const rawLocal = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
+                const rawLocal = normalizeEventData(cloudEvent);
+                
+                // Mescla com juizes_status locais para não perder notas em trânsito
+                if (rawLocal && rawLocal.notas && window.state.eventData && window.state.eventData.notas) {
+                    rawLocal.notas.forEach(cloudNota => {
+                        const localNota = window.state.eventData.notas.find(n => 
+                            n.dia === cloudNota.dia && 
+                            (n.peao === cloudNota.peao || n.peaoNome === cloudNota.peaoNome)
+                        );
+                        if (localNota && localNota.juizes_status) {
+                            cloudNota.juizes_status = { ...(cloudNota.juizes_status || {}), ...localNota.juizes_status };
+                        }
+                    });
+                }
+
                 window.state.eventData = rawLocal;
 
                 const totalJudgesExpected = parseInt(window.state.eventData.judges || 2) || 2;
