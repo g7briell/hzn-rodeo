@@ -9,8 +9,8 @@
 const SUPABASE_URL = 'https://api.rodeoapp.pro';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
 
-// Chave padrão Ably Realtime (suporta override por localStorage ou URL param ?ably_key=...)
-const DEFAULT_ABLY_KEY = 'G3G24w.n3dI5w:n3Wz3E4N7_Ably_RodeoAppKey';
+// Chave oficial Ably Realtime
+const DEFAULT_ABLY_KEY = 'ZpXrAw.0ShBdA:PN-cy5nGO2hVtllKkQIQppoPtl4FGufzq58uT9WHXts';
 
 // Inicializa Supabase Client
 const supabase = (typeof window.supabase !== 'undefined' && window.supabase.createClient)

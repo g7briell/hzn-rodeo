@@ -3543,7 +3543,7 @@ window.deleteJuiz = async (idx) => {
 // ==========================================
 let ablyRealtimeClient = null;
 let currentAblyChannel = null;
-const DEFAULT_ABLY_KEY = 'Uu1K1w.N6E56Q:XhN_uJ1_r0d30_4pp_k3y_s3cr3t'; // Chave padrão com suporte a token/override
+const DEFAULT_ABLY_KEY = 'ZpXrAw.0ShBdA:PN-cy5nGO2hVtllKkQIQppoPtl4FGufzq58uT9WHXts'; // Chave oficial Ably Realtime
 
 window.initAblyRealtimeForEvent = (shareId) => {
     if (!shareId) return;
@@ -3559,7 +3559,7 @@ window.initAblyRealtimeForEvent = (shareId) => {
 
         window.closeAblyRealtime();
 
-        const ablyKey = localStorage.getItem('RODEOAPP_ABLY_KEY') || 'G3G24w.n3dI5w:n3Wz3E4N7_Ably_RodeoAppKey';
+        const ablyKey = localStorage.getItem('RODEOAPP_ABLY_KEY') || DEFAULT_ABLY_KEY;
         ablyRealtimeClient = new Ably.Realtime({ key: ablyKey, clientId: `admin-${Date.now()}` });
 
         const channelName = `rodeoapp-event-${shareId}`;
