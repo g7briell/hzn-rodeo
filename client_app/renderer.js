@@ -1773,6 +1773,11 @@ window.openEventControl = async (id) => {
     if (eventControlView) eventControlView.classList.remove('hidden');
     updateConnectionStatus(window.lastSyncStatus || 'synced');
     window.syncUserEventsWithCloud();
+
+    // Inicializa canal Ably Realtime para receber notas dos Juízes ao vivo
+    if (currentEvent.share_id) {
+        window.initAblyRealtimeForEvent(currentEvent.share_id);
+    }
 };
 
 window.hideAllModalsAndViews = () => {
@@ -1800,6 +1805,7 @@ window.hideAllModalsAndViews = () => {
 };
 
 window.closeEventControl = () => {
+    window.closeAblyRealtime();
     if (eventControlView) eventControlView.classList.add('hidden');
     toggleSupportBtn(true);
     applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
@@ -3441,6 +3447,12 @@ window.deleteBoiada = async (idx) => { if (confirm('Excluir esta boiada?')) { cu
 
 let editingJuizIdx = null;
 
+window.toggleJuizSenhaVisibility = () => {
+    const input = document.getElementById('juiz-senha');
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+};
+
 window.openListJuizes = () => {
     document.getElementById('list-juizes-title').innerText = "JUÍZES CADASTRADOS";
     const tbody = document.getElementById('list-juizes-tbody');
@@ -3448,8 +3460,30 @@ window.openListJuizes = () => {
     
     if (currentEvent && currentEvent.juizes) {
         currentEvent.juizes.forEach((j, idx) => {
-            const jNome = typeof j === 'string' ? j : j.nome;
-            tbody.innerHTML += `<tr class="hover:bg-slate-800/20"><td class="px-8 py-6 font-bold text-white uppercase">${jNome}</td><td class="px-8 py-6 text-right space-x-2"><button onclick="openModalJuiz(${idx})" class="p-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button><button onclick="deleteJuiz(${idx})" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></td></tr>`;
+            const jNome = typeof j === 'string' ? j : (j.nome || 'JUIZ');
+            const hasSenha = typeof j === 'object' && j.senha && String(j.senha).trim().length > 0;
+            const senhaBadge = hasSenha 
+                ? `<span class="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold shadow-sm"><svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>Senha: ••••</span>`
+                : `<span class="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold">Sem Senha</span>`;
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-800/20 border-b border-slate-800/40">
+                    <td class="px-8 py-5">
+                        <div class="font-bold text-white uppercase text-base flex items-center gap-3">
+                            <span>${jNome}</span>
+                            ${senhaBadge}
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Juiz ${idx + 1} • Acesso Web Juiz (juiz.rodeoapp.pro)</div>
+                    </td>
+                    <td class="px-8 py-5 text-right space-x-2">
+                        <button onclick="openModalJuiz(${idx})" class="p-2.5 bg-yellow-500/10 text-yellow-500 rounded-xl hover:bg-yellow-500/20 transition-all active:scale-95" title="Editar Juiz e Senha">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                        </button>
+                        <button onclick="deleteJuiz(${idx})" class="p-2.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all active:scale-95" title="Excluir Juiz">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </td>
+                </tr>`;
         });
     }
     document.getElementById('modal-list-juizes').classList.remove('hidden');
@@ -3457,26 +3491,38 @@ window.openListJuizes = () => {
 
 window.openModalJuiz = (idx = null) => {
     editingJuizIdx = idx;
+    const titleEl = document.getElementById('modal-juiz-title') || document.querySelector('#modal-juiz h2');
+    const senhaInput = document.getElementById('juiz-senha');
+    if (senhaInput) senhaInput.type = 'password';
+
     if (idx !== null) {
         const j = currentEvent.juizes[idx];
-        document.getElementById('juiz-nome').value = typeof j === 'string' ? j : j.nome;
+        document.getElementById('juiz-nome').value = typeof j === 'string' ? j : (j.nome || '');
+        if (senhaInput) senhaInput.value = typeof j === 'object' ? (j.senha || '') : '';
+        if (titleEl) titleEl.innerText = "EDITAR JUIZ";
     } else {
         document.getElementById('juiz-nome').value = '';
+        if (senhaInput) senhaInput.value = '';
+        if (titleEl) titleEl.innerText = "CADASTRAR JUIZ";
     }
     document.getElementById('modal-juiz').classList.remove('hidden');
+    setTimeout(() => document.getElementById('juiz-nome')?.focus(), 50);
 };
 
 window.saveJuiz = async (e) => {
     e.preventDefault();
-    const nome = document.getElementById('juiz-nome').value.trim();
+    const nome = document.getElementById('juiz-nome').value.trim().toUpperCase();
+    const senha = (document.getElementById('juiz-senha')?.value || '').trim();
     if (!nome) return;
     
     currentEvent.juizes = currentEvent.juizes || [];
     
+    const juizObj = { nome, senha };
+    
     if (editingJuizIdx !== null) {
-        currentEvent.juizes[editingJuizIdx] = { nome }; // Update to object format
+        currentEvent.juizes[editingJuizIdx] = juizObj;
     } else {
-        currentEvent.juizes.push({ nome });
+        currentEvent.juizes.push(juizObj);
     }
     
     document.getElementById('modal-juiz').classList.add('hidden');
@@ -3491,6 +3537,190 @@ window.deleteJuiz = async (idx) => {
         await window.persistAndSyncEvent(currentEvent);
     }
 };
+
+// ==========================================
+// ABLY REALTIME INTEGRATION (ADMIN RECEIVER)
+// ==========================================
+let ablyRealtimeClient = null;
+let currentAblyChannel = null;
+const DEFAULT_ABLY_KEY = 'Uu1K1w.N6E56Q:XhN_uJ1_r0d30_4pp_k3y_s3cr3t'; // Chave padrão com suporte a token/override
+
+window.initAblyRealtimeForEvent = (shareId) => {
+    if (!shareId) return;
+    if (typeof Ably === 'undefined') {
+        console.warn("Ably Realtime SDK ainda não carregado.");
+        return;
+    }
+
+    try {
+        if (currentAblyChannel && currentAblyChannel.name === `rodeoapp-event-${shareId}`) {
+            return; // Já conectado no canal correto
+        }
+
+        window.closeAblyRealtime();
+
+        const ablyKey = localStorage.getItem('RODEOAPP_ABLY_KEY') || 'G3G24w.n3dI5w:n3Wz3E4N7_Ably_RodeoAppKey';
+        ablyRealtimeClient = new Ably.Realtime({ key: ablyKey, clientId: `admin-${Date.now()}` });
+
+        const channelName = `rodeoapp-event-${shareId}`;
+        currentAblyChannel = ablyRealtimeClient.channels.get(channelName);
+
+        // Status de conexão do Ably
+        ablyRealtimeClient.connection.on('connected', () => {
+            console.log(`[ABLY REALTIME] Conectado com sucesso ao canal ${channelName}`);
+            updateAblyStatusIndicator('connected');
+        });
+
+        ablyRealtimeClient.connection.on('disconnected', () => {
+            console.warn(`[ABLY REALTIME] Desconectado do Ably.`);
+            updateAblyStatusIndicator('disconnected');
+        });
+
+        ablyRealtimeClient.connection.on('failed', (err) => {
+            console.error(`[ABLY REALTIME] Falha na conexão:`, err);
+            updateAblyStatusIndicator('failed');
+        });
+
+        // Escutar notas enviadas pelos juízes
+        currentAblyChannel.subscribe('judge-score-submitted', async (message) => {
+            console.log('[ABLY REALTIME] Nota recebida do Juiz:', message.data);
+            await handleJudgeScoreReceived(message.data);
+        });
+
+    } catch (err) {
+        console.error("Erro ao inicializar Ably Realtime:", err);
+    }
+};
+
+window.closeAblyRealtime = () => {
+    try {
+        if (currentAblyChannel) {
+            currentAblyChannel.unsubscribe();
+            currentAblyChannel = null;
+        }
+        if (ablyRealtimeClient) {
+            ablyRealtimeClient.close();
+            ablyRealtimeClient = null;
+        }
+        updateAblyStatusIndicator('closed');
+    } catch(e) {
+        console.warn("Erro ao fechar Ably:", e);
+    }
+};
+
+function updateAblyStatusIndicator(status) {
+    const dot = document.getElementById('ably-sync-dot');
+    const text = document.getElementById('ably-sync-text');
+    if (!dot || !text) return;
+
+    if (status === 'connected') {
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse";
+        text.innerText = "ABLY REALTIME: ATIVO";
+        text.className = "text-[9px] font-black uppercase tracking-widest text-emerald-400";
+    } else if (status === 'disconnected' || status === 'closed') {
+        dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+        text.innerText = "ABLY: DESCONECTADO";
+        text.className = "text-[9px] font-black uppercase tracking-widest text-amber-400";
+    } else {
+        dot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
+        text.innerText = "ABLY: OFF";
+        text.className = "text-[9px] font-black uppercase tracking-widest text-red-400";
+    }
+}
+
+async function handleJudgeScoreReceived(scoreData) {
+    if (!currentEvent || !scoreData) return;
+
+    const { day, riderName, bullName, judgeName, judgeIdx, riderScore, bullScore, totalScore, isFall, fallTime, isReride } = scoreData;
+
+    // Atualiza o array de notas do evento
+    currentEvent.notas = currentEvent.notas || [];
+    
+    // Normaliza nota
+    const rScore = parseFloat(riderScore) || 0;
+    const bScore = parseFloat(bullScore) || 0;
+    const jIdx = parseInt(judgeIdx) || 0;
+
+    const existingIdx = currentEvent.notas.findIndex(n => 
+        n.peaoNome === riderName && 
+        n.dia === day && 
+        n.judgeIdx === jIdx && 
+        n.status !== 'substituida'
+    );
+
+    const notaObj = {
+        peaoNome: riderName,
+        dia: day,
+        judgeIdx: jIdx,
+        juizNome: judgeName,
+        riderScore: rScore,
+        bullScore: bScore,
+        fallTime: fallTime || (isFall ? '0.00' : '8.00'),
+        status: isReride ? 'substituida' : 'ativa',
+        updatedAt: new Date().toISOString()
+    };
+
+    if (existingIdx > -1) {
+        currentEvent.notas[existingIdx] = notaObj;
+    } else {
+        currentEvent.notas.push(notaObj);
+    }
+
+    // Persiste e sincroniza com a nuvem
+    await window.persistAndSyncEvent(currentEvent);
+
+    // Atualiza a tela de notas se estiver aberta
+    const viewNotasList = document.getElementById('view-notas-list');
+    if (viewNotasList && !viewNotasList.classList.contains('hidden')) {
+        renderNotasCards();
+    }
+
+    // Exibe notificação toast em tempo real para o Administrador
+    showJudgeScoreToast({
+        judgeName: judgeName || `JUIZ ${jIdx + 1}`,
+        riderName,
+        bullName,
+        rScore,
+        bScore,
+        total: rScore + bScore,
+        isFall
+    });
+}
+
+function showJudgeScoreToast(data) {
+    const existing = document.getElementById('realtime-score-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'realtime-score-toast';
+    toast.className = "fixed top-6 right-6 z-[9999] bg-slate-900/95 border-2 border-yellow-500 p-5 rounded-2xl shadow-2xl backdrop-blur-xl flex items-center gap-4 transform transition-all duration-300 translate-y-0 text-left max-w-md animate-bounce";
+    
+    toast.innerHTML = `
+        <div class="w-12 h-12 rounded-xl bg-yellow-500/20 text-yellow-500 flex items-center justify-center flex-shrink-0 border border-yellow-500/30 text-2xl">
+            🤠
+        </div>
+        <div class="flex-1">
+            <div class="flex items-center justify-between gap-2 mb-0.5">
+                <span class="text-[10px] font-black uppercase tracking-widest text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">Nota Recebida • Realtime</span>
+                <span class="text-[10px] font-mono text-slate-400">${new Date().toLocaleTimeString()}</span>
+            </div>
+            <div class="text-sm font-black text-white uppercase truncate">${data.judgeName} avaliou ${data.riderName}</div>
+            <div class="text-xs font-bold text-slate-300 mt-1">
+                ${data.isFall ? '<span class="text-red-400 font-black">SEM TEMPO (0,00)</span>' : `Peão: <b class="text-white">${data.rScore.toFixed(2)}</b> + Touro: <b class="text-yellow-400">${data.bScore.toFixed(2)}</b> = <b class="text-emerald-400 text-sm">${data.total.toFixed(2)}</b>`}
+            </div>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white font-bold p-1">✕</button>
+    `;
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 6000);
+}
 
 // --- SISTEMA DE CORES DINÂMICAS ---
 function applyThemeColor(color) {
