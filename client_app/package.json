@@ -1,28 +1,30 @@
 {
   "name": "hzn-rodeo-client",
-  "version": "1.0.154",
+  "version": "1.0.155",
   "description": "Rodeo System Client App",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:all": "electron-builder --win --mac"
-  },
-  "keywords": [
-    "rodeo",
-    "electron"
-  ],
-  "author": "Horizon",
-  "license": "ISC",
-  "devDependencies": {
-    "electron": "^28.1.0",
-    "electron-builder": "^24.9.1"
+    "build": "electron-builder",
+    "release": "electron-builder -p always"
   },
   "dependencies": {
-    "electron-updater": "^6.1.7",
-    "jspdf": "^2.5.2",
-    "jspdf-autotable": "^3.8.4"
+    "@spfxappdev/docxmerger": "^1.0.3",
+    "@supabase/supabase-js": "^2.43.1",
+    "docx-merger": "^1.2.2",
+    "docxtemplater": "^3.68.7",
+    "electron-updater": "^6.8.3",
+    "exceljs": "^4.4.0",
+    "node-machine-id": "^1.1.12",
+    "pdf-merger-js": "^5.1.2",
+    "pizzip": "^3.2.0",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.1",
+    "electron-builder": "^26.8.1",
+    "jimp": "^0.16.13",
+    "png-to-ico": "^3.0.1"
   },
   "build": {
     "appId": "com.horizon.rodeoapp",
@@ -32,25 +34,13 @@
       {
         "provider": "github",
         "owner": "g7briell",
-        "repo": "hzn-rodeo",
-        "releaseType": "draft"
+        "repo": "hzn-rodeo"
       }
     ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"
     },
-    "mac": {
-      "target": [
-        "zip"
-      ],
-      "artifactName": "HZN-RodeoApp-Setup-${version}-${arch}.${ext}"
-    },
-    "files": [
-      "**/*",
-      "*.xlsx",
-      "modelos_contrato/**/*"
-    ],
     "extraResources": [
       {
         "from": "../modelos_contrato",
