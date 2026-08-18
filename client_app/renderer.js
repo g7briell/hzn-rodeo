@@ -7100,6 +7100,28 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.144": [
+        {
+            icon: "📄",
+            title: "Central de Relatórios & Report Viewer (A4)",
+            desc: "Visualização e impressão direta em folha A4 timbrada de Súmulas dos Juízes, Ordem de Embretamento, Ficha do Locutor e Rankings completos."
+        },
+        {
+            icon: "⚡",
+            title: "Atualização 100% Silenciosa",
+            desc: "O sistema agora atualiza sem abrir instaladores do Windows. Basta reiniciar o app para aplicar novidades em 2 segundos!"
+        },
+        {
+            icon: "🏆",
+            title: "Ranking de Touros e Boiadas Aprimorado",
+            desc: "Cálculo de médias robusto e protegido, integrando notas da nuvem e compatível com todas as categorias de animais."
+        },
+        {
+            icon: "🤠",
+            title: "Portal do Juiz (juiz.rodeoapp.pro)",
+            desc: "Nova tela de Rounds do evento, notas 100% zeradas ao iniciar montaria, sincronização em tempo real e proteção de histórico por senha."
+        }
+    ],
     "1.0.143": [
         {
             icon: "⚡",
@@ -7178,4 +7200,710 @@ window.closeWhatsNewModal = async () => {
 setTimeout(() => {
     window.checkAndShowWhatsNew();
 }, 1200);
+
+// ==========================================
+// CENTRAL INTEGRADA DE RELATÓRIOS (REPORT VIEWER)
+// ==========================================
+let reportViewerState = {
+    type: 'sumula', // 'sumula' | 'embretamento' | 'locutor' | 'ranking_geral' | 'ranking_touros' | 'ranking_cias'
+    day: 'DIA 1',
+    zoom: 1.0
+};
+
+window.openReportViewer = (type = 'sumula', defaultDay = null) => {
+    if (!currentEvent) {
+        alert("Selecione ou abra um evento para visualizar os relatórios!");
+        return;
+    }
+
+    reportViewerState.type = type;
+    reportViewerState.zoom = 1.0;
+
+    // Atualiza opções de dias disponíveis no select
+    const selectDay = document.getElementById('report-select-day');
+    const selectType = document.getElementById('report-select-type');
+    
+    if (selectType) selectType.value = type;
+
+    const sorteios = currentEvent.sorteios || [];
+    let availableDays = sorteios.map(s => s.day).filter(Boolean);
+    if (availableDays.length === 0) {
+        const totalDays = parseInt(currentEvent.days) || 3;
+        availableDays = Array.from({ length: totalDays }, (_, i) => `DIA ${i + 1}`);
+    }
+
+    if (defaultDay && availableDays.includes(defaultDay)) {
+        reportViewerState.day = defaultDay;
+    } else if (!availableDays.includes(reportViewerState.day)) {
+        reportViewerState.day = availableDays[0] || 'DIA 1';
+    }
+
+    if (selectDay) {
+        if (type.startsWith('ranking')) {
+            selectDay.innerHTML = `<option value="geral">🏆 GERAL (TODOS OS ROUNDS)</option>` + 
+                availableDays.map(d => `<option value="${d}">${d.replace(/DIA/gi, 'ROUND')}</option>`).join('');
+            selectDay.value = 'geral';
+            reportViewerState.day = 'geral';
+        } else {
+            selectDay.innerHTML = availableDays.map(d => `<option value="${d}">${d.replace(/DIA/gi, 'ROUND')}</option>`).join('');
+            selectDay.value = reportViewerState.day;
+        }
+    }
+
+    renderCurrentReport();
+    updateZoomDisplay();
+    document.getElementById('modal-report-viewer').classList.remove('hidden');
+};
+
+window.closeReportViewer = () => {
+    document.getElementById('modal-report-viewer').classList.add('hidden');
+};
+
+window.handleReportTypeChange = (type) => {
+    reportViewerState.type = type;
+    const selectDay = document.getElementById('report-select-day');
+    
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    let availableDays = sorteios.map(s => s.day).filter(Boolean);
+    if (availableDays.length === 0) {
+        const totalDays = parseInt(currentEvent?.days) || 3;
+        availableDays = Array.from({ length: totalDays }, (_, i) => `DIA ${i + 1}`);
+    }
+
+    if (selectDay) {
+        if (type.startsWith('ranking')) {
+            selectDay.innerHTML = `<option value="geral">🏆 GERAL (TODOS OS ROUNDS)</option>` + 
+                availableDays.map(d => `<option value="${d}">${d.replace(/DIA/gi, 'ROUND')}</option>`).join('');
+            selectDay.value = 'geral';
+            reportViewerState.day = 'geral';
+        } else {
+            selectDay.innerHTML = availableDays.map(d => `<option value="${d}">${d.replace(/DIA/gi, 'ROUND')}</option>`).join('');
+            selectDay.value = availableDays[0] || 'DIA 1';
+            reportViewerState.day = selectDay.value;
+        }
+    }
+
+    renderCurrentReport();
+};
+
+window.handleReportDayChange = (day) => {
+    reportViewerState.day = day;
+    renderCurrentReport();
+};
+
+window.adjustReportZoom = (delta) => {
+    reportViewerState.zoom = Math.min(Math.max(reportViewerState.zoom + delta, 0.5), 2.0);
+    updateZoomDisplay();
+};
+
+window.resetReportZoom = () => {
+    reportViewerState.zoom = 1.0;
+    updateZoomDisplay();
+};
+
+function updateZoomDisplay() {
+    const container = document.getElementById('report-paper-container');
+    const zoomText = document.getElementById('report-zoom-level');
+    if (container) {
+        container.style.transform = `scale(${reportViewerState.zoom})`;
+    }
+    if (zoomText) {
+        zoomText.innerText = `${Math.round(reportViewerState.zoom * 100)}%`;
+    }
+}
+
+window.printCurrentReport = () => {
+    window.print();
+};
+
+window.exportCurrentReportPDF = () => {
+    const element = document.getElementById('report-paper-container');
+    if (!element) return;
+
+    const opt = {
+        margin: 0,
+        filename: `Relatorio_${reportViewerState.type}_${(currentEvent?.name || 'Rodeio').replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    if (typeof html2pdf === 'function') {
+        html2pdf().set(opt).from(element).save();
+    } else {
+        window.print();
+    }
+};
+
+function renderCurrentReport() {
+    const container = document.getElementById('report-paper-container');
+    const titleEl = document.getElementById('report-viewer-title');
+    if (!container) return;
+
+    let html = '';
+    const type = reportViewerState.type;
+    const day = reportViewerState.day;
+
+    if (type === 'sumula') {
+        if (titleEl) titleEl.innerText = `SÚMULA OFICIAL DOS JUÍZES • ${day.replace(/DIA/gi, 'ROUND')}`;
+        html = generateSumulaJuizHTML(day);
+    } else if (type === 'embretamento') {
+        if (titleEl) titleEl.innerText = `ORDEM DE EMBRETAMENTO (BRETES) • ${day.replace(/DIA/gi, 'ROUND')}`;
+        html = generateEmbretamentoHTML(day);
+    } else if (type === 'locutor') {
+        if (titleEl) titleEl.innerText = `FICHA DE APOIO DO LOCUTOR • ${day.replace(/DIA/gi, 'ROUND')}`;
+        html = generateLocutorHTML(day);
+    } else if (type === 'ranking_geral') {
+        if (titleEl) titleEl.innerText = `CLASSIFICAÇÃO GERAL DO EVENTO`;
+        html = generateRankingGeralHTML(day);
+    } else if (type === 'ranking_touros') {
+        if (titleEl) titleEl.innerText = `RANKING DE MELHORES TOUROS`;
+        html = generateRankingTourosHTML(day);
+    } else if (type === 'ranking_cias') {
+        if (titleEl) titleEl.innerText = `RANKING DE MELHOR BOIADA (CIAS)`;
+        html = generateRankingCiasHTML(day);
+    }
+
+    container.innerHTML = html;
+}
+
+// Helpers de Cabeçalho e Rodapé A4
+function generateReportA4Header(title, subtitle) {
+    const eventName = (currentEvent && (currentEvent.name || currentEvent.nome)) || 'EVENTO DE RODEIO';
+    const eventCity = (currentEvent && (currentEvent.cidade || currentEvent.local)) || 'ARENA PRINCIPAL';
+    const nowStr = new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    return `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px;">
+            <div style="display:flex; align-items:center; gap: 12px;">
+                <div style="font-weight: 900; font-size: 1.35rem; font-style: italic; letter-spacing: -0.05em; color: #000;">
+                    RODEO<span style="color:#eab308;">APP</span>
+                </div>
+                <div style="height: 24px; width: 1px; background: #cbd5e1;"></div>
+                <div>
+                    <h1 style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: -0.02em;">
+                        ${eventName}
+                    </h1>
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">
+                        ${eventCity} • SISTEMA OFICIAL DE JULGAMENTO
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 11px; font-weight: 900; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">
+                    ${title}
+                </div>
+                <div style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">
+                    ${subtitle} • Emitido em ${nowStr}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function generateReportA4Footer(signatures = true) {
+    return `
+        <div style="margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 9px; color: #64748b;">
+            ${signatures ? `
+            <div style="display: flex; justify-content: space-between; gap: 20px; margin-bottom: 14px; padding-top: 10px;">
+                <div style="flex: 1; border-top: 1px solid #0f172a; text-align: center; padding-top: 4px; font-weight: 800; font-size: 9px; text-transform: uppercase; color: #0f172a;">
+                    JUIZ OFICIAL 1
+                </div>
+                <div style="flex: 1; border-top: 1px solid #0f172a; text-align: center; padding-top: 4px; font-weight: 800; font-size: 9px; text-transform: uppercase; color: #0f172a;">
+                    JUIZ OFICIAL 2
+                </div>
+                <div style="flex: 1; border-top: 1px solid #0f172a; text-align: center; padding-top: 4px; font-weight: 800; font-size: 9px; text-transform: uppercase; color: #0f172a;">
+                    COMISSÃO ORGANIZADORA
+                </div>
+            </div>
+            ` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center; font-weight: 700; font-size: 8px; text-transform: uppercase; color: #94a3b8;">
+                <span>RODEOAPP • SOFTWARE PROFISSIONAL DE GESTÃO DE RODEIOS</span>
+                <span>PÁGINA 1 DE 1</span>
+            </div>
+        </div>
+    `;
+}
+
+// 1. GERADOR: SÚMULA OFICIAL DOS JUÍZES
+function generateSumulaJuizHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day === day) || sorteios[0];
+
+    if (!sorteio || !sorteio.riders || sorteio.riders.length === 0) {
+        return `
+            <div class="report-sheet-a4" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                ${generateReportA4Header("SÚMULA DOS JUÍZES", day.replace(/DIA/gi, 'ROUND'))}
+                <div style="padding: 60px 0; color: #94a3b8; font-weight: 800; text-transform: uppercase; font-size: 13px;">
+                    ⚠️ Nenhum sorteio realizado para o ${day.replace(/DIA/gi, 'Round ')}.
+                </div>
+                ${generateReportA4Footer(false)}
+            </div>
+        `;
+    }
+
+    const riders = sorteio.riders || [];
+    const bulls = sorteio.bulls || [];
+    const assignments = sorteio.assignments || {};
+
+    let rowsHtml = '';
+    riders.forEach((r, idx) => {
+        const rNome = typeof r === 'string' ? r : (r.nome || '---');
+        const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '---';
+        const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+        const b = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
+        const isZebra = idx % 2 === 1;
+
+        rowsHtml += `
+            <tr style="background-color: ${isZebra ? '#f8fafc' : '#ffffff'}; border-bottom: 1px solid #e2e8f0; height: 26px;">
+                <td style="padding: 4px 6px; text-align: center; font-weight: 900; font-size: 10px; color: #0f172a;">${idx + 1}</td>
+                <td style="padding: 4px 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; color: #0f172a;">${rNome}</td>
+                <td style="padding: 4px 6px; font-weight: 700; font-size: 9px; text-transform: uppercase; color: #64748b;">${rCidade}</td>
+                <td style="padding: 4px 6px; font-weight: 900; font-size: 10px; text-transform: uppercase; color: #0f172a;">${b.nome}</td>
+                <td style="padding: 4px 6px; font-weight: 700; font-size: 9px; text-transform: uppercase; color: #64748b;">${b.cia || '---'}</td>
+                <td style="padding: 4px 6px; text-align: center; font-weight: 800; font-size: 9px; color: #0f172a;">${b.lado || '-'}</td>
+                <td style="padding: 4px 6px; border: 1px dashed #cbd5e1; width: 45px;"></td>
+                <td style="padding: 4px 6px; border: 1px dashed #cbd5e1; width: 45px;"></td>
+                <td style="padding: 4px 6px; border: 1px dashed #cbd5e1; width: 45px;"></td>
+                <td style="padding: 4px 6px; border: 1px dashed #cbd5e1; width: 50px;"></td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div class="report-sheet-a4">
+            ${generateReportA4Header("SÚMULA OFICIAL DOS JUÍZES", day.replace(/DIA/gi, 'ROUND'))}
+            
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 10px;">
+                <thead>
+                    <tr style="background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 8px; font-weight: 900; letter-spacing: 0.05em;">
+                        <th style="padding: 6px; text-align: center; width: 26px;">Nº</th>
+                        <th style="padding: 6px;">COMPETIDOR</th>
+                        <th style="padding: 6px;">CIDADE</th>
+                        <th style="padding: 6px;">ANIMAL / TOURO</th>
+                        <th style="padding: 6px;">COMPANHIA</th>
+                        <th style="padding: 6px; text-align: center; width: 28px;">L</th>
+                        <th style="padding: 6px; text-align: center; width: 45px;">PEÃO</th>
+                        <th style="padding: 6px; text-align: center; width: 45px;">TOURO</th>
+                        <th style="padding: 6px; text-align: center; width: 45px;">TEMPO</th>
+                        <th style="padding: 6px; text-align: center; width: 50px;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            ${generateReportA4Footer(true)}
+        </div>
+    `;
+}
+
+// 2. GERADOR: ORDEM DE EMBRETAMENTO (BRETES)
+function generateEmbretamentoHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day === day) || sorteios[0];
+
+    if (!sorteio || !sorteio.riders || sorteio.riders.length === 0) {
+        return `
+            <div class="report-sheet-a4" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                ${generateReportA4Header("ORDEM DE EMBRETAMENTO", day.replace(/DIA/gi, 'ROUND'))}
+                <div style="padding: 60px 0; color: #94a3b8; font-weight: 800; text-transform: uppercase; font-size: 13px;">
+                    ⚠️ Nenhum sorteio realizado para o ${day.replace(/DIA/gi, 'Round ')}.
+                </div>
+                ${generateReportA4Footer(false)}
+            </div>
+        `;
+    }
+
+    const riders = sorteio.riders || [];
+    const bulls = sorteio.bulls || [];
+    const assignments = sorteio.assignments || {};
+
+    let rowsHtml = '';
+    riders.forEach((r, idx) => {
+        const rNome = typeof r === 'string' ? r : (r.nome || '---');
+        const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '---';
+        const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+        const b = bulls[bullIdx] || { nome: '---', cia: '---', marca: '---', lado: '---' };
+        const isZebra = idx % 2 === 1;
+
+        rowsHtml += `
+            <tr style="background-color: ${isZebra ? '#f8fafc' : '#ffffff'}; border-bottom: 1px solid #e2e8f0; height: 28px;">
+                <td style="padding: 6px; text-align: center; font-weight: 900; font-size: 11px; color: #0f172a;">${idx + 1}º</td>
+                <td style="padding: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; color: #0f172a;">${b.nome}</td>
+                <td style="padding: 6px; font-weight: 800; font-size: 9px; text-transform: uppercase; color: #64748b;">${b.cia || '---'}</td>
+                <td style="padding: 6px; text-align: center; font-weight: 900; font-size: 10px; color: #0f172a;">${b.marca || '-'}</td>
+                <td style="padding: 6px; text-align: center; font-weight: 800; font-size: 10px; color: #0f172a;">${b.lado || '-'}</td>
+                <td style="padding: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; color: #0f172a;">${rNome}</td>
+                <td style="padding: 6px; font-weight: 700; font-size: 9px; text-transform: uppercase; color: #64748b;">${rCidade}</td>
+                <td style="padding: 6px; border: 1px dashed #cbd5e1; width: 60px;"></td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div class="report-sheet-a4">
+            ${generateReportA4Header("ORDEM DE EMBRETAMENTO (BRETES)", day.replace(/DIA/gi, 'ROUND'))}
+            
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 10px;">
+                <thead>
+                    <tr style="background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 8px; font-weight: 900; letter-spacing: 0.05em;">
+                        <th style="padding: 6px; text-align: center; width: 32px;">SAÍDA</th>
+                        <th style="padding: 6px;">TOURO / ANIMAL</th>
+                        <th style="padding: 6px;">CIA DE RODEIO</th>
+                        <th style="padding: 6px; text-align: center; width: 45px;">MARCA</th>
+                        <th style="padding: 6px; text-align: center; width: 30px;">L</th>
+                        <th style="padding: 6px;">COMPETIDOR</th>
+                        <th style="padding: 6px;">CIDADE</th>
+                        <th style="padding: 6px; text-align: center; width: 60px;">BRETE Nº</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            ${generateReportA4Footer(false)}
+        </div>
+    `;
+}
+
+// 3. GERADOR: FICHA DO LOCUTOR
+function generateLocutorHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day === day) || sorteios[0];
+
+    if (!sorteio || !sorteio.riders || sorteio.riders.length === 0) {
+        return `
+            <div class="report-sheet-a4" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                ${generateReportA4Header("FICHA DO LOCUTOR", day.replace(/DIA/gi, 'ROUND'))}
+                <div style="padding: 60px 0; color: #94a3b8; font-weight: 800; text-transform: uppercase; font-size: 13px;">
+                    ⚠️ Nenhum sorteio realizado para o ${day.replace(/DIA/gi, 'Round ')}.
+                </div>
+                ${generateReportA4Footer(false)}
+            </div>
+        `;
+    }
+
+    const riders = sorteio.riders || [];
+    const bulls = sorteio.bulls || [];
+    const assignments = sorteio.assignments || {};
+
+    let cardsHtml = '';
+    riders.forEach((r, idx) => {
+        const rNome = typeof r === 'string' ? r : (r.nome || '---');
+        const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '---';
+        const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+        const b = bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
+
+        cardsHtml += `
+            <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="font-weight: 900; font-size: 12px; background: #0f172a; color: #fff; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+                        ${idx + 1}
+                    </div>
+                    <div>
+                        <div style="font-weight: 900; font-size: 11px; text-transform: uppercase; color: #0f172a;">
+                            ${rNome}
+                        </div>
+                        <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase;">
+                            ${rCidade}
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight: 900; font-size: 11px; text-transform: uppercase; color: #b45309;">
+                        VS ${b.nome}
+                    </div>
+                    <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase;">
+                        CIA ${b.cia || '---'} • GIRO: ${b.lado === 'C' ? 'CANHOTO' : (b.lado === 'D' ? 'DESTRO' : '---')}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    return `
+        <div class="report-sheet-a4">
+            ${generateReportA4Header("FICHA DE APOIO DO LOCUTOR", day.replace(/DIA/gi, 'ROUND'))}
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                ${cardsHtml}
+            </div>
+
+            ${generateReportA4Footer(false)}
+        </div>
+    `;
+}
+
+// 4. GERADOR: RANKING GERAL ACUMULADO
+function generateRankingGeralHTML(filter) {
+    if (!currentEvent || !currentEvent.notas) {
+        return `
+            <div class="report-sheet-a4" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                ${generateReportA4Header("CLASSIFICAÇÃO GERAL", "ACUMULADO")}
+                <div style="padding: 60px 0; color: #94a3b8; font-weight: 800; text-transform: uppercase; font-size: 13px;">
+                    ⚠️ Nenhuma nota lançada no evento até o momento.
+                </div>
+                ${generateReportA4Footer(false)}
+            </div>
+        `;
+    }
+
+    const notas = currentEvent.notas.filter(n => n.status === 'ativa' || n.status === 'nota_baixa');
+    const competitorsMap = {};
+
+    notas.forEach(n => {
+        if (filter !== 'geral' && n.dia !== filter) return;
+        const pNome = (n.peao || n.peaoNome || '---').trim();
+        if (!competitorsMap[pNome]) {
+            competitorsMap[pNome] = {
+                nome: pNome,
+                cidade: n.cidade || '---',
+                totalPontos: 0,
+                paradas: 0,
+                notasPorRound: {}
+            };
+        }
+        const notaVal = parseFloat(n.totalGeral) || 0;
+        competitorsMap[pNome].totalPontos += notaVal;
+        if (notaVal > 0) competitorsMap[pNome].paradas++;
+        competitorsMap[pNome].notasPorRound[n.dia] = notaVal;
+    });
+
+    const ranking = Object.values(competitorsMap).sort((a, b) => b.totalPontos - a.totalPontos);
+
+    let rowsHtml = '';
+    ranking.forEach((r, idx) => {
+        const isZebra = idx % 2 === 1;
+        const isPodium = idx < 3;
+
+        rowsHtml += `
+            <tr style="background-color: ${isZebra ? '#f8fafc' : '#ffffff'}; border-bottom: 1px solid #e2e8f0; height: 26px;">
+                <td style="padding: 4px 6px; text-align: center; font-weight: 900; font-size: 10px; color: ${isPodium ? '#b45309' : '#0f172a'};">${idx + 1}º</td>
+                <td style="padding: 4px 6px; font-weight: 900; font-size: 10px; text-transform: uppercase; color: #0f172a;">${r.nome}</td>
+                <td style="padding: 4px 6px; font-weight: 700; font-size: 9px; text-transform: uppercase; color: #64748b;">${r.cidade}</td>
+                <td style="padding: 4px 6px; text-align: center; font-weight: 800; font-size: 9px; color: #0f172a;">${(r.notasPorRound['DIA 1'] || 0).toFixed(2)}</td>
+                <td style="padding: 4px 6px; text-align: center; font-weight: 800; font-size: 9px; color: #0f172a;">${(r.notasPorRound['DIA 2'] || 0).toFixed(2)}</td>
+                <td style="padding: 4px 6px; text-align: center; font-weight: 800; font-size: 9px; color: #0f172a;">${(r.notasPorRound['DIA 3'] || r.notasPorRound['SEMI-FINAL'] || 0).toFixed(2)}</td>
+                <td style="padding: 4px 6px; text-align: center; font-weight: 900; font-size: 9px; color: #0f172a;">${r.paradas}</td>
+                <td style="padding: 4px 6px; text-align: right; font-weight: 900; font-size: 11px; color: #15803d;">${r.totalPontos.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div class="report-sheet-a4">
+            ${generateReportA4Header("CLASSIFICAÇÃO GERAL DOS COMPETIDORES", filter === 'geral' ? "ACUMULADO DO EVENTO" : filter.replace(/DIA/gi, 'ROUND'))}
+            
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 10px;">
+                <thead>
+                    <tr style="background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 8px; font-weight: 900; letter-spacing: 0.05em;">
+                        <th style="padding: 6px; text-align: center; width: 28px;">POS</th>
+                        <th style="padding: 6px;">COMPETIDOR</th>
+                        <th style="padding: 6px;">CIDADE</th>
+                        <th style="padding: 6px; text-align: center; width: 45px;">R1</th>
+                        <th style="padding: 6px; text-align: center; width: 45px;">R2</th>
+                        <th style="padding: 6px; text-align: center; width: 45px;">R3/SEMI</th>
+                        <th style="padding: 6px; text-align: center; width: 40px;">PARADAS</th>
+                        <th style="padding: 6px; text-align: right; width: 65px;">TOTAL PTS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            ${generateReportA4Footer(true)}
+        </div>
+    `;
+}
+
+// 5. GERADOR: RANKING DE MELHORES TOUROS
+function generateRankingTourosHTML(filter) {
+    const getSafeStr = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'object') return (val.nome || val.name || val.touro || '').trim();
+        return String(val).trim();
+    };
+
+    const notas = ((currentEvent && currentEvent.notas) || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa'));
+    const bullsMap = {};
+
+    if (currentEvent && currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
+        currentEvent.boiadas.forEach(c => {
+            const cNome = getSafeStr(c.nome || c.cia || 'SEM CIA');
+            if (c.touros && Array.isArray(c.touros)) {
+                c.touros.forEach(t => {
+                    const tNome = getSafeStr(t);
+                    if (tNome) bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome };
+                });
+            }
+        });
+    }
+
+    notas.forEach(n => {
+        const tNome = getSafeStr(n.touro || n.touroNome || n.bullName);
+        if (tNome && !bullsMap[tNome.toUpperCase()]) {
+            const cNome = getSafeStr(n.cia || n.bullCia || 'SEM CIA');
+            bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome };
+        }
+    });
+
+    const tourosData = [];
+    for (const [upperNome, bInfo] of Object.entries(bullsMap)) {
+        const peaoNotas = notas.filter(n => {
+            const nTouroUpper = getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase();
+            return nTouroUpper === upperNome && (filter === 'geral' || n.dia === filter);
+        });
+        if (peaoNotas.length === 0) continue;
+
+        let sum = 0;
+        peaoNotas.forEach(n => { sum += (parseFloat(n.totalTouro) || 0); });
+        const media = sum / peaoNotas.length;
+        tourosData.push({ ...bInfo, saidas: peaoNotas.length, media, sum });
+    }
+
+    tourosData.sort((a, b) => b.media - a.media);
+
+    let rowsHtml = '';
+    tourosData.forEach((item, idx) => {
+        const isZebra = idx % 2 === 1;
+        const isPodium = idx < 3;
+
+        rowsHtml += `
+            <tr style="background-color: ${isZebra ? '#f8fafc' : '#ffffff'}; border-bottom: 1px solid #e2e8f0; height: 26px;">
+                <td style="padding: 4px 6px; text-align: center; font-weight: 900; font-size: 10px; color: ${isPodium ? '#b45309' : '#0f172a'};">${idx + 1}º</td>
+                <td style="padding: 4px 6px; font-weight: 900; font-size: 10px; text-transform: uppercase; color: #0f172a;">${item.nome}</td>
+                <td style="padding: 4px 6px; font-weight: 800; font-size: 9px; text-transform: uppercase; color: #64748b;">${item.cia}</td>
+                <td style="padding: 4px 6px; text-align: center; font-weight: 800; font-size: 9px; color: #0f172a;">${item.saidas}</td>
+                <td style="padding: 4px 6px; text-align: right; font-weight: 900; font-size: 11px; color: #15803d;">${item.media.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div class="report-sheet-a4">
+            ${generateReportA4Header("RANKING OFICIAL DE MELHORES TOUROS", filter === 'geral' ? "MÉDIA GERAL DO EVENTO" : filter.replace(/DIA/gi, 'ROUND'))}
+            
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 10px;">
+                <thead>
+                    <tr style="background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 8px; font-weight: 900; letter-spacing: 0.05em;">
+                        <th style="padding: 6px; text-align: center; width: 28px;">POS</th>
+                        <th style="padding: 6px;">ANIMAL / TOURO</th>
+                        <th style="padding: 6px;">COMPANHIA DE RODEIO</th>
+                        <th style="padding: 6px; text-align: center; width: 50px;">SAÍDAS</th>
+                        <th style="padding: 6px; text-align: right; width: 70px;">MÉDIA FINAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            ${generateReportA4Footer(true)}
+        </div>
+    `;
+}
+
+// 6. GERADOR: RANKING DE MELHOR BOIADA (CIAS)
+function generateRankingCiasHTML(filter) {
+    const getSafeStr = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'object') return (val.nome || val.name || val.touro || '').trim();
+        return String(val).trim();
+    };
+
+    const notas = ((currentEvent && currentEvent.notas) || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa'));
+    const boiadaMap = {};
+
+    if (currentEvent && currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
+        currentEvent.boiadas.forEach(c => {
+            const cNome = getSafeStr(c.nome || c.cia);
+            if (cNome) boiadaMap[cNome.toUpperCase()] = { nome: cNome, sum: 0, count: 0 };
+        });
+    }
+
+    const getBullCia = (n) => {
+        const explicitCia = getSafeStr(n.cia || n.bullCia);
+        if (explicitCia) return explicitCia.toUpperCase();
+
+        const bullName = getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase();
+        if (!bullName || !currentEvent.boiadas || !Array.isArray(currentEvent.boiadas)) return null;
+
+        for (const c of currentEvent.boiadas) {
+            const cNome = getSafeStr(c.nome || c.cia);
+            if (c.touros && Array.isArray(c.touros)) {
+                if (c.touros.some(t => getSafeStr(t).toUpperCase() === bullName)) {
+                    return cNome.toUpperCase();
+                }
+            }
+        }
+        return null;
+    };
+
+    notas.forEach(n => {
+        if (filter !== 'geral' && n.dia !== filter) return;
+        const ciaUpper = getBullCia(n);
+        if (ciaUpper) {
+            if (!boiadaMap[ciaUpper]) {
+                boiadaMap[ciaUpper] = { nome: ciaUpper, sum: 0, count: 0 };
+            }
+            boiadaMap[ciaUpper].sum += (parseFloat(n.totalTouro) || 0);
+            boiadaMap[ciaUpper].count++;
+        }
+    });
+
+    const boiadasData = [];
+    for (const [ciaUpper, data] of Object.entries(boiadaMap)) {
+        if (data.count > 0) {
+            boiadasData.push({ nome: data.nome, saidas: data.count, media: data.sum / data.count, sum: data.sum });
+        }
+    }
+
+    boiadasData.sort((a, b) => b.media - a.media);
+
+    let rowsHtml = '';
+    boiadasData.forEach((item, idx) => {
+        const isZebra = idx % 2 === 1;
+        const isPodium = idx < 3;
+
+        rowsHtml += `
+            <tr style="background-color: ${isZebra ? '#f8fafc' : '#ffffff'}; border-bottom: 1px solid #e2e8f0; height: 28px;">
+                <td style="padding: 6px; text-align: center; font-weight: 900; font-size: 10px; color: ${isPodium ? '#b45309' : '#0f172a'};">${idx + 1}º</td>
+                <td style="padding: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; color: #0f172a;">${item.nome}</td>
+                <td style="padding: 6px; text-align: center; font-weight: 800; font-size: 10px; color: #0f172a;">${item.saidas}</td>
+                <td style="padding: 6px; text-align: center; font-weight: 800; font-size: 10px; color: #64748b;">${item.sum.toFixed(2)}</td>
+                <td style="padding: 6px; text-align: right; font-weight: 900; font-size: 12px; color: #15803d;">${item.media.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div class="report-sheet-a4">
+            ${generateReportA4Header("RANKING OFICIAL DE MELHOR BOIADA (CIAS)", filter === 'geral' ? "MÉDIA GERAL DO EVENTO" : filter.replace(/DIA/gi, 'ROUND'))}
+            
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 10px;">
+                <thead>
+                    <tr style="background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 8px; font-weight: 900; letter-spacing: 0.05em;">
+                        <th style="padding: 6px; text-align: center; width: 28px;">POS</th>
+                        <th style="padding: 6px;">COMPANHIA DE RODEIO (CIA)</th>
+                        <th style="padding: 6px; text-align: center; width: 60px;">SAÍDAS</th>
+                        <th style="padding: 6px; text-align: center; width: 80px;">SOMA NOTAS</th>
+                        <th style="padding: 6px; text-align: right; width: 80px;">MÉDIA BOIADA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            ${generateReportA4Footer(true)}
+        </div>
+    `;
+}
+
 
