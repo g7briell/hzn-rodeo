@@ -1,10 +1,9 @@
 window.formatSide = function(s) {
-  if (!s) return s;
-  if (typeof s !== 'string') return s;
-  const l = s.toLowerCase();
-  if (l === 'direito' || l === 'd') return 'Certo (C)';
-  if (l === 'esquerdo' || l === 'e') return 'Errado (E)';
-  return s.toUpperCase();
+  if (!s) return '';
+  const l = String(s).trim().toLowerCase();
+  if (l === 'direito' || l === 'd' || l === 'c' || l === 'certo') return 'C';
+  if (l === 'esquerdo' || l === 'e' || l === 'errado') return 'E';
+  return String(s).trim().toUpperCase();
 };
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     console.error('[ERRO GLOBAL CAPTURADO]:', msg, url, lineNo, columnNo, error);
@@ -1553,7 +1552,7 @@ window.exportBullsToExcel = () => {
                     <tr>
                         <td style="padding: 5px;">${cia.nome.toUpperCase()}</td>
                         <td style="padding: 5px; font-weight: bold;">${touroNome.toUpperCase()}</td>
-                        <td style="padding: 5px; text-align: center;">${lado === 'D' || lado === 'Direito' || lado === 'C' || lado === 'CERTO' ? 'CERTO (C)' : (lado === 'E' || lado === 'Esquerdo' || lado === 'ERRADO' ? 'ERRADO (E)' : lado)}</td>
+                        <td style="padding: 5px; text-align: center; font-weight: bold;">${window.formatSide(lado)}</td>
                     </tr>
                 `;
             });

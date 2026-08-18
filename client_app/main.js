@@ -12,6 +12,14 @@ global.WebSocket = WebSocket;
 // Esporte ativo da sessão atual
 let currentSportSession = 'rodeio';
 
+function formatLado(s) {
+    if (!s) return '';
+    const l = String(s).trim().toLowerCase();
+    if (l === 'direito' || l === 'd' || l === 'c' || l === 'certo') return 'C';
+    if (l === 'esquerdo' || l === 'e' || l === 'errado') return 'E';
+    return String(s).trim().toUpperCase();
+}
+
 // Função para gerar o caminho do banco baseado no e-mail e esporte
 function getUserDBPath(email, esporte = currentSportSession) {
   const safeSport = (esporte || 'rodeio').toLowerCase().trim();
@@ -819,7 +827,7 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
                 4: r.acumulado,
                 5: bull.nome.toUpperCase(),
                 6: bull.cia.toUpperCase(),
-                7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(bull.lado)
+                7: formatLado(bull.lado)
             };
             applyTemplate(currentRow, compTpl, overrides);
             currentRow++;
@@ -836,7 +844,7 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
                     1: '', 2: '', 3: '', 4: '',
                     5: b.nome.toUpperCase(),
                     6: b.cia.toUpperCase(),
-                    7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado)
+                    7: formatLado(b.lado)
                 };
                 applyTemplate(currentRow, resDataTpl, overrides);
                 currentRow++;
@@ -936,7 +944,7 @@ ipcMain.handle('export-boiadas-excel', async (event, { sorteioData }) => {
                 1: idx + 1,
                 2: b.nome.toUpperCase(),
                 3: b.cia.toUpperCase(),
-                4: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado)
+                4: formatLado(b.lado)
             };
             applyTemplate(currentRow, normalBullTpl, overrides);
             currentRow++;
@@ -953,7 +961,7 @@ ipcMain.handle('export-boiadas-excel', async (event, { sorteioData }) => {
                     1: `R${idx + 1}`,
                     2: b.nome.toUpperCase(),
                     3: b.cia.toUpperCase(),
-                    4: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado)
+                    4: formatLado(b.lado)
                 };
                 applyTemplate(currentRow, rerideDataTpl, overrides);
                 currentRow++;
@@ -1061,7 +1069,7 @@ ipcMain.handle('export-juizes-excel', async (event, { sorteioData, eventName, da
                 4: r.acumulado || '0,00',
                 5: b.nome.toUpperCase(),
                 6: b.cia.toUpperCase(),
-                7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado),
+                7: formatLado(b.lado),
                 8: '',
                 9: '',
                 10: '',
@@ -1082,7 +1090,7 @@ ipcMain.handle('export-juizes-excel', async (event, { sorteioData, eventName, da
                     1: '', 2: '', 3: '', 4: '',
                     5: b.nome.toUpperCase(),
                     6: b.cia.toUpperCase(),
-                    7: (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado),
+                    7: formatLado(b.lado),
                     8: '',
                     9: '',
                     10: '',
@@ -1178,7 +1186,7 @@ ipcMain.handle('export-ordem-excel', async (event, { eventName, day, data, auth 
                 r.nome.toUpperCase(), // B
                 b.nome.toUpperCase(), // C
                 b.cia.toUpperCase(), // D
-                (function(s){ if(!s) return ''; const l = s.toLowerCase(); if(l==='direito'||l==='d') return 'Certo (C)'; if(l==='esquerdo'||l==='e') return 'Errado (E)'; return s.toUpperCase(); })(b.lado) // E
+                formatLado(b.lado) // E
             ];
 
             colData.forEach((val, cIdx) => {
