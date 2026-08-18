@@ -233,9 +233,9 @@
                         Erro ao conectar
                     </div>
 
-                    <button type="button" onclick="handleEventLogin()" id="btn-submit-event" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4.5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-2 mt-6 cursor-pointer">
+                    <button type="button" onclick="handleEventLogin()" id="btn-submit-event" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black h-18 sm:h-22 rounded-[1.75rem] font-black text-base sm:text-lg uppercase tracking-wider transition-all shadow-2xl shadow-yellow-500/30 active:scale-95 flex items-center justify-center gap-3 mt-6 cursor-pointer">
                         <span>CONECTAR AO EVENTO</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </button>
                 </div>
 
@@ -548,14 +548,14 @@
                     </div>
                 </div>
 
-                <!-- Botões de Ação Finais GIGANTES -->
-                <div class="space-y-3.5 mt-auto">
-                    <button type="button" onclick="goToStepTouro()" class="w-full h-14 sm:h-16 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base uppercase tracking-wider shadow-lg active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
-                        🔄 ALTERAR NOTAS
-                    </button>
-                    
-                    <button type="button" onclick="submitFinalScoreToRealtime()" id="btn-submit-final" class="w-full h-18 sm:h-22 rounded-3xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xl uppercase tracking-wider shadow-2xl shadow-emerald-500/40 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                <!-- Botões de Ação Finais: Enviar Nota GIGANTE e Alterar Nota Secundário -->
+                <div class="space-y-3 mt-auto pt-2">
+                    <button type="button" onclick="submitFinalScoreToRealtime()" id="btn-submit-final" class="w-full h-20 sm:h-24 rounded-[2rem] bg-emerald-500 hover:bg-emerald-400 text-black font-black text-2xl sm:text-3xl uppercase tracking-wider shadow-2xl shadow-emerald-500/50 border-2 border-emerald-300 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-3">
                         <span>⚡ ENVIAR NOTA</span>
+                    </button>
+
+                    <button type="button" onclick="goToStepTouro()" class="w-full h-12 sm:h-14 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 font-black text-xs sm:text-sm uppercase tracking-wider active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                        🔄 ALTERAR NOTAS
                     </button>
                 </div>
             </div>
