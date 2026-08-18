@@ -38,12 +38,12 @@
             user-select: none;
         }
         .glass-card {
-            background: rgba(12, 15, 23, 0.92);
+            background: rgba(12, 15, 23, 0.94);
             backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
         }
         .touch-active:active {
-            transform: scale(0.97);
+            transform: scale(0.95);
         }
         /* Custom scrollbar */
         ::-webkit-scrollbar {
@@ -63,6 +63,34 @@
         }
         .live-dot {
             animation: pulse-glow 2s infinite ease-in-out;
+        }
+        .key-btn {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1.25rem;
+            transition: all 0.1s ease;
+            user-select: none;
+        }
+        .key-btn:active {
+            background: #EAB308;
+            color: #000000;
+            transform: scale(0.92);
+        }
+        .key-btn-fraction {
+            background: #1f2937;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            color: #EAB308;
+            font-weight: 900;
+        }
+        .key-btn-fraction:active {
+            background: #EAB308;
+            color: #000000;
+            transform: scale(0.92);
         }
     </style>
 </head>
@@ -99,7 +127,7 @@
                     <div id="header-judge-name" class="text-xs font-black text-white uppercase truncate max-w-[100px] sm:max-w-[140px]">JUIZ</div>
                     <div class="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">ONLINE</div>
                 </div>
-                <button onclick="openJudgeMenuModal()" class="w-8 h-8 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 flex items-center justify-center font-black text-xs hover:bg-yellow-500 hover:text-black transition-all touch-active" title="Opções do Juiz">
+                <button onclick="openJudgeMenuModal()" class="w-8 h-8 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 flex items-center justify-center font-black text-xs hover:bg-yellow-500 hover:text-black transition-all touch-active cursor-pointer" title="Opções do Juiz">
                     👤
                 </button>
             </div>
@@ -161,7 +189,7 @@
                         </label>
                         <div class="relative">
                             <input type="password" id="input-event-password" placeholder="Digite a senha do evento" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-sm outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" required onkeydown="if(event.key==='Enter'){handleEventLogin();}">
-                            <button type="button" onclick="togglePasswordVisibility('input-event-password')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1">
+                            <button type="button" onclick="togglePasswordVisibility('input-event-password')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1 cursor-pointer">
                                 👁️
                             </button>
                         </div>
@@ -276,9 +304,230 @@
     </main>
 
     <!-- ========================================== -->
+    <!-- FLUXO COMPLETO DE JULGAMENTO (PRANCHETAS)  -->
+    <!-- ========================================== -->
+    <div id="view-judging-flow" class="fixed inset-0 z-[100] bg-black flex flex-col justify-between p-4 sm:p-6 overflow-y-auto hidden">
+        <div class="max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
+
+            <!-- TOPO: HEADER DA MONTARIA (PRESENTE EM TODAS AS PRANCHETAS) -->
+            <div class="flex items-center justify-between pb-3 mb-2">
+                <button type="button" onclick="handleJudgingBackBtn()" class="w-10 h-10 rounded-2xl bg-slate-900 border border-white/10 text-white flex items-center justify-center font-black text-lg hover:bg-yellow-500 hover:text-black transition-all touch-active cursor-pointer">
+                    ❮
+                </button>
+                
+                <img src="assets/rodeoapplogo_branca.png" alt="RODEOAPP" class="h-8 w-auto object-contain">
+
+                <div class="w-10"></div> <!-- Espaçador para centralizar a logo -->
+            </div>
+
+            <!-- CARD DE CONFRONTO DA MONTARIA -->
+            <div class="glass-card p-4 rounded-2xl border-white/10 mb-4 text-center">
+                <div class="text-[9px] font-black uppercase tracking-widest text-yellow-500 mb-1">
+                    MONTARIA <span id="flow-matchup-number">#1</span>
+                </div>
+                <h3 id="flow-matchup-title" class="text-base sm:text-lg font-black uppercase text-white tracking-tight leading-tight">
+                    COMPETIDOR VS TOURO
+                </h3>
+                <div class="flex items-center justify-center gap-2 mt-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                    <span id="flow-rider-city" class="truncate max-w-[140px]">CIDADE - UF</span>
+                    <span>•</span>
+                    <span id="flow-bull-cia" class="text-yellow-400 truncate max-w-[140px]">CIA TOUROS</span>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- PRANCHETA 1: JULGANDO TOURO                -->
+            <!-- ========================================== -->
+            <div id="step-julgando-touro" class="flex-1 flex flex-col justify-between">
+                <!-- Banner Título da Etapa -->
+                <div class="bg-white text-black py-3 px-4 rounded-2xl font-black text-center text-lg uppercase tracking-tighter shadow-lg mb-4">
+                    JULGANDO TOURO
+                </div>
+
+                <!-- Display Gigante da Nota do Touro -->
+                <div class="glass-card p-5 rounded-3xl border-white/20 text-center mb-4 bg-slate-950/80">
+                    <div id="display-touro-score" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tight">
+                        22,00
+                    </div>
+                </div>
+
+                <!-- Teclado Numérico Arena Touch -->
+                <div class="grid grid-cols-4 gap-2.5 mb-5">
+                    <button type="button" onclick="keypadPress(7)" class="key-btn h-14 text-2xl">7</button>
+                    <button type="button" onclick="keypadPress(8)" class="key-btn h-14 text-2xl">8</button>
+                    <button type="button" onclick="keypadPress(9)" class="key-btn h-14 text-2xl">9</button>
+                    <button type="button" onclick="keypadFraction(',75')" class="key-btn key-btn-fraction h-14 text-lg">,75</button>
+
+                    <button type="button" onclick="keypadPress(4)" class="key-btn h-14 text-2xl">4</button>
+                    <button type="button" onclick="keypadPress(5)" class="key-btn h-14 text-2xl">5</button>
+                    <button type="button" onclick="keypadPress(6)" class="key-btn h-14 text-2xl">6</button>
+                    <button type="button" onclick="keypadFraction(',50')" class="key-btn key-btn-fraction h-14 text-lg">,50</button>
+
+                    <button type="button" onclick="keypadPress(1)" class="key-btn h-14 text-2xl">1</button>
+                    <button type="button" onclick="keypadPress(2)" class="key-btn h-14 text-2xl">2</button>
+                    <button type="button" onclick="keypadPress(3)" class="key-btn h-14 text-2xl">3</button>
+                    <button type="button" onclick="keypadFraction(',25')" class="key-btn key-btn-fraction h-14 text-lg">,25</button>
+
+                    <button type="button" onclick="keypadPress(0)" class="key-btn h-14 text-2xl">0</button>
+                    <button type="button" onclick="keypadFraction(',00')" class="key-btn key-btn-fraction h-14 text-base">,00</button>
+                    <button type="button" onclick="keypadBackspace()" class="key-btn h-14 text-xl col-span-2 bg-red-950/40 border-red-500/30 text-red-400">⌫ APAGAR</button>
+                </div>
+
+                <!-- Botões de Ação Inferiores -->
+                <div class="grid grid-cols-2 gap-3 mt-auto">
+                    <button type="button" onclick="openVarModal()" class="py-4.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                        <span>⚖️ VAR</span>
+                    </button>
+                    <button type="button" onclick="goToStepCompetidor()" class="py-4.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                        <span>PRÓXIMO ➔</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- PRANCHETA 2: JULGANDO COMPETIDOR           -->
+            <!-- ========================================== -->
+            <div id="step-julgando-competidor" class="flex-1 flex flex-col justify-between hidden">
+                <!-- Banner Título da Etapa -->
+                <div class="bg-white text-black py-3 px-4 rounded-2xl font-black text-center text-lg uppercase tracking-tighter shadow-lg mb-4">
+                    JULGANDO COMPETIDOR
+                </div>
+
+                <!-- Display Gigante da Nota do Competidor -->
+                <div class="glass-card p-5 rounded-3xl border-white/20 text-center mb-4 bg-slate-950/80">
+                    <div id="display-competidor-score" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tight">
+                        23,75
+                    </div>
+                </div>
+
+                <!-- Teclado Numérico Arena Touch -->
+                <div class="grid grid-cols-4 gap-2.5 mb-5">
+                    <button type="button" onclick="keypadPress(7)" class="key-btn h-14 text-2xl">7</button>
+                    <button type="button" onclick="keypadPress(8)" class="key-btn h-14 text-2xl">8</button>
+                    <button type="button" onclick="keypadPress(9)" class="key-btn h-14 text-2xl">9</button>
+                    <button type="button" onclick="keypadFraction(',75')" class="key-btn key-btn-fraction h-14 text-lg">,75</button>
+
+                    <button type="button" onclick="keypadPress(4)" class="key-btn h-14 text-2xl">4</button>
+                    <button type="button" onclick="keypadPress(5)" class="key-btn h-14 text-2xl">5</button>
+                    <button type="button" onclick="keypadPress(6)" class="key-btn h-14 text-2xl">6</button>
+                    <button type="button" onclick="keypadFraction(',50')" class="key-btn key-btn-fraction h-14 text-lg">,50</button>
+
+                    <button type="button" onclick="keypadPress(1)" class="key-btn h-14 text-2xl">1</button>
+                    <button type="button" onclick="keypadPress(2)" class="key-btn h-14 text-2xl">2</button>
+                    <button type="button" onclick="keypadPress(3)" class="key-btn h-14 text-2xl">3</button>
+                    <button type="button" onclick="keypadFraction(',25')" class="key-btn key-btn-fraction h-14 text-lg">,25</button>
+
+                    <button type="button" onclick="keypadPress(0)" class="key-btn h-14 text-2xl">0</button>
+                    <button type="button" onclick="keypadFraction(',00')" class="key-btn key-btn-fraction h-14 text-base">,00</button>
+                    <button type="button" onclick="keypadBackspace()" class="key-btn h-14 text-xl col-span-2 bg-red-950/40 border-red-500/30 text-red-400">⌫ APAGAR</button>
+                </div>
+
+                <!-- Botões de Ação Inferiores -->
+                <div class="grid grid-cols-2 gap-3 mt-auto">
+                    <button type="button" onclick="goToStepTouro()" class="py-4.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                        <span>❮ VOLTAR</span>
+                    </button>
+                    <button type="button" onclick="goToStepConferencia()" class="py-4.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                        <span>CONFERIR ➔</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- PRANCHETA 3: CONFERÊNCIA DE NOTAS          -->
+            <!-- ========================================== -->
+            <div id="step-conferencia-notas" class="flex-1 flex flex-col justify-between hidden">
+                <!-- Banner Título da Etapa -->
+                <div class="bg-white text-black py-3 px-4 rounded-2xl font-black text-center text-lg uppercase tracking-tighter shadow-lg mb-4">
+                    CONFERÊNCIA DE NOTAS
+                </div>
+
+                <!-- Cards de Conferência -->
+                <div class="space-y-3 mb-6">
+                    <!-- NOTA DO TOURO -->
+                    <div class="glass-card p-4 rounded-2xl border-white/10 text-center">
+                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                            NOTA TOURO
+                        </div>
+                        <div id="conf-touro-score" class="text-3xl sm:text-4xl font-black text-white font-mono">
+                            22,00
+                        </div>
+                    </div>
+
+                    <!-- NOTA DO COMPETIDOR -->
+                    <div class="glass-card p-4 rounded-2xl border-white/10 text-center">
+                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                            NOTA COMPETIDOR
+                        </div>
+                        <div id="conf-competidor-score" class="text-3xl sm:text-4xl font-black text-white font-mono">
+                            23,75
+                        </div>
+                    </div>
+
+                    <!-- TOTAL -->
+                    <div class="glass-card p-5 rounded-3xl border-2 border-yellow-500/40 bg-yellow-500/10 text-center shadow-xl">
+                        <div class="text-xs font-black uppercase tracking-widest text-yellow-400 mb-1">
+                            TOTAL
+                        </div>
+                        <div id="conf-total-score" class="text-5xl sm:text-6xl font-black text-emerald-400 font-mono tracking-tight">
+                            45,75
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões de Ação Finais -->
+                <div class="space-y-3 mt-auto">
+                    <button type="button" onclick="goToStepTouro()" class="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg active:scale-95 touch-active cursor-pointer">
+                        🔄 ALTERAR NOTAS
+                    </button>
+                    
+                    <button type="button" onclick="submitFinalScoreToRealtime()" id="btn-submit-final" class="w-full py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-lg uppercase tracking-wider shadow-2xl shadow-emerald-500/30 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                        <span>⚡ ENVIAR</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PRANCHETA 4: MODAL DE VAR SOLICITADO       -->
+    <!-- ========================================== -->
+    <div id="modal-var-decisions" class="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="w-full max-w-sm glass-card p-8 rounded-[2.5rem] border-white/10 shadow-2xl text-center relative">
+            <button type="button" onclick="closeVarModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white text-xl cursor-pointer">✕</button>
+
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto mb-4 flex items-center justify-center text-2xl">
+                ⚖️
+            </div>
+
+            <h3 class="text-2xl font-black italic uppercase tracking-tighter text-white mb-6">
+                VAR SOLICITADO
+            </h3>
+
+            <div class="space-y-3.5">
+                <!-- Opção 1: JULGAR -->
+                <button type="button" onclick="applyVarDecision('julgar')" class="w-full py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer">
+                    JULGAR
+                </button>
+
+                <!-- Opção 2: RE-RIDE -->
+                <button type="button" onclick="applyVarDecision('reride')" class="w-full py-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer">
+                    RE-RIDE
+                </button>
+
+                <!-- Opção 3: APELO -->
+                <button type="button" onclick="applyVarDecision('apelo')" class="w-full py-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-base uppercase tracking-wider shadow-lg shadow-red-600/20 active:scale-95 touch-active cursor-pointer">
+                    APELO (0,00)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
     <!-- MODAL DE SENHA DO JUIZ                     -->
     <!-- ========================================== -->
-    <div id="modal-judge-password" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div id="modal-judge-password" class="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="w-full max-w-sm glass-card p-8 rounded-[2.5rem] border-white/10 shadow-2xl text-center relative">
             <button type="button" onclick="closeJudgePasswordModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white text-xl cursor-pointer">✕</button>
 
@@ -308,132 +557,6 @@
                     CONFIRMAR E ENTRAR
                 </button>
             </div>
-        </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- MODAL DE LANÇAMENTO DE NOTA (ARENA TOUCH)  -->
-    <!-- ========================================== -->
-    <div id="modal-score-entry" class="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-6 overflow-y-auto hidden">
-        <div class="max-w-2xl w-full mx-auto flex-1 flex flex-col justify-between">
-
-            <!-- Cabeçalho do Modal -->
-            <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-                <div class="flex items-center gap-3">
-                    <span class="w-9 h-9 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 flex items-center justify-center font-black text-sm" id="modal-score-ordem">
-                        1
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">AVALIAÇÃO DO JUIZ</div>
-                        <div id="modal-score-judge-label" class="text-xs font-black uppercase text-yellow-500">JUIZ 1</div>
-                    </div>
-                </div>
-                <button type="button" onclick="closeScoreEntryModal()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-lg font-bold touch-active cursor-pointer">
-                    ✕
-                </button>
-            </div>
-
-            <!-- Card Destaque: Competidor & Touro -->
-            <div class="glass-card p-5 sm:p-6 rounded-3xl border-white/10 mb-5 relative overflow-hidden">
-                <div class="grid grid-cols-2 gap-4">
-                    <!-- Competidor -->
-                    <div class="border-r border-white/10 pr-3">
-                        <div class="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-0.5">COMPETIDOR</div>
-                        <div id="modal-score-rider-name" class="text-base sm:text-xl font-black uppercase text-white truncate">COMPETIDOR</div>
-                        <div id="modal-score-rider-city" class="text-[10px] font-bold text-slate-400 uppercase truncate">CIDADE / UF</div>
-                    </div>
-                    <!-- Touro -->
-                    <div class="pl-2">
-                        <div class="text-[9px] font-black uppercase tracking-widest text-yellow-500/80 mb-0.5">ANIMAL / TOURO</div>
-                        <div id="modal-score-bull-name" class="text-base sm:text-xl font-black uppercase text-yellow-500 truncate">TOURO</div>
-                        <div class="flex items-center gap-2">
-                            <span id="modal-score-bull-cia" class="text-[10px] font-bold text-slate-400 uppercase truncate">CIA</span>
-                            <span id="modal-score-bull-lado" class="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded uppercase">C</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Área de Lançamento de Notas (Touch Mode) -->
-            <div class="space-y-4 mb-6">
-                <!-- NOTA DO PEÃO -->
-                <div class="glass-card p-4 sm:p-5 rounded-3xl border-white/10">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-black uppercase tracking-wider text-white">🤠 NOTA DO COMPETIDOR</span>
-                        <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="adjustScore('rider', -0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-white font-black text-sm active:scale-95 touch-active cursor-pointer">-0.25</button>
-                            <button type="button" onclick="adjustScore('rider', 0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-white font-black text-sm active:scale-95 touch-active cursor-pointer">+0.25</button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-3 mb-3">
-                        <input type="number" step="0.25" min="0" max="50" id="input-score-rider" oninput="updateScoreTotal()" value="22.50" class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl py-3 px-4 text-2xl sm:text-3xl font-black text-center text-white outline-none focus:ring-2 focus:ring-yellow-500 font-mono">
-                    </div>
-
-                    <!-- Presets Rápidos -->
-                    <div class="grid grid-cols-6 gap-1.5">
-                        <button type="button" onclick="setPresetScore('rider', 20.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">20</button>
-                        <button type="button" onclick="setPresetScore('rider', 21.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">21</button>
-                        <button type="button" onclick="setPresetScore('rider', 22.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">22</button>
-                        <button type="button" onclick="setPresetScore('rider', 22.50)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-yellow-500 active:scale-95 touch-active cursor-pointer">22.5</button>
-                        <button type="button" onclick="setPresetScore('rider', 23.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">23</button>
-                        <button type="button" onclick="setPresetScore('rider', 24.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">24</button>
-                    </div>
-                </div>
-
-                <!-- NOTA DO TOURO -->
-                <div class="glass-card p-4 sm:p-5 rounded-3xl border-white/10">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-black uppercase tracking-wider text-yellow-400">🐂 NOTA DO TOURO / ANIMAL</span>
-                        <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="adjustScore('bull', -0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-yellow-400 font-black text-sm active:scale-95 touch-active cursor-pointer">-0.25</button>
-                            <button type="button" onclick="adjustScore('bull', 0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-yellow-400 font-black text-sm active:scale-95 touch-active cursor-pointer">+0.25</button>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3 mb-3">
-                        <input type="number" step="0.25" min="0" max="50" id="input-score-bull" oninput="updateScoreTotal()" value="22.50" class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl py-3 px-4 text-2xl sm:text-3xl font-black text-center text-yellow-400 outline-none focus:ring-2 focus:ring-yellow-500 font-mono">
-                    </div>
-
-                    <!-- Presets Rápidos -->
-                    <div class="grid grid-cols-6 gap-1.5">
-                        <button type="button" onclick="setPresetScore('bull', 20.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">20</button>
-                        <button type="button" onclick="setPresetScore('bull', 21.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">21</button>
-                        <button type="button" onclick="setPresetScore('bull', 22.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">22</button>
-                        <button type="button" onclick="setPresetScore('bull', 22.50)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-yellow-500 active:scale-95 touch-active cursor-pointer">22.5</button>
-                        <button type="button" onclick="setPresetScore('bull', 23.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">23</button>
-                        <button type="button" onclick="setPresetScore('bull', 24.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">24</button>
-                    </div>
-                </div>
-
-                <!-- Display do Total Somado -->
-                <div class="glass-card p-4 rounded-2xl border-yellow-500/30 bg-yellow-500/5 flex items-center justify-between">
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-widest text-yellow-500">TOTAL DESTA AVALIAÇÃO</div>
-                        <div class="text-xs text-slate-400 font-bold">Nota Competidor + Nota Animal</div>
-                    </div>
-                    <div id="modal-score-total-display" class="text-3xl sm:text-4xl font-black italic text-emerald-400 font-mono">
-                        45.00
-                    </div>
-                </div>
-            </div>
-
-            <!-- Botões de Ação Final -->
-            <div class="space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                    <button type="button" onclick="submitNoScore(0)" class="py-3.5 px-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active flex items-center justify-center gap-1.5 cursor-pointer">
-                        <span>❌ SEM TEMPO (0,00)</span>
-                    </button>
-                    <button type="button" onclick="submitReride()" class="py-3.5 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active flex items-center justify-center gap-1.5 cursor-pointer">
-                        <span>⚠️ SOLICITAR RE-RIDE</span>
-                    </button>
-                </div>
-
-                <button type="button" onclick="submitScoreToRealtime()" id="btn-submit-score" class="w-full py-5 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-base uppercase tracking-wider shadow-2xl shadow-yellow-500/30 transition-all active:scale-95 touch-active flex items-center justify-center gap-2 cursor-pointer">
-                    <span>⚡ ENVIAR NOTA EM TEMPO REAL</span>
-                </button>
-            </div>
-
         </div>
     </div>
 

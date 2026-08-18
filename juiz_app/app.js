@@ -1,6 +1,7 @@
 /**
  * RODEOAPP - Portal do Juiz (juiz.rodeoapp.pro)
  * Sistema de Lançamento de Notas em Tempo Real com Ably.com & Supabase
+ * Fluxo de Julgamento Tátil Baseado em Pranchetas (Arena Touch Flow)
  */
 
 // ==========================================
@@ -33,6 +34,17 @@ window.state = {
     currentMatchupIdx: null,
     currentRider: null,
     currentBull: null
+};
+
+// Estado do Fluxo de Julgamento Ativo
+window.judgingState = {
+    step: 'touro', // 'touro' | 'competidor' | 'conferencia'
+    touroInt: 22,
+    touroDec: ',00',
+    competidorInt: 23,
+    competidorDec: ',75',
+    isFall: false,
+    isReride: false
 };
 
 let ablyClient = null;
@@ -490,7 +502,7 @@ function renderRidesList() {
                 statusBadge = `
                     <div class="flex items-center justify-between mt-3 pt-3 border-t border-emerald-500/20 text-emerald-400">
                         <div class="text-[10px] font-bold text-slate-400">
-                            P: <b class="text-white">${myScore.riderScore.toFixed(2)}</b> | T: <b class="text-yellow-400">${myScore.bullScore.toFixed(2)}</b>
+                            Touro: <b class="text-white">${myScore.bullScore.toFixed(2)}</b> | Peão: <b class="text-yellow-400">${myScore.riderScore.toFixed(2)}</b>
                         </div>
                         <div class="text-lg font-black italic font-mono text-emerald-400">
                             ${total}
@@ -502,7 +514,7 @@ function renderRidesList() {
                 <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
                     <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PENDENTE</span>
                     <span class="text-xs font-black text-yellow-500 group-hover:underline flex items-center gap-1">
-                        AVALIAR ➔
+                        JULGAR ➔
                     </span>
                 </div>`;
         }
@@ -567,7 +579,7 @@ window.filterRides = (type) => {
 };
 
 // ==========================================
-// MODAL DE LANÇAMENTO DE NOTA (TOUCH ARENA)
+// FLUXO DE JULGAMENTO (PRANCHETAS 1, 2, 3, 4)
 // ==========================================
 window.openScoreModal = (matchupIdx) => {
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
@@ -582,16 +594,13 @@ window.openScoreModal = (matchupIdx) => {
     window.state.currentRider = r;
     window.state.currentBull = bull;
 
-    // Preenche cabeçalhos do modal
-    document.getElementById('modal-score-ordem').innerText = matchupIdx + 1;
-    document.getElementById('modal-score-judge-label').innerText = `${window.state.currentJudge.nome} (JUIZ ${window.state.currentJudge.idx + 1})`;
-    document.getElementById('modal-score-rider-name').innerText = r.nome;
-    document.getElementById('modal-score-rider-city').innerText = r.cidade || 'CIDADE / UF';
-    document.getElementById('modal-score-bull-name').innerText = bull.nome;
-    document.getElementById('modal-score-bull-cia').innerText = bull.cia;
-    document.getElementById('modal-score-bull-lado').innerText = bull.lado || 'C';
+    // Preenche cabeçalhos fixos da montaria
+    document.getElementById('flow-matchup-number').innerText = `#${matchupIdx + 1}`;
+    document.getElementById('flow-matchup-title').innerText = `${r.nome} VS ${bull.nome}`;
+    document.getElementById('flow-rider-city').innerText = r.cidade || 'CIDADE - UF';
+    document.getElementById('flow-bull-cia').innerText = bull.cia || 'CIA DE RODEIO';
 
-    // Carrega nota existente se houver
+    // Carrega notas pré-existentes se houver
     const notas = window.state.eventData.notas || [];
     const myScore = notas.find(n => 
         n.peaoNome === r.nome && 
@@ -601,73 +610,235 @@ window.openScoreModal = (matchupIdx) => {
     );
 
     if (myScore) {
-        document.getElementById('input-score-rider').value = myScore.riderScore.toFixed(2);
-        document.getElementById('input-score-bull').value = myScore.bullScore.toFixed(2);
+        const bScore = myScore.bullScore;
+        const rScore = myScore.riderScore;
+        
+        window.judgingState.touroInt = Math.floor(bScore);
+        window.judgingState.touroDec = formatDecimalString(bScore % 1);
+        
+        window.judgingState.competidorInt = Math.floor(rScore);
+        window.judgingState.competidorDec = formatDecimalString(rScore % 1);
+        window.judgingState.isFall = (bScore === 0 && rScore === 0);
+        window.judgingState.isReride = false;
     } else {
-        // Defaults confortáveis
-        document.getElementById('input-score-rider').value = '22.50';
-        document.getElementById('input-score-bull').value = '22.50';
+        // Defaults conforme o estilo da prancheta (22,00 touro e 23,75 competidor)
+        window.judgingState.touroInt = 22;
+        window.judgingState.touroDec = ',00';
+        window.judgingState.competidorInt = 23;
+        window.judgingState.competidorDec = ',75';
+        window.judgingState.isFall = false;
+        window.judgingState.isReride = false;
     }
 
-    window.updateScoreTotal();
-    document.getElementById('modal-score-entry').classList.remove('hidden');
+    updateDisplays();
+    goToStepTouro();
+    document.getElementById('view-judging-flow').classList.remove('hidden');
 };
 
-window.closeScoreEntryModal = () => {
-    document.getElementById('modal-score-entry').classList.add('hidden');
-    window.state.currentMatchupIdx = null;
-    window.state.currentRider = null;
-    window.state.currentBull = null;
+function formatDecimalString(decVal) {
+    const rounded = Math.round(decVal * 100);
+    if (rounded === 75) return ',75';
+    if (rounded === 50) return ',50';
+    if (rounded === 25) return ',25';
+    return ',00';
+}
+
+function updateDisplays() {
+    const touroStr = `${window.judgingState.touroInt}${window.judgingState.touroDec}`;
+    const competidorStr = `${window.judgingState.competidorInt}${window.judgingState.competidorDec}`;
+
+    // Atualiza Displays das Pranchetas 1 e 2
+    const dispTouro = document.getElementById('display-touro-score');
+    if (dispTouro) dispTouro.innerText = touroStr;
+
+    const dispComp = document.getElementById('display-competidor-score');
+    if (dispComp) dispComp.innerText = competidorStr;
+
+    // Atualiza Displays da Prancheta 3 (Conferência)
+    const confTouro = document.getElementById('conf-touro-score');
+    if (confTouro) confTouro.innerText = touroStr;
+
+    const confComp = document.getElementById('conf-competidor-score');
+    if (confComp) confComp.innerText = competidorStr;
+
+    // Calcula Soma Total
+    const bVal = parseScoreToNumber(window.judgingState.touroInt, window.judgingState.touroDec);
+    const rVal = parseScoreToNumber(window.judgingState.competidorInt, window.judgingState.competidorDec);
+    const totalVal = (bVal + rVal).toFixed(2).replace('.', ',');
+
+    const confTotal = document.getElementById('conf-total-score');
+    if (confTotal) confTotal.innerText = totalVal;
+}
+
+function parseScoreToNumber(intVal, decStr) {
+    let decNum = 0.0;
+    if (decStr === ',75') decNum = 0.75;
+    else if (decStr === ',50') decNum = 0.50;
+    else if (decStr === ',25') decNum = 0.25;
+    return parseFloat(intVal) + decNum;
+}
+
+// Navegação entre Pranchetas
+window.goToStepTouro = () => {
+    window.judgingState.step = 'touro';
+    document.getElementById('step-julgando-touro').classList.remove('hidden');
+    document.getElementById('step-julgando-competidor').classList.add('hidden');
+    document.getElementById('step-conferencia-notas').classList.add('hidden');
 };
 
-window.updateScoreTotal = () => {
-    const rScore = parseFloat(document.getElementById('input-score-rider').value) || 0;
-    const bScore = parseFloat(document.getElementById('input-score-bull').value) || 0;
-    const total = (rScore + bScore).toFixed(2);
-    document.getElementById('modal-score-total-display').innerText = total;
+window.goToStepCompetidor = () => {
+    window.judgingState.step = 'competidor';
+    document.getElementById('step-julgando-touro').classList.add('hidden');
+    document.getElementById('step-julgando-competidor').classList.remove('hidden');
+    document.getElementById('step-conferencia-notas').classList.add('hidden');
 };
 
-window.adjustScore = (target, delta) => {
-    const input = document.getElementById(target === 'rider' ? 'input-score-rider' : 'input-score-bull');
-    let val = parseFloat(input.value) || 0;
-    val = Math.max(0, Math.min(50, val + delta));
-    input.value = val.toFixed(2);
-    window.updateScoreTotal();
+window.goToStepConferencia = () => {
+    window.judgingState.step = 'conferencia';
+    updateDisplays();
+    document.getElementById('step-julgando-touro').classList.add('hidden');
+    document.getElementById('step-julgando-competidor').classList.add('hidden');
+    document.getElementById('step-conferencia-notas').classList.remove('hidden');
 };
 
-window.setPresetScore = (target, value) => {
-    const input = document.getElementById(target === 'rider' ? 'input-score-rider' : 'input-score-bull');
-    input.value = parseFloat(value).toFixed(2);
-    window.updateScoreTotal();
-};
-
-window.submitNoScore = () => {
-    document.getElementById('input-score-rider').value = '0.00';
-    document.getElementById('input-score-bull').value = '0.00';
-    window.updateScoreTotal();
-    window.submitScoreToRealtime(true);
-};
-
-window.submitReride = () => {
-    if (confirm("Deseja solicitar RE-RIDE para esta montaria? O competidor terá direito a novo touro.")) {
-        window.submitScoreToRealtime(false, true);
+window.handleJudgingBackBtn = () => {
+    if (window.judgingState.step === 'conferencia') {
+        goToStepCompetidor();
+    } else if (window.judgingState.step === 'competidor') {
+        goToStepTouro();
+    } else {
+        // Fecha o fluxo de julgamento e volta ao painel
+        document.getElementById('view-judging-flow').classList.add('hidden');
+        window.state.currentMatchupIdx = null;
     }
 };
 
 // ==========================================
-// ENVIO DA NOTA EM TEMPO REAL (ABLY + SUPABASE)
+// TECLADO NUMÉRICO TÁTIL (ARENA TOUCH)
 // ==========================================
-window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
+window.keypadPress = (num) => {
+    triggerHaptic();
+
+    if (window.judgingState.step === 'touro') {
+        let current = String(window.judgingState.touroInt);
+        // Se estava 0 ou valor padrão inicial, substitui com o novo dígito
+        if (current === '0' || current.length >= 2) {
+            window.judgingState.touroInt = num;
+        } else {
+            let combined = parseInt(current + num);
+            if (combined > 50) combined = 50; // Limite máximo
+            window.judgingState.touroInt = combined;
+        }
+    } else if (window.judgingState.step === 'competidor') {
+        let current = String(window.judgingState.competidorInt);
+        if (current === '0' || current.length >= 2) {
+            window.judgingState.competidorInt = num;
+        } else {
+            let combined = parseInt(current + num);
+            if (combined > 50) combined = 50;
+            window.judgingState.competidorInt = combined;
+        }
+    }
+
+    updateDisplays();
+};
+
+window.keypadFraction = (frac) => {
+    triggerHaptic();
+
+    if (window.judgingState.step === 'touro') {
+        window.judgingState.touroDec = frac;
+    } else if (window.judgingState.step === 'competidor') {
+        window.judgingState.competidorDec = frac;
+    }
+
+    updateDisplays();
+};
+
+window.keypadBackspace = () => {
+    triggerHaptic();
+
+    if (window.judgingState.step === 'touro') {
+        let current = String(window.judgingState.touroInt);
+        if (current.length > 1) {
+            window.judgingState.touroInt = parseInt(current.slice(0, -1));
+        } else {
+            window.judgingState.touroInt = 0;
+            window.judgingState.touroDec = ',00';
+        }
+    } else if (window.judgingState.step === 'competidor') {
+        let current = String(window.judgingState.competidorInt);
+        if (current.length > 1) {
+            window.judgingState.competidorInt = parseInt(current.slice(0, -1));
+        } else {
+            window.judgingState.competidorInt = 0;
+            window.judgingState.competidorDec = ',00';
+        }
+    }
+
+    updateDisplays();
+};
+
+function triggerHaptic() {
+    if (typeof navigator.vibrate === 'function') {
+        try { navigator.vibrate(25); } catch(e) {}
+    }
+}
+
+// ==========================================
+// PRANCHETA 4: MODAL DE VAR E DECISÕES
+// ==========================================
+window.openVarModal = () => {
+    document.getElementById('modal-var-decisions').classList.remove('hidden');
+};
+
+window.closeVarModal = () => {
+    document.getElementById('modal-var-decisions').classList.add('hidden');
+};
+
+window.applyVarDecision = (type) => {
+    closeVarModal();
+
+    if (type === 'julgar') {
+        // Volta para digitação normal
+        goToStepTouro();
+        showToast("Julgamento Normal", "info");
+    } else if (type === 'reride') {
+        window.judgingState.isReride = true;
+        window.judgingState.isFall = false;
+        // Envia direto como Re-ride
+        submitFinalScoreToRealtime(false, true);
+    } else if (type === 'apelo') {
+        // Apelo / Sem Tempo / Queda (0,00)
+        window.judgingState.touroInt = 0;
+        window.judgingState.touroDec = ',00';
+        window.judgingState.competidorInt = 0;
+        window.judgingState.competidorDec = ',00';
+        window.judgingState.isFall = true;
+        window.judgingState.isReride = false;
+        updateDisplays();
+        goToStepConferencia();
+        showToast("Apelo / Sem Tempo (0,00) selecionado", "error");
+    }
+};
+
+// ==========================================
+// ENVIO FINAL EM TEMPO REAL (ABLY + SUPABASE)
+// ==========================================
+window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverride = null) => {
     if (!window.state.currentJudge || !window.state.currentRider) return;
 
-    const rScore = parseFloat(document.getElementById('input-score-rider').value) || 0;
-    const bScore = parseFloat(document.getElementById('input-score-bull').value) || 0;
-    const totalScore = isFall ? 0 : (rScore + bScore);
+    const bVal = parseScoreToNumber(window.judgingState.touroInt, window.judgingState.touroDec);
+    const rVal = parseScoreToNumber(window.judgingState.competidorInt, window.judgingState.competidorDec);
+    
+    const isFall = isFallOverride !== null ? isFallOverride : (window.judgingState.isFall || (bVal === 0 && rVal === 0));
+    const isReride = isRerideOverride !== null ? isRerideOverride : window.judgingState.isReride;
+    const totalScore = isFall ? 0 : (bVal + rVal);
 
-    const btnSubmit = document.getElementById('btn-submit-score');
+    const btnSubmit = document.getElementById('btn-submit-final');
     if (btnSubmit) {
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = `<span class="animate-spin mr-2">🔄</span> ENVIANDO NOTA...`;
+        btnSubmit.innerHTML = `<span class="animate-spin mr-2">🔄</span> TRANSMITINDO...`;
     }
 
     const scorePayload = {
@@ -679,8 +850,8 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
         bullCia: window.state.currentBull.cia,
         judgeName: window.state.currentJudge.nome,
         judgeIdx: window.state.currentJudge.idx,
-        riderScore: isFall ? 0 : rScore,
-        bullScore: isFall ? 0 : bScore,
+        riderScore: isFall ? 0 : rVal,
+        bullScore: isFall ? 0 : bVal,
         totalScore: totalScore,
         isFall: isFall,
         fallTime: isFall ? '0.00' : '8.00',
@@ -689,18 +860,18 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
     };
 
     try {
-        // 1. Envia via Ably Realtime (WebSocket ultra-rápido)
+        // 1. Envia via Ably Realtime (WebSocket ultra-rápido para o Admin)
         if (ablyChannel) {
             ablyChannel.publish('judge-score-submitted', scorePayload);
             console.log("[ABLY REALTIME] Nota enviada via canal:", scorePayload);
         } else {
-            console.warn("Ably canal não aberto no momento, gravando direto no Supabase.");
+            console.warn("Ably canal não conectado, gravando direto no Supabase.");
         }
 
-        // 2. Grava diretamente no Supabase para garantir persistência total
+        // 2. Grava diretamente no Supabase para persistência oficial
         await saveScoreDirectToSupabase(scorePayload);
 
-        // 3. Atualiza estado local na memória
+        // 3. Atualiza estado local da lista
         window.state.eventData.notas = window.state.eventData.notas || [];
         const existingIdx = window.state.eventData.notas.findIndex(n => 
             n.peaoNome === scorePayload.riderName && 
@@ -727,7 +898,10 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
             window.state.eventData.notas.push(localNota);
         }
 
-        window.closeScoreEntryModal();
+        // Fecha a tela cheia de julgamento e volta ao painel
+        document.getElementById('view-judging-flow').classList.add('hidden');
+        window.state.currentMatchupIdx = null;
+
         renderRidesList();
         showToast("⚡ Nota transmitida em tempo real!", "success");
 
@@ -737,7 +911,7 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = `<span>⚡ ENVIAR NOTA EM TEMPO REAL</span>`;
+            btnSubmit.innerHTML = `<span>⚡ ENVIAR</span>`;
         }
     }
 };
@@ -746,7 +920,6 @@ async function saveScoreDirectToSupabase(scorePayload) {
     if (!window.state.eventId) return;
 
     try {
-        // Fetch evento atualizado
         const urlGet = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(window.state.eventId)}&select=*`;
         const getRes = await fetch(urlGet, { headers: SUPABASE_HEADERS });
         if (!getRes.ok) return;
