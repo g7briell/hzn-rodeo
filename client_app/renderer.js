@@ -3342,31 +3342,98 @@ window.confirmContinueToStep5 = () => { if (confirm("JÁ exportou a lista de tou
 function renderStep5() {
     const container = document.getElementById('assignment-list');
     const availableBulls = sorteioData.bulls.slice(0, sorteioData.riders.length);
-    const theme = currentEvent.themeColor || '#EAB308';
     if (container) container.innerHTML = sorteioData.riders.map((r, rIdx) => {
         const assignedBullIdx = sorteioData.assignments[rIdx];
         const assignedBull = assignedBullIdx !== undefined ? availableBulls[assignedBullIdx] : null;
-        return `<div class="flex items-center gap-6 p-6 bg-slate-900/50 border border-slate-800 rounded-3xl"><div class="flex-1"><div class="text-xs font-black text-accent uppercase tracking-[0.2em] mb-1">Competidor</div><div class="text-2xl font-black italic text-white uppercase">${r.nome}</div><div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${r.cidade}</div></div><div class="w-12 h-12 flex items-center justify-center text-slate-500 font-black text-2xl italic">VS</div><div class="flex-1"><button onclick="openBullSelector(${rIdx})" class="w-full bg-slate-950 border border-slate-800 p-6 rounded-2xl text-left hover:border-accent transition-all group">${assignedBull ? `<div><div class="text-[10px] font-black text-accent uppercase mb-1">Touro Sorteado</div><div class="text-xl font-black italic text-white uppercase">${assignedBull.nome}</div><div class="text-[8px] font-bold text-slate-500 uppercase">${assignedBull.cia}</div></div>` : `<div class="flex items-center justify-between"><span class="text-slate-600 font-black italic uppercase">Selecionar Touro...</span><svg class="w-6 h-6 text-slate-700 group-hover:text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></div>`}</button></div></div>`;
+        const isE = assignedBull && assignedBull.lado === 'E';
+        return `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 p-4 sm:p-6 bg-slate-900/60 border border-slate-800 rounded-2xl sm:rounded-3xl hover:border-yellow-500/30 transition-all mb-3">
+            <div class="flex-1 min-w-0">
+                <div class="text-[10px] font-black text-yellow-500 uppercase tracking-[0.2em] mb-1">Competidor #${rIdx + 1}</div>
+                <div class="text-lg sm:text-2xl font-black italic text-white uppercase truncate">${r.nome}</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${r.cidade}</div>
+            </div>
+            
+            <div class="hidden sm:flex w-10 h-10 items-center justify-center text-slate-500 font-black text-xl italic flex-shrink-0">VS</div>
+            
+            <div class="flex-1 min-w-0">
+                <button type="button" onclick="openBullSelector(${rIdx})" class="w-full bg-slate-950/80 border border-slate-800 p-4 sm:p-5 rounded-2xl text-left hover:border-yellow-500/60 hover:bg-yellow-500/5 transition-all group cursor-pointer active:scale-98">
+                    ${assignedBull ? `
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <div class="text-[9px] font-black text-yellow-500 uppercase tracking-wider mb-0.5">Touro Sorteado</div>
+                                <div class="text-base sm:text-xl font-black italic text-white uppercase truncate group-hover:text-yellow-400">${assignedBull.nome}</div>
+                                <div class="text-[10px] font-bold text-slate-400 uppercase truncate">${assignedBull.cia}</div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex-shrink-0 ${isE ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'}">
+                                LADO ${assignedBull.lado || 'C'}
+                            </span>
+                        </div>
+                    ` : `
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500 font-black text-xs sm:text-sm uppercase tracking-wider">Clique para Escolher Touro...</span>
+                            <svg class="w-5 h-5 text-slate-600 group-hover:text-yellow-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    `}
+                </button>
+            </div>
+        </div>`;
     }).join('');
     const btn = document.getElementById('btn-finish-assignment');
     if (btn) {
         const allAssigned = Object.keys(sorteioData.assignments).length === sorteioData.riders.length;
         btn.disabled = !allAssigned;
-        btn.className = allAssigned ? "bg-accent px-12 py-5 rounded-2xl font-black text-black shadow-xl uppercase transition-all" : "bg-slate-800 px-12 py-5 rounded-2xl font-black text-slate-600 opacity-50 cursor-not-allowed uppercase transition-all";
+        btn.className = allAssigned ? "bg-yellow-500 px-8 sm:px-12 py-4 sm:py-5 rounded-2xl font-black text-black shadow-xl uppercase transition-all hover:bg-yellow-400 active:scale-95 cursor-pointer" : "bg-slate-800 px-8 sm:px-12 py-4 sm:py-5 rounded-2xl font-black text-slate-600 opacity-50 cursor-not-allowed uppercase transition-all";
     }
 }
 
 window.openBullSelector = (riderIdx) => {
     const availableBulls = sorteioData.bulls.slice(0, sorteioData.riders.length);
     const assignedIndices = Object.values(sorteioData.assignments);
-    const theme = currentEvent.themeColor || '#EAB308';
-    let html = `<div class="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-12"><div class="bg-slate-900 border border-slate-800 p-12 rounded-[3rem] max-w-4xl w-full shadow-[0_0_100px_rgba(0,0,0,0.5)]"><div class="flex justify-between items-center mb-10"><h3 class="text-3xl font-black italic uppercase text-white">ESCOLHER TOURO PARA <span class="text-accent">${sorteioData.riders[riderIdx].nome}</span></h3><button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-slate-500 hover:text-white transition-colors"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div><div class="grid grid-cols-3 gap-4 overflow-y-auto max-h-[60vh] p-2">`;
+    
+    // Remove modal anterior se houver
+    document.querySelectorAll('.bull-selector-modal-root').forEach(el => el.remove());
+
+    let html = `
+    <div class="bull-selector-modal-root fixed inset-0 z-[300] bg-black/90 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 md:p-10 animate-in fade-in duration-200">
+        <div class="bg-slate-900 border border-slate-800 p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] max-w-3xl w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-start mb-6 gap-4 border-b border-white/5 pb-4">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">ESCOLHER TOURO PARA O COMPETIDOR</div>
+                    <h3 class="text-xl sm:text-2xl md:text-3xl font-black italic uppercase text-white tracking-tighter truncate">${sorteioData.riders[riderIdx].nome}</h3>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${sorteioData.riders[riderIdx].cidade}</div>
+                </div>
+                <button type="button" onclick="this.closest('.bull-selector-modal-root').remove()" class="p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400 hover:text-white hover:border-slate-700 transition-all flex-shrink-0 cursor-pointer">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto pr-1 flex-1 custom-scroll">`;
+
     availableBulls.forEach((b, bIdx) => {
         if (!assignedIndices.includes(bIdx) || sorteioData.assignments[riderIdx] === bIdx) { 
-            html += `<button onclick="assignBull(${riderIdx}, ${bIdx}); this.parentElement.parentElement.parentElement.remove()" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl text-left hover:border-accent hover:bg-accent/10 transition-all group"><div class="text-2xl font-black italic text-white uppercase group-hover:text-accent">${bIdx + 1} - ${b.nome}</div><div class="text-[10px] font-bold text-slate-500 uppercase mt-1">${b.cia}</div></button>`; 
+            const isSelected = sorteioData.assignments[riderIdx] === bIdx;
+            const isE = b.lado === 'E';
+            html += `
+            <button type="button" onclick="assignBull(${riderIdx}, ${bIdx}); this.closest('.bull-selector-modal-root').remove();" class="bg-slate-950/90 border ${isSelected ? 'border-yellow-500 bg-yellow-500/10' : 'border-slate-800 hover:border-yellow-500/60 hover:bg-yellow-500/5'} p-4 sm:p-5 rounded-2xl text-left transition-all group flex items-center justify-between gap-3 active:scale-98 cursor-pointer">
+                <div class="min-w-0 flex-1">
+                    <div class="text-base sm:text-lg font-black italic text-white uppercase group-hover:text-yellow-400 truncate leading-snug">
+                        ${bIdx + 1} - ${b.nome}
+                    </div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate mt-1">
+                        ${b.cia}
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider flex-shrink-0 ${isE ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'}">
+                    LADO ${b.lado || 'C'}
+                </span>
+            </button>`; 
         }
     });
-    html += `</div></div></div>`;
+
+    html += `</div>
+        </div>
+    </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
 };
 
