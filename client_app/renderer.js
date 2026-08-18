@@ -3631,59 +3631,95 @@ function updateAblyStatusIndicator(status) {
 async function handleJudgeScoreReceived(scoreData) {
     if (!currentEvent || !scoreData) return;
 
-    const { day, riderName, bullName, judgeName, judgeIdx, riderScore, bullScore, totalScore, isFall, fallTime, isReride } = scoreData;
+    const { day, riderName, bullName, judgeName, judgeIdx, riderScore, bullScore, isFall, fallTime, isReride } = scoreData;
 
-    // Atualiza o array de notas do evento
     currentEvent.notas = currentEvent.notas || [];
     
-    // Normaliza nota
     const rScore = parseFloat(riderScore) || 0;
     const bScore = parseFloat(bullScore) || 0;
     const jIdx = parseInt(judgeIdx) || 0;
+    const isQueda = Boolean(isFall) || (rScore === 0);
 
-    const existingIdx = currentEvent.notas.findIndex(n => 
-        n.peaoNome === riderName && 
+    // 1. Procura registro de nota consolidada para este competidor neste dia
+    let consolidatedNota = currentEvent.notas.find(n => 
+        (n.peao === riderName || n.peaoNome === riderName) && 
         n.dia === day && 
-        n.judgeIdx === jIdx && 
         n.status !== 'substituida'
     );
 
-    const notaObj = {
-        peaoNome: riderName,
-        dia: day,
-        judgeIdx: jIdx,
-        juizNome: judgeName,
-        riderScore: rScore,
-        bullScore: bScore,
-        fallTime: fallTime || (isFall ? '0.00' : '8.00'),
-        status: isReride ? 'substituida' : 'ativa',
-        updatedAt: new Date().toISOString()
-    };
-
-    if (existingIdx > -1) {
-        currentEvent.notas[existingIdx] = notaObj;
-    } else {
-        currentEvent.notas.push(notaObj);
+    if (!consolidatedNota) {
+        consolidatedNota = {
+            id: crypto.randomUUID(),
+            dia: day,
+            peao: riderName,
+            peaoNome: riderName,
+            touro: bullName,
+            isReride: Boolean(isReride),
+            tempo: isQueda ? 0.00 : 8.00,
+            j1_touro: 0, j1_peao: 0,
+            j2_touro: 0, j2_peao: 0,
+            j3_touro: 0, j3_peao: 0,
+            totalPeao: 0,
+            totalTouro: 0,
+            totalGeral: 0,
+            status: isReride ? 're_ride' : 'ativa',
+            juizes_status: {},
+            updatedAt: new Date().toISOString()
+        };
+        currentEvent.notas.push(consolidatedNota);
     }
 
-    // Persiste e sincroniza com a nuvem
+    // 2. Atualiza a nota do juiz correspondente
+    if (jIdx === 0) {
+        consolidatedNota.j1_touro = bScore;
+        consolidatedNota.j1_peao = isQueda ? 0 : rScore;
+    } else if (jIdx === 1) {
+        consolidatedNota.j2_touro = bScore;
+        consolidatedNota.j2_peao = isQueda ? 0 : rScore;
+    } else if (jIdx === 2) {
+        consolidatedNota.j3_touro = bScore;
+        consolidatedNota.j3_peao = isQueda ? 0 : rScore;
+    }
+
+    // Grava metadado do juiz
+    consolidatedNota.juizes_status = consolidatedNota.juizes_status || {};
+    consolidatedNota.juizes_status[jIdx] = {
+        nome: judgeName || `JUIZ ${jIdx + 1}`,
+        touro: bScore,
+        peao: rScore,
+        isFall: isQueda,
+        enviado: true,
+        timestamp: Date.now()
+    };
+
+    // Regra do tempo: se qualquer juiz der nota de peão > 0, assume 8 segundos; se peão for 0, fica 0.00 (queda)
+    const hasPeaoScore = (consolidatedNota.j1_peao > 0 || consolidatedNota.j2_peao > 0 || consolidatedNota.j3_peao > 0);
+    consolidatedNota.tempo = hasPeaoScore ? 8.00 : 0.00;
+
+    // Recalcula totais
+    consolidatedNota.totalTouro = (consolidatedNota.j1_touro || 0) + (consolidatedNota.j2_touro || 0) + (consolidatedNota.j3_touro || 0);
+    consolidatedNota.totalPeao = (consolidatedNota.j1_peao || 0) + (consolidatedNota.j2_peao || 0) + (consolidatedNota.j3_peao || 0);
+    consolidatedNota.totalGeral = consolidatedNota.totalTouro + consolidatedNota.totalPeao;
+    consolidatedNota.updatedAt = new Date().toISOString();
+
+    // 3. Persiste no arquivo local e na nuvem
     await window.persistAndSyncEvent(currentEvent);
 
-    // Atualiza a tela de notas se estiver aberta
+    // 4. Atualiza a tela de notas se estiver aberta
     const viewNotasList = document.getElementById('view-notas-list');
     if (viewNotasList && !viewNotasList.classList.contains('hidden')) {
         renderNotasCards();
     }
 
-    // Exibe notificação toast em tempo real para o Administrador
+    // 5. Exibe notificação toast em tempo real para o Administrador
     showJudgeScoreToast({
         judgeName: judgeName || `JUIZ ${jIdx + 1}`,
         riderName,
         bullName,
-        rScore,
+        rScore: isQueda ? 0 : rScore,
         bScore,
-        total: rScore + bScore,
-        isFall
+        total: (isQueda ? 0 : rScore) + bScore,
+        isFall: isQueda
     });
 }
 

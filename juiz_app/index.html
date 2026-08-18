@@ -125,7 +125,7 @@
             <div id="judge-profile-chip" class="hidden flex items-center gap-2 pl-2 sm:pl-3 border-l border-white/10">
                 <div class="text-right hidden xs:block">
                     <div id="header-judge-name" class="text-xs font-black text-white uppercase truncate max-w-[100px] sm:max-w-[140px]">JUIZ</div>
-                    <div class="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">ONLINE</div>
+                    <div id="header-judge-scale" class="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">0 - 25 pts</div>
                 </div>
                 <button onclick="openJudgeMenuModal()" class="w-8 h-8 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 flex items-center justify-center font-black text-xs hover:bg-yellow-500 hover:text-black transition-all touch-active cursor-pointer" title="Opções do Juiz">
                     👤
@@ -311,13 +311,17 @@
 
             <!-- TOPO: HEADER DA MONTARIA (PRESENTE EM TODAS AS PRANCHETAS) -->
             <div class="flex items-center justify-between pb-3 mb-2">
-                <button type="button" onclick="handleJudgingBackBtn()" class="w-10 h-10 rounded-2xl bg-slate-900 border border-white/10 text-white flex items-center justify-center font-black text-lg hover:bg-yellow-500 hover:text-black transition-all touch-active cursor-pointer">
+                <button type="button" onclick="handleJudgingBackBtn()" class="w-12 h-12 rounded-2xl bg-slate-900 border border-white/10 text-white flex items-center justify-center font-black text-xl hover:bg-yellow-500 hover:text-black transition-all touch-active cursor-pointer">
                     ❮
                 </button>
                 
-                <img src="assets/rodeoapplogo_branca.png" alt="RODEOAPP" class="h-8 w-auto object-contain">
+                <img src="assets/rodeoapplogo_branca.png" alt="RODEOAPP" class="h-9 w-auto object-contain">
 
-                <div class="w-10"></div> <!-- Espaçador para centralizar a logo -->
+                <div class="w-12 text-right">
+                    <span id="flow-judge-scale-tag" class="text-[9px] font-black uppercase tracking-wider text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-md border border-yellow-500/20">
+                        0-25
+                    </span>
+                </div>
             </div>
 
             <!-- CARD DE CONFRONTO DA MONTARIA -->
@@ -373,12 +377,12 @@
                     <button type="button" onclick="keypadBackspace()" class="key-btn h-14 text-xl col-span-2 bg-red-950/40 border-red-500/30 text-red-400">⌫ APAGAR</button>
                 </div>
 
-                <!-- Botões de Ação Inferiores -->
-                <div class="grid grid-cols-2 gap-3 mt-auto">
-                    <button type="button" onclick="openVarModal()" class="py-4.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                <!-- Botões de Ação Inferiores GIGANTES -->
+                <div class="grid grid-cols-2 gap-3.5 mt-auto">
+                    <button type="button" onclick="openVarModal()" class="h-16 sm:h-20 rounded-3xl bg-amber-500 hover:bg-amber-400 text-black font-black text-lg uppercase tracking-wider shadow-xl shadow-amber-500/25 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
                         <span>⚖️ VAR</span>
                     </button>
-                    <button type="button" onclick="goToStepCompetidor()" class="py-4.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                    <button type="button" onclick="goToStepCompetidor()" class="h-16 sm:h-20 rounded-3xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-lg uppercase tracking-wider shadow-xl shadow-emerald-500/25 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
                         <span>PRÓXIMO ➔</span>
                     </button>
                 </div>
@@ -422,12 +426,12 @@
                     <button type="button" onclick="keypadBackspace()" class="key-btn h-14 text-xl col-span-2 bg-red-950/40 border-red-500/30 text-red-400">⌫ APAGAR</button>
                 </div>
 
-                <!-- Botões de Ação Inferiores -->
-                <div class="grid grid-cols-2 gap-3 mt-auto">
-                    <button type="button" onclick="goToStepTouro()" class="py-4.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                <!-- Botões de Ação Inferiores GIGANTES -->
+                <div class="grid grid-cols-2 gap-3.5 mt-auto">
+                    <button type="button" onclick="goToStepTouro()" class="h-16 sm:h-20 rounded-3xl bg-amber-500 hover:bg-amber-400 text-black font-black text-lg uppercase tracking-wider shadow-xl shadow-amber-500/25 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
                         <span>❮ VOLTAR</span>
                     </button>
-                    <button type="button" onclick="goToStepConferencia()" class="py-4.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                    <button type="button" onclick="goToStepConferencia()" class="h-16 sm:h-20 rounded-3xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-lg uppercase tracking-wider shadow-xl shadow-emerald-500/25 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
                         <span>CONFERIR ➔</span>
                     </button>
                 </div>
@@ -467,7 +471,7 @@
                     <!-- TOTAL -->
                     <div class="glass-card p-5 rounded-3xl border-2 border-yellow-500/40 bg-yellow-500/10 text-center shadow-xl">
                         <div class="text-xs font-black uppercase tracking-widest text-yellow-400 mb-1">
-                            TOTAL
+                            TOTAL DESTE JUIZ
                         </div>
                         <div id="conf-total-score" class="text-5xl sm:text-6xl font-black text-emerald-400 font-mono tracking-tight">
                             45,75
@@ -475,18 +479,128 @@
                     </div>
                 </div>
 
-                <!-- Botões de Ação Finais -->
-                <div class="space-y-3 mt-auto">
-                    <button type="button" onclick="goToStepTouro()" class="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg active:scale-95 touch-active cursor-pointer">
+                <!-- Botões de Ação Finais GIGANTES -->
+                <div class="space-y-3.5 mt-auto">
+                    <button type="button" onclick="goToStepTouro()" class="w-full h-14 sm:h-16 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base uppercase tracking-wider shadow-lg active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
                         🔄 ALTERAR NOTAS
                     </button>
                     
-                    <button type="button" onclick="submitFinalScoreToRealtime()" id="btn-submit-final" class="w-full py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-lg uppercase tracking-wider shadow-2xl shadow-emerald-500/30 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
-                        <span>⚡ ENVIAR</span>
+                    <button type="button" onclick="submitFinalScoreToRealtime()" id="btn-submit-final" class="w-full h-18 sm:h-22 rounded-3xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xl uppercase tracking-wider shadow-2xl shadow-emerald-500/40 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                        <span>⚡ ENVIAR NOTA</span>
                     </button>
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: AGUARDANDO AVALIAÇÃO DO OUTRO JUIZ  -->
+    <!-- ========================================== -->
+    <div id="modal-waiting-other-judge" class="fixed inset-0 z-[120] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden">
+        <div class="w-full max-w-sm glass-card p-8 sm:p-10 rounded-[2.5rem] border-2 border-yellow-500/40 text-center shadow-2xl relative">
+            <div class="w-20 h-20 rounded-full bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-400 mx-auto mb-6 flex items-center justify-center text-4xl animate-spin">
+                ⏳
+            </div>
+
+            <h3 class="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">
+                AGUARDANDO AVALIAÇÃO DO OUTRO JUIZ
+            </h3>
+            <p class="text-xs text-slate-300 font-bold mb-6">
+                Sua nota foi enviada com sucesso! Aguarde o outro juiz finalizar para liberar o sistema.
+            </p>
+
+            <div id="waiting-judges-status-list" class="space-y-2 mb-6">
+                <!-- Status de cada juiz gerado dinamicamente -->
+            </div>
+
+            <div class="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse">
+                SINCRONIZANDO EM TEMPO REAL VIA ABLY
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: POP-UP DE RE-RIDE (NOTA < 80)       -->
+    <!-- ========================================== -->
+    <div id="modal-low-score-reride" class="fixed inset-0 z-[130] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden">
+        <div class="w-full max-w-md glass-card p-8 sm:p-10 rounded-[2.5rem] border-2 border-amber-500 text-center shadow-2xl relative">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto mb-4 flex items-center justify-center text-3xl border border-amber-500/40">
+                ⚠️
+            </div>
+
+            <h3 class="text-3xl font-black italic uppercase tracking-tighter text-white mb-1">
+                RE-RIDE?
+            </h3>
+            <p class="text-sm font-bold text-amber-400 mb-2">
+                Nota Somada: <span id="low-score-sum-display" class="text-white text-xl font-mono">00.00</span> (Abaixo de 80,00)
+            </p>
+            <p class="text-xs text-slate-400 font-medium mb-6">
+                O competidor tem direito a solicitar um novo touro de Re-Ride ou manter a nota atual.
+            </p>
+
+            <div class="grid grid-cols-2 gap-3.5">
+                <button type="button" onclick="handleKeepLowScore()" class="h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-black text-sm uppercase tracking-wider active:scale-95 touch-active cursor-pointer">
+                    MANTER NOTA
+                </button>
+                <button type="button" onclick="handleRequestNextBullReride()" class="h-16 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/25 active:scale-95 touch-active cursor-pointer">
+                    PRÓXIMO TOURO
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: POP-UP DE MONTARIA CRIADA / AVISO   -->
+    <!-- ========================================== -->
+    <div id="modal-reride-result-msg" class="fixed inset-0 z-[140] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden">
+        <div class="w-full max-w-sm glass-card p-8 rounded-[2.5rem] border-2 border-emerald-500 text-center shadow-2xl relative">
+            <div id="reride-msg-icon" class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto mb-4 flex items-center justify-center text-3xl border border-emerald-500/40">
+                🐂
+            </div>
+
+            <h3 id="reride-msg-title" class="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">
+                MONTARIA CRIADA
+            </h3>
+            <p id="reride-msg-text" class="text-sm font-bold text-slate-300 mb-6">
+                Montaria de Re-ride criada com sucesso!
+            </p>
+
+            <button type="button" onclick="closeRerideResultModal()" class="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-base uppercase tracking-wider shadow-xl shadow-emerald-500/30 active:scale-95 touch-active cursor-pointer">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: BLOQUEIO / RE-AUTENTICAÇÃO DO JUIZ  -->
+    <!-- ========================================== -->
+    <div id="modal-lock-after-score" class="fixed inset-0 z-[150] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden">
+        <div class="w-full max-w-sm glass-card p-8 rounded-[2.5rem] border-2 border-yellow-500 text-center shadow-2xl relative">
+            <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 mx-auto mb-4 flex items-center justify-center text-3xl">
+                🔒
+            </div>
+
+            <h3 class="text-2xl font-black italic uppercase tracking-tighter text-white mb-1">
+                SISTEMA BLOQUEADO
+            </h3>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">
+                Digite sua senha de Juiz para escolher o próximo competidor:
+            </p>
+
+            <div class="space-y-4 text-left">
+                <div class="relative">
+                    <input type="password" id="input-unlock-pin" placeholder="Senha do Juiz" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-center text-xl font-mono outline-none focus:ring-2 focus:ring-yellow-500 tracking-widest" required autofocus onkeydown="if(event.key==='Enter'){handleUnlockJudge();}">
+                    <button type="button" onclick="togglePasswordVisibility('input-unlock-pin')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1 cursor-pointer">
+                        👁️
+                    </button>
+                </div>
+                <p id="unlock-auth-error" class="text-xs font-bold text-red-400 mt-2 text-center hidden">Senha incorreta.</p>
+
+                <button type="button" onclick="handleUnlockJudge()" class="w-full h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/25 active:scale-95 cursor-pointer">
+                    DESBLOQUEAR PAINEL
+                </button>
+            </div>
         </div>
     </div>
 
@@ -507,17 +621,17 @@
 
             <div class="space-y-3.5">
                 <!-- Opção 1: JULGAR -->
-                <button type="button" onclick="applyVarDecision('julgar')" class="w-full py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer">
+                <button type="button" onclick="applyVarDecision('julgar')" class="w-full h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer">
                     JULGAR
                 </button>
 
                 <!-- Opção 2: RE-RIDE -->
-                <button type="button" onclick="applyVarDecision('reride')" class="w-full py-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer">
+                <button type="button" onclick="applyVarDecision('reride')" class="w-full h-16 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer">
                     RE-RIDE
                 </button>
 
                 <!-- Opção 3: APELO -->
-                <button type="button" onclick="applyVarDecision('apelo')" class="w-full py-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-base uppercase tracking-wider shadow-lg shadow-red-600/20 active:scale-95 touch-active cursor-pointer">
+                <button type="button" onclick="applyVarDecision('apelo')" class="w-full h-16 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-base uppercase tracking-wider shadow-lg shadow-red-600/20 active:scale-95 touch-active cursor-pointer">
                     APELO (0,00)
                 </button>
             </div>
@@ -525,7 +639,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL DE SENHA DO JUIZ                     -->
+    <!-- MODAL DE SENHA DO JUIZ (ENTRADA INICIAL)   -->
     <!-- ========================================== -->
     <div id="modal-judge-password" class="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="w-full max-w-sm glass-card p-8 rounded-[2.5rem] border-white/10 shadow-2xl text-center relative">
@@ -553,7 +667,7 @@
                     <p id="judge-auth-error" class="text-xs font-bold text-red-400 mt-2 text-center hidden">Senha incorreta.</p>
                 </div>
 
-                <button type="button" onclick="handleJudgeAuth()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/20 active:scale-95 cursor-pointer">
+                <button type="button" onclick="handleJudgeAuth()" class="w-full h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/20 active:scale-95 cursor-pointer">
                     CONFIRMAR E ENTRAR
                 </button>
             </div>

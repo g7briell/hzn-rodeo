@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>TEST - PDF Export Debug</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0f172a; color: white; padding: 20px; }
+    button { margin: 8px; padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    #log { background: #1e293b; border-radius: 8px; padding: 16px; margin-top: 16px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 300px; overflow: auto; }
+    .ok { color: #22c55e; }
+    .err { color: #ef4444; }
+    .warn { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <h1>RODEOAPP - Teste PDF/Excel</h1>
+  <button onclick="testHtml2Pdf()" style="background:#3b82f6">TESTE 1: html2pdf blob</button>
+  <button onclick="testPrintWindow()" style="background:#10b981">TESTE 2: Janela Impressao</button>
+  <button onclick="testXLSX()" style="background:#107c41">TESTE 3: Excel</button>
+  <button onclick="clearLog()" style="background:#475569">Limpar</button>
+  <div id="log">Aguardando...\n</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    function log(msg, type) {
+      var el = document.getElementById("log");
+      el.innerHTML += '<span class="' + (type||"") + '">[' + new Date().toLocaleTimeString() + '] ' + msg + '</span>\n';
+      el.scrollTop = el.scrollHeight;
+    }
+    function clearLog() { document.getElementById("log").innerHTML = "Log limpo.\n"; }
+
+    var testHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#fff;color:#000;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #000;padding:8px;text-align:left;font-size:13px;color:#000;}h1{color:#000;margin-bottom:5px;}.hdr{background:#000;color:#fff;padding:15px;text-align:center;}</style></head><body><div class="hdr"><h1 style="color:#fff;margin:0;">EVENTO TESTE RODEOAPP</h1><p style="color:#eab308;margin:4px 0 0;">SORTEIO OFICIAL - DIA 1</p></div><table><thead><tr style="background:#e5e7eb"><th>ORDEM</th><th>COMPETIDOR</th><th>CIDADE</th><th>TOURO</th><th>COMPANHIA</th><th>LADO</th></tr></thead><tbody><tr><td>1</td><td>JOAO SILVA</td><td>BARRETOS-SP</td><td>PALHACO</td><td>BOIADA TOP</td><td>DIREITO</td></tr><tr><td>2</td><td>PEDRO COSTA</td><td>RIBEIRAO PRETO</td><td>FURACAO</td><td>BOIADA TOP</td><td>ESQUERDO</td></tr><tr><td>3</td><td>CARLOS SOUZA</td><td>CAMPINAS-SP</td><td>TROVAO</td><td>RODEIO CIA</td><td>DIREITO</td></tr></tbody></table></body></html>';
+
+    async function testHtml2Pdf() {
+      log("TESTE 1: html2pdf blob...", "warn");
+      log("html2pdf typeof: " + typeof window.html2pdf, typeof window.html2pdf === "function" ? "ok" : "err");
+
+      var container = document.createElement("div");
+      container.style.cssText = "position:fixed;top:0;left:0;width:820px;z-index:999999;background:#fff;color:#000;padding:15px;box-sizing:border-box;";
+      
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(testHtml, "text/html");
+      doc.querySelectorAll("style").forEach(function(st) {
+        var ns = document.createElement("style");
+        ns.innerHTML = st.innerHTML.replace(/@page[^{]*{[^}]*}/gi, "");
+        container.appendChild(ns);
+      });
+      Array.from(doc.body.children).forEach(function(n) { container.appendChild(n.cloneNode(true)); });
+      document.body.appendChild(container);
+      log("Container no DOM: " + container.offsetWidth + "x" + container.offsetHeight + " | innerHTML: " + container.innerHTML.length + " chars", "ok");
+
+      await new Promise(function(r){ setTimeout(r, 500); });
+      log("Apos espera: " + container.offsetWidth + "x" + container.offsetHeight, "ok");
+
+      try {
+        var opt = {
+          margin: [4,4,4,4], filename: "teste.pdf",
+          image: {type:"jpeg",quality:0.95},
+          html2canvas: {scale:1.5, useCORS:true, backgroundColor:"#ffffff", scrollY:0, scrollX:0, windowWidth:900},
+          jsPDF: {unit:"mm", format:"a4", orientation:"portrait"}
+        };
+        var blob = await window.html2pdf().set(opt).from(container).output("blob");
+        document.body.removeChild(container);
+        log("Blob gerado: " + blob.size + " bytes (tipo: " + blob.type + ")", blob.size > 2500 ? "ok" : "err");
+        if (blob.size > 2500) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a"); a.href=url; a.download="teste.pdf";
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+          log("DOWNLOAD DISPARADO! Verifique se o PDF tem conteudo.", "ok");
+        } else {
+          log("BLOB VAZIO! html2canvas capturou nada. Ativando TESTE 2...", "err");
+          testPrintWindow();
+        }
+      } catch(e) {
+        if(document.body.contains(container)) document.body.removeChild(container);
+        log("ERRO no html2pdf: " + e.message, "err");
+        testPrintWindow();
+      }
+    }
+
+    function testPrintWindow() {
+      log("TESTE 2: Janela de impressao...", "warn");
+      var w = window.open("", "_blank", "width=900,height=700");
+      if (!w) { log("POPUP BLOQUEADO! Habilite popups.", "err"); return; }
+      var bar = '<div id="b" style="position:fixed;top:0;left:0;right:0;background:#0f172a;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;z-index:9999;font-family:sans-serif;"><span style="font-weight:900;color:#eab308;font-size:16px;">RODEOAPP</span><div><button onclick="window.print()" style="background:#eab308;color:#000;font-weight:900;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;margin-right:8px;">IMPRIMIR / SALVAR PDF</button><button onclick="window.close()" style="background:#334155;color:#fff;font-weight:bold;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;">FECHAR</button></div></div><style>@media print{#b{display:none!important;}body{padding-top:0!important;}}body{padding-top:58px;}</style>';
+      var html = testHtml.replace(/<body[^>]*>/i, function(m){ return m + bar; });
+      w.document.open(); w.document.write(html); w.document.close();
+      log("Janela aberta! Clique IMPRIMIR/SALVAR PDF na janela que abriu.", "ok");
+    }
+
+    function testXLSX() {
+      log("TESTE 3: Excel...", "warn");
+      if (typeof window.XLSX === "undefined") { log("XLSX NAO CARREGADO!", "err"); return; }
+      try {
+        var rows = [["RODEOAPP - SORTEIO"],["EVENTO:","TESTE","DIA:","1"],[],["ORDEM","COMPETIDOR","CIDADE","TOURO","COMPANHIA","LADO"],[1,"JOAO SILVA","BARRETOS","PALHACO","BOIADA TOP","DIREITO"],[2,"PEDRO COSTA","RIBEIRAO","FURACAO","BOIADA TOP","ESQUERDO"]];
+        var ws = window.XLSX.utils.aoa_to_sheet(rows);
+        var wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, "Sorteio");
+        window.XLSX.writeFile(wb, "teste_sorteio.xlsx");
+        log("EXCEL GERADO! Verifique downloads.", "ok");
+      } catch(e) { log("ERRO Excel: " + e.message, "err"); }
+    }
+
+    window.addEventListener("load", function() {
+      log("Pagina carregada!", "ok");
+      log("html2pdf: " + (typeof window.html2pdf === "function" ? "SIM" : "NAO"), typeof window.html2pdf === "function" ? "ok" : "err");
+      log("XLSX: " + (typeof window.XLSX !== "undefined" ? "SIM" : "NAO"), typeof window.XLSX !== "undefined" ? "ok" : "err");
+    });
+  </script>
+</body>
+</html>
