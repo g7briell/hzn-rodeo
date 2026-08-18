@@ -2554,6 +2554,46 @@
         </main>
     </div>
 
+    <!-- ========================================== -->
+    <!-- MODAL: DIAGNÓSTICO E LOG DE ERROS          -->
+    <!-- ========================================== -->
+    <div id="modal-debug-log" class="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 hidden">
+        <div class="bg-slate-900 border-2 border-red-500/50 rounded-[2.5rem] w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl relative text-left">
+            <div class="p-6 sm:p-8 bg-red-500/10 border-b border-red-500/20 flex items-start justify-between">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-red-500/20 border border-red-500/40 rounded-full text-red-400 text-[10px] font-black uppercase tracking-widest mb-2">
+                        ⚠️ DIAGNÓSTICO DO SISTEMA
+                    </div>
+                    <h2 class="text-2xl font-black italic uppercase text-white tracking-tighter" id="debug-log-title">
+                        LOG DE EXECUÇÃO
+                    </h2>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1" id="debug-log-subtitle">
+                        Detalhes do erro para diagnóstico rápido
+                    </p>
+                </div>
+                <button onclick="document.getElementById('modal-debug-log').classList.add('hidden')" class="p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-500 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 sm:p-8 space-y-4 max-h-[55vh] overflow-y-auto custom-scroll">
+                <div class="bg-black border border-slate-800 rounded-2xl p-4 font-mono text-xs text-red-300 select-all whitespace-pre-wrap" id="debug-log-content">
+                    Sem logs registrados.
+                </div>
+            </div>
+
+            <div class="p-5 sm:p-6 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-4">
+                <button type="button" onclick="copyDebugLogToClipboard()" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
+                    <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span>COPIAR LOG</span>
+                </button>
+                <button type="button" onclick="document.getElementById('modal-debug-log').classList.add('hidden')" class="bg-yellow-500 hover:bg-yellow-400 text-black px-8 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer">
+                    FECHAR
+                </button>
+            </div>
+        </div>
+    </div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 <script src="web-polyfill.js"></script>

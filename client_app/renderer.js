@@ -7225,6 +7225,71 @@ setTimeout(() => {
 }, 1200);
 
 // ==========================================
+// SISTEMA DE DIAGNÓSTICO E LOG DE ERROS VISUAL
+// ==========================================
+window.showDebugLogError = (actionName, errorObj, extraContext = {}) => {
+    try {
+        console.error(`[DIAGNÓSTICO] Falha em ${actionName}:`, errorObj, extraContext);
+        
+        const titleEl = document.getElementById('debug-log-title');
+        const subtitleEl = document.getElementById('debug-log-subtitle');
+        const contentEl = document.getElementById('debug-log-content');
+        
+        if (titleEl) titleEl.innerText = `FALHA EM: ${String(actionName).toUpperCase()}`;
+        if (subtitleEl) subtitleEl.innerText = `Ocorrido em ${new Date().toLocaleTimeString('pt-BR')}`;
+        
+        const appVer = document.getElementById('whats-new-version')?.innerText || 'v1.0.146';
+        const report = [
+            `========================================`,
+            `  RODEOAPP - LOG DE DIAGNÓSTICO VISUAL  `,
+            `========================================`,
+            `Ação executada: ${actionName}`,
+            `Horário local: ${new Date().toLocaleString('pt-BR')}`,
+            `Versão do aplicativo: ${appVer}`,
+            `----------------------------------------`,
+            `STATUS DO EVENTO:`,
+            `Evento na memória: ${currentEvent ? (currentEvent.name + ' (ID: ' + currentEvent.id + ')') : 'NENHUM (currentEvent = null)'}`,
+            `Competidores: ${currentEvent?.peoes?.length || 0}`,
+            `Boiadas/Cias: ${currentEvent?.boiadas?.length || 0}`,
+            `Sorteios gerados: ${currentEvent?.sorteios?.length || 0}`,
+            `Notas registradas: ${currentEvent?.notas?.length || 0}`,
+            `----------------------------------------`,
+            `MENSAGEM DE ERRO:`,
+            `${errorObj?.message || String(errorObj)}`,
+            `----------------------------------------`,
+            `STACK TRACE:`,
+            `${errorObj?.stack || 'Nenhuma stack trace disponível.'}`,
+            `----------------------------------------`,
+            `CONTEXTO ADICIONAL:`,
+            `${JSON.stringify(extraContext, null, 2)}`
+        ].join('\n');
+
+        if (contentEl) contentEl.innerText = report;
+        
+        const modal = document.getElementById('modal-debug-log');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+    } catch (e) {
+        alert(`Erro em ${actionName}: ${errorObj?.message || errorObj}`);
+    }
+};
+
+window.copyDebugLogToClipboard = () => {
+    const text = document.getElementById('debug-log-content')?.innerText || '';
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('📋 Log de diagnóstico copiado com sucesso! Pode colar no chat ou enviar ao suporte.');
+        }).catch(() => {
+            alert('Log selecionado. Use Ctrl+C para copiar.');
+        });
+    } else {
+        alert('Log selecionado. Use Ctrl+C para copiar.');
+    }
+};
+
+// ==========================================
 // CENTRAL INTEGRADA DE RELATÓRIOS (REPORT VIEWER)
 // ==========================================
 let reportViewerState = {
@@ -7250,7 +7315,10 @@ window.openReportViewer = async (type = 'sumula', defaultDay = null) => {
         }
 
         if (!currentEvent || !currentEvent.id) {
-            alert("⚠️ Por favor, abra ou selecione um evento primeiro!");
+            window.showDebugLogError('Abrir Report Viewer', new Error('Nenhum evento ativo selecionado na memória.'), {
+                motivo: 'O usuário tentou abrir relatórios sem nenhum evento carregado.',
+                dica: 'Selecione e abra um evento na lista inicial antes de gerar o relatório.'
+            });
             return;
         }
 
@@ -7275,10 +7343,12 @@ window.openReportViewer = async (type = 'sumula', defaultDay = null) => {
         if (modal) {
             modal.classList.remove('hidden');
             modal.style.display = 'flex';
+        } else {
+            throw new Error('Elemento HTML #modal-report-viewer não foi encontrado no DOM.');
         }
     } catch (err) {
         console.error('[REPORT VIEWER] Error in openReportViewer:', err);
-        alert('Erro ao abrir o Report Viewer: ' + err.message);
+        window.showDebugLogError('Abrir Report Viewer', err, { type, defaultDay, reportViewerState });
     }
 };
 
