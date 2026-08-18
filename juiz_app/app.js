@@ -416,15 +416,9 @@ function renderJudgeDashboard() {
     if (!window.state.eventData) return;
 
     if (!window.state.currentJudge) {
-        const juizes = getJudgesListNormalized();
-        if (juizes.length > 0) {
-            window.state.currentJudge = juizes[0];
-            saveSession();
-        } else {
-            renderJudgesList();
-            showView('view-select-judge');
-            return;
-        }
+        renderJudgesList();
+        showView('view-select-judge');
+        return;
     }
 
     const maxPts = getJudgeScoreLimit();
@@ -1639,9 +1633,17 @@ window.closeJudgeMenuModal = () => {
 window.switchJudge = () => {
     closeJudgeMenuModal();
     window.state.currentJudge = null;
+    window.state.activeArenaRider = null;
+    window.state.waitingMatchup = null;
     saveSession();
+    
+    document.getElementById('judge-profile-chip').classList.add('hidden');
+    document.getElementById('view-judging-flow').classList.add('hidden');
+    document.getElementById('modal-waiting-other-judge').classList.add('hidden');
+    
     renderJudgesList();
     showView('view-select-judge');
+    showToast("Selecione seu nome de Juiz.", "info");
 };
 
 window.logoutEvent = () => {
