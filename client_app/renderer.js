@@ -7234,12 +7234,23 @@ let reportViewerState = {
     zoom: 1.0
 };
 
-window.openReportViewer = (type = 'sumula', defaultDay = null) => {
+window.openReportViewer = async (type = 'sumula', defaultDay = null) => {
     try {
         console.log('[REPORT VIEWER] openReportViewer called with type:', type, 'defaultDay:', defaultDay);
         
         if (!currentEvent || !currentEvent.id) {
-            alert("⚠️ Por favor, abra um evento primeiro para visualizar seus relatórios e contratos!");
+            const email = getCurrentUserEmail();
+            if (email && window.electronAPI && typeof window.electronAPI.getLocalEvents === 'function') {
+                const eventos = await window.electronAPI.getLocalEvents(email);
+                if (eventos && eventos.length > 0) {
+                    currentEvent = eventos[0];
+                    window.currentEvent = currentEvent;
+                }
+            }
+        }
+
+        if (!currentEvent || !currentEvent.id) {
+            alert("⚠️ Por favor, abra ou selecione um evento primeiro!");
             return;
         }
 
