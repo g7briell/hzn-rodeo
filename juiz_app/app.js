@@ -19,15 +19,10 @@ const SUPABASE_HEADERS = {
 // Chave oficial Ably Realtime
 const DEFAULT_ABLY_KEY = 'ZpXrAw.0ShBdA:PN-cy5nGO2hVtllKkQIQppoPtl4FGufzq58uT9WHXts';
 
-// Inicializa Supabase Client
-const supabase = (typeof window.supabase !== 'undefined' && window.supabase.createClient)
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
-    : null;
-
 // ==========================================
 // ESTADO GLOBAL DA APLICAÇÃO
 // ==========================================
-let state = {
+window.state = {
     eventId: null,
     shareId: null,
     sharePassword: null,
@@ -46,13 +41,13 @@ let ablyChannel = null;
 // ==========================================
 // INICIALIZAÇÃO DA APLICAÇÃO
 // ==========================================
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log("[RODEOAPP JUIZ] Inicializando Portal do Juiz...");
+window.addEventListener('load', async () => {
+    console.log("[RODEOAPP JUIZ] Aplicação carregada.");
 
     // Inicializa conexão Ably no boot para validar status
     initAblyBaseConnection();
 
-    // Verifica parâmetros de URL (ex: ?id=49expor-95675698&pass=1234)
+    // Verifica parâmetros de URL (ex: ?id=49expor-23086140&pass=1)
     const urlParams = new URLSearchParams(window.location.search);
     const paramId = urlParams.get('id') || urlParams.get('event');
     const paramPass = urlParams.get('pass') || urlParams.get('senha');
@@ -84,11 +79,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 function saveSession() {
     try {
         const sessionData = {
-            shareId: state.shareId,
-            sharePassword: state.sharePassword,
-            judgeIdx: state.currentJudge ? state.currentJudge.idx : null,
-            judgeNome: state.currentJudge ? state.currentJudge.nome : null,
-            selectedDay: state.selectedDay
+            shareId: window.state.shareId,
+            sharePassword: window.state.sharePassword,
+            judgeIdx: window.state.currentJudge ? window.state.currentJudge.idx : null,
+            judgeNome: window.state.currentJudge ? window.state.currentJudge.nome : null,
+            selectedDay: window.state.selectedDay
         };
         localStorage.setItem('RODEOAPP_JUIZ_SESSION', JSON.stringify(sessionData));
     } catch (e) {
@@ -107,32 +102,30 @@ function loadSavedSession() {
 
 function clearSession() {
     localStorage.removeItem('RODEOAPP_JUIZ_SESSION');
-    state.eventId = null;
-    state.shareId = null;
-    state.sharePassword = null;
-    state.eventData = null;
-    state.currentJudge = null;
-    state.selectedDay = null;
+    window.state.eventId = null;
+    window.state.shareId = null;
+    window.state.sharePassword = null;
+    window.state.eventData = null;
+    window.state.currentJudge = null;
+    window.state.selectedDay = null;
 }
 
 // ==========================================
 // FLUXO DE LOGIN 1: EVENTO (ID + SENHA)
 // ==========================================
-window.handleEventLogin = async (e) => {
-    if (e && typeof e.preventDefault === 'function') {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
+window.handleEventLogin = async () => {
     const idInput = document.getElementById('input-event-id');
     const passInput = document.getElementById('input-event-password');
     const btnSubmit = document.getElementById('btn-submit-event');
+    const errorEl = document.getElementById('login-error-msg');
+
+    if (errorEl) errorEl.classList.add('hidden');
 
     const shareId = (idInput ? idInput.value : '').trim();
     const password = (passInput ? passInput.value : '').trim();
 
     if (!shareId || !password) {
-        showToast("Preencha o ID e a Senha do Evento.", "error");
+        showLoginError("Por favor, preencha o ID e a Senha do Evento.");
         return false;
     }
 
@@ -142,25 +135,23 @@ window.handleEventLogin = async (e) => {
     }
 
     try {
+        console.log(`[RODEOAPP JUIZ] Buscando evento com ID: "${shareId}"`);
         const cloudEvent = await fetchCloudEventByShare(shareId, password);
+        
         if (!cloudEvent) {
-            showToast("ID do evento ou senha incorretos.", "error");
-            if (btnSubmit) {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = `<span>CONECTAR AO EVENTO</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
-            }
+            showLoginError("ID do evento ou senha incorretos. Verifique os dados no RODEOAPP.");
             return false;
         }
 
-        state.shareId = shareId;
-        state.sharePassword = password;
-        state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
-        state.eventId = cloudEvent.id;
+        window.state.shareId = shareId;
+        window.state.sharePassword = password;
+        window.state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
+        window.state.eventId = cloudEvent.id;
 
         // Atualiza header
         const headerEvent = document.getElementById('header-event-name');
         if (headerEvent) {
-            headerEvent.innerText = state.eventData.name || 'EVENTO OFICIAL';
+            headerEvent.innerText = window.state.eventData.name || 'EVENTO OFICIAL';
             headerEvent.classList.remove('hidden');
         }
 
@@ -177,7 +168,7 @@ window.handleEventLogin = async (e) => {
 
     } catch (err) {
         console.error("Erro no login do evento:", err);
-        showToast(err.message || "Erro de conexão com o servidor. Tente novamente.", "error");
+        showLoginError(err.message || "Erro de conexão com o servidor. Tente novamente.");
     } finally {
         if (btnSubmit) {
             btnSubmit.disabled = false;
@@ -186,6 +177,15 @@ window.handleEventLogin = async (e) => {
     }
     return false;
 };
+
+function showLoginError(msg) {
+    const errorEl = document.getElementById('login-error-msg');
+    if (errorEl) {
+        errorEl.innerText = msg;
+        errorEl.classList.remove('hidden');
+    }
+    showToast(msg, "error");
+}
 
 async function restoreSession(savedSession) {
     try {
@@ -196,28 +196,23 @@ async function restoreSession(savedSession) {
             return;
         }
 
-        state.shareId = savedSession.shareId;
-        state.sharePassword = savedSession.sharePassword;
-        state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
-        state.eventId = cloudEvent.id;
+        window.state.shareId = savedSession.shareId;
+        window.state.sharePassword = savedSession.sharePassword;
+        window.state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
+        window.state.eventId = cloudEvent.id;
 
         const headerEvent = document.getElementById('header-event-name');
         if (headerEvent) {
-            headerEvent.innerText = state.eventData.name || 'EVENTO OFICIAL';
+            headerEvent.innerText = window.state.eventData.name || 'EVENTO OFICIAL';
             headerEvent.classList.remove('hidden');
         }
 
-        subscribeToEventChannel(state.shareId);
+        subscribeToEventChannel(window.state.shareId);
 
-        // Se tinha juiz selecionado anteriormente
-        const juizes = state.eventData.juizes || [];
+        const juizes = getJudgesListNormalized();
         if (savedSession.judgeIdx !== null && juizes[savedSession.judgeIdx]) {
-            const j = juizes[savedSession.judgeIdx];
-            const jNome = typeof j === 'string' ? j : (j.nome || `JUIZ ${savedSession.judgeIdx + 1}`);
-            const jSenha = typeof j === 'object' ? (j.senha || '') : '';
-            state.currentJudge = { nome: jNome, senha: jSenha, idx: savedSession.judgeIdx };
-            
-            state.selectedDay = savedSession.selectedDay || getDefaultDay();
+            window.state.currentJudge = juizes[savedSession.judgeIdx];
+            window.state.selectedDay = savedSession.selectedDay || getDefaultDay();
             renderJudgeDashboard();
             showView('view-rides-list');
         } else {
@@ -234,44 +229,24 @@ async function fetchCloudEventByShare(shareId, password) {
     const cleanShareId = shareId.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // 1º Tentativa: Direct REST Fetch (ultra-rápido e compatível com todos os navegadores)
-    try {
-        const url = `${SUPABASE_URL}/rest/v1/eventos_oficiais?status=eq.compartilhado&select=*&order=created_at.desc&limit=150`;
-        const resp = await fetch(url, { headers: SUPABASE_HEADERS });
-        if (resp.ok) {
-            const events = await resp.json();
-            const found = (events || []).find(e => {
-                const det = e.detalhes || {};
-                const sId = String(det.share_id || '').trim().toLowerCase();
-                const sPass = String(det.share_password || '').trim();
-                return sId === cleanShareId && sPass === cleanPassword;
-            });
-            if (found) return found;
-        }
-    } catch (fetchErr) {
-        console.warn("Direct REST fetch falhou, tentando Supabase Client:", fetchErr);
+    const url = `${SUPABASE_URL}/rest/v1/eventos_oficiais?status=eq.compartilhado&select=*&order=created_at.desc&limit=150`;
+    const resp = await fetch(url, { headers: SUPABASE_HEADERS });
+    
+    if (!resp.ok) {
+        throw new Error(`Servidor respondeu com status ${resp.status}`);
     }
 
-    // 2º Tentativa: Supabase JS Client SDK
-    if (supabase) {
-        const { data: events, error } = await supabase
-            .from('eventos_oficiais')
-            .select('*')
-            .eq('status', 'compartilhado')
-            .order('created_at', { ascending: false })
-            .limit(150);
+    const events = await resp.json();
+    console.log(`[RODEOAPP JUIZ] Total de eventos compartilhados na nuvem: ${events ? events.length : 0}`);
 
-        if (error) throw new Error(error.message || "Erro na conexão Supabase.");
+    const found = (events || []).find(e => {
+        const det = e.detalhes || {};
+        const sId = String(det.share_id || '').trim().toLowerCase();
+        const sPass = String(det.share_password || '').trim();
+        return sId === cleanShareId && sPass === cleanPassword;
+    });
 
-        return (events || []).find(e => {
-            const det = e.detalhes || {};
-            const sId = String(det.share_id || '').trim().toLowerCase();
-            const sPass = String(det.share_password || '').trim();
-            return sId === cleanShareId && sPass === cleanPassword;
-        });
-    }
-
-    return null;
+    return found || null;
 }
 
 // ==========================================
@@ -279,32 +254,46 @@ async function fetchCloudEventByShare(shareId, password) {
 // ==========================================
 let pendingJudgeSelection = null;
 
-function renderJudgesList() {
-    const container = document.getElementById('judges-list-container');
-    const juizes = (state.eventData && state.eventData.juizes) || [];
-
-    if (juizes.length === 0) {
-        container.innerHTML = `
-            <div class="glass-card p-6 rounded-2xl text-center text-slate-400 font-medium text-xs">
-                Nenhum juiz cadastrado neste evento ainda.<br>
-                <span class="text-slate-500 mt-1 block">Peça ao Administrador para cadastrar os juízes no aplicativo RODEOAPP.</span>
-            </div>`;
-        return;
+function getJudgesListNormalized() {
+    const rawJudges = (window.state.eventData && window.state.eventData.juizes) || [];
+    
+    if (rawJudges.length > 0) {
+        return rawJudges.map((j, idx) => ({
+            nome: typeof j === 'string' ? j : (j.nome || `JUIZ ${idx + 1}`),
+            senha: typeof j === 'object' ? (j.senha || '') : '',
+            idx: idx
+        }));
     }
 
+    // Se a lista de juízes estiver vazia, gera conforme a contagem do evento (ex: 3 juízes)
+    const judgeCount = parseInt(window.state.eventData.judges || 3) || 3;
+    const generated = [];
+    for (let i = 0; i < judgeCount; i++) {
+        generated.push({
+            nome: `JUIZ ${i + 1}`,
+            senha: '',
+            idx: i
+        });
+    }
+    return generated;
+}
+
+function renderJudgesList() {
+    const container = document.getElementById('judges-list-container');
+    const juizes = getJudgesListNormalized();
+
     container.innerHTML = juizes.map((j, idx) => {
-        const jNome = typeof j === 'string' ? j : (j.nome || `JUIZ ${idx + 1}`);
-        const hasSenha = typeof j === 'object' && j.senha && String(j.senha).trim().length > 0;
+        const hasSenha = j.senha && String(j.senha).trim().length > 0;
 
         return `
-            <button type="button" onclick="selectJudgeFromList(${idx})" class="glass-card p-5 rounded-2xl border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all text-left flex items-center justify-between group touch-active">
+            <button type="button" onclick="selectJudgeFromList(${idx})" class="glass-card p-5 rounded-2xl border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all text-left flex items-center justify-between group touch-active cursor-pointer">
                 <div class="flex items-center gap-3.5">
                     <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 flex items-center justify-center font-black text-sm group-hover:bg-yellow-500 group-hover:text-black transition-all">
                         ${idx + 1}
                     </div>
                     <div>
-                        <div class="font-black text-white text-base uppercase group-hover:text-yellow-400 transition-colors">${jNome}</div>
-                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Juiz Oficial • ${hasSenha ? '🔒 Protegido por Senha' : 'Livre'}</div>
+                        <div class="font-black text-white text-base uppercase group-hover:text-yellow-400 transition-colors">${j.nome}</div>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Juiz Oficial • ${hasSenha ? '🔒 Senha Cadastrada' : 'Acesso Livre'}</div>
                     </div>
                 </div>
                 <div class="text-slate-500 group-hover:text-white transition-colors">
@@ -316,18 +305,15 @@ function renderJudgesList() {
 }
 
 window.selectJudgeFromList = (idx) => {
-    const juizes = state.eventData.juizes || [];
+    const juizes = getJudgesListNormalized();
     const j = juizes[idx];
     if (!j) return;
 
-    const jNome = typeof j === 'string' ? j : (j.nome || `JUIZ ${idx + 1}`);
-    const jSenha = typeof j === 'object' ? (j.senha || '') : '';
-
-    pendingJudgeSelection = { nome: jNome, senha: jSenha, idx };
+    pendingJudgeSelection = j;
 
     // Se o juiz possui senha cadastrada, abre o modal de autenticação
-    if (jSenha && jSenha.trim().length > 0) {
-        document.getElementById('modal-pwd-judge-name').innerText = jNome;
+    if (j.senha && j.senha.trim().length > 0) {
+        document.getElementById('modal-pwd-judge-name').innerText = j.nome;
         document.getElementById('input-judge-pin').value = '';
         document.getElementById('judge-auth-error').classList.add('hidden');
         document.getElementById('modal-judge-password').classList.remove('hidden');
@@ -338,11 +324,10 @@ window.selectJudgeFromList = (idx) => {
     }
 };
 
-window.handleJudgeAuth = (e) => {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+window.handleJudgeAuth = () => {
     if (!pendingJudgeSelection) return;
 
-    const inputPin = document.getElementById('input-judge-pin').value.trim();
+    const inputPin = (document.getElementById('input-judge-pin')?.value || '').trim();
     const correctPin = pendingJudgeSelection.senha.trim();
 
     if (inputPin === correctPin) {
@@ -351,21 +336,21 @@ window.handleJudgeAuth = (e) => {
     } else {
         document.getElementById('judge-auth-error').innerText = "Senha do juiz incorreta. Tente novamente.";
         document.getElementById('judge-auth-error').classList.remove('hidden');
-        document.getElementById('input-judge-pin').select();
+        document.getElementById('input-judge-pin')?.select();
     }
 };
 
 function authenticateJudgeDirect(judgeObj) {
-    state.currentJudge = judgeObj;
+    window.state.currentJudge = judgeObj;
     saveSession();
 
     // Re-inicia Ably com clientId do Juiz
-    if (state.shareId) {
-        subscribeToEventChannel(state.shareId);
+    if (window.state.shareId) {
+        subscribeToEventChannel(window.state.shareId);
     }
 
     // Configura o Painel de Montarias
-    state.selectedDay = state.selectedDay || getDefaultDay();
+    window.state.selectedDay = window.state.selectedDay || getDefaultDay();
     renderJudgeDashboard();
     showView('view-rides-list');
     showToast(`Bem-vindo, ${judgeObj.nome}!`, "success");
@@ -384,7 +369,7 @@ window.backToEventLogin = () => {
 // PAINEL DE MONTARIAS DO JUIZ (TELA 3)
 // ==========================================
 function getDefaultDay() {
-    const sorteios = (state.eventData && state.eventData.sorteios) || [];
+    const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
     if (sorteios.length > 0) {
         return sorteios[sorteios.length - 1].day;
     }
@@ -392,13 +377,13 @@ function getDefaultDay() {
 }
 
 function renderJudgeDashboard() {
-    if (!state.currentJudge || !state.eventData) return;
+    if (!window.state.currentJudge || !window.state.eventData) return;
 
     // Atualiza cabeçalho do Juiz
-    document.getElementById('header-judge-name').innerText = state.currentJudge.nome;
+    document.getElementById('header-judge-name').innerText = window.state.currentJudge.nome;
     document.getElementById('judge-profile-chip').classList.remove('hidden');
-    document.getElementById('rides-view-judge-name').innerText = state.currentJudge.nome;
-    document.getElementById('rides-view-event-title').innerText = state.eventData.name || 'EVENTO';
+    document.getElementById('rides-view-judge-name').innerText = window.state.currentJudge.nome;
+    document.getElementById('rides-view-event-title').innerText = window.state.eventData.name || 'EVENTO';
 
     // Renderiza Abas de Dias
     renderDaysTabs();
@@ -409,7 +394,7 @@ function renderJudgeDashboard() {
 
 function renderDaysTabs() {
     const container = document.getElementById('days-tabs-container');
-    const sorteios = (state.eventData && state.eventData.sorteios) || [];
+    const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
 
     // Obter dias únicos disponíveis
     let days = sorteios.map(s => s.day);
@@ -419,18 +404,18 @@ function renderDaysTabs() {
         days = [...new Set(days)];
     }
 
-    if (!state.selectedDay || !days.includes(state.selectedDay)) {
-        state.selectedDay = days[0];
+    if (!window.state.selectedDay || !days.includes(window.state.selectedDay)) {
+        window.state.selectedDay = days[0];
     }
 
     container.innerHTML = days.map(d => {
-        const isActive = d === state.selectedDay;
+        const isActive = d === window.state.selectedDay;
         const activeClass = isActive 
             ? 'bg-yellow-500 text-black font-black shadow-lg shadow-yellow-500/20' 
             : 'bg-slate-900 text-slate-400 font-bold border border-slate-800 hover:text-white';
 
         return `
-            <button type="button" onclick="selectDay('${d}')" class="px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all whitespace-nowrap touch-active ${activeClass}">
+            <button type="button" onclick="selectDay('${d}')" class="px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all whitespace-nowrap touch-active cursor-pointer ${activeClass}">
                 ${d.replace(/DIA/gi, 'ROUND')}
             </button>
         `;
@@ -438,7 +423,7 @@ function renderDaysTabs() {
 }
 
 window.selectDay = (day) => {
-    state.selectedDay = day;
+    window.state.selectedDay = day;
     saveSession();
     renderDaysTabs();
     renderRidesList();
@@ -447,8 +432,8 @@ window.selectDay = (day) => {
 function renderRidesList() {
     const container = document.getElementById('rides-cards-container');
     const noRidesEl = document.getElementById('no-rides-message');
-    const sorteios = (state.eventData && state.eventData.sorteios) || [];
-    const currentSorteio = sorteios.find(s => s.day === state.selectedDay);
+    const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
+    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
 
     if (!currentSorteio || !currentSorteio.riders || currentSorteio.riders.length === 0) {
         container.innerHTML = '';
@@ -462,7 +447,7 @@ function renderRidesList() {
     const riders = currentSorteio.riders;
     const bulls = currentSorteio.bulls || [];
     const assignments = currentSorteio.assignments || {};
-    const notas = (state.eventData && state.eventData.notas) || [];
+    const notas = (window.state.eventData && window.state.eventData.notas) || [];
 
     let totalCount = riders.length;
     let gradedCount = 0;
@@ -475,8 +460,8 @@ function renderRidesList() {
         // Procura a nota deste Juiz para este competidor neste dia
         const myScore = notas.find(n => 
             n.peaoNome === r.nome && 
-            n.dia === state.selectedDay && 
-            n.judgeIdx === state.currentJudge.idx && 
+            n.dia === window.state.selectedDay && 
+            n.judgeIdx === window.state.currentJudge.idx && 
             n.status !== 'substituida'
         );
 
@@ -485,8 +470,8 @@ function renderRidesList() {
         else pendingCount++;
 
         // Filtro
-        if (state.activeFilter === 'pending' && isGraded) return '';
-        if (state.activeFilter === 'graded' && !isGraded) return '';
+        if (window.state.activeFilter === 'pending' && isGraded) return '';
+        if (window.state.activeFilter === 'graded' && !isGraded) return '';
 
         // Status Card
         let cardBorder = isGraded ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-white/5 hover:border-yellow-500/40 bg-slate-900/60';
@@ -567,14 +552,14 @@ function updateCounters(total, graded, pending) {
 }
 
 window.filterRides = (type) => {
-    state.activeFilter = type;
+    window.state.activeFilter = type;
     ['all', 'pending', 'graded'].forEach(f => {
         const btn = document.getElementById(`filter-btn-${f}`);
         if (btn) {
             if (f === type) {
-                btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-yellow-500 text-black shadow-lg transition-all touch-active";
+                btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-yellow-500 text-black shadow-lg transition-all touch-active cursor-pointer";
             } else {
-                btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active";
+                btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active cursor-pointer";
             }
         }
     });
@@ -585,21 +570,21 @@ window.filterRides = (type) => {
 // MODAL DE LANÇAMENTO DE NOTA (TOUCH ARENA)
 // ==========================================
 window.openScoreModal = (matchupIdx) => {
-    const sorteios = (state.eventData && state.eventData.sorteios) || [];
-    const currentSorteio = sorteios.find(s => s.day === state.selectedDay);
+    const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
+    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
     if (!currentSorteio) return;
 
     const r = currentSorteio.riders[matchupIdx];
     const bullIdx = currentSorteio.assignments[matchupIdx] !== undefined ? currentSorteio.assignments[matchupIdx] : matchupIdx;
     const bull = currentSorteio.bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
 
-    state.currentMatchupIdx = matchupIdx;
-    state.currentRider = r;
-    state.currentBull = bull;
+    window.state.currentMatchupIdx = matchupIdx;
+    window.state.currentRider = r;
+    window.state.currentBull = bull;
 
     // Preenche cabeçalhos do modal
     document.getElementById('modal-score-ordem').innerText = matchupIdx + 1;
-    document.getElementById('modal-score-judge-label').innerText = `${state.currentJudge.nome} (JUIZ ${state.currentJudge.idx + 1})`;
+    document.getElementById('modal-score-judge-label').innerText = `${window.state.currentJudge.nome} (JUIZ ${window.state.currentJudge.idx + 1})`;
     document.getElementById('modal-score-rider-name').innerText = r.nome;
     document.getElementById('modal-score-rider-city').innerText = r.cidade || 'CIDADE / UF';
     document.getElementById('modal-score-bull-name').innerText = bull.nome;
@@ -607,11 +592,11 @@ window.openScoreModal = (matchupIdx) => {
     document.getElementById('modal-score-bull-lado').innerText = bull.lado || 'C';
 
     // Carrega nota existente se houver
-    const notas = state.eventData.notas || [];
+    const notas = window.state.eventData.notas || [];
     const myScore = notas.find(n => 
         n.peaoNome === r.nome && 
-        n.dia === state.selectedDay && 
-        n.judgeIdx === state.currentJudge.idx && 
+        n.dia === window.state.selectedDay && 
+        n.judgeIdx === window.state.currentJudge.idx && 
         n.status !== 'substituida'
     );
 
@@ -624,15 +609,15 @@ window.openScoreModal = (matchupIdx) => {
         document.getElementById('input-score-bull').value = '22.50';
     }
 
-    updateScoreTotal();
+    window.updateScoreTotal();
     document.getElementById('modal-score-entry').classList.remove('hidden');
 };
 
 window.closeScoreEntryModal = () => {
     document.getElementById('modal-score-entry').classList.add('hidden');
-    state.currentMatchupIdx = null;
-    state.currentRider = null;
-    state.currentBull = null;
+    window.state.currentMatchupIdx = null;
+    window.state.currentRider = null;
+    window.state.currentBull = null;
 };
 
 window.updateScoreTotal = () => {
@@ -647,25 +632,25 @@ window.adjustScore = (target, delta) => {
     let val = parseFloat(input.value) || 0;
     val = Math.max(0, Math.min(50, val + delta));
     input.value = val.toFixed(2);
-    updateScoreTotal();
+    window.updateScoreTotal();
 };
 
 window.setPresetScore = (target, value) => {
     const input = document.getElementById(target === 'rider' ? 'input-score-rider' : 'input-score-bull');
     input.value = parseFloat(value).toFixed(2);
-    updateScoreTotal();
+    window.updateScoreTotal();
 };
 
 window.submitNoScore = () => {
     document.getElementById('input-score-rider').value = '0.00';
     document.getElementById('input-score-bull').value = '0.00';
-    updateScoreTotal();
-    submitScoreToRealtime(true);
+    window.updateScoreTotal();
+    window.submitScoreToRealtime(true);
 };
 
 window.submitReride = () => {
     if (confirm("Deseja solicitar RE-RIDE para esta montaria? O competidor terá direito a novo touro.")) {
-        submitScoreToRealtime(false, true);
+        window.submitScoreToRealtime(false, true);
     }
 };
 
@@ -673,7 +658,7 @@ window.submitReride = () => {
 // ENVIO DA NOTA EM TEMPO REAL (ABLY + SUPABASE)
 // ==========================================
 window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
-    if (!state.currentJudge || !state.currentRider) return;
+    if (!window.state.currentJudge || !window.state.currentRider) return;
 
     const rScore = parseFloat(document.getElementById('input-score-rider').value) || 0;
     const bScore = parseFloat(document.getElementById('input-score-bull').value) || 0;
@@ -686,14 +671,14 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
     }
 
     const scorePayload = {
-        shareId: state.shareId,
-        day: state.selectedDay,
-        matchupIdx: state.currentMatchupIdx,
-        riderName: state.currentRider.nome,
-        bullName: state.currentBull.nome,
-        bullCia: state.currentBull.cia,
-        judgeName: state.currentJudge.nome,
-        judgeIdx: state.currentJudge.idx,
+        shareId: window.state.shareId,
+        day: window.state.selectedDay,
+        matchupIdx: window.state.currentMatchupIdx,
+        riderName: window.state.currentRider.nome,
+        bullName: window.state.currentBull.nome,
+        bullCia: window.state.currentBull.cia,
+        judgeName: window.state.currentJudge.nome,
+        judgeIdx: window.state.currentJudge.idx,
         riderScore: isFall ? 0 : rScore,
         bullScore: isFall ? 0 : bScore,
         totalScore: totalScore,
@@ -716,8 +701,8 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
         await saveScoreDirectToSupabase(scorePayload);
 
         // 3. Atualiza estado local na memória
-        state.eventData.notas = state.eventData.notas || [];
-        const existingIdx = state.eventData.notas.findIndex(n => 
+        window.state.eventData.notas = window.state.eventData.notas || [];
+        const existingIdx = window.state.eventData.notas.findIndex(n => 
             n.peaoNome === scorePayload.riderName && 
             n.dia === scorePayload.day && 
             n.judgeIdx === scorePayload.judgeIdx && 
@@ -737,12 +722,12 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
         };
 
         if (existingIdx > -1) {
-            state.eventData.notas[existingIdx] = localNota;
+            window.state.eventData.notas[existingIdx] = localNota;
         } else {
-            state.eventData.notas.push(localNota);
+            window.state.eventData.notas.push(localNota);
         }
 
-        closeScoreEntryModal();
+        window.closeScoreEntryModal();
         renderRidesList();
         showToast("⚡ Nota transmitida em tempo real!", "success");
 
@@ -758,11 +743,11 @@ window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
 };
 
 async function saveScoreDirectToSupabase(scorePayload) {
-    if (!state.eventId) return;
+    if (!window.state.eventId) return;
 
     try {
         // Fetch evento atualizado
-        const urlGet = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(state.eventId)}&select=*`;
+        const urlGet = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(window.state.eventId)}&select=*`;
         const getRes = await fetch(urlGet, { headers: SUPABASE_HEADERS });
         if (!getRes.ok) return;
 
@@ -801,7 +786,7 @@ async function saveScoreDirectToSupabase(scorePayload) {
 
         detalhes.localData = localData;
 
-        const urlPatch = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(state.eventId)}`;
+        const urlPatch = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(window.state.eventId)}`;
         await fetch(urlPatch, {
             method: 'PATCH',
             headers: SUPABASE_HEADERS,
@@ -855,7 +840,7 @@ function subscribeToEventChannel(shareId) {
     try {
         if (!ablyClient) {
             const ablyKey = localStorage.getItem('RODEOAPP_ABLY_KEY') || DEFAULT_ABLY_KEY;
-            ablyClient = new Ably.Realtime({ key: ablyKey, clientId: `juiz-${state.currentJudge ? state.currentJudge.nome : 'anon'}-${Date.now()}` });
+            ablyClient = new Ably.Realtime({ key: ablyKey, clientId: `juiz-${window.state.currentJudge ? window.state.currentJudge.nome : 'anon'}-${Date.now()}` });
         }
 
         if (ablyChannel) {
@@ -872,7 +857,7 @@ function subscribeToEventChannel(shareId) {
         ablyChannel.subscribe('admin-event-updated', (message) => {
             console.log("[ABLY REALTIME] Atualização do evento recebida do Administrador:", message.data);
             if (message.data && message.data.localData) {
-                state.eventData = message.data.localData;
+                window.state.eventData = message.data.localData;
                 renderJudgeDashboard();
                 showToast("Evento atualizado pelo Administrador!", "info");
             }
@@ -906,7 +891,7 @@ function updateAblyBadge(status) {
         text.innerText = "ABLY: AO VIVO";
         text.className = "text-emerald-400";
     } else if (status === 'connected') {
-        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse";
         text.innerText = "ABLY: ONLINE";
         text.className = "text-emerald-400";
     } else if (status === 'disconnected') {
@@ -921,12 +906,12 @@ function updateAblyBadge(status) {
 }
 
 window.refreshEventDataFromCloud = async () => {
-    if (!state.shareId || !state.sharePassword) return;
+    if (!window.state.shareId || !window.state.sharePassword) return;
     showToast("Atualizando dados da nuvem...", "info");
     try {
-        const cloudEvent = await fetchCloudEventByShare(state.shareId, state.sharePassword);
+        const cloudEvent = await fetchCloudEventByShare(window.state.shareId, window.state.sharePassword);
         if (cloudEvent) {
-            state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
+            window.state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
             renderJudgeDashboard();
             showToast("Dados atualizados!", "success");
         }
@@ -939,7 +924,7 @@ window.refreshEventDataFromCloud = async () => {
 // MODAL DE OPÇÕES DO JUIZ
 // ==========================================
 window.openJudgeMenuModal = () => {
-    document.getElementById('judge-menu-info').innerText = `${state.currentJudge ? state.currentJudge.nome : 'JUIZ'} • ${state.eventData ? state.eventData.name : ''}`;
+    document.getElementById('judge-menu-info').innerText = `${window.state.currentJudge ? window.state.currentJudge.nome : 'JUIZ'} • ${window.state.eventData ? window.state.eventData.name : ''}`;
     document.getElementById('modal-judge-menu').classList.remove('hidden');
 };
 
@@ -949,7 +934,7 @@ window.closeJudgeMenuModal = () => {
 
 window.switchJudge = () => {
     closeJudgeMenuModal();
-    state.currentJudge = null;
+    window.state.currentJudge = null;
     saveSession();
     renderJudgesList();
     showView('view-select-judge');

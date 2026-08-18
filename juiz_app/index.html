@@ -12,8 +12,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Ably Realtime CDN -->
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
-    <!-- Supabase JS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Google Fonts Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -91,8 +89,8 @@
         <div class="flex items-center gap-2.5 sm:gap-4">
             <!-- Badge Ably Realtime -->
             <div id="ably-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] font-black uppercase tracking-wider transition-all" title="Status da Conexão Ably Realtime">
-                <span id="ably-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                <span id="ably-status-text" class="text-amber-400">ABLY: INICIANDO</span>
+                <span id="ably-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse"></span>
+                <span id="ably-status-text" class="text-emerald-400">ABLY: ONLINE</span>
             </div>
 
             <!-- Botão do Juiz Logado / Menu -->
@@ -149,12 +147,12 @@
                     Digite o ID e a Senha de Compartilhamento
                 </p>
 
-                <form id="form-login-event" onsubmit="event.preventDefault(); handleEventLogin(event);" class="space-y-4 text-left">
+                <div class="space-y-4 text-left">
                     <div>
                         <label class="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
                             ID / Código do Evento
                         </label>
-                        <input type="text" id="input-event-id" placeholder="Ex: 49expor-95675698" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-sm font-mono outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all uppercase" required autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); handleEventLogin(event);}">
+                        <input type="text" id="input-event-id" placeholder="Ex: 49expor-23086140" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-sm font-mono outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all uppercase" required autocomplete="off" onkeydown="if(event.key==='Enter'){handleEventLogin();}">
                     </div>
 
                     <div>
@@ -162,18 +160,22 @@
                             Senha do Evento
                         </label>
                         <div class="relative">
-                            <input type="password" id="input-event-password" placeholder="Digite a senha do evento" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-sm outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" required onkeydown="if(event.key==='Enter'){event.preventDefault(); handleEventLogin(event);}">
+                            <input type="password" id="input-event-password" placeholder="Digite a senha do evento" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-sm outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" required onkeydown="if(event.key==='Enter'){handleEventLogin();}">
                             <button type="button" onclick="togglePasswordVisibility('input-event-password')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1">
                                 👁️
                             </button>
                         </div>
                     </div>
 
-                    <button type="button" onclick="handleEventLogin(event)" id="btn-submit-event" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4.5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-2 mt-6">
+                    <div id="login-error-msg" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold text-center">
+                        Erro ao conectar
+                    </div>
+
+                    <button type="button" onclick="handleEventLogin()" id="btn-submit-event" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4.5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-2 mt-6 cursor-pointer">
                         <span>CONECTAR AO EVENTO</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </button>
-                </form>
+                </div>
 
                 <div class="mt-8 pt-6 border-t border-white/5 text-center">
                     <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-center gap-2">
@@ -190,7 +192,7 @@
             <div class="w-full max-w-lg glass-card p-6 sm:p-10 rounded-[2.5rem] shadow-2xl border-white/10 text-center">
                 <div class="flex items-center justify-between mb-6 text-left">
                     <div>
-                        <button type="button" onclick="backToEventLogin()" class="text-xs font-bold text-slate-500 hover:text-white flex items-center gap-1 mb-2 uppercase tracking-wider">
+                        <button type="button" onclick="backToEventLogin()" class="text-xs font-bold text-slate-500 hover:text-white flex items-center gap-1 mb-2 uppercase tracking-wider cursor-pointer">
                             ← Trocar Evento
                         </button>
                         <h2 class="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter text-white">
@@ -243,18 +245,18 @@
             <!-- Filtros Rápidos -->
             <div class="flex items-center justify-between gap-3 mb-4">
                 <div class="flex items-center gap-2">
-                    <button type="button" onclick="filterRides('all')" id="filter-btn-all" class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-yellow-500 text-black shadow-lg transition-all touch-active">
+                    <button type="button" onclick="filterRides('all')" id="filter-btn-all" class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-yellow-500 text-black shadow-lg transition-all touch-active cursor-pointer">
                         Todas (<span id="count-all">0</span>)
                     </button>
-                    <button type="button" onclick="filterRides('pending')" id="filter-btn-pending" class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active">
+                    <button type="button" onclick="filterRides('pending')" id="filter-btn-pending" class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active cursor-pointer">
                         Pendentes (<span id="count-pending">0</span>)
                     </button>
-                    <button type="button" onclick="filterRides('graded')" id="filter-btn-graded" class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active">
+                    <button type="button" onclick="filterRides('graded')" id="filter-btn-graded" class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active cursor-pointer">
                         Avaliadas (<span id="count-graded">0</span>)
                     </button>
                 </div>
 
-                <button type="button" onclick="refreshEventDataFromCloud()" class="p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-all touch-active" title="Atualizar dados da nuvem">
+                <button type="button" onclick="refreshEventDataFromCloud()" class="p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-all touch-active cursor-pointer" title="Atualizar dados da nuvem">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 </button>
             </div>
@@ -278,7 +280,7 @@
     <!-- ========================================== -->
     <div id="modal-judge-password" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="w-full max-w-sm glass-card p-8 rounded-[2.5rem] border-white/10 shadow-2xl text-center relative">
-            <button type="button" onclick="closeJudgePasswordModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white text-xl">✕</button>
+            <button type="button" onclick="closeJudgePasswordModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white text-xl cursor-pointer">✕</button>
 
             <div class="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 mx-auto mb-4 flex items-center justify-center text-2xl">
                 🔒
@@ -291,21 +293,21 @@
                 Digite sua senha de Juiz:
             </p>
 
-            <form id="form-judge-password" onsubmit="event.preventDefault(); handleJudgeAuth(event);" class="space-y-4 text-left">
+            <div class="space-y-4 text-left">
                 <div>
                     <div class="relative">
-                        <input type="password" id="input-judge-pin" placeholder="Senha do Juiz" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-center text-lg font-mono outline-none focus:ring-2 focus:ring-yellow-500 tracking-widest" required autofocus onkeydown="if(event.key==='Enter'){event.preventDefault(); handleJudgeAuth(event);}">
-                        <button type="button" onclick="togglePasswordVisibility('input-judge-pin')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1">
+                        <input type="password" id="input-judge-pin" placeholder="Senha do Juiz" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-center text-lg font-mono outline-none focus:ring-2 focus:ring-yellow-500 tracking-widest" required autofocus onkeydown="if(event.key==='Enter'){handleJudgeAuth();}">
+                        <button type="button" onclick="togglePasswordVisibility('input-judge-pin')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1 cursor-pointer">
                             👁️
                         </button>
                     </div>
                     <p id="judge-auth-error" class="text-xs font-bold text-red-400 mt-2 text-center hidden">Senha incorreta.</p>
                 </div>
 
-                <button type="button" onclick="handleJudgeAuth(event)" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/20 active:scale-95">
+                <button type="button" onclick="handleJudgeAuth()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4 rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/20 active:scale-95 cursor-pointer">
                     CONFIRMAR E ENTRAR
                 </button>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -326,7 +328,7 @@
                         <div id="modal-score-judge-label" class="text-xs font-black uppercase text-yellow-500">JUIZ 1</div>
                     </div>
                 </div>
-                <button type="button" onclick="closeScoreEntryModal()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-lg font-bold touch-active">
+                <button type="button" onclick="closeScoreEntryModal()" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-lg font-bold touch-active cursor-pointer">
                     ✕
                 </button>
             </div>
@@ -359,8 +361,8 @@
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-black uppercase tracking-wider text-white">🤠 NOTA DO COMPETIDOR</span>
                         <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="adjustScore('rider', -0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-white font-black text-sm active:scale-95 touch-active">-0.25</button>
-                            <button type="button" onclick="adjustScore('rider', 0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-white font-black text-sm active:scale-95 touch-active">+0.25</button>
+                            <button type="button" onclick="adjustScore('rider', -0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-white font-black text-sm active:scale-95 touch-active cursor-pointer">-0.25</button>
+                            <button type="button" onclick="adjustScore('rider', 0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-white font-black text-sm active:scale-95 touch-active cursor-pointer">+0.25</button>
                         </div>
                     </div>
                     
@@ -370,12 +372,12 @@
 
                     <!-- Presets Rápidos -->
                     <div class="grid grid-cols-6 gap-1.5">
-                        <button type="button" onclick="setPresetScore('rider', 20.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">20</button>
-                        <button type="button" onclick="setPresetScore('rider', 21.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">21</button>
-                        <button type="button" onclick="setPresetScore('rider', 22.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">22</button>
-                        <button type="button" onclick="setPresetScore('rider', 22.50)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-yellow-500 active:scale-95 touch-active">22.5</button>
-                        <button type="button" onclick="setPresetScore('rider', 23.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">23</button>
-                        <button type="button" onclick="setPresetScore('rider', 24.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">24</button>
+                        <button type="button" onclick="setPresetScore('rider', 20.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">20</button>
+                        <button type="button" onclick="setPresetScore('rider', 21.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">21</button>
+                        <button type="button" onclick="setPresetScore('rider', 22.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">22</button>
+                        <button type="button" onclick="setPresetScore('rider', 22.50)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-yellow-500 active:scale-95 touch-active cursor-pointer">22.5</button>
+                        <button type="button" onclick="setPresetScore('rider', 23.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">23</button>
+                        <button type="button" onclick="setPresetScore('rider', 24.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">24</button>
                     </div>
                 </div>
 
@@ -384,8 +386,8 @@
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-black uppercase tracking-wider text-yellow-400">🐂 NOTA DO TOURO / ANIMAL</span>
                         <div class="flex items-center gap-1.5">
-                            <button type="button" onclick="adjustScore('bull', -0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-yellow-400 font-black text-sm active:scale-95 touch-active">-0.25</button>
-                            <button type="button" onclick="adjustScore('bull', 0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-yellow-400 font-black text-sm active:scale-95 touch-active">+0.25</button>
+                            <button type="button" onclick="adjustScore('bull', -0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-yellow-400 font-black text-sm active:scale-95 touch-active cursor-pointer">-0.25</button>
+                            <button type="button" onclick="adjustScore('bull', 0.25)" class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-yellow-400 font-black text-sm active:scale-95 touch-active cursor-pointer">+0.25</button>
                         </div>
                     </div>
 
@@ -395,12 +397,12 @@
 
                     <!-- Presets Rápidos -->
                     <div class="grid grid-cols-6 gap-1.5">
-                        <button type="button" onclick="setPresetScore('bull', 20.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">20</button>
-                        <button type="button" onclick="setPresetScore('bull', 21.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">21</button>
-                        <button type="button" onclick="setPresetScore('bull', 22.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">22</button>
-                        <button type="button" onclick="setPresetScore('bull', 22.50)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-yellow-500 active:scale-95 touch-active">22.5</button>
-                        <button type="button" onclick="setPresetScore('bull', 23.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">23</button>
-                        <button type="button" onclick="setPresetScore('bull', 24.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active">24</button>
+                        <button type="button" onclick="setPresetScore('bull', 20.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">20</button>
+                        <button type="button" onclick="setPresetScore('bull', 21.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">21</button>
+                        <button type="button" onclick="setPresetScore('bull', 22.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">22</button>
+                        <button type="button" onclick="setPresetScore('bull', 22.50)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-yellow-500 active:scale-95 touch-active cursor-pointer">22.5</button>
+                        <button type="button" onclick="setPresetScore('bull', 23.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">23</button>
+                        <button type="button" onclick="setPresetScore('bull', 24.00)" class="py-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-black text-slate-300 active:scale-95 touch-active cursor-pointer">24</button>
                     </div>
                 </div>
 
@@ -419,15 +421,15 @@
             <!-- Botões de Ação Final -->
             <div class="space-y-3">
                 <div class="grid grid-cols-2 gap-3">
-                    <button type="button" onclick="submitNoScore(0)" class="py-3.5 px-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active flex items-center justify-center gap-1.5">
+                    <button type="button" onclick="submitNoScore(0)" class="py-3.5 px-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active flex items-center justify-center gap-1.5 cursor-pointer">
                         <span>❌ SEM TEMPO (0,00)</span>
                     </button>
-                    <button type="button" onclick="submitReride()" class="py-3.5 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active flex items-center justify-center gap-1.5">
+                    <button type="button" onclick="submitReride()" class="py-3.5 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active flex items-center justify-center gap-1.5 cursor-pointer">
                         <span>⚠️ SOLICITAR RE-RIDE</span>
                     </button>
                 </div>
 
-                <button type="button" onclick="submitScoreToRealtime()" id="btn-submit-score" class="w-full py-5 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-base uppercase tracking-wider shadow-2xl shadow-yellow-500/30 transition-all active:scale-95 touch-active flex items-center justify-center gap-2">
+                <button type="button" onclick="submitScoreToRealtime()" id="btn-submit-score" class="w-full py-5 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-base uppercase tracking-wider shadow-2xl shadow-yellow-500/30 transition-all active:scale-95 touch-active flex items-center justify-center gap-2 cursor-pointer">
                     <span>⚡ ENVIAR NOTA EM TEMPO REAL</span>
                 </button>
             </div>
@@ -440,16 +442,16 @@
     <!-- ========================================== -->
     <div id="modal-judge-menu" class="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
         <div class="w-full max-w-sm glass-card p-6 sm:p-8 rounded-[2.5rem] border-white/10 shadow-2xl text-center relative">
-            <button type="button" onclick="closeJudgeMenuModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white text-xl">✕</button>
+            <button type="button" onclick="closeJudgeMenuModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white text-xl cursor-pointer">✕</button>
 
             <h3 class="text-xl font-black italic uppercase text-white mb-2">OPÇÕES DO JUIZ</h3>
             <p id="judge-menu-info" class="text-xs text-slate-400 font-bold mb-6 uppercase">JUIZ LOGADO</p>
 
             <div class="space-y-3">
-                <button type="button" onclick="switchJudge()" class="w-full py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-white font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active">
+                <button type="button" onclick="switchJudge()" class="w-full py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-white font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active cursor-pointer">
                     🔄 TROCAR DE JUIZ
                 </button>
-                <button type="button" onclick="logoutEvent()" class="w-full py-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active">
+                <button type="button" onclick="logoutEvent()" class="w-full py-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-black text-xs uppercase tracking-wider transition-all active:scale-95 touch-active cursor-pointer">
                     🚪 SAIR DO EVENTO
                 </button>
             </div>
