@@ -7763,12 +7763,13 @@ function buildPaginatedReportHTML({
     theadHtml,
     rows,
     renderRowFn,
+    renderEmptyRowFn = null,
     extraHtmlLastPage = '',
     customRowsPerPage = null
 }) {
     const isLand = reportViewerState.orientation === 'landscape';
-    // 10 linhas em Landscape e 16 em Portrait para NUNCA estourar a folha física A4
-    const rowsPerPage = customRowsPerPage || (isLand ? 10 : 16);
+    // 15 linhas no modo Paisagem (Landscape) e 22 no modo Retrato (Portrait) para preencher a folha inteira
+    const rowsPerPage = customRowsPerPage || (isLand ? 15 : 22);
     const pageWidth = isLand ? '297mm' : '210mm';
     const pageMinHeight = isLand ? '200mm' : '285mm';
     
@@ -7790,7 +7791,7 @@ function buildPaginatedReportHTML({
 
         let rowsHtml = '';
         if (chunk.length === 0 && !extraHtmlLastPage) {
-            rowsHtml = `<tr><td colspan="20" style="border:1px solid #000; text-align:center; padding:30px; color:#64748b; font-weight:bold;">⚠️ Nenhum dado registrado para exibição.</td></tr>`;
+            rowsHtml = `<tr><td colspan="20" style="border:1px solid #000; text-align:center; height:45px; vertical-align:middle; color:#64748b; font-weight:bold;">⚠️ Nenhum dado registrado para exibição.</td></tr>`;
         } else {
             chunk.forEach((item, itemIdx) => {
                 const globalIndex = pageIndex * rowsPerPage + itemIdx;
@@ -7799,6 +7800,20 @@ function buildPaginatedReportHTML({
         }
 
         const extraHtml = isLastPage ? extraHtmlLastPage : '';
+
+        // Preenche o restante da folha com linhas de grade vazias para preencher 100% da folha A4
+        let emptyFillHtml = '';
+        const currentCount = chunk.length;
+        if (currentCount > 0 && currentCount < rowsPerPage && !extraHtml) {
+            const needed = rowsPerPage - currentCount;
+            for (let k = 0; k < needed; k++) {
+                emptyFillHtml += renderEmptyRowFn ? renderEmptyRowFn() : `
+                    <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                        <td colspan="20" style="border: 1px solid #000; height: 32px; padding: 0;"></td>
+                    </tr>
+                `;
+            }
+        }
 
         fullHtml += `
             <div class="report-a4-page ${isLand ? 'landscape' : 'portrait'}" style="background: #fff; color: #000; padding: 8mm 10mm; width: ${pageWidth}; min-height: ${pageMinHeight}; box-sizing: border-box; font-family: Arial, sans-serif; margin: 0 auto 24px auto; box-shadow: 0 0 25px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid;">
@@ -7811,6 +7826,7 @@ function buildPaginatedReportHTML({
                         <tbody>
                             ${rowsHtml}
                             ${extraHtml}
+                            ${emptyFillHtml}
                         </tbody>
                     </table>
                 </div>
@@ -7831,14 +7847,14 @@ function generateSorteioOficialHTML(day) {
             title: "SORTEIO OFICIAL",
             subtitle: `SORTEIO OFICIAL - ${(day || 'ROUND 1').toUpperCase()}`,
             theadHtml: `
-                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                    <th style="border: 1px solid #000; padding: 6px 4px; width: 5%;">Nº</th>
-                    <th style="border: 1px solid #000; padding: 6px 4px; width: 28%; text-align: left;">COMPETIDOR</th>
-                    <th style="border: 1px solid #000; padding: 6px 4px; width: 18%; text-align: left;">CIDADE</th>
-                    <th style="border: 1px solid #000; padding: 6px 4px; width: 9%;">ACUM.</th>
-                    <th style="border: 1px solid #000; padding: 6px 4px; width: 18%; text-align: left;">ANIMAL</th>
-                    <th style="border: 1px solid #000; padding: 6px 4px; width: 17%; text-align: left;">COMPANHIA</th>
-                    <th style="border: 1px solid #000; padding: 6px 4px; width: 5%;">L</th>
+                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 5%;">Nº</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 28%; text-align: left;">COMPETIDOR</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 18%; text-align: left;">CIDADE</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 9%;">ACUM.</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 18%; text-align: left;">ANIMAL</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 17%; text-align: left;">COMPANHIA</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 5%;">L</th>
                 </tr>
             `,
             rows: [],
@@ -7854,11 +7870,11 @@ function generateSorteioOficialHTML(day) {
     let reservasHtml = '';
     if (bulls.length > totalRiders) {
         reservasHtml += `
-            <tr style="background-color: #d1d5db; font-weight: bold;">
-                <td colspan="4" style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-size: 11px;">ANIMAIS RESERVAS</td>
-                <td style="border: 1px solid #000; padding: 5px 4px; text-align: left; font-size: 11px;">ANIMAL</td>
-                <td style="border: 1px solid #000; padding: 5px 4px; text-align: left; font-size: 11px;">COMPANHIA</td>
-                <td style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-size: 11px;">L</td>
+            <tr style="background-color: #d1d5db; font-weight: bold; height: 30px;">
+                <td colspan="4" style="border: 1px solid #000; padding: 0 6px; height: 30px; vertical-align: middle; text-align: center; font-size: 11px;">ANIMAIS RESERVAS</td>
+                <td style="border: 1px solid #000; padding: 0 6px; height: 30px; vertical-align: middle; text-align: left; font-size: 11px;">ANIMAL</td>
+                <td style="border: 1px solid #000; padding: 0 6px; height: 30px; vertical-align: middle; text-align: left; font-size: 11px;">COMPANHIA</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 30px; vertical-align: middle; text-align: center; font-size: 11px;">L</td>
             </tr>
         `;
         bulls.slice(totalRiders).forEach((b) => {
@@ -7868,14 +7884,14 @@ function generateSorteioOficialHTML(day) {
                 if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
             }
             reservasHtml += `
-                <tr>
-                    <td style="border: 1px solid #000; padding: 4px 4px;"></td>
-                    <td style="border: 1px solid #000; padding: 4px 4px;"></td>
-                    <td style="border: 1px solid #000; padding: 4px 4px;"></td>
-                    <td style="border: 1px solid #000; padding: 4px 4px;"></td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: left; font-size: 12px; font-weight: bold; text-transform: uppercase;">${b.nome}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: left; font-size: 10px; text-transform: uppercase;">${b.cia || '---'}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold; font-size: 13px;">${window.formatSide(lado)}</td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; vertical-align: middle; text-align: left; font-size: 11px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.nome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; vertical-align: middle; text-align: left; font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; vertical-align: middle; text-align: center; font-weight: bold; font-size: 12px;">${window.formatSide(lado)}</td>
                 </tr>
             `;
         });
@@ -7885,18 +7901,29 @@ function generateSorteioOficialHTML(day) {
         title: "SORTEIO OFICIAL",
         subtitle: `SORTEIO OFICIAL - ${(sorteio.day || day || 'ROUND 1').toUpperCase()}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 5%;">Nº</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 28%; text-align: left;">COMPETIDOR</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 18%; text-align: left;">CIDADE</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 9%;">ACUM.</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 18%; text-align: left;">ANIMAL</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 17%; text-align: left;">COMPANHIA</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 5%;">L</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 5%;">Nº</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 28%; text-align: left;">COMPETIDOR</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 18%; text-align: left;">CIDADE</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 9%;">ACUM.</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 18%; text-align: left;">ANIMAL</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 17%; text-align: left;">COMPANHIA</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 5%;">L</th>
             </tr>
         `,
         rows: riders,
         extraHtmlLastPage: reservasHtml,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (r, globalIdx) => {
             const rNome = typeof r === 'string' ? r : (r.nome || '---');
             const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '';
@@ -7916,14 +7943,14 @@ function generateSorteioOficialHTML(day) {
             }
 
             return `
-                <tr>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold; font-size: 13px;">${globalIdx + 1}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: left; font-size: 12px; font-weight: bold; text-transform: uppercase;">${rNome}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: left; font-size: 10px; text-transform: uppercase;">${rCidade}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold; font-size: 11px;">${acum}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: left; font-size: 12px; font-weight: bold; text-transform: uppercase;">${bull.nome}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: left; font-size: 10px; text-transform: uppercase;">${bull.cia || '---'}</td>
-                    <td style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold; font-size: 13px;">${window.formatSide(lado)}</td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${globalIdx + 1}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; text-align: left; font-size: 11px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rNome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; text-align: left; font-size: 10px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rCidade}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${acum}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; text-align: left; font-size: 11px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${bull.nome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; text-align: left; font-size: 10px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${bull.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${window.formatSide(lado)}</td>
                 </tr>
             `;
         }
@@ -7939,18 +7966,18 @@ function generateSumulaJuizHTML(day) {
             title: "PLANILHA JUIZ",
             subtitle: `PLANILHA JUIZ - ${(day || 'ROUND 1').toUpperCase()}`,
             theadHtml: `
-                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 10px;">
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 4%;">MONT</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 22%; text-align: left;">COMPETIDOR</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 13%; text-align: left;">CIDADE</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 7%;">ACUM.</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 16%; text-align: left;">ANIMAL</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 14%; text-align: left;">COMPANHIA</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 4%;">LADO</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">TEMPO</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">ANIMAL</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">COMP.</th>
-                    <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">TOTAL</th>
+                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 10px; height: 30px;">
+                    <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 4%;">MONT</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 22%; text-align: left;">COMPETIDOR</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 13%; text-align: left;">CIDADE</th>
+                    <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 7%;">ACUM.</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 16%; text-align: left;">ANIMAL</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 14%; text-align: left;">COMPANHIA</th>
+                    <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 4%;">LADO</th>
+                    <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">TEMPO</th>
+                    <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">ANIMAL</th>
+                    <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">COMP.</th>
+                    <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">TOTAL</th>
                 </tr>
             `,
             rows: [],
@@ -7966,12 +7993,12 @@ function generateSumulaJuizHTML(day) {
     let reservasHtml = '';
     if (bulls.length > totalRiders) {
         reservasHtml += `
-            <tr style="background-color: #d1d5db; font-weight: bold; text-align: center;">
-                <td colspan="4" style="border: 1px solid #000; padding: 4px 2px; font-size: 10px;">ANIMAIS RESERVAS</td>
-                <td style="border: 1px solid #000; padding: 4px 2px; text-align: left; font-size: 10px;">ANIMAL</td>
-                <td style="border: 1px solid #000; padding: 4px 2px; text-align: left; font-size: 10px;">COMPANHIA</td>
-                <td style="border: 1px solid #000; padding: 4px 2px; text-align: center; font-size: 10px;">LADO</td>
-                <td colspan="4" style="border: 1px solid #000; padding: 4px 2px;"></td>
+            <tr style="background-color: #d1d5db; font-weight: bold; text-align: center; height: 30px;">
+                <td colspan="4" style="border: 1px solid #000; padding: 0 4px; height: 30px; vertical-align: middle; font-size: 10px;">ANIMAIS RESERVAS</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 30px; vertical-align: middle; text-align: left; font-size: 10px;">ANIMAL</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 30px; vertical-align: middle; text-align: left; font-size: 10px;">COMPANHIA</td>
+                <td style="border: 1px solid #000; padding: 0 2px; height: 30px; vertical-align: middle; text-align: center; font-size: 10px;">LADO</td>
+                <td colspan="4" style="border: 1px solid #000; height: 30px;"></td>
             </tr>
         `;
         bulls.slice(totalRiders).forEach((b) => {
@@ -7981,15 +8008,15 @@ function generateSumulaJuizHTML(day) {
                 if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
             }
             reservasHtml += `
-                <tr style="height: 22px;">
-                    <td style="border: 1px solid #000;"></td>
-                    <td style="border: 1px solid #000;"></td>
-                    <td style="border: 1px solid #000;"></td>
-                    <td style="border: 1px solid #000;"></td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; font-weight: bold; font-size: 11px; text-transform: uppercase;">${b.nome}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; font-size: 9px; text-transform: uppercase;">${b.cia || '---'}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; font-size: 12px;">${window.formatSide(lado)}</td>
-                    <td colspan="4" style="border: 1px solid #000;"></td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; height: 32px;"></td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; vertical-align: middle; font-weight: bold; font-size: 11px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.nome}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; vertical-align: middle; font-size: 9px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; vertical-align: middle; text-align: center; font-weight: bold; font-size: 12px;">${window.formatSide(lado)}</td>
+                    <td colspan="4" style="border: 1px solid #000; height: 32px;"></td>
                 </tr>
             `;
         });
@@ -7999,22 +8026,37 @@ function generateSumulaJuizHTML(day) {
         title: "PLANILHA JUIZ",
         subtitle: `PLANILHA JUIZ - ${(sorteio.day || day || 'ROUND 1').toUpperCase()}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 10px;">
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 4%;">MONT</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 22%; text-align: left;">COMPETIDOR</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 13%; text-align: left;">CIDADE</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 7%;">ACUM.</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 16%; text-align: left;">ANIMAL</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 14%; text-align: left;">COMPANHIA</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 4%;">LADO</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">TEMPO</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">ANIMAL</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">COMP.</th>
-                <th style="border: 1px solid #000; padding: 5px 2px; width: 5%;">TOTAL</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 10px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 4%;">MONT</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 22%; text-align: left;">COMPETIDOR</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 13%; text-align: left;">CIDADE</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 7%;">ACUM.</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 16%; text-align: left;">ANIMAL</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 14%; text-align: left;">COMPANHIA</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 4%;">LADO</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">TEMPO</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">ANIMAL</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">COMP.</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">TOTAL</th>
             </tr>
         `,
         rows: riders,
         extraHtmlLastPage: reservasHtml,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (r, globalIdx) => {
             const rNome = typeof r === 'string' ? r : (r.nome || '---');
             const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '';
@@ -8034,18 +8076,18 @@ function generateSumulaJuizHTML(day) {
             }
 
             return `
-                <tr style="height: 24px;">
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; font-size: 12px;">${globalIdx + 1}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; font-weight: bold; font-size: 11px; text-transform: uppercase;">${rNome}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; font-size: 9px; text-transform: uppercase;">${rCidade}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; font-size: 10px;">${acum}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; font-weight: bold; font-size: 11px; text-transform: uppercase;">${b.nome}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; font-size: 9px; text-transform: uppercase;">${b.cia || '---'}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; font-size: 12px;">${window.formatSide(lado)}</td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center;"></td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center;"></td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center;"></td>
-                    <td style="border: 1px solid #000; padding: 3px 2px; text-align: center;"></td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${globalIdx + 1}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rNome}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-size: 9px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rCidade}</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: bold; font-size: 10px; vertical-align: middle;">${acum}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.nome}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-size: 9px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${window.formatSide(lado)}</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; vertical-align: middle;"></td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; vertical-align: middle;"></td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; vertical-align: middle;"></td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; vertical-align: middle;"></td>
                 </tr>
             `;
         }
@@ -8061,12 +8103,12 @@ function generateEmbretamentoHTML(day) {
             title: "ORDEM DE EMBRETAMENTO",
             subtitle: `ORDEM DE EMBRETAMENTO - ${(day || 'ROUND 1').toUpperCase()}`,
             theadHtml: `
-                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">Nº</th>
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 35%; text-align: left;">COMPETIDOR</th>
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 25%; text-align: left;">TOURO</th>
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 20%; text-align: left;">COMPANHIA</th>
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">LADO</th>
+                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">Nº</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 35%; text-align: left;">COMPETIDOR</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 25%; text-align: left;">TOURO</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 20%; text-align: left;">COMPANHIA</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">LADO</th>
                 </tr>
             `,
             rows: [],
@@ -8082,15 +8124,24 @@ function generateEmbretamentoHTML(day) {
         title: "ORDEM DE EMBRETAMENTO",
         subtitle: `ORDEM DE EMBRETAMENTO - ${(sorteio.day || day || 'ROUND 1').toUpperCase()}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">Nº</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 35%; text-align: left;">COMPETIDOR</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 25%; text-align: left;">TOURO</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 20%; text-align: left;">COMPANHIA</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">LADO</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">Nº</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 35%; text-align: left;">COMPETIDOR</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 25%; text-align: left;">TOURO</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 20%; text-align: left;">COMPANHIA</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">LADO</th>
             </tr>
         `,
         rows: riders,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (r, globalIdx) => {
             const rNome = typeof r === 'string' ? r : (r.nome || '---');
             const bullIdx = assignments[globalIdx] !== undefined ? assignments[globalIdx] : globalIdx;
@@ -8103,12 +8154,12 @@ function generateEmbretamentoHTML(day) {
             }
 
             return `
-                <tr style="height: 28px;">
-                    <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 14px;">${globalIdx + 1}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; font-size: 13px; font-weight: bold; text-transform: uppercase;">${rNome}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; font-size: 13px; font-weight: bold; text-transform: uppercase;">${b.nome}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; font-size: 11px; text-transform: uppercase;">${b.cia || '---'}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 14px;">${window.formatSide(lado)}</td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${globalIdx + 1}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 11px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rNome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 11px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.nome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 10px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${window.formatSide(lado)}</td>
                 </tr>
             `;
         }
@@ -8138,14 +8189,22 @@ function generateListaBoiadasHTML(day) {
         title: "LISTA DE TOUROS",
         subtitle: `LISTA DE TOUROS - ${(day ? day.toUpperCase() : 'OFICIAL')}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">Nº</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 45%; text-align: left;">TOURO</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 35%; text-align: left;">COMPANHIA</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">LADO</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">Nº</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 45%; text-align: left;">TOURO</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 35%; text-align: left;">COMPANHIA</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">LADO</th>
             </tr>
         `,
         rows: bullsList,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (b, globalIdx) => {
             let lado = b.lado || '';
             if (!lado && currentEvent && currentEvent.boiadas) {
@@ -8154,11 +8213,11 @@ function generateListaBoiadasHTML(day) {
             }
 
             return `
-                <tr style="height: 26px;">
-                    <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 13px;">${globalIdx + 1}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; font-size: 13px; font-weight: bold; text-transform: uppercase;">${b.nome}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; font-size: 12px; text-transform: uppercase;">${b.cia || '---'}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 13px;">${window.formatSide(lado)}</td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${globalIdx + 1}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 11px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.nome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 10px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${b.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${window.formatSide(lado)}</td>
                 </tr>
             `;
         }
@@ -8187,7 +8246,7 @@ function generateLocutorHTML(day) {
     const bulls = sorteio.bulls || [];
     const assignments = sorteio.assignments || {};
     const isLand = reportViewerState.orientation === 'landscape';
-    const cardsPerPage = isLand ? 10 : 16;
+    const cardsPerPage = isLand ? 12 : 18;
     const pageWidth = isLand ? '297mm' : '210mm';
     const pageMinHeight = isLand ? '200mm' : '285mm';
 
@@ -8217,25 +8276,25 @@ function generateLocutorHTML(day) {
             }
 
             cardsHtml += `
-                <div style="border: 1px solid #000; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; background: #f9fafb;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="font-weight: 900; font-size: 14px; background: #000; color: #fff; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+                <div style="border: 1px solid #000; padding: 4px 8px; height: 38px; min-height: 38px; max-height: 38px; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; box-sizing: border-box; overflow: hidden;">
+                    <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                        <div style="font-weight: 900; font-size: 13px; background: #000; color: #fff; width: 26px; height: 26px; min-width: 26px; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
                             ${globalIdx + 1}
                         </div>
-                        <div>
-                            <div style="font-weight: 900; font-size: 12px; text-transform: uppercase; color: #000;">
+                        <div style="overflow: hidden;">
+                            <div style="font-weight: 900; font-size: 11px; text-transform: uppercase; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${rNome}
                             </div>
-                            <div style="font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase;">
+                            <div style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${rCidade}
                             </div>
                         </div>
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 900; font-size: 12px; text-transform: uppercase; color: #b45309;">
+                    <div style="text-align: right; min-width: 110px; overflow: hidden;">
+                        <div style="font-weight: 900; font-size: 11px; text-transform: uppercase; color: #b45309; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             VS ${b.nome}
                         </div>
-                        <div style="font-size: 10px; font-weight: bold; color: #000; text-transform: uppercase;">
+                        <div style="font-size: 9px; font-weight: bold; color: #000; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             CIA ${b.cia || '---'} • GIRO: ${window.formatSide(lado)}
                         </div>
                     </div>
@@ -8269,33 +8328,45 @@ function generateNotasDiaHTML(day) {
         title: "PLANILHA DE NOTAS",
         subtitle: `PLANILHA DE NOTAS - ${(day || 'ROUND 1').toUpperCase()}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px;">
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 5%;">Nº</th>
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 25%; text-align: left;">COMPETIDOR</th>
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 20%; text-align: left;">ANIMAL / TOURO</th>
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 18%; text-align: left;">COMPANHIA</th>
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 8%;">NT PEÃO</th>
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 8%;">NT TOURO</th>
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 8%;">TEMPO</th>
-                <th style="border: 1px solid #000; padding: 5px 3px; width: 8%;">TOTAL</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 10px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 5%;">Nº</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 25%; text-align: left;">COMPETIDOR</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 20%; text-align: left;">ANIMAL / TOURO</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 18%; text-align: left;">COMPANHIA</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 8%;">NT PEÃO</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 8%;">NT TOURO</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 8%;">TEMPO</th>
+                <th style="border: 1px solid #000; padding: 0 2px; height: 30px; width: 8%;">TOTAL</th>
             </tr>
         `,
         rows: notas,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (n, globalIdx) => {
             const pNome = n.peao || n.peaoNome || '---';
             const tNome = n.touro || n.touroNome || '---';
             const cNome = n.cia || n.bullCia || '---';
 
             return `
-                <tr style="height: 25px;">
-                    <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-weight: bold; font-size: 12px;">${globalIdx + 1}</td>
-                    <td style="border: 1px solid #000; padding: 4px 3px; font-weight: bold; font-size: 12px; text-transform: uppercase;">${pNome}</td>
-                    <td style="border: 1px solid #000; padding: 4px 3px; font-weight: bold; font-size: 12px; text-transform: uppercase;">${tNome}</td>
-                    <td style="border: 1px solid #000; padding: 4px 3px; font-size: 10px; text-transform: uppercase;">${cNome}</td>
-                    <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-weight: bold; font-size: 12px;">${(parseFloat(n.totalPeao) || 0).toFixed(2)}</td>
-                    <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-weight: bold; font-size: 12px;">${(parseFloat(n.totalTouro) || 0).toFixed(2)}</td>
-                    <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-weight: bold; font-size: 11px;">${n.tempo || '8,00'}s</td>
-                    <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-weight: 900; font-size: 13px; color: #000;">${(parseFloat(n.totalGeral) || 0).toFixed(2)}</td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${globalIdx + 1}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${pNome}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tNome}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-size: 9px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cNome}</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${(parseFloat(n.totalPeao) || 0).toFixed(2)}</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${(parseFloat(n.totalTouro) || 0).toFixed(2)}</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: bold; font-size: 10px; vertical-align: middle;">${n.tempo || '8,00'}s</td>
+                    <td style="border: 1px solid #000; padding: 0 2px; height: 32px; text-align: center; font-weight: 900; font-size: 12px; color: #000; vertical-align: middle;">${(parseFloat(n.totalGeral) || 0).toFixed(2)}</td>
                 </tr>
             `;
         }
@@ -8312,11 +8383,11 @@ function generateRankingGeralHTML(filter) {
             title: "RANKING OFICIAL",
             subtitle: `RANKING OFICIAL - ${safeDay.toUpperCase()}`,
             theadHtml: `
-                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 6%;">POS</th>
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 40%; text-align: left;">COMPETIDOR</th>
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 34%; text-align: left;">CIDADE</th>
-                    <th style="border: 1px solid #000; padding: 6px 5px; width: 20%;">TOTAL</th>
+                <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 6%;">POS</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 40%; text-align: left;">COMPETIDOR</th>
+                    <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 34%; text-align: left;">CIDADE</th>
+                    <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 20%;">TOTAL</th>
                 </tr>
             `,
             rows: [],
@@ -8326,22 +8397,31 @@ function generateRankingGeralHTML(filter) {
 
     let dayHeaderCells = '';
     rankingData.columnsDays.forEach(d => {
-        dayHeaderCells += `<th style="border: 1px solid #000; padding: 6px 5px; text-align: center;">${d.toUpperCase()}</th>`;
+        dayHeaderCells += `<th style="border: 1px solid #000; padding: 0 4px; height: 30px; text-align: center;">${d.toUpperCase()}</th>`;
     });
 
     return buildPaginatedReportHTML({
         title: "RANKING OFICIAL",
         subtitle: `RANKING OFICIAL - ${safeDay.toUpperCase()}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 6%;">POS</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 34%; text-align: left;">COMPETIDOR</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 24%; text-align: left;">CIDADE</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 6%;">POS</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 34%; text-align: left;">COMPETIDOR</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 24%; text-align: left;">CIDADE</th>
                 ${dayHeaderCells}
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 14%;">TOTAL</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 14%;">TOTAL</th>
             </tr>
         `,
         rows: rankingData.rows,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                ${rankingData.columnsDays.map(() => `<td style="border: 1px solid #000; height: 32px;"></td>`).join('')}
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (r, globalIdx) => {
             const hasScore = r.totalPoints > 0 || r.tempoAcumulado > 0;
             const pos = hasScore ? (globalIdx + 1) + 'º' : '---';
@@ -8350,16 +8430,16 @@ function generateRankingGeralHTML(filter) {
 
             let dayScoresCells = '';
             rankingData.columnsDays.forEach(d => {
-                dayScoresCells += `<td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 12px;">${r.daysScores[d] || '-'}</td>`;
+                dayScoresCells += `<td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${r.daysScores[d] || '-'}</td>`;
             });
 
             return `
-                <tr style="height: 25px;">
-                    <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 13px;">${pos}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; font-weight: bold; font-size: 13px; text-transform: uppercase;">${r.nome}</td>
-                    <td style="border: 1px solid #000; padding: 5px 5px; font-size: 11px; text-transform: uppercase;">${r.cidade || '---'}</td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${pos}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.nome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 10px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.cidade || '---'}</td>
                     ${dayScoresCells}
-                    <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 13px;">${totalStr}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle;">${totalStr}</td>
                 </tr>
             `;
         }
@@ -8418,24 +8498,34 @@ function generateRankingTourosHTML(filter) {
         title: "MELHOR ANIMAL (TOURO)",
         subtitle: `RANKING DE MELHORES TOUROS - ${(filter || 'GERAL').toUpperCase()}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 8%;">POS</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 34%; text-align: left;">ANIMAL / TOURO</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 28%; text-align: left;">COMPANHIA DE RODEIO</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">SAÍDAS</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">SOMA</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 10%;">MÉDIA</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 8%;">POS</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 34%; text-align: left;">ANIMAL / TOURO</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 28%; text-align: left;">COMPANHIA DE RODEIO</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">SAÍDAS</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">SOMA</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">MÉDIA</th>
             </tr>
         `,
         rows: tourosData,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (item, globalIdx) => `
-            <tr style="height: 25px;">
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 13px;">${globalIdx + 1}º</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; font-weight: bold; font-size: 13px; text-transform: uppercase;">${item.nome}</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; font-size: 12px; text-transform: uppercase;">${item.cia}</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 12px;">${item.saidas}</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-size: 12px;">${item.sum.toFixed(2)}</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: 900; font-size: 14px;">${item.media.toFixed(2)}</td>
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${globalIdx + 1}º</td>
+                <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.nome}</td>
+                <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 10px; font-weight: bold; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.cia}</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${item.saidas}</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-size: 11px; vertical-align: middle;">${item.sum.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: 900; font-size: 12px; vertical-align: middle;">${item.media.toFixed(2)}</td>
             </tr>
         `
     });
@@ -8503,22 +8593,31 @@ function generateRankingCiasHTML(filter) {
         title: "MELHOR CIA (BOIADA)",
         subtitle: `RANKING DE MELHOR BOIADA - ${(filter || 'GERAL').toUpperCase()}`,
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 8%;">POS</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 44%; text-align: left;">COMPANHIA DE RODEIO (CIA)</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 16%;">SAÍDAS</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 16%;">SOMA NOTAS</th>
-                <th style="border: 1px solid #000; padding: 6px 5px; width: 16%;">MÉDIA BOIADA</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 8%;">POS</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 44%; text-align: left;">COMPANHIA DE RODEIO (CIA)</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 16%;">SAÍDAS</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 16%;">SOMA NOTAS</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 16%;">MÉDIA BOIADA</th>
             </tr>
         `,
         rows: boiadasData,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (item, globalIdx) => `
-            <tr style="height: 25px;">
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 13px;">${globalIdx + 1}º</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; font-weight: bold; font-size: 13px; text-transform: uppercase;">${item.nome}</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: bold; font-size: 12px;">${item.saidas}</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-size: 12px;">${item.sum.toFixed(2)}</td>
-                <td style="border: 1px solid #000; padding: 5px 5px; text-align: center; font-weight: 900; font-size: 14px;">${item.media.toFixed(2)}</td>
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${globalIdx + 1}º</td>
+                <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.nome}</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${item.saidas}</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-size: 11px; vertical-align: middle;">${item.sum.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: 900; font-size: 12px; vertical-align: middle;">${item.media.toFixed(2)}</td>
             </tr>
         `
     });
@@ -8532,20 +8631,28 @@ function generateListaPeoesHTML() {
         title: "RELAÇÃO DE COMPETIDORES",
         subtitle: "RELAÇÃO OFICIAL DE COMPETIDORES CADASTRADOS",
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 10%;">Nº</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 45%; text-align: left;">COMPETIDOR (PEÃO)</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 25%; text-align: left;">CIDADE</th>
-                <th style="border: 1px solid #000; padding: 6px 4px; width: 20%;">CPF</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">Nº</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 45%; text-align: left;">COMPETIDOR (PEÃO)</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 25%; text-align: left;">CIDADE</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 20%;">CPF</th>
             </tr>
         `,
         rows: peoes,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (p, globalIdx) => `
-            <tr style="height: 26px;">
-                <td style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; font-size: 13px;">${globalIdx + 1}</td>
-                <td style="border: 1px solid #000; padding: 5px 4px; font-weight: bold; font-size: 13px; text-transform: uppercase;">${p.nome || '---'}</td>
-                <td style="border: 1px solid #000; padding: 5px 4px; font-size: 12px; text-transform: uppercase;">${p.cidade || '---'}</td>
-                <td style="border: 1px solid #000; padding: 5px 4px; font-size: 12px; text-align: center;">${p.cpf || '---'}</td>
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${globalIdx + 1}</td>
+                <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.nome || '---'}</td>
+                <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 10px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.cidade || '---'}</td>
+                <td style="border: 1px solid #000; padding: 0 4px; height: 32px; font-size: 10px; text-align: center; vertical-align: middle;">${p.cpf || '---'}</td>
             </tr>
         `
     });
@@ -8559,25 +8666,33 @@ function generateListaJuizesHTML() {
         title: "CORPO DE JUÍZES",
         subtitle: "RELAÇÃO DE JUÍZES E PROFISSIONAIS CADASTRADOS",
         theadHtml: `
-            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
-                <th style="border: 1px solid #000; padding: 7px 6px; width: 10%;">Nº</th>
-                <th style="border: 1px solid #000; padding: 7px 6px; width: 45%; text-align: left;">NOME DO PROFISSIONAL</th>
-                <th style="border: 1px solid #000; padding: 7px 6px; width: 25%; text-align: left;">CIDADE</th>
-                <th style="border: 1px solid #000; padding: 7px 6px; width: 20%;">FUNÇÃO</th>
+            <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px; height: 30px;">
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 10%;">Nº</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 45%; text-align: left;">NOME DO PROFISSIONAL</th>
+                <th style="border: 1px solid #000; padding: 0 6px; height: 30px; width: 25%; text-align: left;">CIDADE</th>
+                <th style="border: 1px solid #000; padding: 0 4px; height: 30px; width: 20%;">FUNÇÃO</th>
             </tr>
         `,
         rows: juizes,
+        renderEmptyRowFn: () => `
+            <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+                <td style="border: 1px solid #000; height: 32px;"></td>
+            </tr>
+        `,
         renderRowFn: (j, globalIdx) => {
             const jNome = typeof j === 'string' ? j : (j.nome || '---');
             const jCidade = typeof j === 'object' ? (j.cidade || '---') : '---';
             const jFuncao = typeof j === 'object' ? (j.funcao || 'JUIZ OFICIAL') : 'JUIZ OFICIAL';
 
             return `
-                <tr style="height: 28px;">
-                    <td style="border: 1px solid #000; padding: 6px 6px; text-align: center; font-weight: bold; font-size: 14px;">${globalIdx + 1}</td>
-                    <td style="border: 1px solid #000; padding: 6px 6px; font-weight: bold; font-size: 14px; text-transform: uppercase;">${jNome}</td>
-                    <td style="border: 1px solid #000; padding: 6px 6px; font-size: 13px; text-transform: uppercase;">${jCidade}</td>
-                    <td style="border: 1px solid #000; padding: 6px 6px; text-align: center; font-weight: bold; font-size: 13px; text-transform: uppercase;">${jFuncao}</td>
+                <tr style="height: 32px; min-height: 32px; max-height: 32px;">
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 11px; vertical-align: middle;">${globalIdx + 1}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-weight: bold; font-size: 11px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${jNome}</td>
+                    <td style="border: 1px solid #000; padding: 0 6px; height: 32px; font-size: 10px; text-transform: uppercase; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${jCidade}</td>
+                    <td style="border: 1px solid #000; padding: 0 4px; height: 32px; text-align: center; font-weight: bold; font-size: 10px; text-transform: uppercase; vertical-align: middle;">${jFuncao}</td>
                 </tr>
             `;
         }
