@@ -392,11 +392,12 @@ window.handleJudgeAuth = () => {
     if (!pendingJudgeSelection) return;
 
     const inputPin = (document.getElementById('input-judge-pin')?.value || '').trim();
-    const correctPin = pendingJudgeSelection.senha.trim();
+    const correctPin = String(pendingJudgeSelection.senha || '').trim();
 
     if (inputPin === correctPin) {
+        const selectedJudge = pendingJudgeSelection; // Captura antes de fechar a modal
         closeJudgePasswordModal();
-        authenticateJudgeDirect(pendingJudgeSelection);
+        authenticateJudgeDirect(selectedJudge);
     } else {
         document.getElementById('judge-auth-error').innerText = "Senha do juiz incorreta. Tente novamente.";
         document.getElementById('judge-auth-error').classList.remove('hidden');
