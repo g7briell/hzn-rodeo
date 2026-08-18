@@ -446,25 +446,41 @@ function getEventRoundsList() {
     if (!window.state.eventData) return [];
     
     const sorteios = window.state.eventData.sorteios || [];
-    const totalDays = parseInt(window.state.eventData.days || (sorteios.length > 0 ? sorteios.length : 3)) || 3;
-    
+    const totalDaysConfigured = parseInt(window.state.eventData.days || 3) || 3;
     const rounds = [];
-    for (let i = 1; i <= Math.max(totalDays, sorteios.length); i++) {
-        let label = `ROUND ${i}`;
-        if (i === totalDays && totalDays > 3) {
-            label = `GRANDE FINAL`;
-        } else if (i === totalDays - 1 && totalDays >= 4) {
-            label = `SEMI FINAL`;
+    
+    // 1. Adiciona todos os sorteios reais existentes no evento
+    sorteios.forEach((s, idx) => {
+        const rawDay = (s.day || `DIA ${idx + 1}`).trim();
+        
+        let label = rawDay.toUpperCase();
+        if (label.startsWith('DIA ')) {
+            label = label.replace('DIA ', 'ROUND ');
         }
         
-        const internalDay = `DIA ${i}`;
-        const sorteio = sorteios.find(s => s.day === internalDay || s.day === label || s.day === `ROUND ${i}`);
+        rounds.push({
+            roundNumber: idx + 1,
+            label: label,
+            internalDay: s.day,
+            sorteio: s
+        });
+    });
+    
+    // 2. Adiciona os rounds futuros configurados no evento que ainda não têm sorteio realizado
+    const totalNeeded = Math.max(totalDaysConfigured, rounds.length);
+    for (let i = rounds.length + 1; i <= totalNeeded; i++) {
+        let label = `ROUND ${i}`;
+        if (i === totalNeeded && totalNeeded >= 4) {
+            label = `GRANDE FINAL`;
+        } else if (i === totalNeeded - 1 && totalNeeded >= 4) {
+            label = `SEMI FINAL`;
+        }
         
         rounds.push({
             roundNumber: i,
             label: label,
-            internalDay: internalDay,
-            sorteio: sorteio || null
+            internalDay: `DIA ${i}`,
+            sorteio: null
         });
     }
     
@@ -726,7 +742,15 @@ function renderJudgeDashboard() {
         headerEvent.classList.remove('hidden');
     }
 
-    // Renderiza Abas de Dias
+    // Atualiza badge do round atual em julgamento
+    const roundBadge = document.getElementById('rides-current-round-badge');
+    if (roundBadge && window.state.selectedDay) {
+        let displayRound = String(window.state.selectedDay).toUpperCase();
+        displayRound = displayRound.replace(/DIA\s*/i, 'ROUND ');
+        roundBadge.innerText = displayRound;
+    }
+
+    // Renderiza Abas de Dias se existirem
     renderDaysTabs();
 
     // Renderiza Montarias do Dia Selecionado
@@ -735,6 +759,8 @@ function renderJudgeDashboard() {
 
 function renderDaysTabs() {
     const container = document.getElementById('days-tabs-container');
+    if (!container) return;
+
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
 
     let days = sorteios.map(s => s.day).filter(Boolean);
@@ -793,6 +819,13 @@ function renderRidesList() {
     if (heEl) {
         heEl.innerText = eventName;
         heEl.classList.remove('hidden');
+    }
+
+    const roundBadge = document.getElementById('rides-current-round-badge');
+    if (roundBadge && window.state.selectedDay) {
+        let displayRound = String(window.state.selectedDay).toUpperCase();
+        displayRound = displayRound.replace(/DIA\s*/i, 'ROUND ');
+        roundBadge.innerText = displayRound;
     }
 
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
