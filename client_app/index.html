@@ -59,6 +59,72 @@
             }
         }
 
+        @media print {
+            @page {
+                margin: 5mm 5mm 5mm 5mm !important;
+                size: auto;
+            }
+            html, body {
+                background: #fff !important;
+                color: #000 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+                height: auto !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            body * {
+                visibility: hidden !important;
+            }
+            #modal-report-viewer,
+            #modal-report-viewer * {
+                visibility: visible !important;
+            }
+            #modal-report-viewer {
+                position: static !important;
+                display: block !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                box-shadow: none !important;
+            }
+            #modal-report-viewer header {
+                display: none !important;
+            }
+            #modal-report-viewer main {
+                padding: 0 !important;
+                margin: 0 !important;
+                background: transparent !important;
+                display: block !important;
+                overflow: visible !important;
+            }
+            #report-paper-container {
+                transform: none !important;
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                width: 100% !important;
+                display: block !important;
+            }
+            .report-a4-page {
+                box-shadow: none !important;
+                margin: 0 auto 0 auto !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                box-sizing: border-box !important;
+            }
+            .report-a4-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+        }
+
         /* Estilos de Impressão e Folha A4 do Report Viewer */
         .report-sheet-a4 {
             width: 210mm;
@@ -2543,6 +2609,12 @@
 
             <!-- Lado Direito: Ações & Controles de Impressão -->
             <div class="flex items-center gap-2.5">
+                <!-- Botão Alternar Orientação (Horizontal / Vertical) -->
+                <button type="button" id="btn-report-orientation" onclick="toggleReportOrientation()" title="Alternar Orientação da Folha" class="bg-slate-950 border border-slate-800 hover:border-yellow-500/50 text-white px-3.5 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg">
+                    <span id="report-orientation-icon">📜</span>
+                    <span id="report-orientation-text">HORIZONTAL</span>
+                </button>
+
                 <!-- Zoom Controls -->
                 <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1 gap-1">
                     <button type="button" onclick="adjustReportZoom(-0.1)" title="Diminuir Zoom" class="px-2.5 py-1 text-slate-400 hover:text-white font-black text-xs cursor-pointer">−</button>
