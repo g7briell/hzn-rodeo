@@ -1422,7 +1422,7 @@
     <!-- Modais de Fluxo de Exportação -->
     <div id="modal-export-days" class="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
         <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-lg w-full shadow-2xl relative">
-            <button onclick="document.getElementById('modal-export-days').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <button type="button" onclick="closeExportDaysModal()" class="absolute top-8 right-8 text-slate-500 hover:text-white cursor-pointer"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             <h2 class="text-3xl font-black italic uppercase text-yellow-500 mb-8">SELECIONE O DIA</h2>
             <div id="export-days-grid" class="grid grid-cols-2 gap-4">
                 <!-- Dynamically populated -->
@@ -1432,35 +1432,35 @@
 
     <div id="modal-export-options" class="fixed inset-0 z-[170] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
         <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-xl w-full shadow-2xl relative">
-            <button onclick="document.getElementById('modal-export-options').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <button type="button" onclick="closeExportOptionsModal()" class="absolute top-8 right-8 text-slate-500 hover:text-white cursor-pointer"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             <h2 class="text-3xl font-black italic uppercase text-yellow-500 mb-2">EXPORTAR RELATÓRIO</h2>
             <p id="export-selected-day" class="text-slate-400 font-medium mb-8 uppercase tracking-widest text-sm">DIA SELECIONADO</p>
             <div class="grid grid-cols-2 gap-4">
-                <button onclick="selectExportType('sorteio')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                <button type="button" onclick="selectExportType('sorteio')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group cursor-pointer">
                     <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
                     SORTEIO OFICIAL
                 </button>
-                <button onclick="selectExportType('touros')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                <button type="button" onclick="selectExportType('touros')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group cursor-pointer">
                     <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></div>
                     LISTA DE TOUROS
                 </button>
-                <button onclick="selectExportType('ordem')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                <button type="button" onclick="selectExportType('ordem')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group cursor-pointer">
                     <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
                     ORDEM DE EMBRETAMENTO
                 </button>
-                <button onclick="selectExportType('juizes')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group">
+                <button type="button" onclick="selectExportType('juizes')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-accent hover:bg-accent/5 text-left group cursor-pointer">
                     <div class="text-accent mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
                     PLANILHA DE NOTAS
                 </button>
-                <button onclick="selectExportType('ranking')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-purple-500 hover:bg-purple-500/10 text-left group transition-all">
+                <button type="button" onclick="selectExportType('ranking')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-purple-500 hover:bg-purple-500/10 text-left group transition-all cursor-pointer">
                     <div class="text-purple-500 mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
                     RANKING GERAL
                 </button>
-                <button onclick="selectExportType('melhor_cia')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-emerald-500 hover:bg-emerald-500/10 text-left group transition-all">
+                <button type="button" onclick="selectExportType('melhor_cia')" class="bg-slate-950 border border-slate-800 p-6 rounded-2xl font-black text-white hover:border-emerald-500 hover:bg-emerald-500/10 text-left group transition-all cursor-pointer">
                     <div class="text-emerald-500 mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div>
                     MELHOR CIA
                 </button>
-                <button onclick="document.getElementById('modal-export-options').classList.add('hidden'); openReportViewer('sumula')" class="col-span-2 bg-gradient-to-r from-yellow-500/20 via-yellow-500/30 to-amber-500/20 border-2 border-yellow-500/50 p-5 rounded-2xl font-black text-yellow-400 hover:bg-yellow-500 hover:text-black text-left transition-all flex items-center justify-between shadow-lg shadow-yellow-500/10">
+                <button type="button" onclick="closeExportOptionsModal(); openReportViewer('sorteio')" class="col-span-2 bg-gradient-to-r from-yellow-500/20 via-yellow-500/30 to-amber-500/20 border-2 border-yellow-500/50 p-5 rounded-2xl font-black text-yellow-400 hover:bg-yellow-500 hover:text-black text-left transition-all flex items-center justify-between shadow-lg shadow-yellow-500/10 cursor-pointer">
                     <span class="flex items-center gap-3">
                         <span class="text-xl">📄</span>
                         <span>ABRIR CENTRAL DE RELATÓRIOS & IMPRESSÃO (A4)</span>
@@ -1474,7 +1474,7 @@
     <!-- Modal Seleção de Juiz para Exportação -->
     <div id="modal-export-juiz" class="fixed inset-0 z-[180] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
         <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-sm w-full shadow-2xl relative text-center">
-            <button onclick="document.getElementById('modal-export-juiz').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <button type="button" onclick="closeExportJuizModal()" class="absolute top-8 right-8 text-slate-500 hover:text-white cursor-pointer"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             <h2 class="text-2xl font-black italic uppercase text-yellow-500 mb-8">SELECIONE O JUIZ</h2>
             <div id="export-juiz-list" class="flex flex-col gap-4">
                 <!-- Juizes dynamically added here -->
@@ -1484,7 +1484,7 @@
 
     <div id="modal-export-format" class="fixed inset-0 z-[180] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 hidden text-left">
         <div class="bg-slate-900 border border-slate-800 p-10 rounded-[3rem] max-w-md w-full shadow-2xl relative text-center">
-            <button onclick="document.getElementById('modal-export-format').classList.add('hidden')" class="absolute top-8 right-8 text-slate-500 hover:text-white"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <button type="button" onclick="closeExportFormatModal()" class="absolute top-8 right-8 text-slate-500 hover:text-white cursor-pointer"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             <h2 class="text-2xl font-black italic uppercase text-white mb-2">COMO DESEJA EXPORTAR?</h2>
             <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-6">Escolha visualizar na tela ou salvar arquivo</p>
             <div class="flex flex-col gap-3.5">

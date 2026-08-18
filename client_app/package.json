@@ -1,6 +1,6 @@
 {
   "name": "hzn-rodeo-client",
-  "version": "1.0.152",
+  "version": "1.0.153",
   "description": "Rodeo System Client App",
   "main": "main.js",
   "scripts": {
@@ -61,7 +61,7 @@
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true
     }
   }

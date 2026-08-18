@@ -2697,18 +2697,56 @@ window.openExportFlow = async () => {
     }
 };
 
+window.closeExportDaysModal = () => {
+    const modal = document.getElementById('modal-export-days');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
+
+window.closeExportOptionsModal = () => {
+    const modal = document.getElementById('modal-export-options');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
+
+window.closeExportJuizModal = () => {
+    const modal = document.getElementById('modal-export-juiz');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
+
+window.closeExportFormatModal = () => {
+    const modal = document.getElementById('modal-export-format');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
+
 window.selectExportDay = (day) => {
     pendingExportDay = day;
-    document.getElementById('export-selected-day').innerText = `DIA SELECIONADO: ${day}`;
-    document.getElementById('modal-export-days').classList.add('hidden');
-    document.getElementById('modal-export-options').classList.remove('hidden');
+    const titleEl = document.getElementById('export-selected-day');
+    if (titleEl) titleEl.innerText = `DIA SELECIONADO: ${day}`;
+    
+    window.closeExportDaysModal();
+    const modalOptions = document.getElementById('modal-export-options');
+    if (modalOptions) {
+        modalOptions.classList.remove('hidden');
+        modalOptions.style.display = 'flex';
+    }
 };
 
 let pendingExportJuiz = '';
 
 window.selectExportType = (type) => {
     pendingExportType = type;
-    document.getElementById('modal-export-options').classList.add('hidden');
+    window.closeExportOptionsModal();
     
     if (type === 'juizes') {
         if (!currentEvent || !currentEvent.juizes || currentEvent.juizes.length === 0) {
@@ -2724,34 +2762,46 @@ window.selectExportType = (type) => {
             </button>
             `;
         }).join('');
-        document.getElementById('modal-export-juiz').classList.remove('hidden');
+        const modalJuiz = document.getElementById('modal-export-juiz');
+        if (modalJuiz) {
+            modalJuiz.classList.remove('hidden');
+            modalJuiz.style.display = 'flex';
+        }
     } else {
-        document.getElementById('modal-export-format').classList.remove('hidden');
+        const modalFormat = document.getElementById('modal-export-format');
+        if (modalFormat) {
+            modalFormat.classList.remove('hidden');
+            modalFormat.style.display = 'flex';
+        }
     }
 };
 
 window.selectExportJuiz = (juizNome) => {
     pendingExportJuiz = juizNome;
-    document.getElementById('modal-export-juiz').classList.add('hidden');
-    document.getElementById('modal-export-format').classList.remove('hidden');
+    window.closeExportJuizModal();
+    const modalFormat = document.getElementById('modal-export-format');
+    if (modalFormat) {
+        modalFormat.classList.remove('hidden');
+        modalFormat.style.display = 'flex';
+    }
 };
 
 window.executeReportView = () => {
-    document.getElementById('modal-export-format').classList.add('hidden');
+    window.closeExportFormatModal();
     let reportMap = {
-        'sorteio': 'sumula',
+        'sorteio': 'sorteio',
         'touros': 'boiadas',
         'ordem': 'embretamento',
-        'juizes': 'notas_dia',
+        'juizes': 'sumula',
         'ranking': 'ranking_geral',
         'melhor_cia': 'ranking_cias'
     };
-    let targetType = reportMap[pendingExportType] || 'sumula';
+    let targetType = reportMap[pendingExportType] || 'sorteio';
     openReportViewer(targetType, pendingExportDay);
 };
 
 window.executeExport = (format) => {
-    document.getElementById('modal-export-format').classList.add('hidden');
+    window.closeExportFormatModal();
     
     if (pendingExportType === 'sorteio' || pendingExportType === 'touros' || pendingExportType === 'juizes' || pendingExportType === 'ordem') {
         if (currentEvent && currentEvent.sorteios) {
