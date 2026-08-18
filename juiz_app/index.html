@@ -57,12 +57,23 @@
             background: #1e293b;
             border-radius: 4px;
         }
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.15); }
+        @keyframes pulse-arena {
+            0%, 100% {
+                transform: scale(1.02);
+                box-shadow: 0 0 25px rgba(234, 179, 8, 0.7), inset 0 0 15px rgba(234, 179, 8, 0.3);
+                border-color: #EAB308;
+            }
+            50% {
+                transform: scale(1.04);
+                box-shadow: 0 0 40px rgba(234, 179, 8, 1), inset 0 0 25px rgba(234, 179, 8, 0.5);
+                border-color: #FFFFFF;
+            }
         }
-        .live-dot {
-            animation: pulse-glow 2s infinite ease-in-out;
+        .arena-active-card {
+            animation: pulse-arena 1.6s infinite ease-in-out;
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(12, 15, 23, 0.95) 100%) !important;
+            border-width: 2px !important;
+            z-index: 20;
         }
         .key-btn {
             background: #111827;
@@ -160,7 +171,6 @@
                 <div class="absolute -top-16 -right-16 w-36 h-36 bg-yellow-500/10 rounded-full blur-2xl pointer-events-none"></div>
                 <div class="absolute -bottom-16 -left-16 w-36 h-36 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-                <!-- Logo Oficial do RODEOAPP em destaque -->
                 <div class="mb-6">
                     <img src="assets/rodeoapplogo_branca.png" alt="RODEOAPP" class="h-12 sm:h-14 w-auto object-contain mx-auto">
                     <div class="inline-block mt-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-400 text-[10px] font-black uppercase tracking-widest">
@@ -290,7 +300,7 @@
             </div>
 
             <!-- Lista de Cards de Montarias -->
-            <div id="rides-cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div id="rides-cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 transition-all">
                 <!-- Cards de montaria gerados dinamicamente -->
             </div>
 
@@ -309,7 +319,7 @@
     <div id="view-judging-flow" class="fixed inset-0 z-[100] bg-black flex flex-col justify-between p-4 sm:p-6 overflow-y-auto hidden">
         <div class="max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
 
-            <!-- TOPO: HEADER DA MONTARIA (PRESENTE EM TODAS AS PRANCHETAS) -->
+            <!-- TOPO: HEADER DA MONTARIA -->
             <div class="flex items-center justify-between pb-3 mb-2">
                 <button type="button" onclick="handleJudgingBackBtn()" class="w-12 h-12 rounded-2xl bg-slate-900 border border-white/10 text-white flex items-center justify-center font-black text-xl hover:bg-yellow-500 hover:text-black transition-all touch-active cursor-pointer">
                     ❮
@@ -343,12 +353,10 @@
             <!-- PRANCHETA 1: JULGANDO TOURO                -->
             <!-- ========================================== -->
             <div id="step-julgando-touro" class="flex-1 flex flex-col justify-between">
-                <!-- Banner Título da Etapa -->
                 <div class="bg-white text-black py-3 px-4 rounded-2xl font-black text-center text-lg uppercase tracking-tighter shadow-lg mb-4">
                     JULGANDO TOURO
                 </div>
 
-                <!-- Display Gigante da Nota do Touro -->
                 <div class="glass-card p-5 rounded-3xl border-white/20 text-center mb-4 bg-slate-950/80">
                     <div id="display-touro-score" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tight">
                         22,00
@@ -392,12 +400,10 @@
             <!-- PRANCHETA 2: JULGANDO COMPETIDOR           -->
             <!-- ========================================== -->
             <div id="step-julgando-competidor" class="flex-1 flex flex-col justify-between hidden">
-                <!-- Banner Título da Etapa -->
                 <div class="bg-white text-black py-3 px-4 rounded-2xl font-black text-center text-lg uppercase tracking-tighter shadow-lg mb-4">
                     JULGANDO COMPETIDOR
                 </div>
 
-                <!-- Display Gigante da Nota do Competidor -->
                 <div class="glass-card p-5 rounded-3xl border-white/20 text-center mb-4 bg-slate-950/80">
                     <div id="display-competidor-score" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tight">
                         23,75
@@ -441,14 +447,11 @@
             <!-- PRANCHETA 3: CONFERÊNCIA DE NOTAS          -->
             <!-- ========================================== -->
             <div id="step-conferencia-notas" class="flex-1 flex flex-col justify-between hidden">
-                <!-- Banner Título da Etapa -->
                 <div class="bg-white text-black py-3 px-4 rounded-2xl font-black text-center text-lg uppercase tracking-tighter shadow-lg mb-4">
                     CONFERÊNCIA DE NOTAS
                 </div>
 
-                <!-- Cards de Conferência -->
                 <div class="space-y-3 mb-6">
-                    <!-- NOTA DO TOURO -->
                     <div class="glass-card p-4 rounded-2xl border-white/10 text-center">
                         <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
                             NOTA TOURO
@@ -458,7 +461,6 @@
                         </div>
                     </div>
 
-                    <!-- NOTA DO COMPETIDOR -->
                     <div class="glass-card p-4 rounded-2xl border-white/10 text-center">
                         <div class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
                             NOTA COMPETIDOR
@@ -468,7 +470,6 @@
                         </div>
                     </div>
 
-                    <!-- TOTAL -->
                     <div class="glass-card p-5 rounded-3xl border-2 border-yellow-500/40 bg-yellow-500/10 text-center shadow-xl">
                         <div class="text-xs font-black uppercase tracking-widest text-yellow-400 mb-1">
                             TOTAL DESTE JUIZ
@@ -514,9 +515,13 @@
                 <!-- Status de cada juiz gerado dinamicamente -->
             </div>
 
-            <div class="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse">
+            <div class="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse mb-4">
                 SINCRONIZANDO EM TEMPO REAL VIA ABLY
             </div>
+
+            <button type="button" onclick="closeWaitingOtherJudgeModal()" class="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-black uppercase hover:text-white touch-active cursor-pointer">
+                ✕ FECHAR E VOLTAR AO PAINEL
+            </button>
         </div>
     </div>
 
@@ -573,32 +578,34 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MODAL: BLOQUEIO / RE-AUTENTICAÇÃO DO JUIZ  -->
+    <!-- MODAL: SEGURANÇA PARA ALTERAR NOTA JÁ DADA -->
     <!-- ========================================== -->
-    <div id="modal-lock-after-score" class="fixed inset-0 z-[150] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden">
+    <div id="modal-security-change-score" class="fixed inset-0 z-[150] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden">
         <div class="w-full max-w-sm glass-card p-8 rounded-[2.5rem] border-2 border-yellow-500 text-center shadow-2xl relative">
+            <button type="button" onclick="closeSecurityChangeScoreModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white text-xl cursor-pointer">✕</button>
+
             <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 mx-auto mb-4 flex items-center justify-center text-3xl">
                 🔒
             </div>
 
             <h3 class="text-2xl font-black italic uppercase tracking-tighter text-white mb-1">
-                SISTEMA BLOQUEADO
+                ALTERAR NOTA
             </h3>
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">
-                Digite sua senha de Juiz para escolher o próximo competidor:
+                Esta montaria já foi avaliada. Digite sua senha de Juiz para desbloquear e alterar a nota:
             </p>
 
             <div class="space-y-4 text-left">
                 <div class="relative">
-                    <input type="password" id="input-unlock-pin" placeholder="Senha do Juiz" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-center text-xl font-mono outline-none focus:ring-2 focus:ring-yellow-500 tracking-widest" required autofocus onkeydown="if(event.key==='Enter'){handleUnlockJudge();}">
-                    <button type="button" onclick="togglePasswordVisibility('input-unlock-pin')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1 cursor-pointer">
+                    <input type="password" id="input-edit-security-pin" placeholder="Senha do Juiz" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-center text-xl font-mono outline-none focus:ring-2 focus:ring-yellow-500 tracking-widest" required autofocus onkeydown="if(event.key==='Enter'){confirmUnlockEditScore();}">
+                    <button type="button" onclick="togglePasswordVisibility('input-edit-security-pin')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1 cursor-pointer">
                         👁️
                     </button>
                 </div>
-                <p id="unlock-auth-error" class="text-xs font-bold text-red-400 mt-2 text-center hidden">Senha incorreta.</p>
+                <p id="edit-security-error" class="text-xs font-bold text-red-400 mt-2 text-center hidden">Senha incorreta.</p>
 
-                <button type="button" onclick="handleUnlockJudge()" class="w-full h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/25 active:scale-95 cursor-pointer">
-                    DESBLOQUEAR PAINEL
+                <button type="button" onclick="confirmUnlockEditScore()" class="w-full h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/25 active:scale-95 cursor-pointer">
+                    DESBLOQUEAR PARA ALTERAR
                 </button>
             </div>
         </div>
@@ -620,17 +627,12 @@
             </h3>
 
             <div class="space-y-3.5">
-                <!-- Opção 1: JULGAR -->
                 <button type="button" onclick="applyVarDecision('julgar')" class="w-full h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 touch-active cursor-pointer">
                     JULGAR
                 </button>
-
-                <!-- Opção 2: RE-RIDE -->
                 <button type="button" onclick="applyVarDecision('reride')" class="w-full h-16 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 touch-active cursor-pointer">
                     RE-RIDE
                 </button>
-
-                <!-- Opção 3: APELO -->
                 <button type="button" onclick="applyVarDecision('apelo')" class="w-full h-16 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-base uppercase tracking-wider shadow-lg shadow-red-600/20 active:scale-95 touch-active cursor-pointer">
                     APELO (0,00)
                 </button>

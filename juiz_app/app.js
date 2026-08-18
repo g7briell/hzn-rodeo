@@ -1,7 +1,7 @@
 /**
  * RODEOAPP - Portal do Juiz (juiz.rodeoapp.pro)
  * Sistema de Lançamento de Notas em Tempo Real com Ably.com & Supabase
- * Fluxo de Julgamento Tátil, Sincronização entre Juízes, Regras de Escala, Bloqueio por Senha & Re-Ride (<80 pts)
+ * Foco na Arena, Sincronização entre Juízes, Regras de Escala, Bloqueio de Segurança em Alterações & Re-Ride (<80 pts)
  */
 
 // ==========================================
@@ -34,7 +34,10 @@ window.state = {
     currentMatchupIdx: null,
     currentRider: null,
     currentBull: null,
-    waitingMatchup: null // { riderName, day, matchupIdx }
+    waitingMatchup: null, // { riderName, day, matchupIdx }
+    activeArenaRider: null, // Nome do competidor em avaliação na arena agora
+    activeArenaJudgeName: null,
+    pendingEditMatchupIdx: null // Guard para desbloqueio por senha ao alterar nota já dada
 };
 
 // Estado do Fluxo de Julgamento Ativo
@@ -50,6 +53,7 @@ window.judgingState = {
 
 let ablyClient = null;
 let ablyChannel = null;
+let waitingPollInterval = null;
 
 // ==========================================
 // INICIALIZAÇÃO DA APLICAÇÃO
@@ -138,6 +142,7 @@ function clearSession() {
     window.state.eventData = null;
     window.state.currentJudge = null;
     window.state.selectedDay = null;
+    window.state.activeArenaRider = null;
 }
 
 // ==========================================
@@ -301,7 +306,7 @@ function getJudgesListNormalized() {
         }));
     }
 
-    const judgeCount = parseInt(window.state.eventData.judges || 2) || 2;
+    const judgeCount = parseInt(window.state.eventData?.judges || 2) || 2;
     const generated = [];
     for (let i = 0; i < judgeCount; i++) {
         generated.push({
@@ -500,6 +505,8 @@ function renderRidesList() {
     let gradedCount = 0;
     let pendingCount = 0;
 
+    const activeArenaRiderName = window.state.activeArenaRider;
+
     const cardsHTML = riders.map((r, idx) => {
         const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
         const bull = bulls[bullIdx] || { nome: 'TOURO INDEFINIDO', cia: '---', lado: '---' };
@@ -547,27 +554,47 @@ function renderRidesList() {
         if (window.state.activeFilter === 'graded' && !isGraded) return '';
 
         const isRerideRide = Boolean(r.isReride);
+        const isArenaActive = (activeArenaRiderName && activeArenaRiderName.trim().toUpperCase() === r.nome.trim().toUpperCase());
 
-        // Estilo do Card (Destaque em Amarelo para Re-Ride)
-        let cardBorder = isRerideRide 
-            ? 'border-2 border-yellow-500 bg-yellow-500/10 shadow-lg shadow-yellow-500/10'
-            : (isGraded ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-white/5 hover:border-yellow-500/40 bg-slate-900/60');
+        // Efeito de Foco na Arena: se houver um competidor ativo na arena, os outros diminuem opacidade
+        let cardContainerClasses = "glass-card p-4 sm:p-5 rounded-3xl transition-all cursor-pointer group touch-active relative overflow-hidden";
+        
+        if (isArenaActive) {
+            cardContainerClasses += " arena-active-card border-yellow-400";
+        } else if (activeArenaRiderName) {
+            cardContainerClasses += " opacity-35 scale-[0.98] hover:opacity-100 hover:scale-100 border-white/5";
+        } else {
+            cardContainerClasses += isRerideRide 
+                ? ' border-2 border-yellow-500 bg-yellow-500/10 shadow-lg shadow-yellow-500/10'
+                : (isGraded ? ' border-emerald-500/30 bg-emerald-950/10' : ' border-white/5 hover:border-yellow-500/40 bg-slate-900/60');
+        }
 
         let statusBadge = '';
 
-        if (isGraded) {
+        if (isArenaActive) {
+            statusBadge = `
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-yellow-500/40 text-yellow-300">
+                    <span class="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                        🔴 NA ARENA AGORA
+                    </span>
+                    <span class="text-xs font-black uppercase underline">
+                        ${isGraded ? 'EDITAR NOTA ➔' : 'AVALIAR AGORA ➔'}
+                    </span>
+                </div>`;
+        } else if (isGraded) {
             if (myScoreObj.isFall || myScoreObj.rScore === 0) {
                 statusBadge = `
                     <div class="flex items-center justify-between mt-3 pt-3 border-t border-red-500/20 text-red-400">
-                        <span class="text-[10px] font-black uppercase tracking-wider">STATUS</span>
-                        <span class="text-sm font-black italic">SEM TEMPO (0,00) • Touro: ${myScoreObj.bScore.toFixed(2)}</span>
+                        <span class="text-[10px] font-black uppercase tracking-wider flex items-center gap-1">🔒 SEM TEMPO (0,00)</span>
+                        <span class="text-sm font-black italic">Touro: ${myScoreObj.bScore.toFixed(2)}</span>
                     </div>`;
             } else {
                 const total = (myScoreObj.rScore + myScoreObj.bScore).toFixed(2);
                 statusBadge = `
                     <div class="flex items-center justify-between mt-3 pt-3 border-t border-emerald-500/20 text-emerald-400">
                         <div class="text-[10px] font-bold text-slate-400">
-                            Touro: <b class="text-white">${myScoreObj.bScore.toFixed(2)}</b> | Peão: <b class="text-yellow-400">${myScoreObj.rScore.toFixed(2)}</b>
+                            🔒 Touro: <b class="text-white">${myScoreObj.bScore.toFixed(2)}</b> | Peão: <b class="text-yellow-400">${myScoreObj.rScore.toFixed(2)}</b>
                         </div>
                         <div class="text-lg font-black italic font-mono text-emerald-400">
                             ${total}
@@ -589,7 +616,7 @@ function renderRidesList() {
             : '';
 
         return `
-            <div onclick="openScoreModal(${idx})" class="glass-card p-4 sm:p-5 rounded-3xl border ${cardBorder} transition-all cursor-pointer group touch-active relative overflow-hidden">
+            <div onclick="handleRideCardClick(${idx})" class="${cardContainerClasses}">
                 <div class="flex items-start justify-between gap-3 mb-2.5">
                     <span class="w-8 h-8 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 flex items-center justify-center font-black text-xs">
                         ${idx + 1}
@@ -646,9 +673,77 @@ window.filterRides = (type) => {
 };
 
 // ==========================================
+// SEGURANÇA: CLIQUE NO CARD & SENHA DE ALTERAÇÃO
+// ==========================================
+window.handleRideCardClick = (matchupIdx) => {
+    const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
+    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
+    if (!currentSorteio) return;
+
+    const r = currentSorteio.riders[matchupIdx];
+    const notas = (window.state.eventData && window.state.eventData.notas) || [];
+    const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
+
+    // Verifica se este Juiz já avaliou este competidor
+    const existingNota = notas.find(n => 
+        (n.peao === r.nome || n.peaoNome === r.nome) && 
+        n.dia === window.state.selectedDay && 
+        n.status !== 'substituida'
+    );
+
+    let isAlreadyGradedByMe = false;
+    if (existingNota) {
+        if (existingNota.juizes_status && existingNota.juizes_status[jIdx] && existingNota.juizes_status[jIdx].enviado) {
+            isAlreadyGradedByMe = true;
+        } else if (existingNota.judgeIdx === jIdx) {
+            isAlreadyGradedByMe = true;
+        } else if (jIdx === 0 && (existingNota.j1_touro > 0 || existingNota.j1_peao > 0)) {
+            isAlreadyGradedByMe = true;
+        } else if (jIdx === 1 && (existingNota.j2_touro > 0 || existingNota.j2_peao > 0)) {
+            isAlreadyGradedByMe = true;
+        }
+    }
+
+    // Se já foi avaliada e o juiz tem senha cadastrada: pede senha para autorizar alteração
+    const hasSenha = window.state.currentJudge && window.state.currentJudge.senha && String(window.state.currentJudge.senha).trim().length > 0;
+
+    if (isAlreadyGradedByMe && hasSenha) {
+        window.state.pendingEditMatchupIdx = matchupIdx;
+        document.getElementById('input-edit-security-pin').value = '';
+        document.getElementById('edit-security-error').classList.add('hidden');
+        document.getElementById('modal-security-change-score').classList.remove('hidden');
+        setTimeout(() => document.getElementById('input-edit-security-pin')?.focus(), 100);
+    } else {
+        // Montaria PENDENTE ou juiz sem senha: abre direto!
+        openScoreModalDirect(matchupIdx);
+    }
+};
+
+window.confirmUnlockEditScore = () => {
+    const pin = (document.getElementById('input-edit-security-pin')?.value || '').trim();
+    const correctPin = (window.state.currentJudge?.senha || '').trim();
+
+    if (pin === correctPin) {
+        closeSecurityChangeScoreModal();
+        const targetIdx = window.state.pendingEditMatchupIdx;
+        window.state.pendingEditMatchupIdx = null;
+        openScoreModalDirect(targetIdx);
+        showToast("Acesso liberado para alteração de nota.", "success");
+    } else {
+        document.getElementById('edit-security-error').classList.remove('hidden');
+        document.getElementById('input-edit-security-pin')?.select();
+    }
+};
+
+window.closeSecurityChangeScoreModal = () => {
+    document.getElementById('modal-security-change-score').classList.add('hidden');
+    window.state.pendingEditMatchupIdx = null;
+};
+
+// ==========================================
 // FLUXO DE JULGAMENTO (PRANCHETAS 1, 2, 3, 4)
 // ==========================================
-window.openScoreModal = (matchupIdx) => {
+function openScoreModalDirect(matchupIdx) {
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
     const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
     if (!currentSorteio) return;
@@ -660,6 +755,9 @@ window.openScoreModal = (matchupIdx) => {
     window.state.currentMatchupIdx = matchupIdx;
     window.state.currentRider = r;
     window.state.currentBull = bull;
+
+    // Transmite pelo Ably que esta montaria está sendo avaliada na arena agora
+    broadcastActiveArenaMatchup(r.nome);
 
     // Preenche cabeçalhos fixos da montaria
     document.getElementById('flow-matchup-number').innerText = `#${matchupIdx + 1}`;
@@ -679,7 +777,33 @@ window.openScoreModal = (matchupIdx) => {
     updateDisplays();
     goToStepTouro();
     document.getElementById('view-judging-flow').classList.remove('hidden');
-};
+}
+
+function broadcastActiveArenaMatchup(riderName) {
+    window.state.activeArenaRider = riderName;
+    renderRidesList();
+
+    if (ablyChannel && window.state.currentJudge) {
+        ablyChannel.publish('judge-active-matchup', {
+            riderName: riderName,
+            day: window.state.selectedDay,
+            judgeName: window.state.currentJudge.nome,
+            timestamp: Date.now()
+        });
+    }
+}
+
+function broadcastClearActiveArenaMatchup() {
+    window.state.activeArenaRider = null;
+    renderRidesList();
+
+    if (ablyChannel) {
+        ablyChannel.publish('judge-active-matchup-cleared', {
+            day: window.state.selectedDay,
+            timestamp: Date.now()
+        });
+    }
+}
 
 function updateDisplays() {
     const touroStr = `${window.judgingState.touroInt}${window.judgingState.touroDec}`;
@@ -743,6 +867,7 @@ window.handleJudgingBackBtn = () => {
         goToStepTouro();
     } else {
         document.getElementById('view-judging-flow').classList.add('hidden');
+        broadcastClearActiveArenaMatchup();
         window.state.currentMatchupIdx = null;
     }
 };
@@ -837,7 +962,6 @@ window.applyVarDecision = (type) => {
         window.judgingState.isFall = false;
         submitFinalScoreToRealtime(false, true);
     } else if (type === 'apelo') {
-        // Apelo / Queda (0,00 para peão, mantém touro)
         window.judgingState.competidorInt = 0;
         window.judgingState.competidorDec = ',00';
         window.judgingState.isFall = true;
@@ -902,6 +1026,7 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
 
         // Fecha a tela de notas
         document.getElementById('view-judging-flow').classList.add('hidden');
+        broadcastClearActiveArenaMatchup();
 
         // 4. Verifica se todos os juízes já enviaram para esta montaria
         const totalJudgesExpected = parseInt(window.state.eventData.judges || 2) || 2;
@@ -910,13 +1035,14 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
         const submittedJudgesCount = Object.keys(currentMatchupScores).length;
 
         if (submittedJudgesCount < totalJudgesExpected && totalJudgesExpected > 1) {
-            // Entra na tela de "Aguardando avaliação do outro juiz"
+            // Entra na tela de "Aguardando avaliação do outro juiz" com polling de verificação
             window.state.waitingMatchup = {
                 riderName: scorePayload.riderName,
                 day: scorePayload.day,
                 matchupIdx: scorePayload.matchupIdx
             };
             showWaitingOtherJudgeModal(currentMatchupScores, totalJudgesExpected);
+            startWaitingPollInterval();
         } else {
             // Todos os juízes já avaliaram!
             handleAllJudgesCompleted(currentMatchupScores, scorePayload);
@@ -934,7 +1060,7 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
 };
 
 function getMatchupScoresMap(riderName, day) {
-    const notas = window.state.eventData.notas || [];
+    const notas = window.state.eventData?.notas || [];
     const nota = notas.find(n => (n.peao === riderName || n.peaoNome === riderName) && n.dia === day && n.status !== 'substituida');
     if (!nota) return {};
     return nota.juizes_status || {};
@@ -960,7 +1086,50 @@ function showWaitingOtherJudgeModal(scoresMap, totalExpected) {
     document.getElementById('modal-waiting-other-judge').classList.remove('hidden');
 }
 
+function startWaitingPollInterval() {
+    stopWaitingPollInterval();
+    waitingPollInterval = setInterval(async () => {
+        if (!window.state.waitingMatchup) {
+            stopWaitingPollInterval();
+            return;
+        }
+
+        try {
+            const cloudEvent = await fetchCloudEventByShare(window.state.shareId, window.state.sharePassword);
+            if (cloudEvent) {
+                const rawLocal = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
+                window.state.eventData = rawLocal;
+
+                const totalJudgesExpected = parseInt(window.state.eventData.judges || 2) || 2;
+                const scoresMap = getMatchupScoresMap(window.state.waitingMatchup.riderName, window.state.waitingMatchup.day);
+
+                if (Object.keys(scoresMap).length >= totalJudgesExpected) {
+                    stopWaitingPollInterval();
+                    handleAllJudgesCompleted(scoresMap, { riderName: window.state.waitingMatchup.riderName, day: window.state.waitingMatchup.day });
+                } else {
+                    showWaitingOtherJudgeModal(scoresMap, totalJudgesExpected);
+                }
+            }
+        } catch(e) {}
+    }, 1800);
+}
+
+function stopWaitingPollInterval() {
+    if (waitingPollInterval) {
+        clearInterval(waitingPollInterval);
+        waitingPollInterval = null;
+    }
+}
+
+window.closeWaitingOtherJudgeModal = () => {
+    stopWaitingPollInterval();
+    document.getElementById('modal-waiting-other-judge').classList.add('hidden');
+    window.state.waitingMatchup = null;
+    renderRidesList();
+};
+
 function handleAllJudgesCompleted(scoresMap, scorePayload) {
+    stopWaitingPollInterval();
     document.getElementById('modal-waiting-other-judge').classList.add('hidden');
     window.state.waitingMatchup = null;
 
@@ -980,8 +1149,8 @@ function handleAllJudgesCompleted(scoresMap, scorePayload) {
         document.getElementById('low-score-sum-display').innerText = sumTotal.toFixed(2);
         document.getElementById('modal-low-score-reride').classList.remove('hidden');
     } else {
-        // Bloqueia com a senha do juiz ou volta ao painel
-        promptSecurityLockOrFinish();
+        renderRidesList();
+        showToast("Notas consolidadas com sucesso!", "success");
     }
 }
 
@@ -991,14 +1160,14 @@ function handleAllJudgesCompleted(scoresMap, scorePayload) {
 window.handleKeepLowScore = () => {
     document.getElementById('modal-low-score-reride').classList.add('hidden');
     showToast("Nota confirmada mantida!", "success");
-    promptSecurityLockOrFinish();
+    renderRidesList();
 };
 
 window.handleRequestNextBullReride = async () => {
     document.getElementById('modal-low-score-reride').classList.add('hidden');
 
     if (!window.state.currentRider) {
-        promptSecurityLockOrFinish();
+        renderRidesList();
         return;
     }
 
@@ -1051,14 +1220,13 @@ window.handleRequestNextBullReride = async () => {
 };
 
 function findNextAvailableRerideBull(currentSorteio) {
-    const allBulls = window.state.eventData.boiadas || [];
+    const allBulls = window.state.eventData?.boiadas || [];
     const usedBulls = Object.values(currentSorteio.assignments || {}).map(idx => currentSorteio.bulls[idx]?.nome);
 
     // Touros marcados como re-ride ou touros ainda não utilizados hoje
     const available = allBulls.find(b => !usedBulls.includes(b.nome));
     if (available) return available;
 
-    // Fallback: se houver touros na boiada geral
     if (allBulls.length > 0) {
         return allBulls[Math.floor(Math.random() * allBulls.length)];
     }
@@ -1068,37 +1236,7 @@ function findNextAvailableRerideBull(currentSorteio) {
 
 window.closeRerideResultModal = () => {
     document.getElementById('modal-reride-result-msg').classList.add('hidden');
-    promptSecurityLockOrFinish();
-};
-
-// ==========================================
-// BLOQUEIO DE SEGURANÇA POR SENHA DO JUIZ
-// ==========================================
-function promptSecurityLockOrFinish() {
-    const j = window.state.currentJudge;
-    if (j && j.senha && String(j.senha).trim().length > 0) {
-        document.getElementById('input-unlock-pin').value = '';
-        document.getElementById('unlock-auth-error').classList.add('hidden');
-        document.getElementById('modal-lock-after-score').classList.remove('hidden');
-        setTimeout(() => document.getElementById('input-unlock-pin')?.focus(), 100);
-    } else {
-        renderRidesList();
-        showToast("Painel liberado!", "success");
-    }
-}
-
-window.handleUnlockJudge = () => {
-    const pin = (document.getElementById('input-unlock-pin')?.value || '').trim();
-    const correctPin = (window.state.currentJudge?.senha || '').trim();
-
-    if (pin === correctPin) {
-        document.getElementById('modal-lock-after-score').classList.add('hidden');
-        renderRidesList();
-        showToast("Painel desbloqueado com sucesso!", "success");
-    } else {
-        document.getElementById('unlock-auth-error').classList.remove('hidden');
-        document.getElementById('input-unlock-pin')?.select();
-    }
+    renderRidesList();
 };
 
 // ==========================================
@@ -1314,6 +1452,23 @@ function subscribeToEventChannel(shareId) {
         const channelName = `rodeoapp-event-${shareId}`;
         ablyChannel = ablyClient.channels.get(channelName);
         updateAblyBadge('live');
+
+        // Escuta quando um juiz começa a avaliar uma montaria na arena (Destaque e Foco)
+        ablyChannel.subscribe('judge-active-matchup', (message) => {
+            if (message.data && message.data.riderName) {
+                console.log("[ABLY REALTIME] Montaria ativa na arena:", message.data);
+                window.state.activeArenaRider = message.data.riderName;
+                window.state.activeArenaJudgeName = message.data.judgeName;
+                renderRidesList();
+            }
+        });
+
+        // Escuta quando a montaria ativa é finalizada ou cancelada
+        ablyChannel.subscribe('judge-active-matchup-cleared', () => {
+            window.state.activeArenaRider = null;
+            window.state.activeArenaJudgeName = null;
+            renderRidesList();
+        });
 
         // Escuta notas enviadas por outros juízes
         ablyChannel.subscribe('judge-score-submitted', (message) => {
