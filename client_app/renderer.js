@@ -5651,27 +5651,51 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
         if (container) container.innerHTML = `<div class="p-20 text-center text-slate-500 italic font-bold">Nenhuma nota registrada no evento.</div>`;
         return;
     }
-    const notas = currentEvent.notas.filter(n => n.status === 'ativa' || n.status === 'nota_baixa');
+    const notas = (currentEvent.notas || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa' || n.status === 're_ride'));
     
+    const getSafeStr = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'object') return (val.nome || val.name || val.touro || '').trim();
+        return String(val).trim();
+    };
+
     let rankingData = [];
     
     if (type === 'touro') {
         const bullsMap = {};
-        if (currentEvent.boiadas) {
+        if (currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
             currentEvent.boiadas.forEach(c => {
-                if (c.touros) c.touros.forEach(t => { bullsMap[t.toUpperCase()] = { nome: t, cia: c.nome }; });
+                const cNome = getSafeStr(c.nome || c.cia || 'SEM CIA');
+                if (c.touros && Array.isArray(c.touros)) {
+                    c.touros.forEach(t => {
+                        const tNome = getSafeStr(t);
+                        if (tNome) {
+                            bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome };
+                        }
+                    });
+                }
             });
         }
         
+        notas.forEach(n => {
+            const tNome = getSafeStr(n.touro || n.touroNome || n.bullName);
+            if (tNome && !bullsMap[tNome.toUpperCase()]) {
+                const cNome = getSafeStr(n.cia || n.bullCia || 'SEM CIA');
+                bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome };
+            }
+        });
+        
         const tourosData = [];
         for (const [upperNome, bInfo] of Object.entries(bullsMap)) {
-            const peaoNotas = notas.filter(n => n.touro.toUpperCase() === upperNome && (filter === 'geral' || n.dia === filter));
+            const peaoNotas = notas.filter(n => {
+                const nTouroUpper = getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase();
+                return nTouroUpper === upperNome && (filter === 'geral' || n.dia === filter);
+            });
             if (peaoNotas.length === 0) continue;
             
-            if (filter === 'geral' && peaoNotas.length < 2) continue;
-            
             let sum = 0;
-            peaoNotas.forEach(n => sum += n.totalTouro);
+            peaoNotas.forEach(n => { sum += (parseFloat(n.totalTouro) || 0); });
             const media = sum / peaoNotas.length;
             
             tourosData.push({ ...bInfo, saidas: peaoNotas.length, media });
@@ -5679,17 +5703,28 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
         rankingData = tourosData;
     } else {
         const boiadaMap = {}; 
-        if (currentEvent.boiadas) {
+        if (currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
             currentEvent.boiadas.forEach(c => {
-                boiadaMap[c.nome.toUpperCase()] = { nome: c.nome, sum: 0, count: 0 };
+                const cNome = getSafeStr(c.nome || c.cia);
+                if (cNome) {
+                    boiadaMap[cNome.toUpperCase()] = { nome: cNome, sum: 0, count: 0 };
+                }
             });
         }
         
-        const getBullCia = (bullName) => {
-            if (!currentEvent.boiadas) return null;
+        const getBullCia = (n) => {
+            const explicitCia = getSafeStr(n.cia || n.bullCia);
+            if (explicitCia) return explicitCia.toUpperCase();
+
+            const bullName = getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase();
+            if (!bullName || !currentEvent.boiadas || !Array.isArray(currentEvent.boiadas)) return null;
+
             for (const c of currentEvent.boiadas) {
-                if (c.touros && c.touros.some(t => t.toUpperCase() === bullName.toUpperCase())) {
-                    return c.nome.toUpperCase();
+                const cNome = getSafeStr(c.nome || c.cia);
+                if (c.touros && Array.isArray(c.touros)) {
+                    if (c.touros.some(t => getSafeStr(t).toUpperCase() === bullName)) {
+                        return cNome.toUpperCase();
+                    }
                 }
             }
             return null;
@@ -5697,10 +5732,13 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
         
         notas.forEach(n => {
             if (filter !== 'geral' && n.dia !== filter) return;
-            const cia = getBullCia(n.touro);
-            if (cia && boiadaMap[cia]) {
-                boiadaMap[cia].sum += n.totalTouro;
-                boiadaMap[cia].count++;
+            const ciaUpper = getBullCia(n);
+            if (ciaUpper) {
+                if (!boiadaMap[ciaUpper]) {
+                    boiadaMap[ciaUpper] = { nome: ciaUpper, sum: 0, count: 0 };
+                }
+                boiadaMap[ciaUpper].sum += (parseFloat(n.totalTouro) || 0);
+                boiadaMap[ciaUpper].count++;
             }
         });
         
@@ -5716,7 +5754,7 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
     rankingData.sort((a, b) => b.media - a.media);
     
     if (rankingData.length === 0) { 
-        if (container) container.innerHTML = `<div class="p-20 text-center text-slate-500 italic font-bold">Nenhum animal/boiada qualificado para o filtro atual. (Lembre-se: Touros precisam de no mínimo 2 saídas no ranking geral).</div>`; 
+        if (container) container.innerHTML = `<div class="p-20 text-center text-slate-500 italic font-bold">Nenhum animal/boiada qualificado para o filtro atual.</div>`; 
         return; 
     }
     
@@ -5743,7 +5781,7 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
         html += `<tr class="${rowClass} transition-colors">
             <td class="px-3 py-3 sm:px-8 sm:py-6 ${posClass} italic text-sm sm:text-xl">${pos}</td>
             <td class="px-3 py-3 sm:px-8 sm:py-6"><div class="font-black text-white uppercase text-xs sm:text-lg tracking-tighter truncate max-w-[140px] sm:max-w-none">${item.nome}</div></td>
-            ${isTouro ? `<td class="px-3 py-3 sm:px-8 sm:py-6 text-slate-500 font-bold uppercase text-[10px] sm:text-xs truncate max-w-[100px] sm:max-w-none">${item.cia}</td>` : ''}
+            ${isTouro ? `<td class="px-3 py-3 sm:px-8 sm:py-6 text-slate-500 font-bold uppercase text-[10px] sm:text-xs truncate max-w-[100px] sm:max-w-none">${item.cia || 'SEM CIA'}</td>` : ''}
             <td class="px-3 py-3 sm:px-8 sm:py-6 text-center text-slate-300 font-bold text-xs sm:text-base">${item.saidas}</td>
             <td class="px-3 py-3 sm:px-8 sm:py-6 text-right">
                 <div class="text-sm sm:text-2xl font-black italic text-emerald-500">${item.media.toFixed(2)}</div>
@@ -5751,36 +5789,61 @@ window.renderRankingAnimais = (type, filter = 'geral') => {
         </tr>`;
     });
     
-    if (container) container.innerHTML = html + `</tbody></table>`;
+    html += `</tbody></table>`;
+    if (container) container.innerHTML = html;
 };
 
 window.exportMelhorCia = async (format = 'excel') => {
-    if (!currentEvent) return alert("Nenhum evento ativo!");
+    if (!currentEvent || !currentEvent.id) return;
+    const notas = (currentEvent.notas || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa'));
     
-    const notas = (currentEvent.notas || []).filter(n => n.status === 'ativa' || n.status === 'nota_baixa');
+    const getSafeStr = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'object') return (val.nome || val.name || val.touro || '').trim();
+        return String(val).trim();
+    };
+
     const boiadaMap = {}; 
-    if (currentEvent.boiadas) {
+    if (currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
         currentEvent.boiadas.forEach(c => {
-            boiadaMap[c.nome.toUpperCase()] = { nome: c.nome, sum: 0, count: 0, touros: [] };
+            const cNome = getSafeStr(c.nome || c.cia);
+            if (cNome) {
+                boiadaMap[cNome.toUpperCase()] = { nome: cNome, sum: 0, count: 0, touros: [] };
+            }
         });
     }
     
-    const getBullCia = (bullName) => {
-        if (!currentEvent.boiadas) return null;
+    const getBullCia = (n) => {
+        const explicitCia = getSafeStr(n.cia || n.bullCia);
+        if (explicitCia) return explicitCia.toUpperCase();
+
+        const bullName = getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase();
+        if (!bullName || !currentEvent.boiadas || !Array.isArray(currentEvent.boiadas)) return null;
+
         for (const c of currentEvent.boiadas) {
-            if (c.touros && c.touros.some(t => t.toUpperCase() === bullName.toUpperCase())) {
-                return c.nome.toUpperCase();
+            const cNome = getSafeStr(c.nome || c.cia);
+            if (c.touros && Array.isArray(c.touros)) {
+                if (c.touros.some(t => getSafeStr(t).toUpperCase() === bullName)) {
+                    return cNome.toUpperCase();
+                }
             }
         }
         return null;
     };
     
     notas.forEach(n => {
-        const cia = getBullCia(n.touro);
-        if (cia && boiadaMap[cia]) {
-            boiadaMap[cia].sum += n.totalTouro;
-            boiadaMap[cia].count++;
-            boiadaMap[cia].touros.push({ nome: n.touro, dia: n.dia, nota: n.totalTouro });
+        const ciaUpper = getBullCia(n);
+        const tNome = getSafeStr(n.touro || n.touroNome || n.bullName);
+        const notaVal = parseFloat(n.totalTouro) || 0;
+
+        if (ciaUpper) {
+            if (!boiadaMap[ciaUpper]) {
+                boiadaMap[ciaUpper] = { nome: ciaUpper, sum: 0, count: 0, touros: [] };
+            }
+            boiadaMap[ciaUpper].sum += notaVal;
+            boiadaMap[ciaUpper].count++;
+            boiadaMap[ciaUpper].touros.push({ nome: tNome, dia: n.dia || '', nota: notaVal });
         }
     });
     
@@ -5829,21 +5892,40 @@ async function exportMelhorAnimalPrompt() {
     // 1. Calculate best animals
     if (!currentEvent || !currentEvent.id) return;
     try {
+        const getSafeStr = (val) => {
+            if (!val) return '';
+            if (typeof val === 'string') return val.trim();
+            if (typeof val === 'object') return (val.nome || val.name || val.touro || '').trim();
+            return String(val).trim();
+        };
+
         const bullsMap = {};
-        if (currentEvent.boiadas) {
+        if (currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
             currentEvent.boiadas.forEach(c => {
-                if (c.touros) c.touros.forEach(t => { 
-                    if (t) bullsMap[String(t).toUpperCase()] = { nome: String(t), cia: c.nome || 'Sem Cia' }; 
-                });
+                const cNome = getSafeStr(c.nome || c.cia || 'Sem Cia');
+                if (c.touros && Array.isArray(c.touros)) {
+                    c.touros.forEach(t => { 
+                        const tNome = getSafeStr(t);
+                        if (tNome) bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome }; 
+                    });
+                }
             });
         }
         
-        const notasAtivas = (currentEvent.notas || []).filter(n => n.status === 'ativa' || n.status === 'nota_baixa');
+        const notasAtivas = (currentEvent.notas || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa'));
+        
+        notasAtivas.forEach(n => {
+            const tNome = getSafeStr(n.touro || n.touroNome || n.bullName);
+            if (tNome && !bullsMap[tNome.toUpperCase()]) {
+                const cNome = getSafeStr(n.cia || n.bullCia || 'Sem Cia');
+                bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome };
+            }
+        });
         
         let validAnimais = [];
         for (const [upperNome, bInfo] of Object.entries(bullsMap)) {
-            const peaoNotas = notasAtivas.filter(n => n.touro && String(n.touro).toUpperCase() === upperNome);
-            if (peaoNotas.length < 2) continue;
+            const peaoNotas = notasAtivas.filter(n => getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase() === upperNome);
+            if (peaoNotas.length === 0) continue;
             
             let sum = 0;
             let montarias = [];
@@ -5860,7 +5942,7 @@ async function exportMelhorAnimalPrompt() {
         validAnimais.sort((a, b) => b.media - a.media);
             
         if (validAnimais.length === 0) {
-            alert('Não encontramos nenhum animal que tenha pulado 2 ou mais vezes neste evento.');
+            alert('Não encontramos nenhum animal com notas neste evento.');
             return;
         }
 
