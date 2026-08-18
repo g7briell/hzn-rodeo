@@ -111,14 +111,52 @@ function saveSession() {
         const sessionData = {
             shareId: window.state.shareId,
             sharePassword: window.state.sharePassword,
-            judgeIdx: window.state.currentJudge ? window.state.currentJudge.idx : null,
-            judgeNome: window.state.currentJudge ? window.state.currentJudge.nome : null,
+            judgeIdx: (window.state.currentJudge !== null && window.state.currentJudge !== undefined) ? window.state.currentJudge.idx : null,
+            judgeNome: window.state.currentJudge ? (typeof window.state.currentJudge === 'string' ? window.state.currentJudge : window.state.currentJudge.nome) : null,
             selectedDay: window.state.selectedDay
         };
         localStorage.setItem('RODEOAPP_JUIZ_SESSION', JSON.stringify(sessionData));
     } catch (e) {
         console.warn("Falha ao salvar sessão local:", e);
     }
+}
+
+function getCurrentJudgeName() {
+    if (window.state.currentJudge) {
+        return typeof window.state.currentJudge === 'string' ? window.state.currentJudge : (window.state.currentJudge.nome || 'JUIZ OFICIAL');
+    }
+    
+    // Tenta recuperar do localStorage salvo
+    const saved = loadSavedSession();
+    if (saved && (saved.judgeNome || saved.judgeIdx !== null)) {
+        const juizes = getJudgesListNormalized();
+        let found = null;
+        if (saved.judgeIdx !== null && saved.judgeIdx !== undefined && juizes[saved.judgeIdx]) {
+            found = juizes[saved.judgeIdx];
+        } else if (saved.judgeNome) {
+            found = juizes.find(j => j.nome === saved.judgeNome) || null;
+        }
+        if (found) {
+            window.state.currentJudge = found;
+            return found.nome;
+        }
+        if (saved.judgeNome) return saved.judgeNome;
+    }
+    
+    const juizes = getJudgesListNormalized();
+    if (juizes.length > 0) {
+        window.state.currentJudge = juizes[0];
+        return juizes[0].nome;
+    }
+    
+    return 'JUIZ OFICIAL';
+}
+
+function getCurrentEventName() {
+    if (window.state.eventData) {
+        return window.state.eventData.name || window.state.eventData.nome || '49 EXPORÃ';
+    }
+    return '49 EXPORÃ';
 }
 
 function loadSavedSession() {
@@ -675,12 +713,8 @@ function getDefaultDay() {
 function renderJudgeDashboard() {
     if (!window.state.eventData) return;
 
-    if (!window.state.currentJudge) {
-        renderJudgesList();
-        showView('view-select-judge');
-        return;
-    }
-
+    const judgeName = getCurrentJudgeName();
+    const eventName = getCurrentEventName();
     const maxPts = getJudgeScoreLimit();
 
     // Banner Somente Leitura
@@ -690,9 +724,9 @@ function renderJudgeDashboard() {
         else bannerReadOnly.classList.add('hidden');
     }
 
-    // Atualiza cabeçalho do Juiz
+    // Atualiza cabeçalho do Juiz e card da arena
     const headerJudgeName = document.getElementById('header-judge-name');
-    if (headerJudgeName) headerJudgeName.innerText = window.state.currentJudge.nome;
+    if (headerJudgeName) headerJudgeName.innerText = judgeName;
 
     const headerScale = document.getElementById('header-judge-scale');
     if (headerScale) headerScale.innerText = `0 - ${maxPts} pts`;
@@ -704,10 +738,16 @@ function renderJudgeDashboard() {
     if (profileChip) profileChip.classList.remove('hidden');
 
     const ridesJudgeName = document.getElementById('rides-view-judge-name');
-    if (ridesJudgeName) ridesJudgeName.innerText = window.state.currentJudge.nome;
+    if (ridesJudgeName) ridesJudgeName.innerText = judgeName;
 
     const ridesTitle = document.getElementById('rides-view-event-title');
-    if (ridesTitle) ridesTitle.innerText = window.state.eventData.name || window.state.eventData.nome || '49 EXPORÃ';
+    if (ridesTitle) ridesTitle.innerText = eventName;
+
+    const headerEvent = document.getElementById('header-event-name');
+    if (headerEvent) {
+        headerEvent.innerText = eventName;
+        headerEvent.classList.remove('hidden');
+    }
 
     // Renderiza Abas de Dias
     renderDaysTabs();
@@ -757,25 +797,25 @@ function renderRidesList() {
     const noRidesEl = document.getElementById('no-rides-message');
 
     // Garante que o nome do Juiz e do Evento estejam preenchidos no card superior e cabeçalho
-    if (window.state.currentJudge) {
-        const jName = window.state.currentJudge.nome || 'JUIZ';
-        const rjEl = document.getElementById('rides-view-judge-name');
-        if (rjEl) rjEl.innerText = jName;
-        const hjEl = document.getElementById('header-judge-name');
-        if (hjEl) hjEl.innerText = jName;
-        const chip = document.getElementById('judge-profile-chip');
-        if (chip) chip.classList.remove('hidden');
-    }
+    const judgeName = getCurrentJudgeName();
+    const eventName = getCurrentEventName();
 
-    if (window.state.eventData) {
-        const evName = window.state.eventData.name || window.state.eventData.nome || '49 EXPORÃ';
-        const rtEl = document.getElementById('rides-view-event-title');
-        if (rtEl) rtEl.innerText = evName;
-        const heEl = document.getElementById('header-event-name');
-        if (heEl) {
-            heEl.innerText = evName;
-            heEl.classList.remove('hidden');
-        }
+    const rjEl = document.getElementById('rides-view-judge-name');
+    if (rjEl) rjEl.innerText = judgeName;
+
+    const hjEl = document.getElementById('header-judge-name');
+    if (hjEl) hjEl.innerText = judgeName;
+
+    const chip = document.getElementById('judge-profile-chip');
+    if (chip) chip.classList.remove('hidden');
+
+    const rtEl = document.getElementById('rides-view-event-title');
+    if (rtEl) rtEl.innerText = eventName;
+
+    const heEl = document.getElementById('header-event-name');
+    if (heEl) {
+        heEl.innerText = eventName;
+        heEl.classList.remove('hidden');
     }
 
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
