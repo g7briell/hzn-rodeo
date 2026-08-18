@@ -43,10 +43,10 @@ window.state = {
 // Estado do Fluxo de Julgamento Ativo
 window.judgingState = {
     step: 'touro', // 'touro' | 'competidor' | 'conferencia'
-    touroInt: 22,
+    touroInt: 0,
     touroDec: ',00',
-    competidorInt: 23,
-    competidorDec: ',75',
+    competidorInt: 0,
+    competidorDec: ',00',
     isFall: false,
     isReride: false
 };
@@ -100,11 +100,7 @@ function getJudgeScoreLimit() {
 }
 
 function getDefaultScoresForJudge() {
-    const max = getJudgeScoreLimit();
-    if (max === 50) {
-        return { touroInt: 44, touroDec: ',00', compInt: 45, compDec: ',50' };
-    }
-    return { touroInt: 22, touroDec: ',00', compInt: 23, compDec: ',75' };
+    return { touroInt: 0, touroDec: ',00', compInt: 0, compDec: ',00' };
 }
 
 // ==========================================
@@ -759,6 +755,29 @@ window.selectDay = (day) => {
 function renderRidesList() {
     const container = document.getElementById('rides-cards-container');
     const noRidesEl = document.getElementById('no-rides-message');
+
+    // Garante que o nome do Juiz e do Evento estejam preenchidos no card superior e cabeçalho
+    if (window.state.currentJudge) {
+        const jName = window.state.currentJudge.nome || 'JUIZ';
+        const rjEl = document.getElementById('rides-view-judge-name');
+        if (rjEl) rjEl.innerText = jName;
+        const hjEl = document.getElementById('header-judge-name');
+        if (hjEl) hjEl.innerText = jName;
+        const chip = document.getElementById('judge-profile-chip');
+        if (chip) chip.classList.remove('hidden');
+    }
+
+    if (window.state.eventData) {
+        const evName = window.state.eventData.name || window.state.eventData.nome || '49 EXPORÃ';
+        const rtEl = document.getElementById('rides-view-event-title');
+        if (rtEl) rtEl.innerText = evName;
+        const heEl = document.getElementById('header-event-name');
+        if (heEl) {
+            heEl.innerText = evName;
+            heEl.classList.remove('hidden');
+        }
+    }
+
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
     const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay) || sorteios[0];
 
