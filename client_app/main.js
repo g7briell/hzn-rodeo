@@ -1879,6 +1879,7 @@ const { autoUpdater } = require('electron-updater');
 const https = require('https');
 
 autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
 
 // Custom State for macOS update
 let macUpdateInfo = null;
@@ -2083,7 +2084,7 @@ ipcMain.handle('install-update', () => {
     if (process.platform === 'darwin') {
         installMacUpdate();
     } else {
-        autoUpdater.quitAndInstall();
+        autoUpdater.quitAndInstall(true, true);
     }
 });
 
@@ -2091,7 +2092,7 @@ ipcMain.handle('quit-and-install', () => {
     if (process.platform === 'darwin') {
         installMacUpdate();
     } else {
-        autoUpdater.quitAndInstall(false, true);
+        autoUpdater.quitAndInstall(true, true);
     }
 });
 

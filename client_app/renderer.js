@@ -7096,3 +7096,86 @@ window.saveTabletControlDesktop = async () => {
     }
 };
 
+// ==========================================
+// CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
+// ==========================================
+const CHANGELOG_DATA = {
+    "1.0.143": [
+        {
+            icon: "⚡",
+            title: "Atualização 100% Silenciosa",
+            desc: "O sistema agora atualiza sem abrir instaladores do Windows. Basta reiniciar o app para aplicar novidades em 2 segundos!"
+        },
+        {
+            icon: "🏆",
+            title: "Ranking de Touros e Boiadas Aprimorado",
+            desc: "Cálculo de médias robusto e protegido, integrando notas da nuvem e compatível com todas as categorias de animais."
+        },
+        {
+            icon: "🤠",
+            title: "Portal do Juiz (juiz.rodeoapp.pro)",
+            desc: "Nova tela de Rounds do evento, notas 100% zeradas ao iniciar montaria, sincronização em tempo real e proteção de histórico por senha."
+        },
+        {
+            icon: "⚖️",
+            title: "Escala Automática de Pontuação",
+            desc: "Regras dinâmicas automáticas para 1 Juiz (0 a 50 pts) e 2+ Juízes (0 a 25 pts) com consolidação instantânea."
+        }
+    ]
+};
+
+window.checkAndShowWhatsNew = async () => {
+    try {
+        let appVersion = '1.0.143';
+        if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
+            const v = await window.electronAPI.getAppVersion();
+            if (v) appVersion = v;
+        }
+
+        const lastSeen = localStorage.getItem('RODEOAPP_LAST_SEEN_CHANGELOG');
+        if (lastSeen !== appVersion) {
+            const versionEl = document.getElementById('whats-new-version');
+            if (versionEl) versionEl.innerText = `v${appVersion}`;
+
+            const container = document.getElementById('whats-new-items-container');
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.143"];
+
+            if (container && items) {
+                container.innerHTML = items.map(item => `
+                    <div class="p-4 rounded-2xl border border-white/10 bg-slate-950/60 flex items-start gap-3.5 text-left">
+                        <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 flex items-center justify-center text-xl shrink-0">
+                            ${item.icon}
+                        </div>
+                        <div>
+                            <h4 class="font-black text-white text-xs sm:text-sm uppercase tracking-tight mb-0.5">${item.title}</h4>
+                            <p class="text-xs text-slate-300 font-medium leading-relaxed">${item.desc}</p>
+                        </div>
+                    </div>
+                `).join('');
+
+                const modal = document.getElementById('modal-whats-new');
+                if (modal) modal.classList.remove('hidden');
+            }
+        }
+    } catch (e) {
+        console.warn("Aviso no changelog:", e);
+    }
+};
+
+window.closeWhatsNewModal = async () => {
+    try {
+        let appVersion = '1.0.143';
+        if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
+            const v = await window.electronAPI.getAppVersion();
+            if (v) appVersion = v;
+        }
+        localStorage.setItem('RODEOAPP_LAST_SEEN_CHANGELOG', appVersion);
+    } catch(e) {}
+    document.getElementById('modal-whats-new')?.classList.add('hidden');
+};
+
+// Executa verificação de novidades na inicialização
+setTimeout(() => {
+    window.checkAndShowWhatsNew();
+}, 1200);
+
