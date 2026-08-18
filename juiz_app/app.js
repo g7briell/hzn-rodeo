@@ -157,7 +157,11 @@ window.handleEventLogin = async () => {
 
         window.state.shareId = shareId;
         window.state.sharePassword = password;
-        window.state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
+        
+        const rawLocal = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : (cloudEvent.detalhes || {});
+        rawLocal.name = rawLocal.name || cloudEvent.nome || 'EVENTO OFICIAL';
+        rawLocal.judges = rawLocal.judges || (rawLocal.juizes ? rawLocal.juizes.length : 3) || 3;
+        window.state.eventData = rawLocal;
         window.state.eventId = cloudEvent.id;
 
         // Atualiza header
@@ -210,7 +214,11 @@ async function restoreSession(savedSession) {
 
         window.state.shareId = savedSession.shareId;
         window.state.sharePassword = savedSession.sharePassword;
-        window.state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
+        
+        const rawLocal = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : (cloudEvent.detalhes || {});
+        rawLocal.name = rawLocal.name || cloudEvent.nome || 'EVENTO OFICIAL';
+        rawLocal.judges = rawLocal.judges || (rawLocal.juizes ? rawLocal.juizes.length : 3) || 3;
+        window.state.eventData = rawLocal;
         window.state.eventId = cloudEvent.id;
 
         const headerEvent = document.getElementById('header-event-name');
@@ -389,13 +397,25 @@ function getDefaultDay() {
 }
 
 function renderJudgeDashboard() {
-    if (!window.state.currentJudge || !window.state.eventData) return;
+    if (!window.state.eventData) return;
+
+    if (!window.state.currentJudge) {
+        const juizes = getJudgesListNormalized();
+        if (juizes.length > 0) {
+            window.state.currentJudge = juizes[0];
+            saveSession();
+        } else {
+            renderJudgesList();
+            showView('view-select-judge');
+            return;
+        }
+    }
 
     // Atualiza cabeçalho do Juiz
     document.getElementById('header-judge-name').innerText = window.state.currentJudge.nome;
     document.getElementById('judge-profile-chip').classList.remove('hidden');
     document.getElementById('rides-view-judge-name').innerText = window.state.currentJudge.nome;
-    document.getElementById('rides-view-event-title').innerText = window.state.eventData.name || 'EVENTO';
+    document.getElementById('rides-view-event-title').innerText = window.state.eventData.name || window.state.eventData.nome || 'EVENTO';
 
     // Renderiza Abas de Dias
     renderDaysTabs();
