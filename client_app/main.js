@@ -72,6 +72,10 @@ function safeSendToWindow(channel, data) {
   }
 }
 
+function getActiveWindow() {
+  return BrowserWindow.getFocusedWindow() || mainWindow || BrowserWindow.getAllWindows()[0] || null;
+}
+
 // Escutar mudanças na tabela licencas via Supabase Realtime
 supabase
   .channel('realtime-licencas')
@@ -820,7 +824,7 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
         // Força a repetição das linhas 1 e 2 (Cabeçalhos) em todas as páginas na hora de imprimir
         ws.pageSetup.printTitlesRow = '1:2';
 
-        const { canceled, filePath } = await dialog.showSaveDialog({
+        const { canceled, filePath } = await dialog.showSaveDialog(getActiveWindow(), {
             title: 'Salvar Sorteio Oficial',
             defaultPath: `Sorteio_Oficial.xlsx`,
             filters: [{ name: 'Planilha Excel', extensions: ['xlsx'] }]
@@ -836,6 +840,7 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
         return { success: false, message: e.message };
     }
 });
+
 ipcMain.handle('export-boiadas-excel', async (event, { sorteioData }) => {
     try {
         const templatePath = path.join(__dirname, 'listtourossorteio.xlsx');
@@ -1296,14 +1301,26 @@ ipcMain.handle('export-contracts', async (event, { email, eventId, target, forma
         if (!cc.contratante) return { success: false, error: 'Configuração do contrato incompleta.' };
 
         const templateName = cc.contratante.mesmoEndereco ? 'moldecontratosendereço.docx' : 'moldecontratocendereço.docx';
-        const templatePath = path.join(__dirname, '..', 'modelos_contrato', templateName);
+        let templatePath = path.join(__dirname, '..', 'modelos_contrato', templateName);
+        if (!fs.existsSync(templatePath)) {
+            templatePath = path.join(process.resourcesPath, 'modelos_contrato', templateName);
+        }
+        if (!fs.existsSync(templatePath)) {
+            templatePath = path.join(__dirname, 'modelos_contrato', templateName);
+        }
+        if (!fs.existsSync(templatePath)) {
+            templatePath = path.join(app.getAppPath(), 'modelos_contrato', templateName);
+        }
+        if (!fs.existsSync(templatePath)) {
+            templatePath = path.join(app.getAppPath(), '..', 'modelos_contrato', templateName);
+        }
         
         if (!fs.existsSync(templatePath)) {
-            return { success: false, error: `Arquivo de molde não encontrado na pasta modelos_contrato: ${templateName}` };
+            return { success: false, error: `Arquivo de molde não encontrado: ${templateName}` };
         }
 
         const { dialog } = require('electron');
-        const { canceled, filePaths } = await dialog.showOpenDialog({
+        const { canceled, filePaths } = await dialog.showOpenDialog(getActiveWindow(), {
             title: 'Selecione a pasta para salvar os contratos',
             properties: ['openDirectory']
         });
@@ -1639,7 +1656,7 @@ ipcMain.handle('export-melhor-cia', async (event, { eventName, data, format }) =
         rFoot.getCell(1).value = templateWs.getCell(8, 1).value;
         
         // Save
-        const { canceled, filePath } = await dialog.showSaveDialog({
+        const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow(), {
             title: format === 'pdf' ? 'Salvar Melhor CIA como PDF' : 'Salvar Melhor CIA como Excel',
             defaultPath: `MELHOR_CIA_${eventName.replace(/[^a-z0-9]/gi, '_')}.${format === 'pdf' ? 'pdf' : 'xlsx'}`,
             filters: [

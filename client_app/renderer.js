@@ -2656,20 +2656,45 @@ window.exportJuizesExcel = async () => {
 let pendingExportDay = '';
 let pendingExportType = '';
 
-window.openExportFlow = () => {
-    if (!currentEvent) return;
-    
-    const daysContainer = document.getElementById('export-days-grid');
-    daysContainer.innerHTML = '';
-    
-    const daysList = getEventDaysList();
-    daysList.forEach(day => {
-        daysContainer.innerHTML += `
-            <button onclick="selectExportDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-yellow-500 hover:text-yellow-500 transition-all">${day.replace(/DIA/gi, "ROUND")}</button>
-        `;
-    });
+window.openExportFlow = async () => {
+    try {
+        console.log('[EXPORT FLOW] openExportFlow called, currentEvent:', currentEvent);
+        if (!currentEvent || !currentEvent.id) {
+            const email = getCurrentUserEmail();
+            if (email && window.electronAPI && typeof window.electronAPI.getLocalEvents === 'function') {
+                const eventos = await window.electronAPI.getLocalEvents(email);
+                if (eventos && eventos.length > 0) {
+                    currentEvent = eventos[0];
+                    window.currentEvent = currentEvent;
+                }
+            }
+        }
+        
+        if (!currentEvent) {
+            alert("⚠️ Por favor, selecione ou abra um evento primeiro!");
+            return;
+        }
+        
+        const daysContainer = document.getElementById('export-days-grid');
+        if (daysContainer) {
+            daysContainer.innerHTML = '';
+            const daysList = getEventDaysList();
+            daysList.forEach(day => {
+                daysContainer.innerHTML += `
+                    <button onclick="selectExportDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-yellow-500 hover:text-yellow-500 transition-all">${day.replace(/DIA/gi, "ROUND")}</button>
+                `;
+            });
+        }
 
-    document.getElementById('modal-export-days').classList.remove('hidden');
+        const modal = document.getElementById('modal-export-days');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+    } catch(err) {
+        console.error('[EXPORT FLOW] Error:', err);
+        window.showDebugLogError('Abrir Menu Exportar', err);
+    }
 };
 
 window.selectExportDay = (day) => {
@@ -7376,6 +7401,12 @@ window.openReportViewer = async (type = 'sumula', defaultDay = null) => {
     try {
         console.log('[REPORT VIEWER] openReportViewer called with type:', type, 'defaultDay:', defaultDay);
         
+        const modal = document.getElementById('modal-report-viewer');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
         if (!currentEvent || !currentEvent.id) {
             const email = getCurrentUserEmail();
             if (email && window.electronAPI && typeof window.electronAPI.getLocalEvents === 'function') {
@@ -7388,6 +7419,10 @@ window.openReportViewer = async (type = 'sumula', defaultDay = null) => {
         }
 
         if (!currentEvent || !currentEvent.id) {
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
             window.showDebugLogError('Abrir Report Viewer', new Error('Nenhum evento ativo selecionado na memória.'), {
                 motivo: 'O usuário tentou abrir relatórios sem nenhum evento carregado.',
                 dica: 'Selecione e abra um evento na lista inicial antes de gerar o relatório.'
@@ -7411,14 +7446,6 @@ window.openReportViewer = async (type = 'sumula', defaultDay = null) => {
 
         renderCurrentReport();
         updateZoomDisplay();
-
-        const modal = document.getElementById('modal-report-viewer');
-        if (modal) {
-            modal.classList.remove('hidden');
-            modal.style.display = 'flex';
-        } else {
-            throw new Error('Elemento HTML #modal-report-viewer não foi encontrado no DOM.');
-        }
     } catch (err) {
         console.error('[REPORT VIEWER] Error in openReportViewer:', err);
         window.showDebugLogError('Abrir Report Viewer', err, { type, defaultDay, reportViewerState });
