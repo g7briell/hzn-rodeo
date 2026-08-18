@@ -4,7 +4,10 @@ providers = ["node"]
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install --no-package-lock && npm install --no-package-lock @rolldown/binding-linux-x64-gnu"]
+cmds = ["npm install --prefer-offline --no-audit"]
 
 [phases.build]
 cmds = ["npm run build"]
+
+[start]
+cmd = "npx vite preview --host 0.0.0.0 --port 3000"
