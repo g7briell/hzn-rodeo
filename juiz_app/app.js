@@ -9,6 +9,13 @@
 const SUPABASE_URL = 'https://api.rodeoapp.pro';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
 
+const SUPABASE_HEADERS = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+};
+
 // Chave oficial Ably Realtime
 const DEFAULT_ABLY_KEY = 'ZpXrAw.0ShBdA:PN-cy5nGO2hVtllKkQIQppoPtl4FGufzq58uT9WHXts';
 
@@ -42,6 +49,9 @@ let ablyChannel = null;
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("[RODEOAPP JUIZ] Inicializando Portal do Juiz...");
 
+    // Inicializa conexão Ably no boot para validar status
+    initAblyBaseConnection();
+
     // Verifica parâmetros de URL (ex: ?id=49expor-95675698&pass=1234)
     const urlParams = new URLSearchParams(window.location.search);
     const paramId = urlParams.get('id') || urlParams.get('event');
@@ -53,8 +63,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (paramId) {
-        document.getElementById('input-event-id').value = paramId;
-        if (paramPass) document.getElementById('input-event-password').value = paramPass;
+        const idInput = document.getElementById('input-event-id');
+        if (idInput) idInput.value = paramId;
+        const passInput = document.getElementById('input-event-password');
+        if (paramPass && passInput) passInput.value = paramPass;
     }
 
     // Tenta restaurar sessão anterior do localStorage
@@ -106,39 +118,54 @@ function clearSession() {
 // ==========================================
 // FLUXO DE LOGIN 1: EVENTO (ID + SENHA)
 // ==========================================
-async function handleEventLogin(e) {
-    if (e) e.preventDefault();
+window.handleEventLogin = async (e) => {
+    if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+        e.stopPropagation();
+    }
 
-    const shareId = document.getElementById('input-event-id').value.trim();
-    const password = document.getElementById('input-event-password').value.trim();
+    const idInput = document.getElementById('input-event-id');
+    const passInput = document.getElementById('input-event-password');
+    const btnSubmit = document.getElementById('btn-submit-event');
+
+    const shareId = (idInput ? idInput.value : '').trim();
+    const password = (passInput ? passInput.value : '').trim();
 
     if (!shareId || !password) {
         showToast("Preencha o ID e a Senha do Evento.", "error");
-        return;
+        return false;
     }
 
-    const btnSubmit = document.getElementById('btn-submit-event');
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = `<span class="animate-spin inline-block mr-2">🔄</span> Conectando...`;
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = `<span class="animate-spin inline-block mr-2">🔄</span> Buscando Evento...`;
+    }
 
     try {
         const cloudEvent = await fetchCloudEventByShare(shareId, password);
         if (!cloudEvent) {
             showToast("ID do evento ou senha incorretos.", "error");
-            return;
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<span>CONECTAR AO EVENTO</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
+            }
+            return false;
         }
 
         state.shareId = shareId;
         state.sharePassword = password;
-        state.eventData = cloudEvent.detalhes.localData || cloudEvent.detalhes;
+        state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
         state.eventId = cloudEvent.id;
 
         // Atualiza header
-        document.getElementById('header-event-name').innerText = state.eventData.name || 'EVENTO OFICIAL';
-        document.getElementById('header-event-name').classList.remove('hidden');
+        const headerEvent = document.getElementById('header-event-name');
+        if (headerEvent) {
+            headerEvent.innerText = state.eventData.name || 'EVENTO OFICIAL';
+            headerEvent.classList.remove('hidden');
+        }
 
-        // Inicializa Ably Realtime
-        initAblyRealtime(shareId);
+        // Conecta ao canal específico do evento no Ably
+        subscribeToEventChannel(shareId);
 
         // Salva sessão parcial
         saveSession();
@@ -150,12 +177,15 @@ async function handleEventLogin(e) {
 
     } catch (err) {
         console.error("Erro no login do evento:", err);
-        showToast("Erro de conexão com o servidor. Tente novamente.", "error");
+        showToast(err.message || "Erro de conexão com o servidor. Tente novamente.", "error");
     } finally {
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = `<span>CONECTAR AO EVENTO</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `<span>CONECTAR AO EVENTO</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
+        }
     }
-}
+    return false;
+};
 
 async function restoreSession(savedSession) {
     try {
@@ -168,13 +198,16 @@ async function restoreSession(savedSession) {
 
         state.shareId = savedSession.shareId;
         state.sharePassword = savedSession.sharePassword;
-        state.eventData = cloudEvent.detalhes.localData || cloudEvent.detalhes;
+        state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
         state.eventId = cloudEvent.id;
 
-        document.getElementById('header-event-name').innerText = state.eventData.name || 'EVENTO OFICIAL';
-        document.getElementById('header-event-name').classList.remove('hidden');
+        const headerEvent = document.getElementById('header-event-name');
+        if (headerEvent) {
+            headerEvent.innerText = state.eventData.name || 'EVENTO OFICIAL';
+            headerEvent.classList.remove('hidden');
+        }
 
-        initAblyRealtime(state.shareId);
+        subscribeToEventChannel(state.shareId);
 
         // Se tinha juiz selecionado anteriormente
         const juizes = state.eventData.juizes || [];
@@ -198,26 +231,47 @@ async function restoreSession(savedSession) {
 }
 
 async function fetchCloudEventByShare(shareId, password) {
-    if (!supabase) throw new Error("Supabase não carregado.");
-
     const cleanShareId = shareId.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    const { data: events, error } = await supabase
-        .from('eventos_oficiais')
-        .select('*')
-        .eq('status', 'compartilhado')
-        .order('created_at', { ascending: false })
-        .limit(200);
+    // 1º Tentativa: Direct REST Fetch (ultra-rápido e compatível com todos os navegadores)
+    try {
+        const url = `${SUPABASE_URL}/rest/v1/eventos_oficiais?status=eq.compartilhado&select=*&order=created_at.desc&limit=150`;
+        const resp = await fetch(url, { headers: SUPABASE_HEADERS });
+        if (resp.ok) {
+            const events = await resp.json();
+            const found = (events || []).find(e => {
+                const det = e.detalhes || {};
+                const sId = String(det.share_id || '').trim().toLowerCase();
+                const sPass = String(det.share_password || '').trim();
+                return sId === cleanShareId && sPass === cleanPassword;
+            });
+            if (found) return found;
+        }
+    } catch (fetchErr) {
+        console.warn("Direct REST fetch falhou, tentando Supabase Client:", fetchErr);
+    }
 
-    if (error) throw error;
+    // 2º Tentativa: Supabase JS Client SDK
+    if (supabase) {
+        const { data: events, error } = await supabase
+            .from('eventos_oficiais')
+            .select('*')
+            .eq('status', 'compartilhado')
+            .order('created_at', { ascending: false })
+            .limit(150);
 
-    return (events || []).find(e => {
-        const det = e.detalhes || {};
-        const sId = String(det.share_id || '').trim().toLowerCase();
-        const sPass = String(det.share_password || '').trim();
-        return sId === cleanShareId && sPass === cleanPassword;
-    });
+        if (error) throw new Error(error.message || "Erro na conexão Supabase.");
+
+        return (events || []).find(e => {
+            const det = e.detalhes || {};
+            const sId = String(det.share_id || '').trim().toLowerCase();
+            const sPass = String(det.share_password || '').trim();
+            return sId === cleanShareId && sPass === cleanPassword;
+        });
+    }
+
+    return null;
 }
 
 // ==========================================
@@ -243,7 +297,7 @@ function renderJudgesList() {
         const hasSenha = typeof j === 'object' && j.senha && String(j.senha).trim().length > 0;
 
         return `
-            <button onclick="selectJudgeFromList(${idx})" class="glass-card p-5 rounded-2xl border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all text-left flex items-center justify-between group touch-active">
+            <button type="button" onclick="selectJudgeFromList(${idx})" class="glass-card p-5 rounded-2xl border-white/5 hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all text-left flex items-center justify-between group touch-active">
                 <div class="flex items-center gap-3.5">
                     <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 flex items-center justify-center font-black text-sm group-hover:bg-yellow-500 group-hover:text-black transition-all">
                         ${idx + 1}
@@ -261,7 +315,7 @@ function renderJudgesList() {
     }).join('');
 }
 
-function selectJudgeFromList(idx) {
+window.selectJudgeFromList = (idx) => {
     const juizes = state.eventData.juizes || [];
     const j = juizes[idx];
     if (!j) return;
@@ -282,10 +336,10 @@ function selectJudgeFromList(idx) {
         // Se não tem senha cadastrada, entra direto
         authenticateJudgeDirect(pendingJudgeSelection);
     }
-}
+};
 
-function handleJudgeAuth(e) {
-    if (e) e.preventDefault();
+window.handleJudgeAuth = (e) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     if (!pendingJudgeSelection) return;
 
     const inputPin = document.getElementById('input-judge-pin').value.trim();
@@ -299,11 +353,16 @@ function handleJudgeAuth(e) {
         document.getElementById('judge-auth-error').classList.remove('hidden');
         document.getElementById('input-judge-pin').select();
     }
-}
+};
 
 function authenticateJudgeDirect(judgeObj) {
     state.currentJudge = judgeObj;
     saveSession();
+
+    // Re-inicia Ably com clientId do Juiz
+    if (state.shareId) {
+        subscribeToEventChannel(state.shareId);
+    }
 
     // Configura o Painel de Montarias
     state.selectedDay = state.selectedDay || getDefaultDay();
@@ -312,14 +371,14 @@ function authenticateJudgeDirect(judgeObj) {
     showToast(`Bem-vindo, ${judgeObj.nome}!`, "success");
 }
 
-function closeJudgePasswordModal() {
+window.closeJudgePasswordModal = () => {
     document.getElementById('modal-judge-password').classList.add('hidden');
     pendingJudgeSelection = null;
-}
+};
 
-function backToEventLogin() {
+window.backToEventLogin = () => {
     showView('view-login-event');
-}
+};
 
 // ==========================================
 // PAINEL DE MONTARIAS DO JUIZ (TELA 3)
@@ -371,19 +430,19 @@ function renderDaysTabs() {
             : 'bg-slate-900 text-slate-400 font-bold border border-slate-800 hover:text-white';
 
         return `
-            <button onclick="selectDay('${d}')" class="px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all whitespace-nowrap touch-active ${activeClass}">
+            <button type="button" onclick="selectDay('${d}')" class="px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all whitespace-nowrap touch-active ${activeClass}">
                 ${d.replace(/DIA/gi, 'ROUND')}
             </button>
         `;
     }).join('');
 }
 
-function selectDay(day) {
+window.selectDay = (day) => {
     state.selectedDay = day;
     saveSession();
     renderDaysTabs();
     renderRidesList();
-}
+};
 
 function renderRidesList() {
     const container = document.getElementById('rides-cards-container');
@@ -507,23 +566,25 @@ function updateCounters(total, graded, pending) {
     document.getElementById('rides-progress-badge').innerText = `${graded} / ${total} Avaliadas`;
 }
 
-function filterRides(type) {
+window.filterRides = (type) => {
     state.activeFilter = type;
     ['all', 'pending', 'graded'].forEach(f => {
         const btn = document.getElementById(`filter-btn-${f}`);
-        if (f === type) {
-            btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-yellow-500 text-black shadow-lg transition-all touch-active";
-        } else {
-            btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active";
+        if (btn) {
+            if (f === type) {
+                btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-yellow-500 text-black shadow-lg transition-all touch-active";
+            } else {
+                btn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-400 border border-slate-800 hover:text-white transition-all touch-active";
+            }
         }
     });
     renderRidesList();
-}
+};
 
 // ==========================================
 // MODAL DE LANÇAMENTO DE NOTA (TOUCH ARENA)
 // ==========================================
-function openScoreModal(matchupIdx) {
+window.openScoreModal = (matchupIdx) => {
     const sorteios = (state.eventData && state.eventData.sorteios) || [];
     const currentSorteio = sorteios.find(s => s.day === state.selectedDay);
     if (!currentSorteio) return;
@@ -565,53 +626,53 @@ function openScoreModal(matchupIdx) {
 
     updateScoreTotal();
     document.getElementById('modal-score-entry').classList.remove('hidden');
-}
+};
 
-function closeScoreEntryModal() {
+window.closeScoreEntryModal = () => {
     document.getElementById('modal-score-entry').classList.add('hidden');
     state.currentMatchupIdx = null;
     state.currentRider = null;
     state.currentBull = null;
-}
+};
 
-function updateScoreTotal() {
+window.updateScoreTotal = () => {
     const rScore = parseFloat(document.getElementById('input-score-rider').value) || 0;
     const bScore = parseFloat(document.getElementById('input-score-bull').value) || 0;
     const total = (rScore + bScore).toFixed(2);
     document.getElementById('modal-score-total-display').innerText = total;
-}
+};
 
-function adjustScore(target, delta) {
+window.adjustScore = (target, delta) => {
     const input = document.getElementById(target === 'rider' ? 'input-score-rider' : 'input-score-bull');
     let val = parseFloat(input.value) || 0;
     val = Math.max(0, Math.min(50, val + delta));
     input.value = val.toFixed(2);
     updateScoreTotal();
-}
+};
 
-function setPresetScore(target, value) {
+window.setPresetScore = (target, value) => {
     const input = document.getElementById(target === 'rider' ? 'input-score-rider' : 'input-score-bull');
     input.value = parseFloat(value).toFixed(2);
     updateScoreTotal();
-}
+};
 
-function submitNoScore() {
+window.submitNoScore = () => {
     document.getElementById('input-score-rider').value = '0.00';
     document.getElementById('input-score-bull').value = '0.00';
     updateScoreTotal();
     submitScoreToRealtime(true);
-}
+};
 
-function submitReride() {
+window.submitReride = () => {
     if (confirm("Deseja solicitar RE-RIDE para esta montaria? O competidor terá direito a novo touro.")) {
         submitScoreToRealtime(false, true);
     }
-}
+};
 
 // ==========================================
 // ENVIO DA NOTA EM TEMPO REAL (ABLY + SUPABASE)
 // ==========================================
-async function submitScoreToRealtime(isFall = false, isReride = false) {
+window.submitScoreToRealtime = async (isFall = false, isReride = false) => {
     if (!state.currentJudge || !state.currentRider) return;
 
     const rScore = parseFloat(document.getElementById('input-score-rider').value) || 0;
@@ -619,8 +680,10 @@ async function submitScoreToRealtime(isFall = false, isReride = false) {
     const totalScore = isFall ? 0 : (rScore + bScore);
 
     const btnSubmit = document.getElementById('btn-submit-score');
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = `<span class="animate-spin mr-2">🔄</span> ENVIANDO NOTA...`;
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = `<span class="animate-spin mr-2">🔄</span> ENVIANDO NOTA...`;
+    }
 
     const scorePayload = {
         shareId: state.shareId,
@@ -646,7 +709,7 @@ async function submitScoreToRealtime(isFall = false, isReride = false) {
             ablyChannel.publish('judge-score-submitted', scorePayload);
             console.log("[ABLY REALTIME] Nota enviada via canal:", scorePayload);
         } else {
-            console.warn("Ably não conectado, gravando direto no Supabase.");
+            console.warn("Ably canal não aberto no momento, gravando direto no Supabase.");
         }
 
         // 2. Grava diretamente no Supabase para garantir persistência total
@@ -687,23 +750,26 @@ async function submitScoreToRealtime(isFall = false, isReride = false) {
         console.error("Erro ao enviar nota:", err);
         showToast("Erro ao transmitir nota. Verifique a conexão.", "error");
     } finally {
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = `<span>⚡ ENVIAR NOTA EM TEMPO REAL</span>`;
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `<span>⚡ ENVIAR NOTA EM TEMPO REAL</span>`;
+        }
     }
-}
+};
 
 async function saveScoreDirectToSupabase(scorePayload) {
-    if (!supabase || !state.eventId) return;
+    if (!state.eventId) return;
 
     try {
-        const { data: currentEventRow } = await supabase
-            .from('eventos_oficiais')
-            .select('*')
-            .eq('id', state.eventId)
-            .single();
+        // Fetch evento atualizado
+        const urlGet = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(state.eventId)}&select=*`;
+        const getRes = await fetch(urlGet, { headers: SUPABASE_HEADERS });
+        if (!getRes.ok) return;
 
-        if (!currentEventRow) return;
+        const rows = await getRes.json();
+        if (!rows || rows.length === 0) return;
 
+        const currentEventRow = rows[0];
         const detalhes = currentEventRow.detalhes || {};
         const localData = detalhes.localData || detalhes;
         localData.notas = localData.notas || [];
@@ -735,10 +801,12 @@ async function saveScoreDirectToSupabase(scorePayload) {
 
         detalhes.localData = localData;
 
-        await supabase
-            .from('eventos_oficiais')
-            .update({ detalhes, updated_at: new Date().toISOString() })
-            .eq('id', state.eventId);
+        const urlPatch = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(state.eventId)}`;
+        await fetch(urlPatch, {
+            method: 'PATCH',
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify({ detalhes, updated_at: new Date().toISOString() })
+        });
 
     } catch (err) {
         console.warn("Aviso na gravação direta Supabase:", err);
@@ -748,41 +816,57 @@ async function saveScoreDirectToSupabase(scorePayload) {
 // ==========================================
 // ABLY REALTIME CLIENT & LIFECYCLE
 // ==========================================
-function initAblyRealtime(shareId) {
-    if (!shareId) return;
+function initAblyBaseConnection() {
     if (typeof Ably === 'undefined') {
-        console.warn("Ably SDK não disponível.");
+        console.warn("Ably SDK não disponível globalmente.");
         updateAblyBadge('failed');
         return;
     }
 
     try {
-        if (ablyChannel && ablyChannel.name === `rodeoapp-event-${shareId}`) {
-            return;
-        }
-
-        closeAblyConnection();
-
         const ablyKey = localStorage.getItem('RODEOAPP_ABLY_KEY') || DEFAULT_ABLY_KEY;
-        ablyClient = new Ably.Realtime({ key: ablyKey, clientId: `juiz-${state.currentJudge ? state.currentJudge.nome : 'anon'}-${Date.now()}` });
-
-        const channelName = `rodeoapp-event-${shareId}`;
-        ablyChannel = ablyClient.channels.get(channelName);
+        ablyClient = new Ably.Realtime({ key: ablyKey, clientId: `juiz-init-${Date.now()}` });
 
         ablyClient.connection.on('connected', () => {
-            console.log(`[ABLY REALTIME] Juiz conectado ao canal ${channelName}`);
-            updateAblyBadge('connected');
+            console.log(`[ABLY REALTIME] Conectado ao cluster Ably com sucesso.`);
+            if (!ablyChannel) {
+                updateAblyBadge('connected');
+            }
         });
 
         ablyClient.connection.on('disconnected', () => {
-            console.warn(`[ABLY REALTIME] Juiz desconectado.`);
             updateAblyBadge('disconnected');
         });
 
         ablyClient.connection.on('failed', (err) => {
-            console.error(`[ABLY REALTIME] Erro no canal:`, err);
+            console.error(`[ABLY REALTIME] Falha na conexão Ably:`, err);
             updateAblyBadge('failed');
         });
+
+    } catch (e) {
+        console.error("Erro ao instanciar Ably:", e);
+        updateAblyBadge('failed');
+    }
+}
+
+function subscribeToEventChannel(shareId) {
+    if (!shareId) return;
+
+    try {
+        if (!ablyClient) {
+            const ablyKey = localStorage.getItem('RODEOAPP_ABLY_KEY') || DEFAULT_ABLY_KEY;
+            ablyClient = new Ably.Realtime({ key: ablyKey, clientId: `juiz-${state.currentJudge ? state.currentJudge.nome : 'anon'}-${Date.now()}` });
+        }
+
+        if (ablyChannel) {
+            ablyChannel.unsubscribe();
+            ablyChannel = null;
+        }
+
+        const channelName = `rodeoapp-event-${shareId}`;
+        ablyChannel = ablyClient.channels.get(channelName);
+
+        updateAblyBadge('live');
 
         // Escutar atualizações do Administrador (ex: sorteio novo, re-ride gerado)
         ablyChannel.subscribe('admin-event-updated', (message) => {
@@ -795,8 +879,7 @@ function initAblyRealtime(shareId) {
         });
 
     } catch (err) {
-        console.error("Erro ao inicializar Ably:", err);
-        updateAblyBadge('failed');
+        console.error("Erro ao conectar canal do evento no Ably:", err);
     }
 }
 
@@ -818,9 +901,13 @@ function updateAblyBadge(status) {
     const text = document.getElementById('ably-status-text');
     if (!dot || !text) return;
 
-    if (status === 'connected') {
+    if (status === 'live') {
         dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse";
         text.innerText = "ABLY: AO VIVO";
+        text.className = "text-emerald-400";
+    } else if (status === 'connected') {
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+        text.innerText = "ABLY: ONLINE";
         text.className = "text-emerald-400";
     } else if (status === 'disconnected') {
         dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
@@ -833,42 +920,42 @@ function updateAblyBadge(status) {
     }
 }
 
-async function refreshEventDataFromCloud() {
+window.refreshEventDataFromCloud = async () => {
     if (!state.shareId || !state.sharePassword) return;
     showToast("Atualizando dados da nuvem...", "info");
     try {
         const cloudEvent = await fetchCloudEventByShare(state.shareId, state.sharePassword);
         if (cloudEvent) {
-            state.eventData = cloudEvent.detalhes.localData || cloudEvent.detalhes;
+            state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
             renderJudgeDashboard();
             showToast("Dados atualizados!", "success");
         }
     } catch (e) {
         showToast("Falha ao atualizar dados.", "error");
     }
-}
+};
 
 // ==========================================
 // MODAL DE OPÇÕES DO JUIZ
 // ==========================================
-function openJudgeMenuModal() {
+window.openJudgeMenuModal = () => {
     document.getElementById('judge-menu-info').innerText = `${state.currentJudge ? state.currentJudge.nome : 'JUIZ'} • ${state.eventData ? state.eventData.name : ''}`;
     document.getElementById('modal-judge-menu').classList.remove('hidden');
-}
+};
 
-function closeJudgeMenuModal() {
+window.closeJudgeMenuModal = () => {
     document.getElementById('modal-judge-menu').classList.add('hidden');
-}
+};
 
-function switchJudge() {
+window.switchJudge = () => {
     closeJudgeMenuModal();
     state.currentJudge = null;
     saveSession();
     renderJudgesList();
     showView('view-select-judge');
-}
+};
 
-function logoutEvent() {
+window.logoutEvent = () => {
     closeJudgeMenuModal();
     clearSession();
     closeAblyConnection();
@@ -876,7 +963,7 @@ function logoutEvent() {
     document.getElementById('judge-profile-chip').classList.add('hidden');
     showView('view-login-event');
     showToast("Você saiu do evento.", "info");
-}
+};
 
 // ==========================================
 // HELPERS DE UI & TOAST
@@ -892,12 +979,12 @@ function showView(viewId) {
     });
 }
 
-function togglePasswordVisibility(inputId) {
+window.togglePasswordVisibility = (inputId) => {
     const el = document.getElementById(inputId);
     if (el) {
         el.type = el.type === 'password' ? 'text' : 'password';
     }
-}
+};
 
 let toastTimeout = null;
 function showToast(message, type = 'info') {
