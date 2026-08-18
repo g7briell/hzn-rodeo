@@ -49,6 +49,44 @@ function saveLocalData(email, data, esporte = currentSportSession) {
   fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
 }
 
+// Sanitização robusta para envio em nuvem (remove imagens pesadas em base64 e dados temporários)
+function sanitizeEventForCloudPayload(rawEv) {
+  if (!rawEv) return {};
+  try {
+    const ev = JSON.parse(JSON.stringify(rawEv));
+
+    // Remove campos de mídia pesada conhecidos
+    if (ev.overlaySettings) delete ev.overlaySettings.mediaData;
+    if (ev.sheetImages) delete ev.sheetImages;
+    if (ev.ocr_images) delete ev.ocr_images;
+    if (ev.ocr_raw_image) delete ev.ocr_raw_image;
+    if (ev.captured_image) delete ev.captured_image;
+    if (ev.reviewPhotoRows) delete ev.reviewPhotoRows;
+    if (ev.rawPdf) delete ev.rawPdf;
+    if (ev.pdfData) delete ev.pdfData;
+    if (ev.exportCache) delete ev.exportCache;
+
+    // Remove qualquer string Base64 ou buffer gigante (> 50KB)
+    function cleanDeep(obj, depth = 0) {
+      if (depth > 6 || !obj || typeof obj !== 'object') return;
+      for (const k in obj) {
+        const val = obj[k];
+        if (typeof val === 'string') {
+          if (val.startsWith('data:image/') || val.startsWith('data:application/') || val.length > 50000) {
+            delete obj[k];
+          }
+        } else if (typeof val === 'object' && val !== null) {
+          cleanDeep(val, depth + 1);
+        }
+      }
+    }
+    cleanDeep(ev);
+    return ev;
+  } catch (e) {
+    return rawEv;
+  }
+}
+
 // Credenciais Supabase
 const SUPABASE_URL = 'https://api.rodeoapp.pro';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
@@ -407,8 +445,7 @@ ipcMain.handle('save-local-event', async (event, arg1, arg2) => {
   saveLocalData(cleanEmail, data);
 
   try {
-    const sanitizedEv = JSON.parse(JSON.stringify(eventToSave));
-    if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
+    const sanitizedEv = sanitizeEventForCloudPayload(eventToSave);
 
     const payload = {
       nome: eventToSave.name,
@@ -437,9 +474,8 @@ ipcMain.handle('save-local-event', async (event, arg1, arg2) => {
     if (!existing) {
       const { data: byEmailName } = await supabase.from('eventos_oficiais')
         .select('id')
-        .ilike('organizador_email', cleanEmail)
-        .ilike('nome', eventToSave.name.trim())
-        .order('created_at', { ascending: false })
+        .eq('organizador_email', cleanEmail)
+        .eq('nome', eventToSave.name.trim())
         .limit(1);
       if (byEmailName && byEmailName.length > 0) existing = byEmailName;
     }
@@ -493,8 +529,7 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
   saveLocalData(cleanEmail, data);
 
   try {
-    const sanitizedEv = JSON.parse(JSON.stringify(updatedEvent));
-    if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
+    const sanitizedEv = sanitizeEventForCloudPayload(updatedEvent);
 
     const payload = {
       nome: updatedEvent.name,
@@ -521,9 +556,8 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
     if (!existing) {
       const { data: byEmailName } = await supabase.from('eventos_oficiais')
         .select('id')
-        .ilike('organizador_email', cleanEmail)
-        .ilike('nome', updatedEvent.name.trim())
-        .order('created_at', { ascending: false })
+        .eq('organizador_email', cleanEmail)
+        .eq('nome', updatedEvent.name.trim())
         .limit(1);
       if (byEmailName && byEmailName.length > 0) existing = byEmailName;
     }
@@ -2662,62 +2696,66 @@ ipcMain.handle('update-tablet-config', async (event, { email, eventId, tabletCon
 // Compartilhar evento na nuvem (status 'compartilhado')
 ipcMain.handle('share-event-to-cloud', async (event, { email, eventId, password }) => {
     try {
-        const localData = getLocalData(email);
-        const ev = localData.eventos.find(e => e.id === eventId);
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const localData = getLocalData(cleanEmail);
+        const ev = (localData.eventos || []).find(e => String(e.id) === String(eventId));
         if (!ev) throw new Error("Evento não encontrado localmente.");
 
         // Gerar um share_id se não existir no objeto local
         if (!ev.share_id) {
-            const cleanName = ev.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanName = (ev.name || 'evento').toLowerCase().replace(/[^a-z0-9]/g, '');
             const randNum = Math.floor(10000000 + Math.random() * 90000000);
             ev.share_id = `${cleanName}-${randNum}`;
             ev.share_password = password;
-            saveLocalData(email, localData);
+            saveLocalData(cleanEmail, localData);
         } else {
             ev.share_password = password;
-            saveLocalData(email, localData);
+            saveLocalData(cleanEmail, localData);
         }
 
-        // Deep clone localData object and sanitize heavy/redundant base64 media to avoid payload bloat & statement timeout
-        const sanitizedEv = JSON.parse(JSON.stringify(ev));
-        if (sanitizedEv.overlaySettings) {
-            delete sanitizedEv.overlaySettings.mediaData;
-        }
+        // Sanitização profunda do payload para não estourar limite do PostgreSQL/Supabase
+        const sanitizedEv = sanitizeEventForCloudPayload(ev);
 
         const payload = {
             nome: ev.name,
             data_inicio: (ev.days || '3') + ' dias',
             data_fim: '',
             local: ev.city || '',
-            organizador_email: email,
+            organizador_email: cleanEmail,
             status: 'compartilhado',
             detalhes: {
                 share_id: ev.share_id,
                 share_password: password,
-                sport: currentSportSession,
+                sport: currentSportSession || 'rodeio',
                 localData: sanitizedEv
             }
         };
 
-        // Query by organizador_email + nome OR share_id efficiently to prevent statement timeout
+        // Busca rápida direta sem ilike nem order pesados
         let existingEvent = null;
-        const { data: byEmailAndName } = await supabase.from('eventos_oficiais')
-            .select('id')
-            .eq('organizador_email', email)
-            .ilike('nome', ev.name.trim())
-            .order('created_at', { ascending: false })
-            .limit(1);
+        if (ev.id && /^[0-9a-f-]{36}$/i.test(String(ev.id))) {
+            const { data: byId } = await supabase.from('eventos_oficiais')
+                .select('id')
+                .eq('id', ev.id)
+                .limit(1);
+            if (byId && byId.length > 0) existingEvent = byId[0];
+        }
 
-        if (byEmailAndName && byEmailAndName.length > 0) {
-            existingEvent = byEmailAndName[0];
-        } else {
-            const { data: existingEvents } = await supabase.from('eventos_oficiais')
+        if (!existingEvent && ev.share_id) {
+            const { data: byShare } = await supabase.from('eventos_oficiais')
                 .select('id')
                 .eq('detalhes->>share_id', ev.share_id)
                 .limit(1);
-            if (existingEvents && existingEvents.length > 0) {
-                existingEvent = existingEvents[0];
-            }
+            if (byShare && byShare.length > 0) existingEvent = byShare[0];
+        }
+
+        if (!existingEvent) {
+            const { data: byEmailAndName } = await supabase.from('eventos_oficiais')
+                .select('id')
+                .eq('organizador_email', cleanEmail)
+                .eq('nome', ev.name.trim())
+                .limit(1);
+            if (byEmailAndName && byEmailAndName.length > 0) existingEvent = byEmailAndName[0];
         }
 
         if (existingEvent) {
@@ -2734,7 +2772,7 @@ ipcMain.handle('share-event-to-cloud', async (event, { email, eventId, password 
         return { success: true, shareId: ev.share_id };
     } catch (e) {
         console.error("Erro ao compartilhar evento na nuvem:", e);
-        return { success: false, error: e.message };
+        return { success: false, error: e.message || String(e) };
     }
 });
 
@@ -2743,43 +2781,57 @@ ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password
     try {
         const cleanShareId = (shareId || '').trim().toLowerCase();
         const cleanPassword = (password || '').trim();
+        const cleanEmail = (email || '').trim().toLowerCase();
 
         if (!cleanShareId || !cleanPassword) {
             throw new Error("Por favor, preencha o ID do evento e a Senha.");
         }
 
-        const { data: events, error } = await supabase.from('eventos_oficiais')
-            .select('*')
-            .eq('status', 'compartilhado')
-            .order('created_at', { ascending: false })
-            .limit(200);
+        // Tenta buscar diretamente pelo share_id para ser instantâneo
+        let targetEvent = null;
+        const { data: directEvent } = await supabase.from('eventos_oficiais')
+            .select('id, detalhes, nome')
+            .eq('detalhes->>share_id', cleanShareId)
+            .limit(1);
 
-        if (error) {
-            console.error("Supabase query error in pull-event-from-cloud:", error);
-            throw new Error(error.message || "Falha ao conectar com o banco de dados na nuvem.");
+        if (directEvent && directEvent.length > 0) {
+            targetEvent = directEvent[0];
+        } else {
+            // Fallback buscando eventos compartilhados com campos enxutos
+            const { data: events, error } = await supabase.from('eventos_oficiais')
+                .select('id, detalhes, nome')
+                .eq('status', 'compartilhado')
+                .limit(50);
+
+            if (error) throw error;
+
+            targetEvent = (events || []).find(e => {
+                const det = e.detalhes || {};
+                const sId = String(det.share_id || '').trim().toLowerCase();
+                return sId === cleanShareId;
+            });
         }
 
-        const cloudEvent = (events || []).find(e => {
-            const det = e.detalhes || {};
-            const sId = String(det.share_id || '').trim().toLowerCase();
-            const sPass = String(det.share_password || '').trim();
-            return sId === cleanShareId && sPass === cleanPassword;
-        });
-
-        if (!cloudEvent) {
-            throw new Error("ID do evento ou senha inválidos.");
+        if (!targetEvent) {
+            throw new Error("Evento não encontrado na nuvem com este ID.");
         }
 
-        const localDataObj = cloudEvent.detalhes ? cloudEvent.detalhes.localData : null;
+        const det = targetEvent.detalhes || {};
+        const sPass = String(det.share_password || '').trim();
+        if (sPass !== cleanPassword) {
+            throw new Error("Senha incorreta para este evento compartilhado.");
+        }
+
+        const localDataObj = det.localData;
         if (!localDataObj) {
             throw new Error("Dados do evento corrompidos ou incompletos na nuvem.");
         }
 
         // Adiciona ou atualiza no banco local
-        const localData = getLocalData(email, currentSportSession);
+        const localData = getLocalData(cleanEmail, currentSportSession);
         
         // Verifica se já existe localmente
-        const existingIndex = localData.eventos.findIndex(e => e.id === localDataObj.id || (e.share_id && e.share_id.toLowerCase() === cleanShareId));
+        const existingIndex = localData.eventos.findIndex(e => String(e.id) === String(localDataObj.id) || (e.share_id && e.share_id.toLowerCase() === cleanShareId));
         
         localDataObj.share_id = shareId.trim();
         localDataObj.share_password = password.trim();
@@ -2790,7 +2842,7 @@ ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password
             localData.eventos.push(localDataObj);
         }
 
-        saveLocalData(email, localData, currentSportSession);
+        saveLocalData(cleanEmail, localData, currentSportSession);
         return { success: true, eventName: localDataObj.name, sport: currentSportSession };
     } catch (e) {
         console.error("Erro ao importar evento da nuvem:", e);

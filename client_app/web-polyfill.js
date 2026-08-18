@@ -1178,11 +1178,11 @@
     shareEventToCloud: async ({ email, eventId, password }) => {
       try {
         const events = await window.electronAPI.getLocalEvents(email);
-        const ev = events.find(e => e.id === eventId);
+        const ev = (events || []).find(e => String(e.id) === String(eventId));
         if (!ev) throw new Error("Evento não encontrado localmente.");
 
         if (!ev.share_id) {
-          const cleanName = ev.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanName = (ev.name || 'evento').toLowerCase().replace(/[^a-z0-9]/g, '');
           const randNum = Math.floor(10000000 + Math.random() * 90000000);
           ev.share_id = `${cleanName}-${randNum}`;
           ev.share_password = password;
@@ -1193,9 +1193,12 @@
         }
 
         const sanitizedEv = JSON.parse(JSON.stringify(ev));
-        if (sanitizedEv.overlaySettings) {
-          delete sanitizedEv.overlaySettings.mediaData;
-        }
+        if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
+        if (sanitizedEv.sheetImages) delete sanitizedEv.sheetImages;
+        if (sanitizedEv.ocr_images) delete sanitizedEv.ocr_images;
+        if (sanitizedEv.ocr_raw_image) delete sanitizedEv.ocr_raw_image;
+        if (sanitizedEv.captured_image) delete sanitizedEv.captured_image;
+        if (sanitizedEv.reviewPhotoRows) delete sanitizedEv.reviewPhotoRows;
 
         const payload = {
           nome: ev.name,
@@ -1212,7 +1215,7 @@
           }
         };
 
-        const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=eq.${encodeURIComponent(email)}&nome=ilike.${encodeURIComponent(ev.name.trim())}&limit=1`;
+        const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=eq.${encodeURIComponent(email)}&nome=eq.${encodeURIComponent(ev.name.trim())}&limit=1`;
         const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
         const checkList = await checkRes.json();
 
@@ -1236,7 +1239,7 @@
         return { success: true, shareId: ev.share_id };
       } catch (e) {
         console.error("Erro ao compartilhar evento na nuvem (web):", e);
-        return { success: false, error: e.message };
+        return { success: false, error: e.message || String(e) };
       }
     },
     pullEventFromCloud: async ({ email, shareId, password }) => {
