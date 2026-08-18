@@ -111,7 +111,7 @@ function saveSession() {
         const sessionData = {
             shareId: window.state.shareId,
             sharePassword: window.state.sharePassword,
-            judgeIdx: (window.state.currentJudge !== null && window.state.currentJudge !== undefined) ? window.state.currentJudge.idx : null,
+            judgeIdx: (window.state.currentJudge && window.state.currentJudge.idx !== undefined && window.state.currentJudge.idx !== null) ? window.state.currentJudge.idx : null,
             judgeNome: window.state.currentJudge ? (typeof window.state.currentJudge === 'string' ? window.state.currentJudge : window.state.currentJudge.nome) : null,
             selectedDay: window.state.selectedDay
         };
@@ -123,33 +123,9 @@ function saveSession() {
 
 function getCurrentJudgeName() {
     if (window.state.currentJudge) {
-        return typeof window.state.currentJudge === 'string' ? window.state.currentJudge : (window.state.currentJudge.nome || 'JUIZ OFICIAL');
+        return typeof window.state.currentJudge === 'string' ? window.state.currentJudge : (window.state.currentJudge.nome || 'JUIZ');
     }
-    
-    // Tenta recuperar do localStorage salvo
-    const saved = loadSavedSession();
-    if (saved && (saved.judgeNome || saved.judgeIdx !== null)) {
-        const juizes = getJudgesListNormalized();
-        let found = null;
-        if (saved.judgeIdx !== null && saved.judgeIdx !== undefined && juizes[saved.judgeIdx]) {
-            found = juizes[saved.judgeIdx];
-        } else if (saved.judgeNome) {
-            found = juizes.find(j => j.nome === saved.judgeNome) || null;
-        }
-        if (found) {
-            window.state.currentJudge = found;
-            return found.nome;
-        }
-        if (saved.judgeNome) return saved.judgeNome;
-    }
-    
-    const juizes = getJudgesListNormalized();
-    if (juizes.length > 0) {
-        window.state.currentJudge = juizes[0];
-        return juizes[0].nome;
-    }
-    
-    return 'JUIZ OFICIAL';
+    return 'JUIZ';
 }
 
 function getCurrentEventName() {
