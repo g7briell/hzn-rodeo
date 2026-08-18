@@ -722,10 +722,35 @@ ipcMain.handle('get-pdf-logo', () => {
   }
 });
 
+function getSystemTemplatePath(filename) {
+    const possiblePaths = [
+        path.join(__dirname, filename),
+        path.join(process.resourcesPath, filename),
+        path.join(process.resourcesPath, 'modelos_contrato', filename),
+        path.join(process.resourcesPath, 'resources', filename),
+        path.join(__dirname, 'modelos_contrato', filename),
+        path.join(__dirname, '..', 'modelos_contrato', filename),
+        path.join(__dirname, '..', filename),
+        path.join(app.getAppPath(), filename),
+        path.join(app.getAppPath(), 'modelos_contrato', filename),
+        path.join(app.getAppPath(), '..', 'modelos_contrato', filename),
+        path.join(process.cwd(), filename),
+        path.join(process.cwd(), 'modelos_contrato', filename),
+        path.join(process.cwd(), 'client_app', filename)
+    ];
+
+    for (const p of possiblePaths) {
+        if (p && fs.existsSync(p)) {
+            return p;
+        }
+    }
+    return null;
+}
+
 ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
     try {
-        const templatePath = path.join(__dirname, 'molde_sorteio.xlsx');
-        if (!fs.existsSync(templatePath)) {
+        const templatePath = getSystemTemplatePath('molde_sorteio.xlsx');
+        if (!templatePath) {
             return { success: false, message: 'O arquivo molde_sorteio.xlsx não foi encontrado na pasta do sistema.' };
         }
 
@@ -826,7 +851,7 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
 
         const { canceled, filePath } = await dialog.showSaveDialog(getActiveWindow(), {
             title: 'Salvar Sorteio Oficial',
-            defaultPath: `Sorteio_Oficial.xlsx`,
+            defaultPath: `Sorteio_${(sorteioData.day || 'Oficial').replace(/\s+/g, '_')}.xlsx`,
             filters: [{ name: 'Planilha Excel', extensions: ['xlsx'] }]
         });
 
@@ -843,8 +868,8 @@ ipcMain.handle('export-sorteio-excel', async (event, { sorteioData }) => {
 
 ipcMain.handle('export-boiadas-excel', async (event, { sorteioData }) => {
     try {
-        const templatePath = path.join(__dirname, 'listtourossorteio.xlsx');
-        if (!fs.existsSync(templatePath)) return { success: false, message: "Arquivo molde 'listtourossorteio.xlsx' não encontrado." };
+        const templatePath = getSystemTemplatePath('listtourossorteio.xlsx');
+        if (!templatePath) return { success: false, message: "Arquivo molde 'listtourossorteio.xlsx' não encontrado." };
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(templatePath);
@@ -959,8 +984,8 @@ ipcMain.handle('export-boiadas-excel', async (event, { sorteioData }) => {
 
 ipcMain.handle('export-juizes-excel', async (event, { sorteioData, eventName, day, juizNome }) => {
     try {
-        const templatePath = path.join(__dirname, 'moldejuiz_sorteio.xlsx');
-        if (!fs.existsSync(templatePath)) return { success: false, message: "Arquivo molde 'moldejuiz_sorteio.xlsx' não encontrado." };
+        const templatePath = getSystemTemplatePath('moldejuiz_sorteio.xlsx');
+        if (!templatePath) return { success: false, message: "Arquivo molde 'moldejuiz_sorteio.xlsx' não encontrado." };
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(templatePath);
@@ -1126,8 +1151,8 @@ ipcMain.handle('export-pdf', async (event, { htmlContent, defaultName }) => {
 
 ipcMain.handle('export-ordem-excel', async (event, { eventName, day, data, auth }) => {
     try {
-        const templatePath = path.join(__dirname, 'ord_embretamento.xlsx');
-        if (!fs.existsSync(templatePath)) return { success: false, message: "Arquivo molde 'ord_embretamento.xlsx' não encontrado." };
+        const templatePath = getSystemTemplatePath('ord_embretamento.xlsx');
+        if (!templatePath) return { success: false, message: "Arquivo molde 'ord_embretamento.xlsx' não encontrado." };
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(templatePath);
@@ -1200,8 +1225,8 @@ ipcMain.handle('export-ordem-excel', async (event, { eventName, day, data, auth 
 
 ipcMain.handle('export-ranking-excel', async (event, { eventName, day, data, auth }) => {
     try {
-        const templatePath = path.join(__dirname, 'molde_ranking.xlsx');
-        if (!fs.existsSync(templatePath)) return { success: false, message: "Arquivo molde 'molde_ranking.xlsx' não encontrado." };
+        const templatePath = getSystemTemplatePath('molde_ranking.xlsx');
+        if (!templatePath) return { success: false, message: "Arquivo molde 'molde_ranking.xlsx' não encontrado." };
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(templatePath);
@@ -1249,8 +1274,7 @@ ipcMain.handle('export-ranking-excel', async (event, { eventName, day, data, aut
 
             for(let i=1; i<=cIdx; i++) {
                 const cell = row.getCell(i);
-                const templateIndex = (i >= 4 && i < cIdx) ? 4 : (i === cIdx ? 7 : i); 
-                const s = rowStyle[templateIndex];
+                const s = rowStyle[i];
                 if (s) {
                     if (s.font) cell.font = s.font;
                     if (s.alignment) cell.alignment = s.alignment;
@@ -1262,17 +1286,16 @@ ipcMain.handle('export-ranking-excel', async (event, { eventName, day, data, aut
             currRow++;
         });
 
+        // Format and merge footer
         currRow++;
-        
         const footerRow = ws.getRow(currRow);
-        ws.mergeCells(currRow, 1, currRow, 3 + data.columnsDays.length);
-        const clienteNome = (auth && (auth.nome || auth.email)) ? (auth.nome || auth.email).toUpperCase() : 'CLIENTE RODEOAPP';
-        footerRow.getCell(1).value = `Acesse rodeoapp.pro um novo conceito em gestão de provas! - Licenciado para: ${clienteNome}`;
+        ws.mergeCells(currRow, 1, currRow, headerCol);
+        footerRow.getCell(1).value = `RODEOAPP (18) 98122-6665 - GESTÃO DE RODEIOS - LICENCIADO PARA: ${(auth && auth.nome) ? auth.nome.toUpperCase() : "CLIENTE RODEOAPP"}`;
         footerRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         footerRow.getCell(1).font = { bold: true, size: 10 };
         footerRow.height = 25;
 
-        const defaultName = 'Ranking_' + eventName.replace(/\s+/g,'_') + '_' + safeDay.replace(/\s+/g,'_') + '.xlsx';
+        const defaultName = `Ranking_${eventName.replace(/\s+/g,'_')}_${safeDay.replace(/\s+/g,'_')}.xlsx`;
         const { canceled, filePath } = await dialog.showSaveDialog({
             title: 'Salvar Planilha de Ranking',
             defaultPath: defaultName,
@@ -1516,17 +1539,9 @@ ipcMain.handle('export-melhor-cia', async (event, { eventName, data, format }) =
         const path = require('path');
         const fs = require('fs');
         
-        const templatePath = path.join(__dirname, '..', 'modelos_contrato', 'modelomelhorcia.xlsx');
-        let hasTemplate = false;
-        let wb = new ExcelJS.Workbook();
-        
-        // As the user said they created "modelomelhorcia.xlsx", let's check if it exists in the main folder or in modelos_contrato.
-        let actualTemplatePath = path.join(__dirname, 'modelomelhorcia.xlsx');
-        if (fs.existsSync(actualTemplatePath)) {
+        const actualTemplatePath = getSystemTemplatePath('modelomelhorcia.xlsx');
+        if (actualTemplatePath) {
             await wb.xlsx.readFile(actualTemplatePath);
-            hasTemplate = true;
-        } else if (fs.existsSync(templatePath)) {
-            await wb.xlsx.readFile(templatePath);
             hasTemplate = true;
         } else {
             return { success: false, error: 'Arquivo modelomelhorcia.xlsx não encontrado.' };
@@ -1718,12 +1733,8 @@ ipcMain.handle('export-melhor-animal', async (event, { eventName, data, format }
         let wb = new ExcelJS.Workbook();
         
         // Find template
-        let templatePath = path.join(__dirname, 'modelmelhoranimal.xlsx');
-        if (!fs.existsSync(templatePath)) {
-            templatePath = path.join(__dirname, '..', 'modelos_contrato', 'modelmelhoranimal.xlsx');
-        }
-        
-        if (fs.existsSync(templatePath)) {
+        const templatePath = getSystemTemplatePath('modelmelhoranimal.xlsx');
+        if (templatePath) {
             await wb.xlsx.readFile(templatePath);
         } else {
             return { success: false, error: 'Arquivo modelmelhoranimal.xlsx não encontrado.' };
