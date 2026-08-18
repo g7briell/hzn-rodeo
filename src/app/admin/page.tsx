@@ -77,9 +77,10 @@ export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile menu toggle
   const [licenses, setLicenses] = useState<any[]>([]);
   const [boiadas, setBoiadas] = useState<any[]>([]);
-  const [eventos, setEventos] = useState<any[]>([]);
   const [boiadaName, setBoiadaName] = useState("");
-  const [tourosTexto, setTourosTexto] = useState("");
+  const [tourosCertoTexto, setTourosCertoTexto] = useState("");
+  const [tourosErradoTexto, setTourosErradoTexto] = useState("");
+  const [expandedBoiadaId, setExpandedBoiadaId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   
   const [geminiApiKey, setGeminiApiKey] = useState("");
@@ -1124,10 +1125,18 @@ export default function AdminDashboard() {
     
     // Parse touros
     const splitLines = (text: string) => text.split("\n").map(l => l.trim().toUpperCase()).filter(l => l);
-    const touros = splitLines(tourosTexto);
+    const tourosCerto = splitLines(tourosCertoTexto);
+    const tourosErrado = splitLines(tourosErradoTexto);
+    const allTouros = [...tourosCerto, ...tourosErrado];
+
+    if (allTouros.length === 0) {
+      setLoading(false);
+      return alert("Insira ao menos um touro no Lado Certo ou no Lado Errado!");
+    }
     
     const lados: Record<string, string> = {};
-    touros.forEach(t => lados[t] = "");
+    tourosCerto.forEach(t => lados[t] = "C");
+    tourosErrado.forEach(t => lados[t] = "E");
 
     const { error } = await supabase.from("boiadas_oficiais").insert([{
       id: crypto.randomUUID(),
@@ -1136,14 +1145,29 @@ export default function AdminDashboard() {
     }]);
 
     if (!error) {
-      alert("Boiada cadastrada com sucesso no banco oficial!");
+      alert(`Boiada cadastrada com sucesso! (${tourosCerto.length} Lado Certo / ${tourosErrado.length} Lado Errado)`);
       setBoiadaName("");
-      setTourosTexto("");
+      setTourosCertoTexto("");
+      setTourosErradoTexto("");
       fetchBoiadas();
     } else {
       alert("Erro ao cadastrar boiada: " + error.message);
     }
     setLoading(false);
+  };
+
+  const handleToggleBullSideAdmin = async (boiadaId: string, currentLados: any, bullName: string) => {
+    const ladosObj = { ...(currentLados || {}) };
+    const currentSide = ladosObj[bullName] || 'C';
+    const newSide = currentSide === 'E' ? 'C' : 'E';
+    ladosObj[bullName] = newSide;
+
+    const { error } = await supabase.from("boiadas_oficiais").update({ lados: ladosObj }).eq("id", boiadaId);
+    if (!error) {
+      fetchBoiadas();
+    } else {
+      alert("Erro ao alterar lado do touro: " + error.message);
+    }
   };
 
   const handleDeleteBoiada = async (id: string, nome: string) => {
@@ -2637,9 +2661,32 @@ export default function AdminDashboard() {
                 <form onSubmit={handleSaveBoiada} className="space-y-6">
                   <InputGroup label="NOME DA COMPANHIA" placeholder="Ex: CIA Tércio Miranda" value={boiadaName} onChange={setBoiadaName} />
                   
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">TOUROS (Um por linha)</label>
-                    <textarea value={tourosTexto} onChange={e=>setTourosTexto(e.target.value)} placeholder="Cole aqui a lista de touros da CIA..." className="w-full h-64 bg-black border border-white/10 rounded-2xl p-4 font-bold text-xs outline-none focus:border-yellow-500 transition-all resize-none"></textarea>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-[10px] font-black text-yellow-500 uppercase tracking-widest ml-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block"></span>
+                        TOUROS LADO CERTO (C)
+                      </label>
+                      <textarea 
+                        value={tourosCertoTexto} 
+                        onChange={e => setTourosCertoTexto(e.target.value)} 
+                        placeholder="Cole os touros do lado CERTO (C)...&#10;1 por linha" 
+                        className="w-full h-60 bg-black border border-yellow-500/20 focus:border-yellow-500 rounded-2xl p-4 font-bold text-xs outline-none transition-all resize-none custom-scrollbar"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-widest ml-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+                        TOUROS LADO ERRADO (E)
+                      </label>
+                      <textarea 
+                        value={tourosErradoTexto} 
+                        onChange={e => setTourosErradoTexto(e.target.value)} 
+                        placeholder="Cole os touros do lado ERRADO (E)...&#10;1 por linha" 
+                        className="w-full h-60 bg-black border border-emerald-500/20 focus:border-emerald-400 rounded-2xl p-4 font-bold text-xs outline-none transition-all resize-none custom-scrollbar"
+                      />
+                    </div>
                   </div>
                   
                   <button type="submit" disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-yellow-500/20 active:scale-95 disabled:opacity-50 mt-4">
@@ -2648,7 +2695,7 @@ export default function AdminDashboard() {
                 </form>
               </div>
 
-              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm flex flex-col max-h-[600px] overflow-hidden">
+              <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-sm flex flex-col max-h-[700px] overflow-hidden">
                 <h3 className="font-black italic uppercase text-white mb-6">Solicitações de Boiadas</h3>
                 <div className="flex-1 overflow-y-auto pr-4 mb-6 space-y-4 custom-scrollbar" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.5rem' }}>
                   {boiadas.filter(b => b.lados?.__meta && b.lados.__meta.status === 'pendente').length === 0 ? (
@@ -2698,41 +2745,77 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
-                <h3 className="font-black italic uppercase text-white mb-6">Banco Oficial</h3>
+                <h3 className="font-black italic uppercase text-white mb-4">Banco Oficial</h3>
                 <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
                   {boiadas.filter(b => !b.lados?.__meta || b.lados.__meta.status !== 'pendente').length === 0 ? (
                     <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhuma boiada cadastrada</div>
                   ) : (
                     boiadas.filter(b => !b.lados?.__meta || b.lados.__meta.status !== 'pendente').map(b => {
-                      const totalTouros = Object.keys(b.lados || {}).filter(k => k !== '__meta').length;
+                      const bullsList = Object.keys(b.lados || {}).filter(k => k !== '__meta');
+                      const totalTouros = bullsList.length;
+                      const isExpanded = expandedBoiadaId === b.id;
+
                       return (
-                        <div key={b.id} className="bg-black border border-white/10 p-5 rounded-2xl flex justify-between items-center group hover:border-yellow-500/50 transition-all">
-                          <div>
-                            <div className="font-black uppercase text-sm mb-1">{b.nome}</div>
-                            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{totalTouros} TOUROS</div>
+                        <div key={b.id} className="bg-black border border-white/10 p-5 rounded-2xl space-y-4 group hover:border-yellow-500/50 transition-all">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="font-black uppercase text-sm mb-1">{b.nome}</div>
+                              <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{totalTouros} TOUROS</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => setExpandedBoiadaId(isExpanded ? null : b.id)} 
+                                className="px-3 py-1.5 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                              >
+                                {isExpanded ? 'Recolher Touros' : 'Ver / Alterar Lados'}
+                              </button>
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                id={`upload-logo-${b.id}`} 
+                                style={{ display: 'none' }} 
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleUpdateBoiadaLogoUpload(b, e.target.files[0]);
+                                  }
+                                }} 
+                              />
+                              <button onClick={() => document.getElementById(`upload-logo-${b.id}`)?.click()} className="p-2.5 text-white/20 hover:text-green-500 hover:bg-green-500/10 rounded-xl transition-all" title="Fazer Upload da Logo">
+                                <Upload className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleUpdateBoiadaLogo(b)} className="p-2.5 text-white/20 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all" title="Atualizar Logo por Link">
+                                <LinkIcon className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteBoiada(b.id, b.nome)} className="p-2.5 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all" title="Excluir Boiada">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              id={`upload-logo-${b.id}`} 
-                              style={{ display: 'none' }} 
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  handleUpdateBoiadaLogoUpload(b, e.target.files[0]);
-                                }
-                              }} 
-                            />
-                            <button onClick={() => document.getElementById(`upload-logo-${b.id}`)?.click()} className="p-3 text-white/20 hover:text-green-500 hover:bg-green-500/10 rounded-xl transition-all" title="Fazer Upload da Logo (Computador)">
-                              <Upload className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleUpdateBoiadaLogo(b)} className="p-3 text-white/20 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all" title="Atualizar Logo por Link (URL)">
-                              <LinkIcon className="w-5 h-5" />
-                            </button>
-                            <button onClick={() => handleDeleteBoiada(b.id, b.nome)} className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
+
+                          {isExpanded && (
+                            <div className="pt-3 border-t border-white/5 space-y-2 animate-in fade-in duration-300">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Clique no botão do lado para alternar entre Certo (C) e Errado (E):</div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                                {bullsList.map(t => {
+                                  const currentSide = b.lados[t] === 'E' ? 'E' : 'C';
+                                  const isE = currentSide === 'E';
+                                  return (
+                                    <div key={t} className="bg-white/5 border border-white/5 p-2.5 rounded-xl flex items-center justify-between gap-2">
+                                      <span className="text-xs font-bold text-white uppercase truncate">{t}</span>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => handleToggleBullSideAdmin(b.id, b.lados, t)}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${isE ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 hover:bg-yellow-500/30'}`}
+                                      >
+                                        <span className={`w-1.5 h-1.5 rounded-full ${isE ? 'bg-emerald-400' : 'bg-yellow-400'}`}></span>
+                                        {isE ? 'E (ERRADO)' : 'C (CERTO)'}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })

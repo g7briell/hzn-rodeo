@@ -2463,27 +2463,26 @@ function renderStep3() {
     const container = document.getElementById('bulls-selection-list');
     const boiadas = currentEvent.boiadas || [];
     if (container) container.innerHTML = boiadas.map(b => `
-        <div class="glass p-8 rounded-[2.5rem] border-white/5 bull-container">
-            <h4 class="text-xs font-black text-yellow-500 uppercase tracking-widest mb-6">${b.nome}</h4>
-            <div class="grid grid-cols-4 gap-4">
-                ${b.touros.map(t => {
+        <div class="glass p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border-white/5 bull-container mb-6">
+            <div class="flex justify-between items-center mb-4 sm:mb-6">
+                <h4 class="text-xs font-black text-yellow-500 uppercase tracking-widest">${b.nome}</h4>
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${(b.touros || []).length} touros</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                ${(b.touros || []).map(t => {
+                    const bSide = (b.lados && b.lados[t]) ? b.lados[t] : 'C';
+                    const isE = bSide === 'E';
                     return `
-                    <div class="bull-card-wrapper bg-slate-950/50 border border-slate-800 p-4 rounded-xl flex flex-col gap-3 hover:border-yellow-500/50 transition-all">
-                        <label class="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" class="bull-checkbox w-5 h-5 rounded-lg accent-yellow-500" onchange="updateSorteioCounters()" data-nome="${t}" data-cia="${b.nome}">
-                            <span class="text-xs font-black text-white uppercase truncate">${t}</span>
-                        </label>
-                        <div class="flex gap-2">
-                            <label class="flex-1 flex items-center justify-center gap-1 bg-black/50 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-all">
-                                <input type="radio" name="lado-main-${b.nome}-${t}" value="E" class="accent-emerald-500 w-3 h-3" onchange="this.closest('.bull-card-wrapper').querySelector('input[type=checkbox]').checked = true; updateSorteioCounters();">
-                                <span class="text-[10px] font-black text-emerald-500">E</span>
-                            </label>
-                            <label class="flex-1 flex items-center justify-center gap-1 bg-black/50 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-all">
-                                <input type="radio" name="lado-main-${b.nome}-${t}" value="D" class="accent-red-500 w-3 h-3" onchange="this.closest('.bull-card-wrapper').querySelector('input[type=checkbox]').checked = true; updateSorteioCounters();">
-                                <span class="text-[10px] font-black text-red-500">C</span>
-                            </label>
+                    <label class="bull-card-wrapper bg-slate-950/60 border border-slate-800 p-3.5 sm:p-4 rounded-xl flex items-center justify-between gap-3 cursor-pointer hover:border-yellow-500/60 transition-all select-none group">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <input type="checkbox" class="bull-checkbox w-5 h-5 rounded-lg accent-yellow-500 flex-shrink-0 cursor-pointer" onchange="updateSorteioCounters()" data-nome="${t}" data-cia="${b.nome}" data-lado="${bSide}">
+                            <span class="text-xs font-black text-white uppercase truncate group-hover:text-yellow-400 transition-colors">${t}</span>
                         </div>
-                    </div>`;
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex-shrink-0 flex items-center gap-1 ${isE ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'}">
+                            <span class="w-1.5 h-1.5 rounded-full ${isE ? 'bg-emerald-400' : 'bg-yellow-400'}"></span>
+                            ${bSide}
+                        </span>
+                    </label>`;
                 }).join('')}
             </div>
         </div>
@@ -2500,7 +2499,15 @@ window.validateAndGoToReRide = () => {
         return alert(`A quantidade de touros principais (${bullCheckboxes.length}) deve ser exatamente igual a quantidade de competidores (${sorteioData.riders.length})!`);
     }
 
-    sorteioData.bulls = bullCheckboxes.map(cb => ({ nome: cb.dataset.nome, cia: cb.dataset.cia }));
+    sorteioData.bulls = bullCheckboxes.map(cb => {
+        const cia = (currentEvent.boiadas || []).find(c => c.nome === cb.dataset.cia);
+        const lado = (cia && cia.lados && cia.lados[cb.dataset.nome]) ? cia.lados[cb.dataset.nome] : (cb.dataset.lado || 'C');
+        return { 
+            nome: cb.dataset.nome, 
+            cia: cb.dataset.cia, 
+            lado: lado === 'E' ? 'E' : 'C' 
+        };
+    });
     goToStep('reride');
 };
 
@@ -2511,20 +2518,29 @@ function renderStepReRide() {
     
     let html = '';
     boiadas.forEach(b => {
-        const availableTouros = b.touros.filter(t => !mainBullNames.includes(t));
+        const availableTouros = (b.touros || []).filter(t => !mainBullNames.includes(t));
         if (availableTouros.length > 0) {
             html += `
-            <div class="glass p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border-white/5 bull-container">
-                <h4 class="text-xs font-black text-red-500 uppercase tracking-widest mb-4 sm:mb-6">${b.nome}</h4>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div class="glass p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border-white/5 bull-container mb-6">
+                <div class="flex justify-between items-center mb-4 sm:mb-6">
+                    <h4 class="text-xs font-black text-red-500 uppercase tracking-widest">${b.nome}</h4>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${availableTouros.length} disponíveis</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     ${availableTouros.map(t => {
+                        const bSide = (b.lados && b.lados[t]) ? b.lados[t] : 'C';
+                        const isE = bSide === 'E';
                         return `
-                        <div class="bull-card-wrapper bg-slate-950/50 border border-slate-800 p-3 sm:p-4 rounded-xl flex items-center gap-3 hover:border-red-500/50 transition-all">
-                            <label class="flex items-center gap-3 cursor-pointer w-full">
-                                <input type="checkbox" class="reride-checkbox w-5 h-5 rounded-lg accent-red-500 flex-shrink-0" data-nome="${t}" data-cia="${b.nome}">
-                                <span class="text-xs font-black text-white uppercase truncate">${t}</span>
-                            </label>
-                        </div>`;
+                        <label class="bull-card-wrapper bg-slate-950/60 border border-slate-800 p-3 sm:p-4 rounded-xl flex items-center justify-between gap-3 cursor-pointer hover:border-red-500/60 transition-all select-none group">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <input type="checkbox" class="reride-checkbox w-5 h-5 rounded-lg accent-red-500 flex-shrink-0 cursor-pointer" data-nome="${t}" data-cia="${b.nome}" data-lado="${bSide}">
+                                <span class="text-xs font-black text-white uppercase truncate group-hover:text-red-400 transition-colors">${t}</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex-shrink-0 flex items-center gap-1 ${isE ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'}">
+                                <span class="w-1.5 h-1.5 rounded-full ${isE ? 'bg-emerald-400' : 'bg-yellow-400'}"></span>
+                                ${bSide}
+                            </span>
+                        </label>`;
                     }).join('')}
                 </div>
             </div>`;
@@ -2553,19 +2569,17 @@ window.updateSorteioCounters = () => {
 
 window.generateDrawListWithReRides = () => {
     const rerideCheckboxes = Array.from(document.querySelectorAll('.reride-checkbox:checked'));
-    const rerides = [];
-    
-    for (const cb of rerideCheckboxes) {
+    const rerides = rerideCheckboxes.map(cb => {
         const nome = cb.dataset.nome;
-        const cia = cb.dataset.cia;
-        const ladoRadio = document.querySelector(`input[name="lado-reride-${cia}-${nome}"]:checked`);
-        
-        if (!ladoRadio) {
-            return alert(`Você selecionou o touro reserva "${nome}" da cia "${cia}", mas esqueceu de escolher o LADO (E ou D)!`);
-        }
-        
-        rerides.push({ nome, cia, lado: ladoRadio.value });
-    }
+        const ciaNome = cb.dataset.cia;
+        const cia = (currentEvent.boiadas || []).find(c => c.nome === ciaNome);
+        const lado = (cia && cia.lados && cia.lados[nome]) ? cia.lados[nome] : (cb.dataset.lado || 'C');
+        return { 
+            nome, 
+            cia: ciaNome, 
+            lado: lado === 'E' ? 'E' : 'C' 
+        };
+    });
 
     // A lista oficial de touros será: os touros principais (já salvos) + os re-rides (adicionados no final)
     const allBulls = [...sorteioData.bulls, ...rerides];
@@ -2576,7 +2590,23 @@ window.generateDrawListWithReRides = () => {
     if (listContainer) listContainer.innerHTML = sorteioData.bulls.map((b, idx) => {
         const isReride = idx >= sorteioData.riders.length;
         if (!isReride) normalCount++;
-        return `<div class="flex items-center gap-6 p-6 bg-slate-950/50 border border-slate-800 rounded-2xl"><div class="w-12 h-12 ${isReride ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'bg-yellow-500 text-black'} rounded-xl flex items-center justify-center font-black text-xl italic">${isReride ? 'R' : normalCount}</div><div class="flex-1"><div class="text-xl font-black italic text-white uppercase">${b.nome}</div><div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${b.cia}</div></div>${isReride ? `<div class="bg-red-500/10 text-red-500 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest">RE-RIDE ${idx - sorteioData.riders.length + 1}</div>` : ''}</div>`;
+        const isE = b.lado === 'E';
+        return `
+        <div class="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 bg-slate-950/60 border border-slate-800 rounded-2xl">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 ${isReride ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'bg-yellow-500 text-black'} rounded-xl flex items-center justify-center font-black text-lg sm:text-xl italic flex-shrink-0">
+                ${isReride ? 'R' : normalCount}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="text-base sm:text-xl font-black italic text-white uppercase truncate">${b.nome}</div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">${b.cia}</div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${isE ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'}">
+                    LADO ${b.lado}
+                </span>
+                ${isReride ? `<div class="bg-red-500/10 text-red-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest hidden sm:block">RE-RIDE ${idx - sorteioData.riders.length + 1}</div>` : ''}
+            </div>
+        </div>`;
     }).join('');
     
     goToStep(4);
@@ -3533,60 +3563,94 @@ window.openListPeoes = () => {
 window.closeListPeoes = () => { const lp = document.getElementById('list-peoes-view'); if (lp) lp.classList.add('hidden'); };
 
 window.openListBoiadas = () => {
-    const container = document.getElementById('boiadas-cards-container'); const boiadas = currentEvent.boiadas || [];
-    if (boiadas.length === 0) { if (container) container.innerHTML = `<div class="col-span-3 text-center text-slate-500 italic font-bold">Nenhuma boiada.</div>`; }
-    else { if (container) container.innerHTML = boiadas.map((b, idx) => `<div class="glass p-8 rounded-[2.5rem] relative group border-white/5"><div class="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all"><button onclick="openModalBoiada(${idx})" class="p-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button><button onclick="deleteBoiada(${idx})" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div><div class="text-[10px] font-black text-accent mb-4 uppercase">CIA DE RODEIO</div><h4 class="text-2xl font-black italic mb-6 uppercase tracking-tighter">${b.nome}</h4><div class="space-y-2 overflow-y-auto max-h-40 pr-2 scroll-custom">${b.touros.map(t => `<div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-tighter flex justify-between"><span>${t}</span><span class="text-accent/50">${b.lados && b.lados[t] ? b.lados[t] : ''}</span></div>`).join('')}</div></div>`).join(''); }
-    const lb = document.getElementById('list-boiadas-view'); if (lb) lb.classList.remove('hidden');
+    const container = document.getElementById('boiadas-cards-container'); 
+    const boiadas = currentEvent.boiadas || [];
+    if (boiadas.length === 0) { 
+        if (container) container.innerHTML = `<div class="col-span-3 text-center text-slate-500 italic font-bold">Nenhuma boiada cadastrada no evento.</div>`; 
+    } else { 
+        if (container) container.innerHTML = boiadas.map((b, idx) => {
+            const tourosCount = (b.touros || []).length;
+            return `
+            <div class="glass p-8 rounded-[2.5rem] relative group border-white/5 flex flex-col justify-between">
+                <div class="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                    <button onclick="openModalBoiada(${idx})" class="p-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20" title="Editar Boiada">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    </button>
+                    <button onclick="deleteBoiada(${idx})" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20" title="Excluir Boiada">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                </div>
+                <div>
+                    <div class="text-[10px] font-black text-yellow-500 mb-1 uppercase tracking-widest">COMPANHIA DE RODEIO</div>
+                    <h4 class="text-2xl font-black italic mb-2 uppercase tracking-tighter text-white">${b.nome}</h4>
+                    <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">${tourosCount} TOUROS CADASTRADOS</div>
+                    <div class="space-y-2 overflow-y-auto max-h-56 pr-2 custom-scroll">
+                        ${(b.touros || []).map(t => {
+                            const side = (b.lados && b.lados[t]) ? b.lados[t] : 'C';
+                            const isE = side === 'E';
+                            return `
+                            <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 text-[10px] font-bold text-slate-300 uppercase tracking-tighter flex items-center justify-between gap-2 hover:border-slate-700 transition-all">
+                                <span class="truncate font-black text-white">${t}</span>
+                                <button type="button" onclick="toggleBullSide(${idx}, '${t.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-lg font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${isE ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 hover:bg-yellow-500/30'}" title="Clique para alternar o lado deste touro">
+                                    <span class="w-1.5 h-1.5 rounded-full ${isE ? 'bg-emerald-400' : 'bg-yellow-400'}"></span>
+                                    ${isE ? 'E (ERRADO)' : 'C (CERTO)'}
+                                </button>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>`;
+        }).join(''); 
+    }
+    const lb = document.getElementById('list-boiadas-view'); 
+    if (lb) lb.classList.remove('hidden'); 
 };
 
-// --- CADASTRO EM MASSA (PEÕES) ---
-window.openModalBulkPeoes = () => {
-    document.getElementById('modal-bulk-peoes').classList.remove('hidden');
-    document.getElementById('bulk-peao-names').value = '';
-    document.getElementById('bulk-peao-cities').value = '';
-    document.getElementById('bulk-peao-cpfs').value = '';
-};
+window.toggleBullSide = async (boiadaIdx, bullName) => {
+    if (!currentEvent || !currentEvent.boiadas || !currentEvent.boiadas[boiadaIdx]) return;
+    const b = currentEvent.boiadas[boiadaIdx];
+    b.lados = b.lados || {};
+    const currentSide = b.lados[bullName] || 'C';
+    const newSide = currentSide === 'E' ? 'C' : 'E';
+    b.lados[bullName] = newSide;
 
-window.closeModalBulkPeoes = () => {
-    document.getElementById('modal-bulk-peoes').classList.add('hidden');
-};
-
-window.saveBulkPeoes = async () => {
-    const names = document.getElementById('bulk-peao-names').value.split('\n').filter(l => l.trim() !== '');
-    const cities = document.getElementById('bulk-peao-cities').value.split('\n');
-    const cpfs = document.getElementById('bulk-peao-cpfs').value.split('\n');
-
-    if (names.length === 0) return alert("Insira ao menos os nomes dos peões!");
-
-    const newPeoes = names.map((name, i) => ({
-        nome: name.trim().toUpperCase(),
-        cidade: (cities[i] || '').trim().toUpperCase() || '---',
-        cpf: (cpfs[i] || '').trim(),
-        score: 0
-    }));
-
-    currentEvent.peoes = [...(currentEvent.peoes || []), ...newPeoes];
     await window.persistAndSyncEvent(currentEvent);
-    
-    closeModalBulkPeoes();
-    closeModalPeao();
-    openListPeoes();
-    alert(`${newPeoes.length} peões cadastrados com sucesso!`);
+    const email = getCurrentUserEmail();
+    if (email && window.electronAPI?.saveGlobalBoiada) {
+        await window.electronAPI.saveGlobalBoiada(email, b);
+    }
+    openListBoiadas();
 };
-window.closeListBoiadas = () => { const lb = document.getElementById('list-boiadas-view'); if (lb) lb.classList.add('hidden'); };
 
 window.openModalBoiada = (idx = null) => { 
     editingBoiadaIdx = idx; 
     const title = document.querySelector('#modal-boiada h2'); 
+    const inputCia = document.getElementById('boiada-cia');
+    const inputCerto = document.getElementById('touros-certo');
+    const inputErrado = document.getElementById('touros-errado');
+
     if (idx !== null) { 
         const b = currentEvent.boiadas[idx]; 
-        document.getElementById('boiada-cia').value = b.nome; 
-        document.getElementById('touros-bulk').value = (b.touros || []).join('\n'); 
+        if (inputCia) inputCia.value = b.nome || '';
+        
+        const certoList = [];
+        const erradoList = [];
+        (b.touros || []).forEach(t => {
+            if (b.lados && b.lados[t] === 'E') {
+                erradoList.push(t);
+            } else {
+                certoList.push(t);
+            }
+        });
+
+        if (inputCerto) inputCerto.value = certoList.join('\n');
+        if (inputErrado) inputErrado.value = erradoList.join('\n');
         if (title) title.innerText = "EDITAR BOIADA"; 
     } else { 
         const fb = document.getElementById('form-boiada'); 
         if (fb) fb.reset(); 
-        document.getElementById('touros-bulk').value = ''; 
+        if (inputCerto) inputCerto.value = ''; 
+        if (inputErrado) inputErrado.value = ''; 
         if (title) title.innerText = "CADASTRAR BOIADA (CIA)"; 
     } 
     const mb = document.getElementById('modal-boiada'); 
@@ -4183,22 +4247,24 @@ document.getElementById('form-boiada').addEventListener('submit', async (e) => {
     const nome = document.getElementById('boiada-cia').value.trim().toUpperCase();
     if (!nome) return;
 
-    const allTouros = document.getElementById('touros-bulk').value.split('\n')
-        .map(t => t.trim().toUpperCase())
-        .filter(t => t !== '');
+    const inputCerto = document.getElementById('touros-certo');
+    const inputErrado = document.getElementById('touros-errado');
+
+    const tourosCerto = inputCerto ? inputCerto.value.split('\n').map(t => t.trim().toUpperCase()).filter(t => t !== '') : [];
+    const tourosErrado = inputErrado ? inputErrado.value.split('\n').map(t => t.trim().toUpperCase()).filter(t => t !== '') : [];
+
+    const allTouros = [...tourosCerto, ...tourosErrado];
+    if (allTouros.length === 0) {
+        return alert("Insira ao menos um touro no Lado Certo ou no Lado Errado!");
+    }
     
     const lados = {};
-    allTouros.forEach(t => lados[t] = '');
+    tourosCerto.forEach(t => lados[t] = 'C');
+    tourosErrado.forEach(t => lados[t] = 'E');
 
     const cia = { nome, touros: allTouros, lados };
     currentEvent.boiadas = currentEvent.boiadas || []; 
     if (editingBoiadaIdx !== null) {
-        const existingBoiada = currentEvent.boiadas[editingBoiadaIdx];
-        const newLados = {};
-        allTouros.forEach(t => {
-            newLados[t] = (existingBoiada && existingBoiada.lados && existingBoiada.lados[t]) ? existingBoiada.lados[t] : '';
-        });
-        cia.lados = newLados;
         currentEvent.boiadas[editingBoiadaIdx] = cia;
     } else {
         currentEvent.boiadas.push(cia); 
@@ -4208,7 +4274,7 @@ document.getElementById('form-boiada').addEventListener('submit', async (e) => {
     fetchGlobalData();
     closeModalBoiada(); 
     openListBoiadas(); 
-    alert(`Boiada ${nome} salva com ${allTouros.length} touros!`);
+    alert(`Boiada ${nome} salva com sucesso! (${tourosCerto.length} Lado Certo / ${tourosErrado.length} Lado Errado)`);
 });
 
 // Ranking
@@ -6492,8 +6558,23 @@ document.getElementById('search-global-boiadas').addEventListener('input', rende
 window.editGlobalBoiada = (idx) => {
     const b = globalBoiadas[idx];
     document.getElementById('global-boiada-idx').value = idx;
-    document.getElementById('global-boiada-cia').value = b.nome;
-    document.getElementById('global-touros-bulk').value = (b.touros || []).join('\n');
+    document.getElementById('global-boiada-cia').value = b.nome || '';
+
+    const certoList = [];
+    const erradoList = [];
+    (b.touros || []).forEach(t => {
+        if (b.lados && b.lados[t] === 'E') {
+            erradoList.push(t);
+        } else {
+            certoList.push(t);
+        }
+    });
+
+    const inputCerto = document.getElementById('global-touros-certo');
+    const inputErrado = document.getElementById('global-touros-errado');
+    if (inputCerto) inputCerto.value = certoList.join('\n');
+    if (inputErrado) inputErrado.value = erradoList.join('\n');
+
     document.getElementById('modal-global-boiada').classList.remove('hidden');
 };
 
@@ -6504,17 +6585,23 @@ window.closeModalGlobalBoiada = () => {
 document.getElementById('form-global-boiada').addEventListener('submit', async (e) => {
     e.preventDefault();
     const idx = parseInt(document.getElementById('global-boiada-idx').value);
-    const existing = globalBoiadas[idx];
     const nome = document.getElementById('global-boiada-cia').value.toUpperCase().trim();
+    if (!nome) return;
     
-    const allTouros = document.getElementById('global-touros-bulk').value.split('\n')
-        .map(t => t.trim().toUpperCase())
-        .filter(t => t !== '');
+    const inputCerto = document.getElementById('global-touros-certo');
+    const inputErrado = document.getElementById('global-touros-errado');
+
+    const tourosCerto = inputCerto ? inputCerto.value.split('\n').map(t => t.trim().toUpperCase()).filter(t => t !== '') : [];
+    const tourosErrado = inputErrado ? inputErrado.value.split('\n').map(t => t.trim().toUpperCase()).filter(t => t !== '') : [];
+
+    const allTouros = [...tourosCerto, ...tourosErrado];
+    if (allTouros.length === 0) {
+        return alert("Insira ao menos um touro!");
+    }
         
     const newLados = {};
-    allTouros.forEach(t => {
-        newLados[t] = (existing.lados && existing.lados[t]) ? existing.lados[t] : '';
-    });
+    tourosCerto.forEach(t => newLados[t] = 'C');
+    tourosErrado.forEach(t => newLados[t] = 'E');
     
     const boiada = { nome, touros: allTouros, lados: newLados };
     await window.electronAPI.updateGlobalBoiada(getCurrentUserEmail(), idx, boiada);

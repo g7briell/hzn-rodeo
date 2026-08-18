@@ -2764,27 +2764,61 @@ Instruções importantes:
                     return sorteio.riders.map((rider: any, index: number) => {
                       const bullIndex = sorteio.assignments[index.toString()];
                       const bull = bullIndex !== undefined ? sorteio.bulls[bullIndex] : null;
+                      const isE = bull && bull.lado === 'E';
 
                       return (
-                        <div key={index} style={{ display: 'flex', alignItems: 'center', background: 'rgba(30, 30, 30, 0.4)', borderRadius: '16px', padding: '1rem 1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)', width: '40px' }}>
-                            {index + 1}º
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>{rider.nome}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{rider.cidade}</div>
-                          </div>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '1.2rem' }}>
-                             X 
+                        <div key={index} className="sorteio-match-card">
+                          {/* Posição no Desktop / Header no Mobile */}
+                          <div className="sorteio-card-mobile-header">
+                            <div className="sorteio-pos-badge">
+                              {index + 1}º
+                            </div>
+                            <div className="mobile-only text-[10px] font-bold text-slate-500 uppercase tracking-widest" style={{ display: 'none' }}>
+                              DUELO #{index + 1}
+                            </div>
                           </div>
 
-                          <div style={{ flex: 1, textAlign: 'right' }}>
+                          {/* Card do Competidor */}
+                          <div className="sorteio-competidor-box">
+                            <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.2rem' }}>
+                              COMPETIDOR
+                            </div>
+                            <div style={{ fontWeight: 900, fontSize: '1.05rem', color: 'var(--text-main)', textTransform: 'uppercase' }}>
+                              {rider.nome}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                              {rider.cidade}
+                            </div>
+                          </div>
+                          
+                          {/* Divisor VS */}
+                          <div className="sorteio-vs-divider">
+                            VS
+                          </div>
+
+                          {/* Card do Touro */}
+                          <div className="sorteio-touro-box" style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '0.7rem', color: isE ? '#34d399' : '#facc15', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.2rem' }}>
+                              ANIMAL / TOURO
+                            </div>
                             {bull ? (
                               <>
-                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent)' }}>{bull.nome}</div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Cia {bull.cia} <span style={{ background: bull.lado === 'E' ? 'rgba(0, 191, 255, 0.2)' : 'rgba(255, 69, 0, 0.2)', color: bull.lado === 'E' ? '#00BFFF' : '#FF4500', padding: '0.1rem 0.4rem', borderRadius: '4px', marginLeft: '0.5rem', fontWeight: 'bold' }}>{formatSide(bull.lado)}</span>
+                                <div style={{ fontWeight: 900, fontSize: '1.05rem', color: 'var(--text-main)', textTransform: 'uppercase' }}>
+                                  {bull.nome}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.2rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <span style={{ textTransform: 'uppercase' }}>Cia {bull.cia}</span>
+                                  <span style={{ 
+                                    background: isE ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.2)', 
+                                    color: isE ? '#34d399' : '#facc15', 
+                                    border: isE ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(234, 179, 8, 0.4)',
+                                    padding: '0.15rem 0.5rem', 
+                                    borderRadius: '8px', 
+                                    fontWeight: 900,
+                                    fontSize: '0.75rem'
+                                  }}>
+                                    LADO {bull.lado || 'C'}
+                                  </span>
                                 </div>
                               </>
                             ) : (

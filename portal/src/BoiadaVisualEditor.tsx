@@ -76,9 +76,9 @@ export default function BoiadaVisualEditor({ initialLados, onChange }: { initial
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lado</label>
-                <select className="form-input" style={{ padding: '0.4rem' }} value={t.lado} onChange={e => handleChange(idx, 'lado', e.target.value)}>
-                  <option value="Direito">Certo (D)</option>
-                  <option value="Esquerdo">Errado (E)</option>
+                <select className="form-input" style={{ padding: '0.4rem' }} value={t.lado === 'E' || t.lado === 'Esquerdo' ? 'E' : 'C'} onChange={e => handleChange(idx, 'lado', e.target.value)}>
+                  <option value="C">C (CERTO)</option>
+                  <option value="E">E (ERRADO)</option>
                 </select>
               </div>
               <button type="button" onClick={() => handleRemove(idx)} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', marginTop: '1.2rem', padding: '0.5rem' }} title="Remover Touro">✖</button>

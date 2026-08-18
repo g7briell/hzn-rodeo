@@ -1599,9 +1599,21 @@
                     <div id="boiada-autocomplete-list" class="absolute z-[1000] w-full bg-slate-900 border border-slate-700 rounded-xl mt-2 overflow-hidden shadow-2xl hidden max-h-48 overflow-y-auto"></div>
                 </div>
                 
-                <div class="space-y-2">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">TOUROS (Um por linha)</label>
-                    <textarea id="touros-bulk" placeholder="Cole aqui a lista de touros da CIA..." class="w-full h-64 bg-black border border-white/5 rounded-2xl p-5 text-white font-bold focus:border-yellow-500 outline-none resize-none"></textarea>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 text-[10px] font-black text-yellow-500 uppercase tracking-widest ml-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block"></span>
+                            TOUROS LADO CERTO (C)
+                        </label>
+                        <textarea id="touros-certo" placeholder="Cole os touros do lado CERTO (C)...&#10;1 por linha" class="w-full h-60 bg-black border border-yellow-500/20 focus:border-yellow-500 rounded-2xl p-4 text-white font-bold text-xs outline-none resize-none scroll-custom"></textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-widest ml-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+                            TOUROS LADO ERRADO (E)
+                        </label>
+                        <textarea id="touros-errado" placeholder="Cole os touros do lado ERRADO (E)...&#10;1 por linha" class="w-full h-60 bg-black border border-emerald-500/20 focus:border-emerald-400 rounded-2xl p-4 text-white font-bold text-xs outline-none resize-none scroll-custom"></textarea>
+                    </div>
                 </div>
 
                 <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 py-5 rounded-2xl font-black text-black uppercase tracking-widest shadow-xl">SALVAR CIA E TOUROS</button>
@@ -2268,12 +2280,20 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
             <h2 class="text-2xl font-black italic uppercase tracking-tighter text-white mb-6 flex-shrink-0">EDITAR BOIADA GLOBAL</h2>
-            <form id="form-global-boiada" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <form id="form-global-boiada" class="flex flex-col flex-1 min-h-0 overflow-hidden gap-4">
                 <input type="hidden" id="global-boiada-idx">
-                <input type="text" id="global-boiada-cia" placeholder="NOME DA COMPANHIA" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase mb-4 flex-shrink-0" required>
+                <input type="text" id="global-boiada-cia" placeholder="NOME DA COMPANHIA" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase flex-shrink-0" required>
                 
-                <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 flex-shrink-0">Lista de Touros (Um por linha)</label>
-                <textarea id="global-touros-bulk" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase flex-1 resize-none scroll-custom mb-4" placeholder="COLE AQUI A LISTA DE TOUROS..."></textarea>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
+                    <div class="flex flex-col min-h-0">
+                        <label class="text-[10px] font-black text-yellow-500 uppercase tracking-widest ml-1 mb-1">LADO CERTO (C)</label>
+                        <textarea id="global-touros-certo" class="w-full bg-slate-950 border border-yellow-500/20 focus:border-yellow-500 rounded-2xl p-4 text-white outline-none font-bold uppercase flex-1 resize-none scroll-custom text-xs" placeholder="TOUROS LADO C (1 POR LINHA)..."></textarea>
+                    </div>
+                    <div class="flex flex-col min-h-0">
+                        <label class="text-[10px] font-black text-emerald-400 uppercase tracking-widest ml-1 mb-1">LADO ERRADO (E)</label>
+                        <textarea id="global-touros-errado" class="w-full bg-slate-950 border border-emerald-500/20 focus:border-emerald-400 rounded-2xl p-4 text-white outline-none font-bold uppercase flex-1 resize-none scroll-custom text-xs" placeholder="TOUROS LADO E (1 POR LINHA)..."></textarea>
+                    </div>
+                </div>
                 
                 <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase text-sm py-4 rounded-2xl transition-all shadow-lg flex-shrink-0">SALVAR ALTERAÇÕES</button>
             </form>
