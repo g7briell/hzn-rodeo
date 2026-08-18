@@ -424,7 +424,7 @@ window.backToEventLogin = () => {
 function getDefaultDay() {
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
     if (sorteios.length > 0) {
-        return sorteios[sorteios.length - 1].day;
+        return sorteios[0].day || 'DIA 1';
     }
     return 'DIA 1';
 }
@@ -441,12 +441,23 @@ function renderJudgeDashboard() {
     const maxPts = getJudgeScoreLimit();
 
     // Atualiza cabeçalho do Juiz
-    document.getElementById('header-judge-name').innerText = window.state.currentJudge.nome;
-    document.getElementById('header-judge-scale').innerText = `0 - ${maxPts} pts`;
-    document.getElementById('flow-judge-scale-tag').innerText = `0-${maxPts}`;
-    document.getElementById('judge-profile-chip').classList.remove('hidden');
-    document.getElementById('rides-view-judge-name').innerText = window.state.currentJudge.nome;
-    document.getElementById('rides-view-event-title').innerText = window.state.eventData.name || window.state.eventData.nome || 'EVENTO';
+    const headerJudgeName = document.getElementById('header-judge-name');
+    if (headerJudgeName) headerJudgeName.innerText = window.state.currentJudge.nome;
+
+    const headerScale = document.getElementById('header-judge-scale');
+    if (headerScale) headerScale.innerText = `0 - ${maxPts} pts`;
+
+    const flowScale = document.getElementById('flow-judge-scale-tag');
+    if (flowScale) flowScale.innerText = `0-${maxPts}`;
+
+    const profileChip = document.getElementById('judge-profile-chip');
+    if (profileChip) profileChip.classList.remove('hidden');
+
+    const ridesJudgeName = document.getElementById('rides-view-judge-name');
+    if (ridesJudgeName) ridesJudgeName.innerText = window.state.currentJudge.nome;
+
+    const ridesTitle = document.getElementById('rides-view-event-title');
+    if (ridesTitle) ridesTitle.innerText = window.state.eventData.name || window.state.eventData.nome || '49 EXPORÃ';
 
     // Renderiza Abas de Dias
     renderDaysTabs();
@@ -459,7 +470,7 @@ function renderDaysTabs() {
     const container = document.getElementById('days-tabs-container');
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
 
-    let days = sorteios.map(s => s.day);
+    let days = sorteios.map(s => s.day).filter(Boolean);
     if (days.length === 0) {
         days = ['DIA 1'];
     } else {
@@ -495,18 +506,18 @@ function renderRidesList() {
     const container = document.getElementById('rides-cards-container');
     const noRidesEl = document.getElementById('no-rides-message');
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
-    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
+    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay) || sorteios[0];
 
     if (!currentSorteio || !currentSorteio.riders || currentSorteio.riders.length === 0) {
-        container.innerHTML = '';
-        noRidesEl.classList.remove('hidden');
+        if (container) container.innerHTML = '';
+        if (noRidesEl) noRidesEl.classList.remove('hidden');
         updateCounters(0, 0, 0);
         return;
     }
 
-    noRidesEl.classList.add('hidden');
+    if (noRidesEl) noRidesEl.classList.add('hidden');
 
-    const riders = currentSorteio.riders;
+    const riders = currentSorteio.riders || [];
     const bulls = currentSorteio.bulls || [];
     const assignments = currentSorteio.assignments || {};
     const notas = (window.state.eventData && window.state.eventData.notas) || [];
@@ -522,9 +533,15 @@ function renderRidesList() {
         const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
         const bull = bulls[bullIdx] || { nome: 'TOURO INDEFINIDO', cia: '---', lado: '---' };
 
+        const riderNome = (typeof r === 'string' ? r : (r && r.nome ? r.nome : `COMPETIDOR #${idx + 1}`)).trim();
+        const riderCidade = typeof r === 'object' && r ? (r.cidade || '') : '';
+        const bullNome = (typeof bull === 'string' ? bull : (bull && bull.nome ? bull.nome : 'TOURO')).trim();
+        const bullCia = (typeof bull === 'object' && bull ? bull.cia : '---') || '---';
+        const bullLado = (typeof bull === 'object' && bull && bull.lado) ? String(bull.lado).toUpperCase() : 'C';
+
         // Procura a nota deste Juiz para este competidor neste dia
         const existingNota = notas.find(n => 
-            (n.peao === r.nome || n.peaoNome === r.nome) && 
+            (n.peao === riderNome || n.peaoNome === riderNome) && 
             n.dia === window.state.selectedDay && 
             n.status !== 'substituida'
         );
@@ -565,9 +582,9 @@ function renderRidesList() {
         if (window.state.activeFilter === 'graded' && !isGraded) return '';
 
         const isRerideRide = Boolean(r.isReride);
-        const isArenaActive = (activeArenaRiderName && activeArenaRiderName.trim().toUpperCase() === r.nome.trim().toUpperCase());
+        const isArenaActive = Boolean(activeArenaRiderName && activeArenaRiderName.trim().toUpperCase() === riderNome.toUpperCase());
 
-        // Efeito de Foco na Arena: se houver um competidor ativo na arena, os outros diminuem opacidade
+        // Efeito de Foco na Arena
         let cardContainerClasses = "glass-card p-4 sm:p-5 rounded-3xl transition-all cursor-pointer group touch-active relative overflow-hidden";
         
         if (isArenaActive) {
@@ -635,20 +652,20 @@ function renderRidesList() {
                     <div class="flex-1 min-w-0">
                         <div class="text-[9px] font-black uppercase tracking-widest text-slate-500">COMPETIDOR</div>
                         <div class="text-base sm:text-lg font-black text-white uppercase truncate flex items-center">
-                            ${r.nome} ${rerideTag}
+                            ${riderNome} ${rerideTag}
                         </div>
-                        <div class="text-[10px] font-medium text-slate-400 uppercase truncate">${r.cidade || ''}</div>
+                        <div class="text-[10px] font-medium text-slate-400 uppercase truncate">${riderCidade}</div>
                     </div>
                 </div>
 
                 <div class="bg-black/50 p-3 rounded-2xl border border-white/5 flex items-center justify-between">
                     <div>
                         <div class="text-[8px] font-black uppercase tracking-widest text-yellow-500/80">ANIMAL / TOURO</div>
-                        <div class="text-sm font-black text-yellow-500 uppercase truncate">${bull.nome}</div>
-                        <div class="text-[10px] font-medium text-slate-400 truncate">${bull.cia}</div>
+                        <div class="text-sm font-black text-yellow-500 uppercase truncate">${bullNome}</div>
+                        <div class="text-[10px] font-medium text-slate-400 truncate">${bullCia}</div>
                     </div>
                     <span class="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
-                        ${bull.lado ? bull.lado.toUpperCase() : 'C'}
+                        ${bullLado}
                     </span>
                 </div>
 
@@ -657,7 +674,7 @@ function renderRidesList() {
         `;
     }).join('');
 
-    container.innerHTML = cardsHTML;
+    if (container) container.innerHTML = cardsHTML;
     updateCounters(totalCount, gradedCount, pendingCount);
 }
 
