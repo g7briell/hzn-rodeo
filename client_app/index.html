@@ -2512,23 +2512,24 @@
             <!-- Centro: Seletores de Relatório e Round -->
             <div class="flex items-center gap-3">
                 <!-- Seletor de Tipo de Relatório -->
-                <select id="report-select-type" onchange="handleReportTypeChange(this.value)" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider outline-none focus:border-yellow-500 transition-all cursor-pointer max-w-[280px]">
-                    <optgroup label="📋 DOCUMENTOS DO ROUND">
-                        <option value="sumula">📋 SÚMULA DOS JUÍZES (ROUND)</option>
+                <select id="report-select-type" onchange="handleReportTypeChange(this.value)" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider outline-none focus:border-yellow-500 transition-all cursor-pointer max-w-[300px]">
+                    <optgroup label="📋 SORTEIOS & SÚMULAS">
+                        <option value="sorteio">📋 SORTEIO OFICIAL (CONFRONTOS)</option>
+                        <option value="sumula">⚖️ PLANILHA OFICIAL DO JUIZ</option>
                         <option value="embretamento">🚪 ORDEM DE EMBRETAMENTO (BRETES)</option>
-                        <option value="locutor">🎙️ FICHA DO LOCUTOR</option>
-                        <option value="notas_dia">📝 PLANILHA DE NOTAS (ROUND)</option>
+                        <option value="boiadas">🐂 LISTA DE TOUROS (BOIADA)</option>
+                        <option value="locutor">🎙️ FICHA DE APOIO DO LOCUTOR</option>
+                        <option value="notas_dia">📝 PLANILHA DE NOTAS LANÇADAS</option>
                     </optgroup>
                     <optgroup label="📜 CONTRATOS OFICIAIS">
                         <option value="contratos">📜 CONTRATO OFICIAL DO COMPETIDOR (A4)</option>
                     </optgroup>
                     <optgroup label="👥 LISTAS E CADASTROS">
                         <option value="peoes">🤠 RELAÇÃO DE COMPETIDORES</option>
-                        <option value="boiadas">🐂 RELAÇÃO DE BOIADAS E TOUROS</option>
                         <option value="juizes">⚖️ CORPO DE JUÍZES E PROFISSIONAIS</option>
                     </optgroup>
                     <optgroup label="🏆 CLASSIFICAÇÃO E RANKINGS">
-                        <option value="ranking_geral">🏆 CLASSIFICAÇÃO GERAL ACUMULADA</option>
+                        <option value="ranking_geral">🏆 RANKING OFICIAL DO EVENTO</option>
                         <option value="ranking_touros">🐂 RANKING DE MELHORES TOUROS</option>
                         <option value="ranking_cias">⭐ RANKING DE MELHOR BOIADA (CIAS)</option>
                     </optgroup>

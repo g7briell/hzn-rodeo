@@ -7562,39 +7562,43 @@ function renderCurrentReport() {
     try {
         let html = '';
         const type = reportViewerState.type;
-        const day = reportViewerState.day;
+        const day = reportViewerState.day || 'DIA 1';
 
         switch (type) {
+            case 'sorteio':
+                if (titleEl) titleEl.innerText = `SORTEIO OFICIAL • ${day.replace(/DIA/gi, 'ROUND')}`;
+                html = generateSorteioOficialHTML(day);
+                break;
             case 'sumula':
-                if (titleEl) titleEl.innerText = `SÚMULA OFICIAL DOS JUÍZES • ${day.replace(/DIA/gi, 'ROUND')}`;
+                if (titleEl) titleEl.innerText = `PLANILHA DO JUIZ • ${day.replace(/DIA/gi, 'ROUND')}`;
                 html = generateSumulaJuizHTML(day);
                 break;
             case 'embretamento':
-                if (titleEl) titleEl.innerText = `ORDEM DE EMBRETAMENTO (BRETES) • ${day.replace(/DIA/gi, 'ROUND')}`;
+                if (titleEl) titleEl.innerText = `ORDEM DE EMBRETAMENTO • ${day.replace(/DIA/gi, 'ROUND')}`;
                 html = generateEmbretamentoHTML(day);
+                break;
+            case 'boiadas':
+                if (titleEl) titleEl.innerText = `LISTA DE TOUROS • ${day.replace(/DIA/gi, 'ROUND')}`;
+                html = generateListaBoiadasHTML(day);
                 break;
             case 'locutor':
                 if (titleEl) titleEl.innerText = `FICHA DE APOIO DO LOCUTOR • ${day.replace(/DIA/gi, 'ROUND')}`;
                 html = generateLocutorHTML(day);
                 break;
             case 'notas_dia':
-                if (titleEl) titleEl.innerText = `PLANILHA DE NOTAS • ${day.replace(/DIA/gi, 'ROUND')}`;
+                if (titleEl) titleEl.innerText = `PLANILHA DE NOTAS LANÇADAS • ${day.replace(/DIA/gi, 'ROUND')}`;
                 html = generateNotasDiaHTML(day);
                 break;
             case 'peoes':
                 if (titleEl) titleEl.innerText = `RELAÇÃO DE COMPETIDORES`;
                 html = generateListaPeoesHTML();
                 break;
-            case 'boiadas':
-                if (titleEl) titleEl.innerText = `RELAÇÃO DE BOIADAS E TOUROS`;
-                html = generateListaBoiadasHTML();
-                break;
             case 'juizes':
                 if (titleEl) titleEl.innerText = `RELAÇÃO DE JUÍZES E PROFISSIONAIS`;
                 html = generateListaJuizesHTML();
                 break;
             case 'ranking_geral':
-                if (titleEl) titleEl.innerText = `CLASSIFICAÇÃO GERAL DO EVENTO`;
+                if (titleEl) titleEl.innerText = `RANKING OFICIAL DO EVENTO`;
                 html = generateRankingGeralHTML(day);
                 break;
             case 'ranking_touros':
@@ -7606,12 +7610,12 @@ function renderCurrentReport() {
                 html = generateRankingCiasHTML(day);
                 break;
             case 'contratos':
-                if (titleEl) titleEl.innerText = `CONTRATOS OFICIAIS DE COMPETIDORES`;
+                if (titleEl) titleEl.innerText = `CONTRATO OFICIAL DE COMPETIDOR`;
                 html = generateContratosHTML(reportViewerState.targetPeao);
                 break;
             default:
-                if (titleEl) titleEl.innerText = `SÚMULA OFICIAL DOS JUÍZES • ${day.replace(/DIA/gi, 'ROUND')}`;
-                html = generateSumulaJuizHTML(day);
+                if (titleEl) titleEl.innerText = `SORTEIO OFICIAL • ${day.replace(/DIA/gi, 'ROUND')}`;
+                html = generateSorteioOficialHTML(day);
                 break;
         }
 
@@ -7619,12 +7623,991 @@ function renderCurrentReport() {
     } catch (err) {
         console.error('[REPORT VIEWER] Error rendering report:', err);
         container.innerHTML = `
-            <div class="report-sheet-a4" style="text-align: center; padding: 40px;">
-                <h3 style="color: #ef4444; font-weight: 900;">Erro ao gerar o relatório</h3>
-                <p style="color: #64748b; font-size: 12px; margin-top: 10px;">${err.message}</p>
+            <div style="background:#fff; color:#000; padding:40px; text-align:center; border:2px solid #ef4444; border-radius:12px; width:100%; max-width:800px; margin:auto;">
+                <h3 style="color:#ef4444; font-weight:900; font-size:18px;">Erro ao carregar visualização do relatório</h3>
+                <p style="color:#64748b; font-size:13px; margin-top:10px;">${err.message}</p>
             </div>
         `;
     }
+}
+
+// Helpers de Cabeçalho e Rodapé dos Modelos Oficiais (Idênticos aos PDFs)
+function getReportOfficialHeaderHTML(title, subtitle) {
+    const eventName = ((currentEvent && (currentEvent.name || currentEvent.nome)) || 'EVENTO').toUpperCase();
+    return `
+        <div style="background-color: #000; padding: 12px 20px; border: 1px solid #000; color: #fff; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-weight: 900; font-style: italic; font-size: 1.25rem; letter-spacing: -0.05em; color: #fff; width: 100px;">
+                RODEO<span style="color:#eab308;">APP</span>
+            </div>
+            <div style="flex-grow: 1; text-align: center;">
+                <h1 style="margin: 0; font-size: 22px; font-style: italic; font-weight: 900; text-transform: uppercase; color: #fff; letter-spacing: 0.5px;">${eventName}</h1>
+                <p style="margin: 3px 0 0; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #e5e7eb; font-weight: bold;">${subtitle}</p>
+            </div>
+            <div style="width: 100px;"></div>
+        </div>
+    `;
+}
+
+function getReportOfficialFooterHTML() {
+    const auth = (window.electronAPI && typeof window.electronAPI.getAuth === 'function' && window.electronAPI.getAuth()) || {};
+    const clientName = (auth && auth.nome) || "CLIENTE RODEOAPP";
+    return `
+        <div style="background-color: #000; padding: 10px; text-align: center; border: 1px solid #000; border-top: none; color: #fff; font-size: 12px; font-weight: bold; text-transform: uppercase;">
+            RODEOAPP (18) 98122-6665 - GESTÃO DE RODEIOS - LICENCIADO PARA: ${clientName.toUpperCase()}
+        </div>
+    `;
+}
+
+// 1. SORTEIO OFICIAL (CONFRONTOS) - MODELO OFICIAL
+function generateSorteioOficialHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day && s.day.toUpperCase() === day.toUpperCase()) || sorteios[0];
+
+    if (!sorteio || !sorteio.riders || sorteio.riders.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("SORTEIO OFICIAL", `SORTEIO OFICIAL - ${day.toUpperCase()}`)}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum sorteio salvo para o ${day.replace(/DIA/gi, 'Round ')}. Realize o sorteio na tela do evento.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    const riders = sorteio.riders || [];
+    const bulls = sorteio.bulls || [];
+    const assignments = sorteio.assignments || {};
+
+    let rowsHtml = '';
+    riders.forEach((r, idx) => {
+        const rNome = typeof r === 'string' ? r : (r.nome || '---');
+        const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '';
+        const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+        const bull = bulls[bullIdx] || { nome: '---', cia: '---', lado: '' };
+
+        let lado = bull.lado || '';
+        if (!lado && currentEvent && currentEvent.boiadas) {
+            const cia = currentEvent.boiadas.find(c => c.nome === bull.cia);
+            if (cia && cia.lados && cia.lados[bull.nome]) lado = cia.lados[bull.nome];
+        }
+
+        let acum = "0,00";
+        if (currentEvent && currentEvent.peoes) {
+            const peao = currentEvent.peoes.find(p => p.nome === rNome);
+            if (peao && peao.score) acum = peao.score.toFixed(2).replace('.', ',');
+        }
+
+        rowsHtml += `
+            <tr>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: center; font-weight: bold; font-size: 15px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: left; font-size: 14px; font-weight: bold; text-transform: uppercase;">${rNome}</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: left; font-size: 12px; text-transform: uppercase;">${rCidade}</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: center; font-weight: bold; font-size: 13px;">${acum}</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: left; font-size: 13px; font-weight: bold; text-transform: uppercase;">${bull.nome}</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: left; font-size: 11px; text-transform: uppercase;">${bull.cia || '---'}</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: center; font-weight: bold; font-size: 15px;">${window.formatSide(lado)}</td>
+            </tr>
+        `;
+    });
+
+    const totalRiders = riders.length;
+    let reservasHtml = '';
+    if (bulls.length > totalRiders) {
+        reservasHtml += `
+            <tr style="background-color: #d1d5db; font-weight: bold;">
+                <td colspan="4" style="border: 1px solid #000; padding: 8px 5px; text-align: center; font-size: 13px;">ANIMAIS RESERVAS</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: left; font-size: 13px;">ANIMAL</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: left; font-size: 13px;">COMPANHIA</td>
+                <td style="border: 1px solid #000; padding: 8px 5px; text-align: center; font-size: 13px;">L</td>
+            </tr>
+        `;
+        bulls.slice(totalRiders).forEach((b) => {
+            let lado = b.lado || '';
+            if (!lado && currentEvent && currentEvent.boiadas) {
+                const cia = currentEvent.boiadas.find(c => c.nome === b.cia);
+                if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
+            }
+            reservasHtml += `
+                <tr>
+                    <td style="border: 1px solid #000; padding: 6px 5px;"></td>
+                    <td style="border: 1px solid #000; padding: 6px 5px;"></td>
+                    <td style="border: 1px solid #000; padding: 6px 5px;"></td>
+                    <td style="border: 1px solid #000; padding: 6px 5px;"></td>
+                    <td style="border: 1px solid #000; padding: 6px 5px; text-align: left; font-size: 13px; font-weight: bold; text-transform: uppercase;">${b.nome}</td>
+                    <td style="border: 1px solid #000; padding: 6px 5px; text-align: left; font-size: 11px; text-transform: uppercase;">${b.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 6px 5px; text-align: center; font-weight: bold; font-size: 15px;">${window.formatSide(lado)}</td>
+                </tr>
+            `;
+        });
+    }
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("SORTEIO OFICIAL", `SORTEIO OFICIAL - ${day.toUpperCase()}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
+                        <th style="border: 1px solid #000; padding: 8px 5px; width: 5%;">Nº</th>
+                        <th style="border: 1px solid #000; padding: 8px 5px; width: 30%; text-align: left;">COMPETIDOR</th>
+                        <th style="border: 1px solid #000; padding: 8px 5px; width: 20%; text-align: left;">CIDADE</th>
+                        <th style="border: 1px solid #000; padding: 8px 5px; width: 10%;">ACUM.</th>
+                        <th style="border: 1px solid #000; padding: 8px 5px; width: 15%; text-align: left;">ANIMAL</th>
+                        <th style="border: 1px solid #000; padding: 8px 5px; width: 15%; text-align: left;">COMPANHIA</th>
+                        <th style="border: 1px solid #000; padding: 8px 5px; width: 5%;">L</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                    ${reservasHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 2. PLANILHA OFICIAL DO JUIZ - MODELO OFICIAL
+function generateSumulaJuizHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day && s.day.toUpperCase() === day.toUpperCase()) || sorteios[0];
+
+    if (!sorteio || !sorteio.riders || sorteio.riders.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("PLANILHA JUIZ", `PLANILHA JUIZ - ${day.toUpperCase()}`)}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum sorteio realizado para o ${day.replace(/DIA/gi, 'Round ')}.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    const riders = sorteio.riders || [];
+    const bulls = sorteio.bulls || [];
+    const assignments = sorteio.assignments || {};
+
+    let rowsHtml = '';
+    riders.forEach((r, idx) => {
+        const rNome = typeof r === 'string' ? r : (r.nome || '---');
+        const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '';
+        const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+        const b = bulls[bullIdx] || { nome: '---', cia: '---', lado: '' };
+
+        let lado = b.lado || '';
+        if (!lado && currentEvent && currentEvent.boiadas) {
+            const cia = currentEvent.boiadas.find(c => c.nome === b.cia);
+            if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
+        }
+
+        let acum = "0,00";
+        if (currentEvent && currentEvent.peoes) {
+            const peao = currentEvent.peoes.find(p => p.nome === rNome);
+            if (peao && peao.score) acum = peao.score.toFixed(2).replace('.', ',');
+        }
+
+        rowsHtml += `
+            <tr style="height: 28px;">
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-weight: bold; font-size: 13px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; font-weight: bold; font-size: 12px; text-transform: uppercase;">${rNome}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; font-size: 10px; text-transform: uppercase;">${rCidade}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-weight: bold; font-size: 11px;">${acum}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; font-weight: bold; font-size: 12px; text-transform: uppercase;">${b.nome}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; font-size: 10px; text-transform: uppercase;">${b.cia || '---'}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-weight: bold; font-size: 13px;">${window.formatSide(lado)}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; width: 7%;"></td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; width: 6%;"></td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; width: 7%;"></td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; width: 7%;"></td>
+            </tr>
+        `;
+    });
+
+    const totalRiders = riders.length;
+    let reservasHtml = '';
+    if (bulls.length > totalRiders) {
+        reservasHtml += `
+            <tr style="background-color: #d1d5db; font-weight: bold; text-align: center;">
+                <td colspan="4" style="border: 1px solid #000; padding: 5px 3px; font-size: 11px;">ANIMAIS RESERVAS</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: left; font-size: 11px;">ANIMAL</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: left; font-size: 11px;">COMPANHIA</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-size: 11px;">LADO</td>
+                <td colspan="4" style="border: 1px solid #000; padding: 5px 3px;"></td>
+            </tr>
+        `;
+        bulls.slice(totalRiders).forEach((b) => {
+            let lado = b.lado || '';
+            if (!lado && currentEvent && currentEvent.boiadas) {
+                const cia = currentEvent.boiadas.find(c => c.nome === b.cia);
+                if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
+            }
+            reservasHtml += `
+                <tr style="height: 26px;">
+                    <td style="border: 1px solid #000;"></td>
+                    <td style="border: 1px solid #000;"></td>
+                    <td style="border: 1px solid #000;"></td>
+                    <td style="border: 1px solid #000;"></td>
+                    <td style="border: 1px solid #000; padding: 5px 3px; font-weight: bold; font-size: 12px; text-transform: uppercase;">${b.nome}</td>
+                    <td style="border: 1px solid #000; padding: 5px 3px; font-size: 10px; text-transform: uppercase;">${b.cia || '---'}</td>
+                    <td style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-weight: bold; font-size: 13px;">${window.formatSide(lado)}</td>
+                    <td colspan="4" style="border: 1px solid #000;"></td>
+                </tr>
+            `;
+        });
+    }
+
+    return `
+        <div style="background: #fff; color: #000; padding: 12mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 6px; border: 1px solid #000; padding: 6px 12px; background: #f3f4f6; display: inline-block;">
+                NOME DO JUIZ: ${(pendingExportJuiz || 'JUIZ OFICIAL').toUpperCase()}
+            </div>
+            ${getReportOfficialHeaderHTML("PLANILHA JUIZ", `PLANILHA JUIZ - ${day.toUpperCase()}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 11px;">
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 4%;">MONT</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 19%; text-align: left;">COMPETIDOR</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 12%; text-align: left;">CIDADE</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 6%;">ACUM.</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 17%; text-align: left;">ANIMAL</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 11%; text-align: left;">COMPANHIA</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 4%;">LADO</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 7%;">TEMPO</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 6%;">ANIMAL</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 7%;">COMP.</th>
+                        <th style="border: 1px solid #000; padding: 6px 3px; width: 7%;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                    ${reservasHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 3. ORDEM DE EMBRETAMENTO (BRETES) - MODELO OFICIAL
+function generateEmbretamentoHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day && s.day.toUpperCase() === day.toUpperCase()) || sorteios[0];
+
+    if (!sorteio || !sorteio.riders || sorteio.riders.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("ORDEM DE EMBRETAMENTO", `ORDEM DE EMBRETAMENTO - ${day.toUpperCase()}`)}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum sorteio realizado para o ${day.replace(/DIA/gi, 'Round ')}.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    const riders = sorteio.riders || [];
+    const bulls = sorteio.bulls || [];
+    const assignments = sorteio.assignments || {};
+
+    let rowsHtml = '';
+    riders.forEach((r, idx) => {
+        const rNome = typeof r === 'string' ? r : (r.nome || '---');
+        const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+        const b = bulls[bullIdx] || { nome: '---', cia: '---', lado: '' };
+
+        let lado = b.lado || '';
+        if (!lado && currentEvent && currentEvent.boiadas) {
+            const cia = currentEvent.boiadas.find(c => c.nome === b.cia);
+            if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
+        }
+
+        rowsHtml += `
+            <tr style="height: 32px;">
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 15px; font-weight: bold; text-transform: uppercase;">${rNome}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 15px; font-weight: bold; text-transform: uppercase;">${b.nome}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 13px; text-transform: uppercase;">${b.cia || '---'}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px;">${window.formatSide(lado)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("ORDEM DE EMBRETAMENTO", `ORDEM DE EMBRETAMENTO - ${day.toUpperCase()}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">Nº</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 35%; text-align: left;">COMPETIDOR</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 25%; text-align: left;">TOURO</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 20%; text-align: left;">COMPANHIA</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">LADO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 4. LISTA DE TOUROS (BOIADA) - MODELO OFICIAL
+function generateListaBoiadasHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day && s.day.toUpperCase() === (day || '').toUpperCase()) || sorteios[0];
+
+    let bullsList = [];
+    if (sorteio && sorteio.bulls && sorteio.bulls.length > 0) {
+        bullsList = sorteio.bulls;
+    } else if (currentEvent && currentEvent.boiadas) {
+        currentEvent.boiadas.forEach(c => {
+            if (c.touros && Array.isArray(c.touros)) {
+                c.touros.forEach(t => {
+                    const tNome = typeof t === 'string' ? t : (t.nome || t.name);
+                    const tLado = typeof t === 'object' ? (t.lado || (c.lados && c.lados[tNome]) || '') : ((c.lados && c.lados[tNome]) || '');
+                    if (tNome) bullsList.push({ nome: tNome, cia: c.nome, lado: tLado });
+                });
+            }
+        });
+    }
+
+    if (bullsList.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("LISTA DE TOUROS", `LISTA DE TOUROS - ${day ? day.toUpperCase() : 'OFICIAL'}`)}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum touro cadastrado no evento.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    let rowsHtml = '';
+    bullsList.forEach((b, idx) => {
+        let lado = b.lado || '';
+        if (!lado && currentEvent && currentEvent.boiadas) {
+            const cia = currentEvent.boiadas.find(c => c.nome === b.cia);
+            if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
+        }
+
+        rowsHtml += `
+            <tr style="height: 30px;">
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 15px; font-weight: bold; text-transform: uppercase;">${b.nome}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 14px; text-transform: uppercase;">${b.cia || '---'}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px;">${window.formatSide(lado)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("LISTA DE TOUROS", `LISTA DE TOUROS - ${day ? day.toUpperCase() : 'OFICIAL'}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">Nº</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 45%; text-align: left;">TOURO</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 35%; text-align: left;">COMPANHIA</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">LADO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 5. FICHA DE APOIO DO LOCUTOR
+function generateLocutorHTML(day) {
+    const sorteios = (currentEvent && currentEvent.sorteios) || [];
+    const sorteio = sorteios.find(s => s.day && s.day.toUpperCase() === day.toUpperCase()) || sorteios[0];
+
+    if (!sorteio || !sorteio.riders || sorteio.riders.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("FICHA DO LOCUTOR", `FICHA DO LOCUTOR - ${day.toUpperCase()}`)}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum sorteio realizado para o ${day.replace(/DIA/gi, 'Round ')}.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    const riders = sorteio.riders || [];
+    const bulls = sorteio.bulls || [];
+    const assignments = sorteio.assignments || {};
+
+    let cardsHtml = '';
+    riders.forEach((r, idx) => {
+        const rNome = typeof r === 'string' ? r : (r.nome || '---');
+        const rCidade = (typeof r === 'object' && r.cidade) ? r.cidade : '---';
+        const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+        const b = bulls[bullIdx] || { nome: '---', cia: '---', lado: '' };
+
+        let lado = b.lado || '';
+        if (!lado && currentEvent && currentEvent.boiadas) {
+            const cia = currentEvent.boiadas.find(c => c.nome === b.cia);
+            if (cia && cia.lados && cia.lados[b.nome]) lado = cia.lados[b.nome];
+        }
+
+        cardsHtml += `
+            <div style="border: 1px solid #000; padding: 8px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; background: #f9fafb;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-weight: 900; font-size: 16px; background: #000; color: #fff; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+                        ${idx + 1}
+                    </div>
+                    <div>
+                        <div style="font-weight: 900; font-size: 14px; text-transform: uppercase; color: #000;">
+                            ${rNome}
+                        </div>
+                        <div style="font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase;">
+                            ${rCidade}
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight: 900; font-size: 14px; text-transform: uppercase; color: #b45309;">
+                        VS ${b.nome}
+                    </div>
+                    <div style="font-size: 11px; font-weight: bold; color: #000; text-transform: uppercase;">
+                        CIA ${b.cia || '---'} • GIRO: ${window.formatSide(lado)}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("FICHA DE APOIO DO LOCUTOR", `FICHA DO LOCUTOR - ${day.toUpperCase()}`)}
+            <div style="border: 1px solid #000; border-top: none; padding: 12px; background: #fff;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    ${cardsHtml}
+                </div>
+            </div>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 6. PLANILHA DE NOTAS LANÇADAS
+function generateNotasDiaHTML(day) {
+    const notas = ((currentEvent && currentEvent.notas) || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa') && n.dia && n.dia.toUpperCase() === day.toUpperCase());
+
+    if (notas.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("PLANILHA DE NOTAS", `PLANILHA DE NOTAS - ${day.toUpperCase()}`)}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhuma nota lançada no ${day.replace(/DIA/gi, 'Round ')}.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    let rowsHtml = '';
+    notas.forEach((n, idx) => {
+        const pNome = n.peao || n.peaoNome || '---';
+        const tNome = n.touro || n.touroNome || '---';
+        const cNome = n.cia || n.bullCia || '---';
+
+        rowsHtml += `
+            <tr style="height: 28px;">
+                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 14px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; font-weight: bold; font-size: 13px; text-transform: uppercase;">${pNome}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; font-weight: bold; font-size: 13px; text-transform: uppercase;">${tNome}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; font-size: 11px; text-transform: uppercase;">${cNome}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 13px;">${(parseFloat(n.totalPeao) || 0).toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 13px;">${(parseFloat(n.totalTouro) || 0).toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 12px;">${n.tempo || '8,00'}s</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: 900; font-size: 14px; color: #000;">${(parseFloat(n.totalGeral) || 0).toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("PLANILHA DE NOTAS LANÇADAS", `PLANILHA DE NOTAS - ${day.toUpperCase()}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 5%;">Nº</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 25%; text-align: left;">COMPETIDOR</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 20%; text-align: left;">ANIMAL / TOURO</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 18%; text-align: left;">COMPANHIA</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 8%;">NT PEÃO</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 8%;">NT TOURO</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 8%;">TEMPO</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 8%;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 7. RANKING OFICIAL DO EVENTO - MODELO OFICIAL
+function generateRankingGeralHTML(filter) {
+    const safeDay = filter || 'GERAL';
+    const rankingData = prepareRankingDataForExport(safeDay);
+
+    if (!rankingData || !rankingData.rows || rankingData.rows.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("RANKING OFICIAL", `RANKING OFICIAL - ${safeDay.toUpperCase()}`)}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhuma nota lançada no evento até o momento.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    let dayHeaderCells = '';
+    rankingData.columnsDays.forEach(d => {
+        dayHeaderCells += `<th style="border: 1px solid #000; padding: 8px 6px; text-align: center;">${d.toUpperCase()}</th>`;
+    });
+
+    let rowsHtml = '';
+    rankingData.rows.forEach((r, idx) => {
+        const hasScore = r.totalPoints > 0 || r.tempoAcumulado > 0;
+        const pos = hasScore ? (idx + 1) + 'º' : '---';
+        const tempoInfo = (r.totalPoints === 0 && r.tempoAcumulado > 0) ? ` (${r.tempoAcumulado.toFixed(2)}s)` : '';
+        const totalStr = (r.totalPoints > 0 ? r.totalPoints.toFixed(2).replace('.', ',') : '0,00') + tempoInfo;
+
+        let dayScoresCells = '';
+        rankingData.columnsDays.forEach(d => {
+            dayScoresCells += `<td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 13px;">${r.daysScores[d] || '-'}</td>`;
+        });
+
+        rowsHtml += `
+            <tr style="height: 28px;">
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 14px;">${pos}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-weight: bold; font-size: 14px; text-transform: uppercase;">${r.nome}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 12px; text-transform: uppercase;">${r.cidade || '---'}</td>
+                ${dayScoresCells}
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 14px;">${totalStr}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("RANKING OFICIAL", `RANKING OFICIAL - ${safeDay.toUpperCase()}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 6%;">POS</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 34%; text-align: left;">COMPETIDOR</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 24%; text-align: left;">CIDADE</th>
+                        ${dayHeaderCells}
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 14%;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 8. RANKING MELHORES TOUROS
+function generateRankingTourosHTML(filter) {
+    const getSafeStr = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'object') return (val.nome || val.name || val.touro || '').trim();
+        return String(val).trim();
+    };
+
+    const notas = ((currentEvent && currentEvent.notas) || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa'));
+    const bullsMap = {};
+
+    if (currentEvent && currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
+        currentEvent.boiadas.forEach(c => {
+            const cNome = getSafeStr(c.nome || c.cia || 'SEM CIA');
+            if (c.touros && Array.isArray(c.touros)) {
+                c.touros.forEach(t => {
+                    const tNome = getSafeStr(t);
+                    if (tNome) bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome };
+                });
+            }
+        });
+    }
+
+    notas.forEach(n => {
+        const tNome = getSafeStr(n.touro || n.touroNome || n.bullName);
+        if (tNome && !bullsMap[tNome.toUpperCase()]) {
+            const cNome = getSafeStr(n.cia || n.bullCia || 'SEM CIA');
+            bullsMap[tNome.toUpperCase()] = { nome: tNome, cia: cNome };
+        }
+    });
+
+    const tourosData = [];
+    for (const [upperNome, bInfo] of Object.entries(bullsMap)) {
+        const peaoNotas = notas.filter(n => {
+            const nTouroUpper = getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase();
+            return nTouroUpper === upperNome && (filter === 'geral' || (n.dia && n.dia.toUpperCase() === filter.toUpperCase()));
+        });
+        if (peaoNotas.length === 0) continue;
+
+        let sum = 0;
+        peaoNotas.forEach(n => { sum += (parseFloat(n.totalTouro) || 0); });
+        const media = sum / peaoNotas.length;
+        tourosData.push({ ...bInfo, saidas: peaoNotas.length, media, sum });
+    }
+
+    tourosData.sort((a, b) => b.media - a.media);
+
+    let rowsHtml = '';
+    tourosData.forEach((item, idx) => {
+        rowsHtml += `
+            <tr style="height: 28px;">
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 14px;">${idx + 1}º</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-weight: bold; font-size: 14px; text-transform: uppercase;">${item.nome}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 13px; text-transform: uppercase;">${item.cia}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 13px;">${item.saidas}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-size: 13px;">${item.sum.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: 900; font-size: 15px;">${item.media.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("MELHOR ANIMAL (TOURO)", `RANKING DE MELHORES TOUROS - ${(filter || 'GERAL').toUpperCase()}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 8%;">POS</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 34%; text-align: left;">ANIMAL / TOURO</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 28%; text-align: left;">COMPANHIA DE RODEIO</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">SAÍDAS</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">SOMA</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">MÉDIA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml || `<tr><td colspan="6" style="border:1px solid #000; text-align:center; padding:30px; color:#94a3b8;">Nenhum animal com notas registradas.</td></tr>`}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 9. RANKING MELHOR BOIADA (CIAS)
+function generateRankingCiasHTML(filter) {
+    const getSafeStr = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'object') return (val.nome || val.name || val.touro || '').trim();
+        return String(val).trim();
+    };
+
+    const notas = ((currentEvent && currentEvent.notas) || []).filter(n => n && (n.status === 'ativa' || n.status === 'nota_baixa'));
+    const boiadaMap = {};
+
+    if (currentEvent && currentEvent.boiadas && Array.isArray(currentEvent.boiadas)) {
+        currentEvent.boiadas.forEach(c => {
+            const cNome = getSafeStr(c.nome || c.cia);
+            if (cNome) boiadaMap[cNome.toUpperCase()] = { nome: cNome, sum: 0, count: 0 };
+        });
+    }
+
+    const getBullCia = (n) => {
+        const explicitCia = getSafeStr(n.cia || n.bullCia);
+        if (explicitCia) return explicitCia.toUpperCase();
+
+        const bullName = getSafeStr(n.touro || n.touroNome || n.bullName).toUpperCase();
+        if (!bullName || !currentEvent.boiadas || !Array.isArray(currentEvent.boiadas)) return null;
+
+        for (const c of currentEvent.boiadas) {
+            const cNome = getSafeStr(c.nome || c.cia);
+            if (c.touros && Array.isArray(c.touros)) {
+                if (c.touros.some(t => getSafeStr(t).toUpperCase() === bullName)) {
+                    return cNome.toUpperCase();
+                }
+            }
+        }
+        return null;
+    };
+
+    notas.forEach(n => {
+        if (filter !== 'geral' && n.dia && n.dia.toUpperCase() !== filter.toUpperCase()) return;
+        const ciaUpper = getBullCia(n);
+        if (ciaUpper) {
+            if (!boiadaMap[ciaUpper]) {
+                boiadaMap[ciaUpper] = { nome: ciaUpper, sum: 0, count: 0 };
+            }
+            boiadaMap[ciaUpper].sum += (parseFloat(n.totalTouro) || 0);
+            boiadaMap[ciaUpper].count++;
+        }
+    });
+
+    const boiadasData = [];
+    for (const [ciaUpper, data] of Object.entries(boiadaMap)) {
+        if (data.count > 0) {
+            boiadasData.push({ nome: data.nome, saidas: data.count, media: data.sum / data.count, sum: data.sum });
+        }
+    }
+
+    boiadasData.sort((a, b) => b.media - a.media);
+
+    let rowsHtml = '';
+    boiadasData.forEach((item, idx) => {
+        rowsHtml += `
+            <tr style="height: 28px;">
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 14px;">${idx + 1}º</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-weight: bold; font-size: 14px; text-transform: uppercase;">${item.nome}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 13px;">${item.saidas}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-size: 13px;">${item.sum.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: 900; font-size: 15px;">${item.media.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 297mm; min-height: 210mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("MELHOR CIA (BOIADA)", `RANKING DE MELHOR BOIADA - ${(filter || 'GERAL').toUpperCase()}`)}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 8%;">POS</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 44%; text-align: left;">COMPANHIA DE RODEIO (CIA)</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 16%;">SAÍDAS</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 16%;">SOMA NOTAS</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 16%;">MÉDIA BOIADA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml || `<tr><td colspan="5" style="border:1px solid #000; text-align:center; padding:30px; color:#94a3b8;">Nenhuma companhia com notas registradas.</td></tr>`}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 10. RELAÇÃO DE COMPETIDORES (LISTA)
+function generateListaPeoesHTML() {
+    const peoes = (currentEvent && currentEvent.peoes) || [];
+
+    if (peoes.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("RELAÇÃO DE COMPETIDORES", "RELAÇÃO DE COMPETIDORES CADASTRADOS")}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum competidor cadastrado no evento.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    let rowsHtml = '';
+    peoes.forEach((p, idx) => {
+        rowsHtml += `
+            <tr style="height: 28px;">
+                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 14px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; font-weight: bold; font-size: 13px; text-transform: uppercase;">${p.nome || '---'}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; font-size: 12px; text-transform: uppercase;">${p.cidade || '---'}</td>
+                <td style="border: 1px solid #000; padding: 6px 4px; font-size: 12px; text-align: center;">${p.cpf || '---'}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("RELAÇÃO DE COMPETIDORES", "RELAÇÃO OFICIAL DE COMPETIDORES")}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 12px;">
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 10%;">Nº</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 45%; text-align: left;">COMPETIDOR (PEÃO)</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 25%; text-align: left;">CIDADE</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 20%;">CPF</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 11. RELAÇÃO DE JUÍZES E PROFISSIONAIS
+function generateListaJuizesHTML() {
+    const juizes = (currentEvent && currentEvent.juizes) || [];
+
+    if (juizes.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("CORPO DE JUÍZES", "RELAÇÃO DE JUÍZES E PROFISSIONAIS")}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum juiz ou profissional cadastrado no evento.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    let rowsHtml = '';
+    juizes.forEach((j, idx) => {
+        const jNome = typeof j === 'string' ? j : (j.nome || '---');
+        const jCidade = typeof j === 'object' ? (j.cidade || '---') : '---';
+        const jFuncao = typeof j === 'object' ? (j.funcao || 'JUIZ OFICIAL') : 'JUIZ OFICIAL';
+
+        rowsHtml += `
+            <tr style="height: 30px;">
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 14px;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-weight: bold; font-size: 14px; text-transform: uppercase;">${jNome}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; font-size: 13px; text-transform: uppercase;">${jCidade}</td>
+                <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 13px; text-transform: uppercase;">${jFuncao}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div style="background: #fff; color: #000; padding: 15mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            ${getReportOfficialHeaderHTML("CORPO DE JUÍZES", "RELAÇÃO DE JUÍZES E PROFISSIONAIS")}
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: #fff; color: #000;">
+                <thead>
+                    <tr style="background-color: #e5e7eb; font-weight: bold; text-align: center; font-size: 13px;">
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 10%;">Nº</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 45%; text-align: left;">NOME DO PROFISSIONAL</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 25%; text-align: left;">CIDADE</th>
+                        <th style="border: 1px solid #000; padding: 8px 6px; width: 20%;">FUNÇÃO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            ${getReportOfficialFooterHTML()}
+        </div>
+    `;
+}
+
+// 12. CONTRATOS OFICIAIS DE COMPETIDORES (A4)
+function generateContratosHTML(targetPeao) {
+    const cc = (currentEvent && currentEvent.contratoConfig) || {};
+    const con = cc.contratante || {};
+    const c2 = cc.clausulaSegunda || {};
+    const cq = cc.clausulaQuarta || {};
+    const end = con.endereco || {};
+    const forum = cc.forum || {};
+
+    const allPeoes = (currentEvent && currentEvent.peoes) || [];
+    let peoesList = [];
+
+    if (targetPeao === 'all' || !targetPeao) {
+        peoesList = allPeoes;
+    } else {
+        const p = allPeoes.find(x => (x.id || x.nome) === targetPeao);
+        if (p) peoesList = [p];
+        else peoesList = allPeoes;
+    }
+
+    if (peoesList.length === 0) {
+        return `
+            <div style="background: #fff; color: #000; padding: 20mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                ${getReportOfficialHeaderHTML("CONTRATO OFICIAL", "CONTRATO OFICIAL DE COMPETIDOR")}
+                <div style="border: 1px solid #000; border-top: none; padding: 60px 20px; text-align: center; font-weight: bold; color: #64748b;">
+                    ⚠️ Nenhum competidor cadastrado para gerar contrato.
+                </div>
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    }
+
+    const buildEnd = (e) => {
+        if (!e) return '---';
+        const sn = e.sn ? 'S/N' : (e.numero || '');
+        return `${e.rua || ''}, ${sn}, ${e.bairro || ''}, ${e.cidade || ''}-${e.estado || ''}, CEP: ${e.cep || ''}`;
+    };
+
+    let fullSheets = '';
+
+    peoesList.forEach(p => {
+        const pNome = p.nome || 'COMPETIDOR';
+        const pCpf = p.cpf || '---';
+        const pCidade = p.cidade || '---';
+
+        fullSheets += `
+            <div style="background: #fff; color: #000; padding: 18mm; width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif; margin-bottom: 20px; font-size: 12px; line-height: 1.6; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+                ${getReportOfficialHeaderHTML("CONTRATO OFICIAL", "CONTRATO DE PRESTAÇÃO DE SERVIÇOS E PARTICIPAÇÃO")}
+                
+                <div style="border: 1px solid #000; border-top: none; padding: 20px 24px;">
+                    <div style="margin-bottom: 12px; text-align: justify;">
+                        <strong>CONTRATANTE:</strong> ${con.razaoSocial || 'ORGANIZADORA DO EVENTO'}, pessoa jurídica inscrita no CNPJ sob nº ${con.cnpj || '---'}, com sede em ${buildEnd(end)}, neste ato representada por ${con.nomeRepresentante || '---'}, portador(a) do CPF nº ${con.cpfRepresentante || '---'} e RG nº ${con.rgRepresentante || '---'}.
+                    </div>
+
+                    <div style="margin-bottom: 16px; text-align: justify;">
+                        <strong>CONTRATADO(A):</strong> <strong>${pNome}</strong>, atleta profissional de rodeio, inscrito(a) no CPF sob nº <strong>${pCpf}</strong>, residente e domiciliado(a) na comarca de <strong>${pCidade}</strong>.
+                    </div>
+
+                    <div style="margin-bottom: 12px; text-align: justify;">
+                        <strong>CLÁUSULA PRIMEIRA - DO OBJETO:</strong> O presente instrumento tem como objeto a participação do(a) CONTRATADO(A) como atleta competidor em montarias em touros durante o evento <strong>${currentEvent.name || 'RODEIO'}</strong>, na cidade de <strong>${currentEvent.city || 'ARENA'}</strong>.
+                    </div>
+
+                    <div style="margin-bottom: 12px; text-align: justify;">
+                        <strong>CLÁUSULA SEGUNDA - DO PRAZO:</strong> O presente contrato vigorará pelo prazo de <strong>${c2.prazoNum || '3'} (${c2.prazoExtenso || 'três'}) dias</strong>, com início em <strong>${c2.dataInicio || '---'}</strong> e término em <strong>${c2.dataFim || '---'}</strong>.
+                    </div>
+
+                    <div style="margin-bottom: 12px; text-align: justify;">
+                        <strong>CLÁUSULA TERCEIRA - DAS OBRIGAÇÕES:</strong> O(A) CONTRATADO(A) declara possuir pleno conhecimento dos riscos inerentes ao esporte, comprometendo-se a cumprir o regulamento oficial e as normas de bem-estar animal.
+                    </div>
+
+                    <div style="margin-bottom: 12px; text-align: justify;">
+                        <strong>CLÁUSULA QUARTA - DA PREMIAÇÃO:</strong> Fica estipulada a premiação total no valor de <strong>${cq.premiacaoTotal || 'R$ 0,00'} (${cq.premiacaoTotalExtenso || ''})</strong> na modalidade ${cq.modalidade || 'Montaria em Touros'}, a ser distribuída aos melhores colocados segundo a tabela oficial do evento.
+                    </div>
+
+                    <div style="margin-bottom: 16px; text-align: justify;">
+                        <strong>CLÁUSULA QUINTA - DO FORO:</strong> Para dirimir quaisquer dúvidas oriundas deste contrato, as partes elegem o foro da comarca de <strong>${forum.cidade || currentEvent.city || 'local do evento'}</strong>.
+                    </div>
+
+                    <div style="margin-top: 30px; text-align: center; font-size: 12px;">
+                        ${currentEvent.city || 'Local'}, ${c2.dataInicio || new Date().toLocaleDateString('pt-BR')}
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; gap: 40px; margin-top: 50px; padding: 0 10px;">
+                        <div style="flex: 1; border-top: 1px solid #000; text-align: center; padding-top: 6px; font-weight: bold; font-size: 11px;">
+                            CONTRATANTE<br>
+                            <span style="font-size: 10px; font-weight: normal; color: #64748b;">${con.razaoSocial || 'ORGANIZADORA'}</span>
+                        </div>
+                        <div style="flex: 1; border-top: 1px solid #000; text-align: center; padding-top: 6px; font-weight: bold; font-size: 11px;">
+                            CONTRATADO (COMPETIDOR)<br>
+                            <span style="font-size: 10px; font-weight: normal; color: #64748b;">${pNome}</span>
+                        </div>
+                    </div>
+                </div>
+
+                ${getReportOfficialFooterHTML()}
+            </div>
+        `;
+    });
+
+    return fullSheets;
 }
 
 // Cabeçalho e Rodapé Padrão A4
