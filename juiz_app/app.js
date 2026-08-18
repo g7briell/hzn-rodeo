@@ -145,6 +145,22 @@ function clearSession() {
     window.state.activeArenaRider = null;
 }
 
+function normalizeEventData(cloudEvent) {
+    if (!cloudEvent) return null;
+    const detalhes = cloudEvent.detalhes || {};
+    const localData = (detalhes.localData && typeof detalhes.localData === 'object') ? detalhes.localData : detalhes;
+    
+    // Normalização completa de todas as propriedades fundamentais
+    localData.name = localData.name || localData.nome || cloudEvent.nome || '49 EXPORÃ';
+    localData.juizes = localData.juizes || detalhes.juizes || [];
+    localData.judges = localData.judges || detalhes.judges || (localData.juizes.length > 0 ? localData.juizes.length : 2) || 2;
+    localData.sorteios = localData.sorteios || detalhes.sorteios || [];
+    localData.boiadas = localData.boiadas || detalhes.boiadas || [];
+    localData.notas = localData.notas || detalhes.notas || [];
+    
+    return localData;
+}
+
 // ==========================================
 // FLUXO DE LOGIN 1: EVENTO (ID + SENHA)
 // ==========================================
@@ -180,11 +196,7 @@ window.handleEventLogin = async () => {
 
         window.state.shareId = shareId;
         window.state.sharePassword = password;
-        
-        const rawLocal = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : (cloudEvent.detalhes || {});
-        rawLocal.name = rawLocal.name || cloudEvent.nome || 'EVENTO OFICIAL';
-        rawLocal.judges = rawLocal.judges || (rawLocal.juizes ? rawLocal.juizes.length : 2) || 2;
-        window.state.eventData = rawLocal;
+        window.state.eventData = normalizeEventData(cloudEvent);
         window.state.eventId = cloudEvent.id;
 
         // Atualiza header
@@ -237,11 +249,7 @@ async function restoreSession(savedSession) {
 
         window.state.shareId = savedSession.shareId;
         window.state.sharePassword = savedSession.sharePassword;
-        
-        const rawLocal = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : (cloudEvent.detalhes || {});
-        rawLocal.name = rawLocal.name || cloudEvent.nome || 'EVENTO OFICIAL';
-        rawLocal.judges = rawLocal.judges || (rawLocal.juizes ? rawLocal.juizes.length : 2) || 2;
-        window.state.eventData = rawLocal;
+        window.state.eventData = normalizeEventData(cloudEvent);
         window.state.eventId = cloudEvent.id;
 
         const headerEvent = document.getElementById('header-event-name');
@@ -253,8 +261,16 @@ async function restoreSession(savedSession) {
         subscribeToEventChannel(window.state.shareId);
 
         const juizes = getJudgesListNormalized();
-        if (savedSession.judgeIdx !== null && juizes[savedSession.judgeIdx]) {
-            window.state.currentJudge = juizes[savedSession.judgeIdx];
+        
+        let targetJudge = null;
+        if (savedSession.judgeIdx !== null && savedSession.judgeIdx !== undefined && juizes[savedSession.judgeIdx]) {
+            targetJudge = juizes[savedSession.judgeIdx];
+        } else if (savedSession.judgeNome) {
+            targetJudge = juizes.find(j => j.nome === savedSession.judgeNome) || null;
+        }
+
+        if (targetJudge) {
+            window.state.currentJudge = targetJudge;
             window.state.selectedDay = savedSession.selectedDay || getDefaultDay();
             renderJudgeDashboard();
             showView('view-rides-list');
@@ -296,7 +312,8 @@ async function fetchCloudEventByShare(shareId, password) {
 let pendingJudgeSelection = null;
 
 function getJudgesListNormalized() {
-    const rawJudges = (window.state.eventData && window.state.eventData.juizes) || [];
+    if (!window.state.eventData) return [];
+    const rawJudges = window.state.eventData.juizes || [];
     
     if (rawJudges.length > 0) {
         return rawJudges.map((j, idx) => ({
@@ -306,7 +323,7 @@ function getJudgesListNormalized() {
         }));
     }
 
-    const judgeCount = parseInt(window.state.eventData?.judges || 2) || 2;
+    const judgeCount = parseInt(window.state.eventData.judges || 2) || 2;
     const generated = [];
     for (let i = 0; i < judgeCount; i++) {
         generated.push({
@@ -1555,8 +1572,23 @@ function subscribeToEventChannel(shareId) {
         // Escuta atualizações do Admin
         ablyChannel.subscribe('admin-event-updated', (message) => {
             if (message.data && message.data.localData) {
-                window.state.eventData = message.data.localData;
-                renderJudgeDashboard();
+                const normalized = {
+                    ...message.data.localData,
+                    name: message.data.localData.name || message.data.localData.nome || window.state.eventData?.name || '49 EXPORÃ',
+                    juizes: message.data.localData.juizes || window.state.eventData?.juizes || [],
+                    judges: message.data.localData.judges || window.state.eventData?.judges || 2,
+                    sorteios: message.data.localData.sorteios || window.state.eventData?.sorteios || [],
+                    boiadas: message.data.localData.boiadas || window.state.eventData?.boiadas || [],
+                    notas: message.data.localData.notas || window.state.eventData?.notas || []
+                };
+                window.state.eventData = normalized;
+                
+                if (window.state.currentJudge) {
+                    renderJudgeDashboard();
+                } else {
+                    renderJudgesList();
+                    showView('view-select-judge');
+                }
                 showToast("Evento atualizado pelo Administrador!", "info");
             }
         });
@@ -1609,9 +1641,16 @@ window.refreshEventDataFromCloud = async () => {
     try {
         const cloudEvent = await fetchCloudEventByShare(window.state.shareId, window.state.sharePassword);
         if (cloudEvent) {
-            window.state.eventData = (cloudEvent.detalhes && cloudEvent.detalhes.localData) ? cloudEvent.detalhes.localData : cloudEvent.detalhes;
-            renderJudgeDashboard();
-            showToast("Dados atualizados!", "success");
+            window.state.eventData = normalizeEventData(cloudEvent);
+            window.state.eventId = cloudEvent.id;
+
+            if (window.state.currentJudge) {
+                renderJudgeDashboard();
+            } else {
+                renderJudgesList();
+                showView('view-select-judge');
+            }
+            showToast("Dados atualizados com sucesso!", "success");
         }
     } catch (e) {
         showToast("Falha ao atualizar dados.", "error");
