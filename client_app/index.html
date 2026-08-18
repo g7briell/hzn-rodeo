@@ -2143,6 +2143,17 @@
                         <input type="text" id="profile-name-input" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-yellow-500 font-bold uppercase mt-1" required>
                     </div>
                     <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase text-sm py-4 rounded-2xl transition-all shadow-lg shadow-yellow-500/20">Salvar Nome</button>
+                    
+                    <div class="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-black text-white uppercase">VERSÃO DO SISTEMA: <span id="settings-app-version" class="text-yellow-400">v1.0.148</span></p>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase mt-0.5">Atualização automática silenciosa em segundo plano</p>
+                        </div>
+                        <button type="button" onclick="window.electronAPI.checkForUpdates(); alert('Verificando se há novas atualizações...');" class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2">
+                            <span>🔄</span>
+                            <span>BUSCAR ATUALIZAÇÕES</span>
+                        </button>
+                    </div>
                 </form>
             </div>
 

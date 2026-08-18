@@ -196,6 +196,22 @@ app.whenReady().then(() => {
     const win = BrowserWindow.getFocusedWindow();
     if (win) win.webContents.toggleDevTools();
   });
+
+  // Checagem automática de atualizações na inicialização do app
+  setTimeout(() => {
+    try {
+      console.log('[RODEOAPP MAIN] Checking for updates on startup...');
+      if (process.platform === 'darwin') {
+        checkMacUpdates().catch(e => console.warn('macOS auto check error:', e));
+      } else {
+        autoUpdater.checkForUpdates().then(res => {
+          console.log('[RODEOAPP MAIN] autoUpdater.checkForUpdates on startup resolved:', res ? 'Found' : 'None');
+        }).catch(e => console.warn('Windows auto check error:', e));
+      }
+    } catch(e) {
+      console.warn('Auto updater startup error:', e);
+    }
+  }, 2500);
 });
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
@@ -1878,7 +1894,7 @@ ipcMain.handle('export-melhor-animal', async (event, { eventName, data, format }
 const { autoUpdater } = require('electron-updater');
 const https = require('https');
 
-autoUpdater.autoDownload = false;
+autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 // Custom State for macOS update
