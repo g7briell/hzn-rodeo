@@ -7,11 +7,18 @@ window.formatSide = function(s) {
   return s.toUpperCase();
 };
 window.onerror = function(msg, url, lineNo, columnNo, error) {
-    document.body.innerHTML += '<div style="position:fixed;top:0;left:0;background:red;color:white;z-index:999999;padding:20px;font-size:20px;font-weight:bold;">ERROR: ' + msg + '<br>Line: ' + lineNo + '</div>';
+    console.error('[ERRO GLOBAL CAPTURADO]:', msg, url, lineNo, columnNo, error);
+    if (typeof window.showDebugLogError === 'function') {
+        window.showDebugLogError('Erro no Script', error || new Error(msg), { url, lineNo, columnNo });
+    }
     return false;
 };
+
 window.addEventListener('unhandledrejection', function(event) {
-    document.body.innerHTML += '<div style="position:fixed;top:0;left:0;background:red;color:white;z-index:999999;padding:20px;font-size:20px;font-weight:bold;">PROMISE REJECTION: ' + event.reason + '</div>';
+    console.error('[PROMISE REJEITADA]:', event.reason);
+    if (typeof window.showDebugLogError === 'function') {
+        window.showDebugLogError('Operação Assíncrona Rejeitada', event.reason || new Error(String(event.reason)));
+    }
 });
 
 // Seleção de elementos (serão preenchidos no DOMContentLoaded)
@@ -1238,8 +1245,8 @@ window.openTab = async (tab) => {
             await renderContratosEvents();
         }
         else if (tab === 'exportar') {
-            if (vt) { vt.innerText = "EXPORTAR DADOS"; vt.className = "text-5xl font-black italic text-emerald-500"; }
-            if (vb) vb.innerHTML = '<div class="p-20 text-center text-slate-500 italic font-bold">Relatórios disponíveis dentro de cada evento.</div>';
+            if (vt) { vt.innerText = "CENTRAL DE RELATÓRIOS & EXPORTAÇÃO"; vt.className = "text-5xl font-black italic text-yellow-500"; }
+            await renderExportarEvents();
         }
     } catch (e) {
         console.error("RODEOAPP: Erro ao abrir aba:", e);
@@ -1248,6 +1255,58 @@ window.openTab = async (tab) => {
 };
 
 window.closeTab = () => { const cv = document.getElementById('content-view'); if (cv) cv.classList.add('hidden'); toggleSupportBtn(true); };
+
+async function renderExportarEvents() {
+    const email = getCurrentUserEmail();
+    const viewBody = document.getElementById('view-body');
+    const eventos = await window.electronAPI.getLocalEvents(email);
+    
+    if (eventos.length === 0) {
+        if (viewBody) viewBody.innerHTML = '<div class="p-20 text-center text-slate-500 italic font-bold">Nenhum evento cadastrado para exportar relatórios.</div>';
+        return;
+    }
+
+    let html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
+    
+    eventos.forEach(ev => { 
+        html += `
+            <div class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-yellow-500/50 transition-all flex flex-col justify-between">
+                <div class="flex gap-6 items-start mb-6">
+                    ${ev.logo ? `<img src="${ev.logo}" class="w-16 h-16 object-contain rounded-2xl bg-black/40 p-2 border border-white/10 shadow-lg">` : `<div class="w-16 h-16 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-slate-700 font-black italic text-xs">LOGO</div>`}
+                    <div>
+                        <div class="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">EVENTO DE RODEIO</div>
+                        <h3 class="text-2xl font-black text-white uppercase tracking-tight">${ev.name}</h3>
+                        <p class="text-xs text-slate-400 font-bold uppercase mt-0.5">${ev.city || 'ARENA'} • ${ev.days || 3} DIAS</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.openReportViewerForEvent('${ev.id}', 'sumula')" class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2">
+                        <span>📄</span>
+                        <span>SÚMULAS & RANKINGS</span>
+                    </button>
+                    <button onclick="window.openReportViewerForEvent('${ev.id}', 'contratos')" class="bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                        <span>📜</span>
+                        <span>CONTRATOS A4</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `</div>`;
+    if (viewBody) viewBody.innerHTML = html;
+}
+
+window.openReportViewerForEvent = async (eventId, type = 'sumula') => {
+    const email = getCurrentUserEmail();
+    const eventos = await window.electronAPI.getLocalEvents(email);
+    const ev = eventos.find(e => e.id === eventId);
+    if (ev) {
+        currentEvent = ev;
+        window.currentEvent = currentEvent;
+    }
+    openReportViewer(type);
+};
 
 async function renderContratosEvents() {
     const email = getCurrentUserEmail();
@@ -2650,6 +2709,20 @@ window.selectExportJuiz = (juizNome) => {
     pendingExportJuiz = juizNome;
     document.getElementById('modal-export-juiz').classList.add('hidden');
     document.getElementById('modal-export-format').classList.remove('hidden');
+};
+
+window.executeReportView = () => {
+    document.getElementById('modal-export-format').classList.add('hidden');
+    let reportMap = {
+        'sorteio': 'sumula',
+        'touros': 'boiadas',
+        'ordem': 'embretamento',
+        'juizes': 'notas_dia',
+        'ranking': 'ranking_geral',
+        'melhor_cia': 'ranking_cias'
+    };
+    let targetType = reportMap[pendingExportType] || 'sumula';
+    openReportViewer(targetType, pendingExportDay);
 };
 
 window.executeExport = (format) => {
