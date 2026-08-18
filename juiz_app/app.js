@@ -271,9 +271,8 @@ async function restoreSession(savedSession) {
 
         if (targetJudge) {
             window.state.currentJudge = targetJudge;
-            window.state.selectedDay = savedSession.selectedDay || getDefaultDay();
-            renderJudgeDashboard();
-            showView('view-rides-list');
+            renderRoundsList();
+            showView('view-rounds-select');
         } else {
             renderJudgesList();
             showView('view-select-judge');
@@ -403,9 +402,8 @@ function authenticateJudgeDirect(judgeObj) {
         subscribeToEventChannel(window.state.shareId);
     }
 
-    window.state.selectedDay = window.state.selectedDay || getDefaultDay();
-    renderJudgeDashboard();
-    showView('view-rides-list');
+    renderRoundsList();
+    showView('view-rounds-select');
     showToast(`Bem-vindo, ${judgeObj.nome}!`, "success");
 }
 
@@ -418,8 +416,257 @@ window.backToEventLogin = () => {
     showView('view-login-event');
 };
 
+window.backToJudgeSelect = () => {
+    renderJudgesList();
+    showView('view-select-judge');
+};
+
+window.backToRoundsSelect = () => {
+    renderRoundsList();
+    showView('view-rounds-select');
+};
+
 // ==========================================
-// PAINEL DE MONTARIAS DO JUIZ (TELA 3)
+// TELA DE SELEÇÃO DE ROUNDS DO EVENTO
+// ==========================================
+let pendingFinishedRoundDay = null;
+
+function getEventRoundsList() {
+    if (!window.state.eventData) return [];
+    
+    const sorteios = window.state.eventData.sorteios || [];
+    const totalDays = parseInt(window.state.eventData.days || (sorteios.length > 0 ? sorteios.length : 3)) || 3;
+    
+    const rounds = [];
+    for (let i = 1; i <= Math.max(totalDays, sorteios.length); i++) {
+        let label = `ROUND ${i}`;
+        if (i === totalDays && totalDays > 3) {
+            label = `GRANDE FINAL`;
+        } else if (i === totalDays - 1 && totalDays >= 4) {
+            label = `SEMI FINAL`;
+        }
+        
+        const internalDay = `DIA ${i}`;
+        const sorteio = sorteios.find(s => s.day === internalDay || s.day === label || s.day === `ROUND ${i}`);
+        
+        rounds.push({
+            roundNumber: i,
+            label: label,
+            internalDay: internalDay,
+            sorteio: sorteio || null
+        });
+    }
+    
+    return rounds;
+}
+
+function renderRoundsList() {
+    const container = document.getElementById('rounds-cards-container');
+    if (!container) return;
+
+    const rounds = getEventRoundsList();
+    const notas = (window.state.eventData && window.state.eventData.notas) || [];
+    const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
+
+    container.innerHTML = rounds.map((r) => {
+        const hasSorteio = r.sorteio && r.sorteio.riders && r.sorteio.riders.length > 0;
+        const totalRiders = hasSorteio ? r.sorteio.riders.length : 0;
+        
+        // Data do sorteio
+        let dataSorteioFormatada = 'Hoje';
+        if (r.sorteio && r.sorteio.date) {
+            dataSorteioFormatada = String(r.sorteio.date).split(',')[0].trim();
+        }
+
+        // Verifica se todas as montarias deste round já foram julgadas
+        let isConcluido = false;
+        let dataInicioAvaliacao = dataSorteioFormatada;
+        let gradedCount = 0;
+
+        if (hasSorteio) {
+            r.sorteio.riders.forEach(rd => {
+                const rNome = (typeof rd === 'string' ? rd : (rd && rd.nome ? rd.nome : '')).trim();
+                const existingNota = notas.find(n => 
+                    (n.peao === rNome || n.peaoNome === rNome) && 
+                    (n.dia === r.internalDay || n.dia === r.label) && 
+                    n.status !== 'substituida'
+                );
+
+                if (existingNota) {
+                    if (existingNota.juizes_status && existingNota.juizes_status[jIdx] && existingNota.juizes_status[jIdx].enviado) {
+                        gradedCount++;
+                    } else if (existingNota.judgeIdx === jIdx || (jIdx === 0 && existingNota.j1_touro > 0) || (jIdx === 1 && existingNota.j2_touro > 0)) {
+                        gradedCount++;
+                    }
+                    if (existingNota.created_at) {
+                        try {
+                            const d = new Date(existingNota.created_at);
+                            dataInicioAvaliacao = d.toLocaleDateString('pt-BR');
+                        } catch(e) {}
+                    }
+                }
+            });
+
+            if (totalRiders > 0 && gradedCount >= totalRiders) {
+                isConcluido = true;
+            }
+        }
+
+        // Estilos e Badges
+        if (!hasSorteio) {
+            return `
+                <div class="glass-card p-5 sm:p-6 rounded-3xl border-white/5 opacity-40 cursor-not-allowed text-left">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-500 bg-slate-900 px-3 py-1 rounded-xl border border-slate-800">
+                            ${r.label}
+                        </span>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-600">
+                            🔒 BLOQUEADO
+                        </span>
+                    </div>
+                    <h3 class="text-xl font-black italic uppercase text-slate-500 mb-1">
+                        ${r.label}
+                    </h3>
+                    <p class="text-xs font-bold text-slate-600">
+                        (Sorteio não realizado)
+                    </p>
+                </div>
+            `;
+        }
+
+        if (isConcluido) {
+            return `
+                <div onclick="handleRoundCardClick('${r.internalDay}', true, true, '${r.label}')" class="glass-card p-5 sm:p-6 rounded-3xl border-2 border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400 transition-all text-left group touch-active cursor-pointer shadow-lg shadow-emerald-950/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30">
+                            ${r.label} • ${totalRiders} MONTARIAS
+                        </span>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-lg">
+                            ✓ 100% JULGADO
+                        </span>
+                    </div>
+                    <h3 class="text-xl font-black italic uppercase text-white group-hover:text-emerald-400 transition-colors mb-1 flex items-center justify-between">
+                        <span>${r.label}</span>
+                        <span class="text-xs text-slate-400 font-bold group-hover:text-white">🔒 EXIGE SENHA ➔</span>
+                    </h3>
+                    <p class="text-xs font-bold text-emerald-300/80">
+                        (Rodeio Avaliado dia ${dataInicioAvaliacao})
+                    </p>
+                </div>
+            `;
+        }
+
+        // Round Ativo / Pendente
+        return `
+            <div onclick="handleRoundCardClick('${r.internalDay}', false, true, '${r.label}')" class="glass-card p-5 sm:p-6 rounded-3xl border-2 border-yellow-500/50 hover:border-yellow-400 hover:bg-yellow-500/10 transition-all text-left group touch-active cursor-pointer shadow-xl shadow-yellow-500/10">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-black uppercase tracking-widest text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-xl border border-yellow-500/30">
+                        ${r.label} • ${totalRiders} MONTARIAS
+                    </span>
+                    <span class="text-[10px] font-black uppercase tracking-wider text-black bg-yellow-500 px-2.5 py-1 rounded-lg font-black animate-pulse">
+                        ⚡ EM ANDAMENTO (${gradedCount}/${totalRiders})
+                    </span>
+                </div>
+                <h3 class="text-xl font-black italic uppercase text-white group-hover:text-yellow-400 transition-colors mb-1 flex items-center justify-between">
+                    <span>${r.label}</span>
+                    <span class="text-xs text-yellow-400 font-black group-hover:underline">ENTRAR NA ARENA ➔</span>
+                </h3>
+                <p class="text-xs font-bold text-slate-400">
+                    (Sorteio dia ${dataSorteioFormatada})
+                </p>
+            </div>
+        `;
+    }).join('');
+}
+
+window.handleRoundCardClick = (internalDay, isConcluido, hasSorteio, roundLabel) => {
+    if (!hasSorteio) {
+        showToast("Sorteio não realizado para este Round.", "error");
+        return;
+    }
+
+    if (isConcluido) {
+        // Round concluído: exige senha do juiz para acessar histórico
+        pendingFinishedRoundDay = internalDay;
+        const modal = document.getElementById('modal-confirm-finished-round');
+        document.getElementById('finished-round-modal-title').innerText = `${roundLabel} JÁ FOI JULGADO`;
+        document.getElementById('input-finished-round-pin').value = '';
+        document.getElementById('finished-round-auth-error').classList.add('hidden');
+        modal.classList.remove('hidden');
+        setTimeout(() => document.getElementById('input-finished-round-pin')?.focus(), 100);
+        return;
+    }
+
+    // Round Ativo: Toca animação cinematográfica em tela cheia e entra
+    playRoundSplashIntro(roundLabel, () => {
+        enterRound(internalDay, false);
+    });
+};
+
+window.closeFinishedRoundModal = () => {
+    document.getElementById('modal-confirm-finished-round').classList.add('hidden');
+    pendingFinishedRoundDay = null;
+};
+
+window.confirmEnterFinishedRound = () => {
+    if (!pendingFinishedRoundDay || !window.state.currentJudge) return;
+
+    const inputPin = (document.getElementById('input-finished-round-pin')?.value || '').trim();
+    const correctPin = String(window.state.currentJudge.senha || '').trim();
+
+    if (!correctPin || inputPin === correctPin) {
+        const targetDay = pendingFinishedRoundDay;
+        closeFinishedRoundModal();
+        
+        playRoundSplashIntro(targetDay.replace(/DIA/gi, 'ROUND'), () => {
+            enterRound(targetDay, true);
+        });
+    } else {
+        document.getElementById('finished-round-auth-error').innerText = "Senha incorreta. Tente novamente.";
+        document.getElementById('finished-round-auth-error').classList.remove('hidden');
+        document.getElementById('input-finished-round-pin')?.select();
+    }
+};
+
+function playRoundSplashIntro(roundTitle, callback) {
+    const splash = document.getElementById('splash-round-intro');
+    const titleEl = document.getElementById('splash-round-title');
+    
+    if (titleEl) {
+        titleEl.innerText = `BEM-VINDO AO ${roundTitle.toUpperCase()}`;
+    }
+
+    if (!splash) {
+        if (callback) callback();
+        return;
+    }
+
+    // Fade In
+    splash.classList.remove('opacity-0', 'pointer-events-none');
+    splash.classList.add('opacity-100', 'pointer-events-auto');
+
+    setTimeout(() => {
+        // Fade Out
+        splash.classList.remove('opacity-100', 'pointer-events-auto');
+        splash.classList.add('opacity-0', 'pointer-events-none');
+
+        setTimeout(() => {
+            if (callback) callback();
+        }, 300);
+    }, 1200);
+}
+
+function enterRound(internalDay, isReadOnly = false) {
+    window.state.selectedDay = internalDay;
+    window.state.isRoundReadOnly = isReadOnly;
+    saveSession();
+
+    renderJudgeDashboard();
+    showView('view-rides-list');
+}
+
+// ==========================================
+// PAINEL DE MONTARIAS DO JUIZ (TELA 4)
 // ==========================================
 function getDefaultDay() {
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
@@ -439,6 +686,13 @@ function renderJudgeDashboard() {
     }
 
     const maxPts = getJudgeScoreLimit();
+
+    // Banner Somente Leitura
+    const bannerReadOnly = document.getElementById('banner-round-readonly');
+    if (bannerReadOnly) {
+        if (window.state.isRoundReadOnly) bannerReadOnly.classList.remove('hidden');
+        else bannerReadOnly.classList.add('hidden');
+    }
 
     // Atualiza cabeçalho do Juiz
     const headerJudgeName = document.getElementById('header-judge-name');
@@ -704,17 +958,24 @@ window.filterRides = (type) => {
 // SEGURANÇA: CLIQUE NO CARD & SENHA DE ALTERAÇÃO
 // ==========================================
 window.handleRideCardClick = (matchupIdx) => {
+    if (window.state.isRoundReadOnly) {
+        showToast("Este round já foi 100% julgado e está em modo Somente Leitura.", "info");
+        return;
+    }
+
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
-    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
-    if (!currentSorteio) return;
+    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay) || sorteios[0];
+    if (!currentSorteio || !currentSorteio.riders) return;
 
     const r = currentSorteio.riders[matchupIdx];
+    if (!r) return;
+    const rNome = (typeof r === 'string' ? r : (r.nome || '')).trim();
     const notas = (window.state.eventData && window.state.eventData.notas) || [];
     const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
 
     // Verifica se este Juiz já avaliou este competidor
     const existingNota = notas.find(n => 
-        (n.peao === r.nome || n.peaoNome === r.nome) && 
+        (n.peao === rNome || n.peaoNome === rNome) && 
         n.dia === window.state.selectedDay && 
         n.status !== 'substituida'
     );
@@ -1716,7 +1977,7 @@ window.logoutEvent = () => {
 // HELPERS DE UI & TOAST
 // ==========================================
 function showView(viewId) {
-    const views = ['view-login-event', 'view-select-judge', 'view-rides-list'];
+    const views = ['view-login-event', 'view-select-judge', 'view-rounds-select', 'view-rides-list'];
     views.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
