@@ -724,11 +724,14 @@ window.confirmUnlockEditScore = () => {
     const correctPin = (window.state.currentJudge?.senha || '').trim();
 
     if (pin === correctPin) {
-        closeSecurityChangeScoreModal();
-        const targetIdx = window.state.pendingEditMatchupIdx;
+        const targetIdx = window.state.pendingEditMatchupIdx; // Captura antes de fechar o modal
+        document.getElementById('modal-security-change-score').classList.add('hidden');
         window.state.pendingEditMatchupIdx = null;
-        openScoreModalDirect(targetIdx);
-        showToast("Acesso liberado para alteração de nota.", "success");
+
+        if (targetIdx !== null && targetIdx !== undefined) {
+            openScoreModalDirect(targetIdx);
+            showToast("Acesso liberado para alteração de nota.", "success");
+        }
     } else {
         document.getElementById('edit-security-error').classList.remove('hidden');
         document.getElementById('input-edit-security-pin')?.select();
@@ -744,11 +747,14 @@ window.closeSecurityChangeScoreModal = () => {
 // FLUXO DE JULGAMENTO (PRANCHETAS 1, 2, 3, 4)
 // ==========================================
 function openScoreModalDirect(matchupIdx) {
+    if (matchupIdx === null || matchupIdx === undefined) return;
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
     const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
-    if (!currentSorteio) return;
+    if (!currentSorteio || !currentSorteio.riders) return;
 
     const r = currentSorteio.riders[matchupIdx];
+    if (!r) return;
+
     const bullIdx = currentSorteio.assignments[matchupIdx] !== undefined ? currentSorteio.assignments[matchupIdx] : matchupIdx;
     const bull = currentSorteio.bulls[bullIdx] || { nome: '---', cia: '---', lado: '---' };
 
@@ -765,18 +771,79 @@ function openScoreModalDirect(matchupIdx) {
     document.getElementById('flow-rider-city').innerText = r.cidade || 'CIDADE - UF';
     document.getElementById('flow-bull-cia').innerText = bull.cia || 'CIA DE RODEIO';
 
-    // Defaults conforme escala (0-25 ou 0-50)
+    // 1. Procura se este Juiz já possui nota gravada para carregar na tela
+    const notas = (window.state.eventData && window.state.eventData.notas) || [];
+    const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
+    const existingNota = notas.find(n => 
+        (n.peao === r.nome || n.peaoNome === r.nome) && 
+        n.dia === window.state.selectedDay && 
+        n.status !== 'substituida'
+    );
+
     const defaults = getDefaultScoresForJudge();
-    window.judgingState.touroInt = defaults.touroInt;
-    window.judgingState.touroDec = defaults.touroDec;
-    window.judgingState.competidorInt = defaults.compInt;
-    window.judgingState.competidorDec = defaults.compDec;
-    window.judgingState.isFall = false;
-    window.judgingState.isReride = false;
+
+    if (existingNota) {
+        let savedBullScore = 0;
+        let savedRiderScore = 0;
+        let isFall = false;
+
+        if (existingNota.juizes_status && existingNota.juizes_status[jIdx] && existingNota.juizes_status[jIdx].enviado) {
+            savedBullScore = existingNota.juizes_status[jIdx].touro || 0;
+            savedRiderScore = existingNota.juizes_status[jIdx].peao || 0;
+            isFall = existingNota.juizes_status[jIdx].isFall || false;
+        } else if (existingNota.judgeIdx === jIdx) {
+            savedBullScore = existingNota.bullScore || 0;
+            savedRiderScore = existingNota.riderScore || 0;
+            isFall = existingNota.isFall || (existingNota.riderScore === 0);
+        } else if (jIdx === 0 && (existingNota.j1_touro > 0 || existingNota.j1_peao > 0)) {
+            savedBullScore = existingNota.j1_touro || 0;
+            savedRiderScore = existingNota.j1_peao || 0;
+            isFall = (existingNota.j1_peao === 0);
+        } else if (jIdx === 1 && (existingNota.j2_touro > 0 || existingNota.j2_peao > 0)) {
+            savedBullScore = existingNota.j2_touro || 0;
+            savedRiderScore = existingNota.j2_peao || 0;
+            isFall = (existingNota.j2_peao === 0);
+        }
+
+        if (savedBullScore > 0 || savedRiderScore > 0 || isFall) {
+            const bInt = Math.floor(savedBullScore);
+            const bDecRaw = (savedBullScore - bInt).toFixed(2);
+            const rInt = Math.floor(savedRiderScore);
+            const rDecRaw = (savedRiderScore - rInt).toFixed(2);
+
+            window.judgingState.touroInt = bInt || defaults.touroInt;
+            window.judgingState.touroDec = formatDecString(bDecRaw);
+            window.judgingState.competidorInt = isFall ? 0 : (rInt || defaults.compInt);
+            window.judgingState.competidorDec = isFall ? ',00' : formatDecString(rDecRaw);
+            window.judgingState.isFall = isFall;
+            window.judgingState.isReride = Boolean(existingNota.isReride);
+        } else {
+            window.judgingState.touroInt = defaults.touroInt;
+            window.judgingState.touroDec = defaults.touroDec;
+            window.judgingState.competidorInt = defaults.compInt;
+            window.judgingState.competidorDec = defaults.compDec;
+            window.judgingState.isFall = false;
+            window.judgingState.isReride = false;
+        }
+    } else {
+        window.judgingState.touroInt = defaults.touroInt;
+        window.judgingState.touroDec = defaults.touroDec;
+        window.judgingState.competidorInt = defaults.compInt;
+        window.judgingState.competidorDec = defaults.compDec;
+        window.judgingState.isFall = false;
+        window.judgingState.isReride = false;
+    }
 
     updateDisplays();
     goToStepTouro();
     document.getElementById('view-judging-flow').classList.remove('hidden');
+}
+
+function formatDecString(decStr) {
+    if (decStr.includes('.75') || decStr.includes(',75')) return ',75';
+    if (decStr.includes('.5') || decStr.includes(',5')) return ',50';
+    if (decStr.includes('.25') || decStr.includes(',25')) return ',25';
+    return ',00';
 }
 
 function broadcastActiveArenaMatchup(riderName) {
