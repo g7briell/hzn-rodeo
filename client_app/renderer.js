@@ -3606,6 +3606,48 @@ window.openListBoiadas = () => {
     if (lb) lb.classList.remove('hidden'); 
 };
 
+window.closeListBoiadas = () => { 
+    const lb = document.getElementById('list-boiadas-view'); 
+    if (lb) lb.classList.add('hidden'); 
+};
+
+// --- CADASTRO EM MASSA (PEÕES) ---
+window.openModalBulkPeoes = () => {
+    const modal = document.getElementById('modal-bulk-peoes');
+    if (modal) modal.classList.remove('hidden');
+    const n = document.getElementById('bulk-peao-names'); if (n) n.value = '';
+    const c = document.getElementById('bulk-peao-cities'); if (c) c.value = '';
+    const cp = document.getElementById('bulk-peao-cpfs'); if (cp) cp.value = '';
+};
+
+window.closeModalBulkPeoes = () => {
+    const modal = document.getElementById('modal-bulk-peoes');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.saveBulkPeoes = async () => {
+    const names = (document.getElementById('bulk-peao-names')?.value || '').split('\n').filter(l => l.trim() !== '');
+    const cities = (document.getElementById('bulk-peao-cities')?.value || '').split('\n');
+    const cpfs = (document.getElementById('bulk-peao-cpfs')?.value || '').split('\n');
+
+    if (names.length === 0) return alert("Insira ao menos os nomes dos peões!");
+
+    const newPeoes = names.map((name, i) => ({
+        nome: name.trim().toUpperCase(),
+        cidade: (cities[i] || '').trim().toUpperCase() || '---',
+        cpf: (cpfs[i] || '').trim(),
+        score: 0
+    }));
+
+    currentEvent.peoes = [...(currentEvent.peoes || []), ...newPeoes];
+    await window.persistAndSyncEvent(currentEvent);
+    
+    closeModalBulkPeoes();
+    closeModalPeao();
+    openListPeoes();
+    alert(`${newPeoes.length} peões cadastrados com sucesso!`);
+};
+
 window.toggleBullSide = async (boiadaIdx, bullName) => {
     if (!currentEvent || !currentEvent.boiadas || !currentEvent.boiadas[boiadaIdx]) return;
     const b = currentEvent.boiadas[boiadaIdx];
@@ -3623,14 +3665,14 @@ window.toggleBullSide = async (boiadaIdx, bullName) => {
 };
 
 window.openModalBoiada = (idx = null) => { 
-    editingBoiadaIdx = idx; 
+    editingBoiadaIdx = (idx !== null && idx !== undefined) ? parseInt(idx) : null; 
     const title = document.querySelector('#modal-boiada h2'); 
     const inputCia = document.getElementById('boiada-cia');
     const inputCerto = document.getElementById('touros-certo');
     const inputErrado = document.getElementById('touros-errado');
 
-    if (idx !== null) { 
-        const b = currentEvent.boiadas[idx]; 
+    if (editingBoiadaIdx !== null && currentEvent && currentEvent.boiadas && currentEvent.boiadas[editingBoiadaIdx]) { 
+        const b = currentEvent.boiadas[editingBoiadaIdx]; 
         if (inputCia) inputCia.value = b.nome || '';
         
         const certoList = [];
@@ -3647,8 +3689,10 @@ window.openModalBoiada = (idx = null) => {
         if (inputErrado) inputErrado.value = erradoList.join('\n');
         if (title) title.innerText = "EDITAR BOIADA"; 
     } else { 
+        editingBoiadaIdx = null;
         const fb = document.getElementById('form-boiada'); 
         if (fb) fb.reset(); 
+        if (inputCia) inputCia.value = '';
         if (inputCerto) inputCerto.value = ''; 
         if (inputErrado) inputErrado.value = ''; 
         if (title) title.innerText = "CADASTRAR BOIADA (CIA)"; 
@@ -3657,7 +3701,11 @@ window.openModalBoiada = (idx = null) => {
     if (mb) mb.classList.remove('hidden'); 
     setTimeout(() => document.getElementById('boiada-cia')?.focus(), 50); 
 };
-window.closeModalBoiada = () => { const mb = document.getElementById('modal-boiada'); if (mb) mb.classList.add('hidden'); };
+window.closeModalBoiada = () => { 
+    const mb = document.getElementById('modal-boiada'); 
+    if (mb) mb.classList.add('hidden'); 
+    editingBoiadaIdx = null;
+};
 
 window.deletePeao = async (idx) => { if (confirm('Excluir este peão?')) { currentEvent.peoes.splice(idx, 1); await window.persistAndSyncEvent(currentEvent); openListPeoes(); } };
 window.deleteBoiada = async (idx) => { if (confirm('Excluir esta boiada?')) { currentEvent.boiadas.splice(idx, 1); await window.persistAndSyncEvent(currentEvent); openListBoiadas(); } };
