@@ -4059,7 +4059,9 @@ async function handleJudgeScoreReceived(scoreData) {
         rScore: isQueda ? 0 : rScore,
         bScore,
         total: (isQueda ? 0 : rScore) + bScore,
-        isFall: isQueda
+        isFall: isQueda,
+        totalGeral: consolidatedNota.totalGeral,
+        juizesCount: Object.keys(consolidatedNota.juizes_status || {}).length
     });
 }
 
@@ -4069,23 +4071,25 @@ function showJudgeScoreToast(data) {
 
     const toast = document.createElement('div');
     toast.id = 'realtime-score-toast';
-    toast.className = "fixed top-6 right-6 z-[9999] bg-slate-900/95 border-2 border-yellow-500 p-5 rounded-2xl shadow-2xl backdrop-blur-xl flex items-center gap-4 transform transition-all duration-300 translate-y-0 text-left max-w-md animate-bounce";
+    toast.className = "fixed top-6 right-6 z-[9999] bg-slate-900/95 border-2 border-yellow-500 p-5 rounded-2xl shadow-2xl backdrop-blur-xl flex items-start gap-4 transform transition-all duration-300 translate-y-0 text-left max-w-lg min-w-[300px] animate-bounce";
     
     toast.innerHTML = `
-        <div class="w-12 h-12 rounded-xl bg-yellow-500/20 text-yellow-500 flex items-center justify-center flex-shrink-0 border border-yellow-500/30 text-2xl">
-            🤠
-        </div>
-        <div class="flex-1">
-            <div class="flex items-center justify-between gap-2 mb-0.5">
-                <span class="text-[10px] font-black uppercase tracking-widest text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">Nota Recebida • Realtime</span>
-                <span class="text-[10px] font-mono text-slate-400">${new Date().toLocaleTimeString()}</span>
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-4 mb-2">
+                <span class="text-[10px] font-black uppercase tracking-widest text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 whitespace-nowrap">Nota Recebida • Realtime</span>
+                <span class="text-[10px] font-mono text-slate-400 whitespace-nowrap">${new Date().toLocaleTimeString()}</span>
             </div>
-            <div class="text-sm font-black text-white uppercase truncate">${data.judgeName} avaliou ${data.riderName}</div>
-            <div class="text-xs font-bold text-slate-300 mt-1">
-                ${data.isFall ? '<span class="text-red-400 font-black">SEM TEMPO (0,00)</span>' : `Peão: <b class="text-white">${data.rScore.toFixed(2)}</b> + Touro: <b class="text-yellow-400">${data.bScore.toFixed(2)}</b> = <b class="text-emerald-400 text-sm">${data.total.toFixed(2)}</b>`}
+            <div class="text-sm font-black text-white uppercase leading-tight mb-2 break-words">
+                ${data.judgeName} AVALIOU ${data.riderName}
+            </div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase mb-2">
+                ${data.isFall ? '<span class="text-red-400">QUEDA (0.00)</span>' : `Deste juiz: Peão <span class="text-white">${data.rScore.toFixed(2)}</span> + Touro <span class="text-yellow-400">${data.bScore.toFixed(2)}</span> = ${data.total.toFixed(2)}`}
+            </div>
+            <div class="text-sm font-black text-emerald-400 uppercase bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg inline-block w-full text-center">
+                NOTA SOMADA (${data.juizesCount} JUIZ${data.juizesCount > 1 ? 'ES' : ''}): ${data.totalGeral.toFixed(2)} PTS
             </div>
         </div>
-        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white font-bold p-1">✕</button>
+        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white font-bold p-1 flex-shrink-0 -mt-1 -mr-2">✕</button>
     `;
 
     document.body.appendChild(toast);
@@ -4095,7 +4099,7 @@ function showJudgeScoreToast(data) {
             toast.style.transform = 'translateY(-20px)';
             setTimeout(() => toast.remove(), 300);
         }
-    }, 6000);
+    }, 8000);
 }
 
 // --- SISTEMA DE CORES DINÂMICAS ---
