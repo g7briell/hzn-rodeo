@@ -1,6 +1,6 @@
 {
   "name": "hzn-rodeo-client",
-  "version": "1.0.165",
+  "version": "1.0.166",
   "description": "Rodeo System Client App",
   "main": "main.js",
   "scripts": {

@@ -2331,10 +2331,18 @@ window.confirmAndSavePhotoNotes = async () => {
         }
     });
 
+    // Limpar imediatamente a foto/imagem da memória para não ocupar espaço
+    currentPhotoNotesImageBase64 = null;
+    photoNotesReviewState = { day: 1, judge: '', rows: [] };
+    const imgEl = document.getElementById('photo-notes-preview-img');
+    if (imgEl) imgEl.src = '';
+    const containerPreview = document.getElementById('photo-notes-preview-container');
+    if (containerPreview) containerPreview.classList.add('hidden');
+
     await window.persistAndSyncEvent(currentEvent);
 
     document.getElementById('modal-review-photo-notes').classList.add('hidden');
-    alert(`As notas da planilha do ${photoNotesReviewState.judge} (Dia ${day}) foram salvas com sucesso!`);
+    alert(`As notas da planilha do ${photoNotesReviewState.judge || 'Juiz'} (Dia ${day}) foram salvas com sucesso!`);
 
     openNotasSummaryModal();
 };
