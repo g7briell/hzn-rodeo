@@ -7467,6 +7467,28 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.168": [
+        {
+            icon: "🚀",
+            title: "Performance e Otimização na Nuvem",
+            desc: "Eliminamos totalmente o erro de Timeout (canceling statement due to statement timeout) durante o compartilhamento. O sincronismo agora sanitiza a carga do evento e salva instantaneamente (em menos de 200ms)!"
+        },
+        {
+            icon: "🎙️",
+            title: "Notificações Somadas (Toast Realtime)",
+            desc: "A notificação de notas lançadas pelos juízes foi reformulada. Agora você pode ver a Nota Somada Geral em destaque direto na notificação flutuante e o nome de competidores extensos adapta sem cortar a tela."
+        },
+        {
+            icon: "📱",
+            title: "Layout 100% Responsivo",
+            desc: "O modal de Sorteios e a tela de Escolha de Touros foram otimizados para se ajustarem perfeitamente a telas pequenas e resoluções limitadas (notebooks menores)."
+        },
+        {
+            icon: "🧠",
+            title: "Otimização de Memória da IA (OCR)",
+            desc: "Imagens pesadas extraídas pela inteligência artificial a partir de planilhas de papel são imediatamente limpas da memória, evitando consumo desnecessário de RAM do seu computador e do evento."
+        }
+    ],
     "1.0.145": [
         {
             icon: "📜",
@@ -7483,56 +7505,12 @@ const CHANGELOG_DATA = {
             title: "Atualização 100% Silenciosa",
             desc: "O sistema agora atualiza sem abrir instaladores do Windows. Basta reiniciar o app para aplicar novidades em 2 segundos!"
         }
-    ],
-    "1.0.144": [
-        {
-            icon: "📄",
-            title: "Central de Relatórios & Report Viewer (A4)",
-            desc: "Visualização e impressão direta em folha A4 timbrada de Súmulas dos Juízes, Ordem de Embretamento, Ficha do Locutor e Rankings completos."
-        },
-        {
-            icon: "⚡",
-            title: "Atualização 100% Silenciosa",
-            desc: "O sistema agora atualiza sem abrir instaladores do Windows. Basta reiniciar o app para aplicar novidades em 2 segundos!"
-        },
-        {
-            icon: "🏆",
-            title: "Ranking de Touros e Boiadas Aprimorado",
-            desc: "Cálculo de médias robusto e protegido, integrando notas da nuvem e compatível com todas as categorias de animais."
-        },
-        {
-            icon: "🤠",
-            title: "Portal do Juiz (juiz.rodeoapp.pro)",
-            desc: "Nova tela de Rounds do evento, notas 100% zeradas ao iniciar montaria, sincronização em tempo real e proteção de histórico por senha."
-        }
-    ],
-    "1.0.143": [
-        {
-            icon: "⚡",
-            title: "Atualização 100% Silenciosa",
-            desc: "O sistema agora atualiza sem abrir instaladores do Windows. Basta reiniciar o app para aplicar novidades em 2 segundos!"
-        },
-        {
-            icon: "🏆",
-            title: "Ranking de Touros e Boiadas Aprimorado",
-            desc: "Cálculo de médias robusto e protegido, integrando notas da nuvem e compatível com todas as categorias de animais."
-        },
-        {
-            icon: "🤠",
-            title: "Portal do Juiz (juiz.rodeoapp.pro)",
-            desc: "Nova tela de Rounds do evento, notas 100% zeradas ao iniciar montaria, sincronização em tempo real e proteção de histórico por senha."
-        },
-        {
-            icon: "⚖️",
-            title: "Escala Automática de Pontuação",
-            desc: "Regras dinâmicas automáticas para 1 Juiz (0 a 50 pts) e 2+ Juízes (0 a 25 pts) com consolidação instantânea."
-        }
     ]
 };
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.143';
+        let appVersion = '1.0.168';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -7544,7 +7522,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.143"];
+            // Busca o changelog exato. Se não achar da versão atual mas for superior a 1.0.145, exibe o mais recente ("1.0.168")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.168"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
