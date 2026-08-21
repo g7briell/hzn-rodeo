@@ -5177,6 +5177,29 @@ window.openScoringModal = (idx) => {
     
     document.getElementById('score-peao-name').innerText = r.nome + (r.isReride ? ' (RE-RIDE)' : '');
     document.getElementById('score-touro-name').innerText = bull.nome;
+
+    // Nomes dos juízes cadastrados no evento
+    const juizes = (currentEvent && currentEvent.juizes && currentEvent.juizes.length > 0)
+        ? currentEvent.juizes.map((j, i) => typeof j === 'string' ? j : (j.nome || `JUIZ ${i+1}`))
+        : ['JUIZ 1', 'JUIZ 2'];
+
+    const j1Name = (juizes[0] || 'JUIZ 1').toUpperCase();
+    const j2Name = (juizes[1] || 'JUIZ 2').toUpperCase();
+    const maxNota = (currentEvent && currentEvent.judges == 1) ? 50 : 25;
+
+    const j1Label = document.getElementById('score-j1-label');
+    if (j1Label) j1Label.innerText = j1Name;
+    const j2Label = document.getElementById('score-j2-label');
+    if (j2Label) j2Label.innerText = j2Name;
+
+    const j1tLabel = document.getElementById('score-j1-touro-label');
+    if (j1tLabel) j1tLabel.innerText = `Touro (0-${maxNota})`;
+    const j1pLabel = document.getElementById('score-j1-peao-label');
+    if (j1pLabel) j1pLabel.innerText = `Peão (0-${maxNota})`;
+    const j2tLabel = document.getElementById('score-j2-touro-label');
+    if (j2tLabel) j2tLabel.innerText = `Touro (0-${maxNota})`;
+    const j2pLabel = document.getElementById('score-j2-peao-label');
+    if (j2pLabel) j2pLabel.innerText = `Peão (0-${maxNota})`;
     
     document.getElementById('score-tempo').value = '';
     ['j1-touro', 'j1-peao', 'j2-touro', 'j2-peao'].forEach(id => document.getElementById(`score-${id}`).value = '');
@@ -7467,6 +7490,28 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.169": [
+        {
+            icon: "🤠",
+            title: "Nomes dos Juízes no Card de Notas",
+            desc: "Os cartões de notas das montarias agora exibem os nomes reais de cada juiz cadastrado no evento em vez de apenas 'Juiz 1' e 'Juiz 2'."
+        },
+        {
+            icon: "✨",
+            title: "Header e Botões do Card Reorganizados",
+            desc: "O botão de Fechar (X) e a Engrenagem de Editar agora possuem espaçamento e área dedicada própria, sem encavalar em cima dos nomes dos touros."
+        },
+        {
+            icon: "🎙️",
+            title: "Notificações Somadas (Toast Realtime)",
+            desc: "A notificação de notas lançadas pelos juízes mostra a Nota Somada Geral em destaque direto na notificação flutuante e adapta nomes de competidores longos sem cortes."
+        },
+        {
+            icon: "🚀",
+            title: "Sincronização Rápida e Sanitizada",
+            desc: "Upload e compartilhamento otimizados na nuvem em menos de 200ms com descarte imediato de mídias pesadas da memória."
+        }
+    ],
     "1.0.168": [
         {
             icon: "🚀",
@@ -7477,40 +7522,13 @@ const CHANGELOG_DATA = {
             icon: "🎙️",
             title: "Notificações Somadas (Toast Realtime)",
             desc: "A notificação de notas lançadas pelos juízes foi reformulada. Agora você pode ver a Nota Somada Geral em destaque direto na notificação flutuante e o nome de competidores extensos adapta sem cortar a tela."
-        },
-        {
-            icon: "📱",
-            title: "Layout 100% Responsivo",
-            desc: "O modal de Sorteios e a tela de Escolha de Touros foram otimizados para se ajustarem perfeitamente a telas pequenas e resoluções limitadas (notebooks menores)."
-        },
-        {
-            icon: "🧠",
-            title: "Otimização de Memória da IA (OCR)",
-            desc: "Imagens pesadas extraídas pela inteligência artificial a partir de planilhas de papel são imediatamente limpas da memória, evitando consumo desnecessário de RAM do seu computador e do evento."
-        }
-    ],
-    "1.0.145": [
-        {
-            icon: "📜",
-            title: "Contratos Oficiais no Report Viewer (A4)",
-            desc: "Visualização e impressão direta na folha A4 timbrada de todos os contratos individuais e gerais de competidores conforme o modelo oficial."
-        },
-        {
-            icon: "📄",
-            title: "Todos os Relatórios de Exportação Integrados",
-            desc: "Súmulas, Listas de Peões, Boiadas, Juízes, Ordem de Bretes, Notas Lançadas e Rankings agora disponíveis no Report Viewer."
-        },
-        {
-            icon: "⚡",
-            title: "Atualização 100% Silenciosa",
-            desc: "O sistema agora atualiza sem abrir instaladores do Windows. Basta reiniciar o app para aplicar novidades em 2 segundos!"
         }
     ]
 };
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.168';
+        let appVersion = '1.0.169';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -7522,8 +7540,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual mas for superior a 1.0.145, exibe o mais recente ("1.0.168")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.168"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.169")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.169"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
