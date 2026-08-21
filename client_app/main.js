@@ -9,6 +9,13 @@ const ExcelJS = require('exceljs');
 const WebSocket = require('ws');
 global.WebSocket = WebSocket;
 
+// Flags de Alto Desempenho e Aceleração de Hardware do Chromium
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,SmoothScrolling');
+app.commandLine.appendSwitch('force_high_performance_gpu');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+
 // Esporte ativo da sessão atual
 let currentSportSession = 'rodeio';
 
@@ -33,21 +40,65 @@ function getUserDBPath(email, esporte = currentSportSession) {
   return path.join(app.getPath('userData'), `hzn_data_${safeSport}_${hash}.json`);
 }
 
+// Cache de memória ultra-rápido para eliminar I/O síncrono bloqueante
+const memoryCache = new Map();
+const saveTimeouts = new Map();
+
 function getLocalData(email, esporte = currentSportSession) {
   const dbPath = getUserDBPath(email, esporte);
-  if (!fs.existsSync(dbPath)) return { eventos: [] };
+  if (memoryCache.has(dbPath)) {
+    return memoryCache.get(dbPath);
+  }
+  if (!fs.existsSync(dbPath)) {
+    const emptyData = { eventos: [] };
+    memoryCache.set(dbPath, emptyData);
+    return emptyData;
+  }
   try {
-    const data = fs.readFileSync(dbPath, 'utf8');
-    return JSON.parse(data);
+    const raw = fs.readFileSync(dbPath, 'utf8');
+    const data = JSON.parse(raw);
+    memoryCache.set(dbPath, data);
+    return data;
   } catch (e) {
-    return { eventos: [] };
+    const emptyData = { eventos: [] };
+    memoryCache.set(dbPath, emptyData);
+    return emptyData;
   }
 }
 
 function saveLocalData(email, data, esporte = currentSportSession) {
   const dbPath = getUserDBPath(email, esporte);
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+  memoryCache.set(dbPath, data);
+
+  // Gravação atômica assíncrona não-bloqueante com debounce
+  if (saveTimeouts.has(dbPath)) {
+    clearTimeout(saveTimeouts.get(dbPath));
+  }
+
+  saveTimeouts.set(dbPath, setTimeout(() => {
+    saveTimeouts.delete(dbPath);
+    try {
+      const jsonStr = JSON.stringify(data, null, 2);
+      fs.promises.writeFile(dbPath, jsonStr, 'utf8').catch(err => {
+        console.error('Async saveLocalData write error:', err);
+      });
+    } catch (err) {
+      console.error('saveLocalData serialize error:', err);
+    }
+  }, 100));
 }
+
+// Grava imediatamente dados pendentes ao fechar app
+app.on('before-quit', () => {
+  for (const [dbPath, timeoutId] of saveTimeouts.entries()) {
+    clearTimeout(timeoutId);
+    if (memoryCache.has(dbPath)) {
+      try {
+        fs.writeFileSync(dbPath, JSON.stringify(memoryCache.get(dbPath), null, 2), 'utf8');
+      } catch(e) {}
+    }
+  }
+});
 
 // Sanitização robusta para envio em nuvem (remove imagens pesadas em base64 e dados temporários)
 function sanitizeEventForCloudPayload(rawEv) {
@@ -2921,24 +2972,26 @@ function mergeEventObjects(localEv, cloudEv) {
     return merged;
 }
 
-// Sincronizar todos os eventos do usuário com a nuvem
+// Sincronizar todos os eventos do usuário com a nuvem (Otimizado)
 ipcMain.handle('sync-user-cloud-events', async (event, email) => {
     try {
         const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail) return { success: false, error: "E-mail do usuário não informado." };
 
+        // Busca rápida apenas dos eventos deste organizador
         const { data: cloudEvents, error } = await supabase.from('eventos_oficiais')
-            .select('*')
-            .or(`organizador_email.ilike.${cleanEmail},status.eq.compartilhado`)
+            .select('id, nome, local, data_inicio, data_fim, organizador_email, status, detalhes, created_at')
+            .eq('organizador_email', cleanEmail)
             .order('created_at', { ascending: false })
-            .limit(500);
+            .limit(50);
 
         if (error) throw error;
 
         const localData = getLocalData(cleanEmail, currentSportSession);
         localData.eventos = localData.eventos || [];
+        let hasChanges = false;
 
-        if (Array.isArray(cloudEvents)) {
+        if (Array.isArray(cloudEvents) && cloudEvents.length > 0) {
             cloudEvents.forEach(cloudEv => {
                 let cloudLocal = null;
                 if (cloudEv.detalhes && cloudEv.detalhes.localData) {
@@ -2968,15 +3021,21 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
                 );
 
                 if (idx > -1) {
-                    localData.eventos[idx] = mergeEventObjects(localData.eventos[idx], cloudLocal);
+                    const merged = mergeEventObjects(localData.eventos[idx], cloudLocal);
+                    localData.eventos[idx] = merged;
+                    hasChanges = true;
                 } else {
                     localData.eventos.push(cloudLocal);
+                    hasChanges = true;
                 }
             });
-            saveLocalData(cleanEmail, localData, currentSportSession);
+
+            if (hasChanges) {
+                saveLocalData(cleanEmail, localData, currentSportSession);
+            }
         }
 
-        return { success: true };
+        return { success: true, hasChanges };
     } catch (e) {
         console.error("Erro ao sincronizar eventos do usuário na nuvem:", e);
         return { success: false, error: e.message || String(e) };

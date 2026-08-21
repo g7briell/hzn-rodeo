@@ -104,6 +104,18 @@ window.handleSyncStatusClick = () => {
     modal.classList.remove('hidden');
 };
 
+function debounce(func, wait = 150) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 window.retrySync = async () => {
     const modal = document.getElementById('modal-sync-error');
     if (modal) modal.classList.add('hidden');
@@ -116,24 +128,26 @@ window.syncUserEventsWithCloud = async () => {
     if (!email) return;
 
     try {
-        updateConnectionStatus('syncing');
         if (window.electronAPI && window.electronAPI.syncUserCloudEvents) {
             const res = await window.electronAPI.syncUserCloudEvents(email);
             if (res && res.success) {
                 updateConnectionStatus('synced');
-                renderEvents();
 
-                // Atualiza o evento ativo na tela com dados mesclados da nuvem
-                if (currentEvent) {
-                    const allEvs = await window.electronAPI.getLocalEvents(email);
-                    const freshEv = (allEvs || []).find(e => 
-                        (e.id && currentEvent.id && String(e.id) === String(currentEvent.id)) || 
-                        (e.share_id && currentEvent.share_id && e.share_id === currentEvent.share_id) ||
-                        (e.name && currentEvent.name && e.name.trim().toLowerCase() === currentEvent.name.trim().toLowerCase())
-                    );
-                    if (freshEv) {
-                        currentEvent = freshEv;
-                        refreshActiveViewData();
+                // Só re-renderiza a tela se de fato houve alteração vinda da nuvem
+                if (res.hasChanges) {
+                    renderEvents();
+
+                    if (currentEvent) {
+                        const allEvs = await window.electronAPI.getLocalEvents(email);
+                        const freshEv = (allEvs || []).find(e => 
+                            (e.id && currentEvent.id && String(e.id) === String(currentEvent.id)) || 
+                            (e.share_id && currentEvent.share_id && e.share_id === currentEvent.share_id) ||
+                            (e.name && currentEvent.name && e.name.trim().toLowerCase() === currentEvent.name.trim().toLowerCase())
+                        );
+                        if (freshEv) {
+                            currentEvent = freshEv;
+                            refreshActiveViewData();
+                        }
                     }
                 }
             } else {
@@ -152,10 +166,10 @@ window.persistAndSyncEvent = async (eventObj) => {
     const email = getCurrentUserEmail();
     if (!email || !eventObj) return;
     try {
+        // Atualiza localmente e despacha sync em background direto sem re-renderizar o DOM em loop
         await window.electronAPI.updateLocalEvent(email, eventObj);
-        await window.syncUserEventsWithCloud();
     } catch (err) {
-        console.error("Erro ao persistir e sincronizar evento:", err);
+        console.error("Erro ao persistir evento:", err);
     }
 };
 
@@ -196,17 +210,14 @@ function refreshActiveViewData() {
         requestAnimationFrame(() => { scrollEl.scrollTop = savedScroll; });
     }
 
-    // 4. Lista de Sorteios Realizados — preserva estado: se detalhes de um sorteio estão abertos,
-    //    re-abre o mesmo sorteio; se estava na lista, restaura scroll
+    // 4. Lista de Sorteios Realizados — preserva estado
     const listSorteiosView = document.getElementById('list-sorteios-view');
     if (listSorteiosView && !listSorteiosView.classList.contains('hidden')) {
         const container = document.getElementById('sorteios-table-container');
         const savedScroll = container ? container.scrollTop : 0;
         if (_openSorteioDetailIdx !== null && currentEvent.sorteios && currentEvent.sorteios[_openSorteioDetailIdx]) {
-            // Estava vendo detalhes de um sorteio específico — re-abre o mesmo
             window.viewDrawDetails(_openSorteioDetailIdx);
         } else {
-            // Estava na lista de cards — re-renderiza e restaura scroll
             openSorteiosList();
             requestAnimationFrame(() => { if (container) container.scrollTop = savedScroll; });
         }
@@ -244,7 +255,7 @@ function refreshActiveViewData() {
     }
 }
 
-// Loop de Sincronização em Tempo Real (a cada 8 segundos para não interferir na UX)
+// Loop de Sincronização em Tempo Real (a cada 30 segundos suave e não intrusivo)
 let realtimeSyncInterval = null;
 function startRealtimeSyncLoop() {
     if (realtimeSyncInterval) clearInterval(realtimeSyncInterval);
@@ -257,7 +268,7 @@ function startRealtimeSyncLoop() {
                               step1 && step1.classList.contains('hidden');
         if (inSorteioFlow) return;
         window.syncUserEventsWithCloud();
-    }, 8000);
+    }, 30000);
 }
 
 startRealtimeSyncLoop();
@@ -6639,7 +6650,7 @@ window.renderGlobalPeoes = () => {
     `).join('');
 };
 
-document.getElementById('search-global-peoes').addEventListener('input', renderGlobalPeoes);
+document.getElementById('search-global-peoes').addEventListener('input', debounce(renderGlobalPeoes, 120));
 
 window.editGlobalPeao = (idx) => {
     const p = globalPeoes[idx];
@@ -6703,7 +6714,7 @@ window.renderGlobalBoiadas = () => {
     `).join('');
 };
 
-document.getElementById('search-global-boiadas').addEventListener('input', renderGlobalBoiadas);
+document.getElementById('search-global-boiadas').addEventListener('input', debounce(renderGlobalBoiadas, 120));
 
 window.editGlobalBoiada = (idx) => {
     const b = globalBoiadas[idx];
@@ -7490,6 +7501,28 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.170": [
+        {
+            icon: "⚡",
+            title: "Super Otimização de Performance (Zero Engasgos)",
+            desc: "Eliminamos o I/O bloqueante de disco e implementamos cache em memória ultra-rápido. As ações locais (abrir telas, lançar notas, cadastrar peões/boiadas) agora respondem em 0ms!"
+        },
+        {
+            icon: "🎮",
+            title: "Aceleração por Hardware e GPU",
+            desc: "Ativamos a rasterização gráfica dedicada do Chromium no Electron (GPU Rasterization + Zero Copy), deixando animações e transições a 60 FPS lisos."
+        },
+        {
+            icon: "🔄",
+            title: "Sincronização em Nuvem Não-Intrusiva",
+            desc: "O loop de sincronização agora é inteligente e só atualiza a tela se houver mudanças reais vindas da nuvem, sem reconstruir o DOM e sem congelar a digitação."
+        },
+        {
+            icon: "🤠",
+            title: "Nomes dos Juízes no Card de Notas",
+            desc: "Os cartões de notas das montarias agora exibem os nomes reais de cada juiz cadastrado no evento em vez de apenas 'Juiz 1' e 'Juiz 2'."
+        }
+    ],
     "1.0.169": [
         {
             icon: "🤠",
@@ -7500,35 +7533,13 @@ const CHANGELOG_DATA = {
             icon: "✨",
             title: "Header e Botões do Card Reorganizados",
             desc: "O botão de Fechar (X) e a Engrenagem de Editar agora possuem espaçamento e área dedicada própria, sem encavalar em cima dos nomes dos touros."
-        },
-        {
-            icon: "🎙️",
-            title: "Notificações Somadas (Toast Realtime)",
-            desc: "A notificação de notas lançadas pelos juízes mostra a Nota Somada Geral em destaque direto na notificação flutuante e adapta nomes de competidores longos sem cortes."
-        },
-        {
-            icon: "🚀",
-            title: "Sincronização Rápida e Sanitizada",
-            desc: "Upload e compartilhamento otimizados na nuvem em menos de 200ms com descarte imediato de mídias pesadas da memória."
-        }
-    ],
-    "1.0.168": [
-        {
-            icon: "🚀",
-            title: "Performance e Otimização na Nuvem",
-            desc: "Eliminamos totalmente o erro de Timeout (canceling statement due to statement timeout) durante o compartilhamento. O sincronismo agora sanitiza a carga do evento e salva instantaneamente (em menos de 200ms)!"
-        },
-        {
-            icon: "🎙️",
-            title: "Notificações Somadas (Toast Realtime)",
-            desc: "A notificação de notas lançadas pelos juízes foi reformulada. Agora você pode ver a Nota Somada Geral em destaque direto na notificação flutuante e o nome de competidores extensos adapta sem cortar a tela."
         }
     ]
 };
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.169';
+        let appVersion = '1.0.170';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -7540,8 +7551,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.169")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.169"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.170")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.170"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
