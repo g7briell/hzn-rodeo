@@ -43,6 +43,8 @@ function getUserDBPath(email, esporte = currentSportSession) {
 // Cache de memória ultra-rápido para eliminar I/O síncrono bloqueante
 const memoryCache = new Map();
 const saveTimeouts = new Map();
+// Cache de IDs Supabase para evitar múltiplas queries de lookup por evento
+let cloudIdCache = new Map();
 
 function getLocalData(email, esporte = currentSportSession) {
   const dbPath = getUserDBPath(email, esporte);
@@ -564,6 +566,7 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail || !updatedEvent) return { success: false, error: "Dados inválidos para atualizar." };
 
+  // 1. Salva LOCAL imediatamente (já vai para o cache em memória, sem I/O bloqueante)
   const data = getLocalData(cleanEmail);
   let found = false;
   data.eventos = data.eventos.map(e => {
@@ -579,49 +582,63 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
   }
   saveLocalData(cleanEmail, data);
 
-  try {
-    const sanitizedEv = sanitizeEventForCloudPayload(updatedEvent);
+  // 2. Retorna IMEDIATAMENTE para o renderer — nenhum gargalo de rede no caminho crítico
+  setImmediate(async () => {
+    try {
+      const sanitizedEv = sanitizeEventForCloudPayload(updatedEvent);
 
-    const payload = {
-      nome: updatedEvent.name,
-      local: updatedEvent.city || '',
-      organizador_email: cleanEmail,
-      status: updatedEvent.share_id ? 'compartilhado' : 'ativo',
-      detalhes: {
-        share_id: updatedEvent.share_id || '',
-        share_password: updatedEvent.share_password || '',
-        sport: currentSportSession || 'rodeio',
-        localData: sanitizedEv
+      const payload = {
+        nome: updatedEvent.name,
+        local: updatedEvent.city || '',
+        organizador_email: cleanEmail,
+        status: updatedEvent.share_id ? 'compartilhado' : 'ativo',
+        detalhes: {
+          share_id: updatedEvent.share_id || '',
+          share_password: updatedEvent.share_password || '',
+          sport: currentSportSession || 'rodeio',
+          localData: sanitizedEv
+        }
+      };
+
+      // Cache de IDs na nuvem para evitar múltiplas queries de busca
+      const cacheKey = `${cleanEmail}::${updatedEvent.id || updatedEvent.name}`;
+      if (!cloudIdCache) cloudIdCache = new Map();
+
+      let cloudId = cloudIdCache.get(cacheKey);
+
+      if (!cloudId) {
+        // Só faz lookup se não tiver em cache
+        if (updatedEvent.id && /^[0-9a-f-]{36}$/i.test(String(updatedEvent.id))) {
+          const { data: byId } = await supabase.from('eventos_oficiais').select('id').eq('id', updatedEvent.id).limit(1);
+          if (byId && byId.length > 0) cloudId = byId[0].id;
+        }
+        if (!cloudId && updatedEvent.share_id) {
+          const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', updatedEvent.share_id).limit(1);
+          if (byShare && byShare.length > 0) cloudId = byShare[0].id;
+        }
+        if (!cloudId) {
+          const { data: byEmailName } = await supabase.from('eventos_oficiais')
+            .select('id')
+            .eq('organizador_email', cleanEmail)
+            .eq('nome', updatedEvent.name.trim())
+            .limit(1);
+          if (byEmailName && byEmailName.length > 0) cloudId = byEmailName[0].id;
+        }
+        if (cloudId) cloudIdCache.set(cacheKey, cloudId);
       }
-    };
 
-    let existing = null;
-    if (updatedEvent.id && /^[0-9a-f-]{36}$/i.test(String(updatedEvent.id))) {
-      const { data: byId } = await supabase.from('eventos_oficiais').select('id').eq('id', updatedEvent.id).limit(1);
-      if (byId && byId.length > 0) existing = byId;
+      if (cloudId) {
+        await supabase.from('eventos_oficiais').update(payload).eq('id', cloudId);
+      } else {
+        const newId = require('crypto').randomUUID();
+        payload.id = newId;
+        await supabase.from('eventos_oficiais').insert([payload]);
+        cloudIdCache.set(cacheKey, newId);
+      }
+    } catch (err) {
+      console.error("Cloud update background error in main.js:", err);
     }
-    if (!existing && updatedEvent.share_id) {
-      const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', updatedEvent.share_id).limit(1);
-      if (byShare && byShare.length > 0) existing = byShare;
-    }
-    if (!existing) {
-      const { data: byEmailName } = await supabase.from('eventos_oficiais')
-        .select('id')
-        .eq('organizador_email', cleanEmail)
-        .eq('nome', updatedEvent.name.trim())
-        .limit(1);
-      if (byEmailName && byEmailName.length > 0) existing = byEmailName;
-    }
-
-    if (existing && existing.length > 0) {
-      await supabase.from('eventos_oficiais').update(payload).eq('id', existing[0].id);
-    } else {
-      payload.id = require('crypto').randomUUID();
-      await supabase.from('eventos_oficiais').insert([payload]);
-    }
-  } catch (err) {
-    console.error("Cloud update background error in main.js:", err);
-  }
+  });
 
   return { success: true };
 });

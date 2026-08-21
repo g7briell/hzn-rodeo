@@ -274,17 +274,21 @@ function startRealtimeSyncLoop() {
 startRealtimeSyncLoop();
 
 async function verifyConnection() {
-    updateConnectionStatus('syncing');
     if (!navigator.onLine) {
         updateConnectionStatus('error', 'Sem conexão com a internet.');
         return false;
     }
-    const connected = await window.electronAPI.checkDbConnection();
-    if (connected) {
-        await window.syncUserEventsWithCloud();
-        return true;
-    } else {
-        updateConnectionStatus('error', 'Não foi possível estabelecer resposta com o banco de dados.');
+    try {
+        const connected = await window.electronAPI.checkDbConnection();
+        if (connected) {
+            updateConnectionStatus('connected');
+            return true;
+        } else {
+            updateConnectionStatus('error', 'Não foi possível estabelecer resposta com o banco de dados.');
+            return false;
+        }
+    } catch (e) {
+        updateConnectionStatus('error', 'Erro ao verificar conexão.');
         return false;
     }
 }
@@ -299,6 +303,9 @@ function parseCityFromAddress(address) {
     return address.trim().toUpperCase();
 }
 
+let _cachedOnlineCompetitors = null;
+let _lastOnlineCompetitorsFetch = 0;
+
 async function fetchGlobalData() {
     const email = getCurrentUserEmail();
     if (!email) return;
@@ -307,41 +314,54 @@ async function fetchGlobalData() {
         globalPeoes = data.peoes || [];
         globalBoiadas = data.boiadas || [];
         
-        // Se estiver online, buscar competidores do portal e fazer merge/deduplicação
+        // Cache de 3 minutos para competidores online do portal (evita flood de queries)
         if (navigator.onLine) {
             try {
-                const res = await window.electronAPI.getOnlineCompetitors();
-                if (res && res.success && res.competitors) {
-                    const mergedPeoes = [...globalPeoes];
-                    res.competitors.forEach(op => {
+                const now = Date.now();
+                if (!_cachedOnlineCompetitors || (now - _lastOnlineCompetitorsFetch > 180000)) {
+                    const res = await window.electronAPI.getOnlineCompetitors();
+                    if (res && res.success && res.competitors) {
+                        _cachedOnlineCompetitors = res.competitors;
+                        _lastOnlineCompetitorsFetch = now;
+                    }
+                }
+
+                if (_cachedOnlineCompetitors && _cachedOnlineCompetitors.length > 0) {
+                    const peaoKeySet = new Set();
+                    globalPeoes.forEach(p => {
+                        const cpf = (p.cpf || '').replace(/\D/g, '');
+                        if (cpf) peaoKeySet.add(`cpf:${cpf}`);
+                        const name = (p.nome || '').trim().toUpperCase();
+                        if (name) peaoKeySet.add(`name:${name}`);
+                    });
+
+                    const extraPeoes = [];
+                    _cachedOnlineCompetitors.forEach(op => {
                         const opName = (op.nome || '').trim().toUpperCase();
                         const opCpf = (op.cpf || '').replace(/\D/g, '');
-                        const opCity = parseCityFromAddress(op.endereco);
-                        
                         if (!opName) return;
-                        
-                        const exists = mergedPeoes.some(gp => {
-                            const gpName = (gp.nome || '').trim().toUpperCase();
-                            const gpCpf = (gp.cpf || '').replace(/\D/g, '');
-                            if (opCpf && gpCpf) {
-                                return opCpf === gpCpf;
-                            }
-                            return gpName === opName;
-                        });
-                        
-                        if (!exists) {
-                            mergedPeoes.push({
+
+                        const hasCpf = opCpf && peaoKeySet.has(`cpf:${opCpf}`);
+                        const hasName = peaoKeySet.has(`name:${opName}`);
+
+                        if (!hasCpf && !hasName) {
+                            if (opCpf) peaoKeySet.add(`cpf:${opCpf}`);
+                            peaoKeySet.add(`name:${opName}`);
+                            extraPeoes.push({
                                 nome: opName,
-                                cidade: opCity,
+                                cidade: parseCityFromAddress(op.endereco),
                                 cpf: op.cpf || '',
                                 score: 0
                             });
                         }
                     });
-                    globalPeoes = mergedPeoes;
+
+                    if (extraPeoes.length > 0) {
+                        globalPeoes = [...globalPeoes, ...extraPeoes];
+                    }
                 }
             } catch (err) {
-                console.error("Erro ao fundir dados online:", err);
+                console.warn("Erro ao fundir dados online:", err);
             }
         }
     } catch (e) {
@@ -2725,13 +2745,10 @@ window.openExportFlow = async () => {
         
         const daysContainer = document.getElementById('export-days-grid');
         if (daysContainer) {
-            daysContainer.innerHTML = '';
             const daysList = getEventDaysList();
-            daysList.forEach(day => {
-                daysContainer.innerHTML += `
-                    <button onclick="selectExportDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-yellow-500 hover:text-yellow-500 transition-all">${day.replace(/DIA/gi, "ROUND")}</button>
-                `;
-            });
+            daysContainer.innerHTML = daysList.map(day => `
+                <button onclick="selectExportDay('${day}')" class="bg-slate-950 border border-slate-800 py-6 rounded-2xl font-black text-white hover:border-yellow-500 hover:text-yellow-500 transition-all">${day.replace(/DIA/gi, "ROUND")}</button>
+            `).join('');
         }
 
         const modal = document.getElementById('modal-export-days');
@@ -3807,17 +3824,17 @@ window.toggleJuizSenhaVisibility = () => {
 window.openListJuizes = () => {
     document.getElementById('list-juizes-title').innerText = "JUÍZES CADASTRADOS";
     const tbody = document.getElementById('list-juizes-tbody');
-    tbody.innerHTML = '';
+    if (!tbody) return;
     
-    if (currentEvent && currentEvent.juizes) {
-        currentEvent.juizes.forEach((j, idx) => {
+    if (currentEvent && currentEvent.juizes && currentEvent.juizes.length > 0) {
+        tbody.innerHTML = currentEvent.juizes.map((j, idx) => {
             const jNome = typeof j === 'string' ? j : (j.nome || 'JUIZ');
             const hasSenha = typeof j === 'object' && j.senha && String(j.senha).trim().length > 0;
             const senhaBadge = hasSenha 
                 ? `<span class="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold shadow-sm"><svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>Senha: ••••</span>`
                 : `<span class="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold">Sem Senha</span>`;
 
-            tbody.innerHTML += `
+            return `
                 <tr class="hover:bg-slate-800/20 border-b border-slate-800/40">
                     <td class="px-8 py-5">
                         <div class="font-bold text-white uppercase text-base flex items-center gap-3">
@@ -3835,7 +3852,9 @@ window.openListJuizes = () => {
                         </button>
                     </td>
                 </tr>`;
-        });
+        }).join('');
+    } else {
+        tbody.innerHTML = '';
     }
     document.getElementById('modal-list-juizes').classList.remove('hidden');
 };
@@ -5104,12 +5123,12 @@ window.openNotasDays = () => {
         return alert("Não há sorteios salvos para registrar notas!");
     }
     const grid = document.getElementById('notas-days-grid');
-    grid.innerHTML = '';
+    if (!grid) return;
     
     const dias = [...new Set(currentEvent.sorteios.map(s => s.day))];
-    dias.forEach(day => {
-        grid.innerHTML += `<button onclick="openNotasListView('${day}')" class="bg-black border border-slate-800 p-8 rounded-3xl hover:border-blue-500 hover:bg-blue-500/10 transition-all font-black text-white text-xl uppercase tracking-tighter text-center">${day.replace(/DIA/gi, "ROUND")}</button>`;
-    });
+    grid.innerHTML = dias.map(day => 
+        `<button onclick="openNotasListView('${day}')" class="bg-black border border-slate-800 p-8 rounded-3xl hover:border-blue-500 hover:bg-blue-500/10 transition-all font-black text-white text-xl uppercase tracking-tighter text-center">${day.replace(/DIA/gi, "ROUND")}</button>`
+    ).join('');
 
     document.getElementById('modal-notas-days').classList.remove('hidden');
 };
@@ -5132,12 +5151,13 @@ window.closeNotasView = () => {
 window.renderNotasCards = () => {
     const container = document.getElementById('notas-cards-container');
     if (!container || typeof notasState === 'undefined' || !notasState || !notasState.sorteio || !notasState.sorteio.riders) return;
-    container.innerHTML = '';
     
     let totalGraded = 0;
     
-    notasState.sorteio.riders.forEach((r, idx) => {
-        const bull = notasState.sorteio.bulls[notasState.sorteio.assignments[idx]];
+    const cardsHtml = notasState.sorteio.riders.map((r, idx) => {
+        const bull = (notasState.sorteio.bulls && notasState.sorteio.assignments) 
+            ? (notasState.sorteio.bulls[notasState.sorteio.assignments[idx]] || { nome: '-', cia: '-' })
+            : { nome: '-', cia: '-' };
         
         const notaAtiva = (currentEvent.notas || []).find(n => n.peao === r.nome && n.touro === bull.nome && n.dia === notasState.day && n.status === 'ativa');
         const notaSub = (currentEvent.notas || []).find(n => n.peao === r.nome && n.touro === bull.nome && n.dia === notasState.day && n.status !== 'ativa');
@@ -5159,7 +5179,7 @@ window.renderNotasCards = () => {
         
         let rerideBadge = r.isReride ? `<span class="bg-red-500 text-white px-2 py-0.5 rounded text-[8px] ml-2 uppercase animate-pulse">Re-Ride</span>` : '';
 
-        container.innerHTML += `
+        return `
             <button onclick="${isLocked ? '' : `openScoringModal(${idx})`}" class="text-left p-6 rounded-[2.5rem] border ${statusClasses} transition-all relative">
                 ${notaAtiva ? `<div class="absolute top-6 right-6 text-blue-500/50 group-hover:text-blue-500 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>` : ''}
                 <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">COMPETIDOR</div>
@@ -5172,7 +5192,9 @@ window.renderNotasCards = () => {
                 ${scoreHTML}
             </button>
         `;
-    });
+    }).join('');
+
+    container.innerHTML = cardsHtml;
 
     if (totalGraded === notasState.sorteio.riders.length && notasState.sorteio.riders.length > 0) {
         document.getElementById('btn-lancar-ranking').classList.remove('hidden');
@@ -5480,16 +5502,16 @@ window.filterRerideBulls = () => {
         return;
     }
     
-    filtered.forEach(b => {
+    container.innerHTML = filtered.map(b => {
         const isReserva = reservaBullsNames.includes(b.nome.toUpperCase());
-        container.innerHTML += `
+        return `
             <button onclick="selectRerideBull('${b.nome}', '${b.cia}', '${b.lado}')" class="bg-black border ${isReserva ? 'border-emerald-500/50' : 'border-slate-800'} p-6 rounded-2xl hover:border-blue-500 text-left transition-all group relative">
                 ${isReserva ? '<div class="absolute top-0 right-0 bg-emerald-500 text-black text-[9px] font-black uppercase px-2 py-1 rounded-bl-lg rounded-tr-xl">RESERVA DO DIA</div>' : ''}
                 <div class="font-black text-white text-lg uppercase truncate group-hover:text-blue-500 pr-20">${b.nome}</div>
                 <div class="font-bold text-slate-500 text-xs uppercase truncate">${b.cia}</div>
             </button>
         `;
-    });
+    }).join('');
 };
 
 window.selectRerideBull = (nome, cia) => {
@@ -5643,10 +5665,8 @@ window.finishScoringFlow = () => {
         }
     }
 
-    tbody.innerHTML = '';
-    
-    if (notasState && notasState.sorteio && notasState.sorteio.riders) {
-        notasState.sorteio.riders.forEach((r, idx) => {
+    if (notasState && notasState.sorteio && notasState.sorteio.riders && notasState.sorteio.riders.length > 0) {
+        tbody.innerHTML = notasState.sorteio.riders.map((r, idx) => {
             const bull = (notasState.sorteio.bulls && notasState.sorteio.assignments) ? (notasState.sorteio.bulls[notasState.sorteio.assignments[idx]] || { nome: '-' }) : { nome: '-' };
             const scores = getScoresForRiderAndBull(r.nome, bull.nome, notasState.day);
 
@@ -5660,7 +5680,7 @@ window.finishScoringFlow = () => {
             let finalScore = scores.totalScore > 0 ? `<span class="text-yellow-400 font-black text-base">${scores.totalScore.toFixed(2)}</span>` : '-';
 
             if (isMultiJudge) {
-                tbody.innerHTML += `
+                return `
                     <tr class="hover:bg-slate-800/20 text-xs transition-colors">
                         <td class="py-3 px-3 text-slate-500 font-bold">${idx+1}</td>
                         <td class="py-3 px-3 font-bold text-white">${r.nome} ${r.isReride ? '<span class="bg-red-500 px-1.5 py-0.5 rounded text-[8px] text-white ml-1">RE-RIDE</span>' : ''}</td>
@@ -5676,7 +5696,7 @@ window.finishScoringFlow = () => {
                     </tr>
                 `;
             } else {
-                tbody.innerHTML += `
+                return `
                     <tr class="hover:bg-slate-800/20 text-xs transition-colors">
                         <td class="py-3 px-3 text-slate-500 font-bold">${idx+1}</td>
                         <td class="py-3 px-3 font-bold text-white">${r.nome} ${r.isReride ? '<span class="bg-red-500 px-1.5 py-0.5 rounded text-[8px] text-white ml-1">RE-RIDE</span>' : ''}</td>
@@ -5688,7 +5708,9 @@ window.finishScoringFlow = () => {
                     </tr>
                 `;
             }
-        });
+        }).join('');
+    } else {
+        tbody.innerHTML = '';
     }
 
     document.getElementById('modal-notas-summary').classList.remove('hidden');
@@ -7175,20 +7197,19 @@ function renderOverlayMedia(settings) {
     const logosContainer = document.getElementById('overlay-logos-container');
     const videosContainer = document.getElementById('overlay-videos-container');
     
-    logosContainer.innerHTML = '';
-    settings.logos.forEach(url => {
-        logosContainer.innerHTML += `
+    if (logosContainer) {
+        logosContainer.innerHTML = (settings.logos || []).map(url => `
             <div class="relative group w-24 h-24 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center overflow-hidden">
                 <img src="http://localhost:3005${url}" class="w-full h-full object-contain p-2">
                 <div class="absolute inset-0 bg-red-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer" onclick="deleteOverlayMedia('${url}', 'logo')">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 </div>
-            </div>`;
-    });
+            </div>`
+        ).join('');
+    }
     
-    videosContainer.innerHTML = '';
-    settings.sponsors.forEach(url => {
-        videosContainer.innerHTML += `
+    if (videosContainer) {
+        videosContainer.innerHTML = (settings.sponsors || []).map(url => `
             <div class="relative group w-full aspect-video bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center overflow-hidden">
                 <video src="http://localhost:3005${url}" class="w-full h-full object-cover opacity-50" autoplay muted loop></video>
                 <div class="absolute inset-0 flex items-center justify-center">
@@ -7197,8 +7218,9 @@ function renderOverlayMedia(settings) {
                 <div class="absolute inset-0 bg-red-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer" onclick="deleteOverlayMedia('${url}', 'video')">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 </div>
-            </div>`;
-    });
+            </div>`
+        ).join('');
+    }
 }
 
 window.copyOBSLink = async () => {
@@ -7501,45 +7523,40 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.171": [
+        {
+            icon: "🚀",
+            title: "Otimização Profunda do Pipeline e Zero Gargalos",
+            desc: "Eliminamos chamadas de rede no caminho crítico de atualização local (`update-local-event`). Todas as ações de interface agora salvam e respondem instantaneamente sem esperar queries de nuvem."
+        },
+        {
+            icon: "⚡",
+            title: "Fim do Layout Thrashing (Batch DOM Rendering)",
+            desc: "Substituímos concatenações repetitivas de HTML dentro de loops por renderização em lote atômica com `map().join('')` em todas as telas de notas, juízes, exportação e sorteios."
+        },
+        {
+            icon: "🧠",
+            title: "Deduplicação de Competidores Instantânea O(N)",
+            desc: "A mesclagem de competidores do portal online agora roda com cache em memória (TTL 3 min) e busca por `Set` com tempo de execução quase zero."
+        },
+        {
+            icon: "🛡️",
+            title: "Unificação de Verificações de Conectividade",
+            desc: "Eliminamos loops concorrentes de verificação de conexão e polling repetitivo, liberando 100% dos ciclos de CPU para o app."
+        }
+    ],
     "1.0.170": [
         {
             icon: "⚡",
-            title: "Super Otimização de Performance (Zero Engasgos)",
-            desc: "Eliminamos o I/O bloqueante de disco e implementamos cache em memória ultra-rápido. As ações locais (abrir telas, lançar notas, cadastrar peões/boiadas) agora respondem em 0ms!"
-        },
-        {
-            icon: "🎮",
-            title: "Aceleração por Hardware e GPU",
-            desc: "Ativamos a rasterização gráfica dedicada do Chromium no Electron (GPU Rasterization + Zero Copy), deixando animações e transições a 60 FPS lisos."
-        },
-        {
-            icon: "🔄",
-            title: "Sincronização em Nuvem Não-Intrusiva",
-            desc: "O loop de sincronização agora é inteligente e só atualiza a tela se houver mudanças reais vindas da nuvem, sem reconstruir o DOM e sem congelar a digitação."
-        },
-        {
-            icon: "🤠",
-            title: "Nomes dos Juízes no Card de Notas",
-            desc: "Os cartões de notas das montarias agora exibem os nomes reais de cada juiz cadastrado no evento em vez de apenas 'Juiz 1' e 'Juiz 2'."
-        }
-    ],
-    "1.0.169": [
-        {
-            icon: "🤠",
-            title: "Nomes dos Juízes no Card de Notas",
-            desc: "Os cartões de notas das montarias agora exibem os nomes reais de cada juiz cadastrado no evento em vez de apenas 'Juiz 1' e 'Juiz 2'."
-        },
-        {
-            icon: "✨",
-            title: "Header e Botões do Card Reorganizados",
-            desc: "O botão de Fechar (X) e a Engrenagem de Editar agora possuem espaçamento e área dedicada própria, sem encavalar em cima dos nomes dos touros."
+            title: "Super Otimização de Performance",
+            desc: "Cache em memória ultra-rápido e aceleração gráfica por GPU ativada."
         }
     ]
 };
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.170';
+        let appVersion = '1.0.171';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -7551,8 +7568,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.170")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.170"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.171")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.171"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
