@@ -5514,11 +5514,46 @@ window.filterRerideBulls = () => {
     }).join('');
 };
 
-window.selectRerideBull = (nome, cia) => {
-    notasState.rerideBull = { nome, cia };
+window.selectRerideBull = (nome, cia, lado = '') => {
+    let resolvedLado = lado || '';
+
+    // Se lado não veio preenchido, busca nas boiadas cadastradas no evento
+    if (!resolvedLado && currentEvent && currentEvent.boiadas) {
+        currentEvent.boiadas.forEach(c => {
+            if (c.lados && c.lados[nome]) {
+                resolvedLado = c.lados[nome];
+            }
+        });
+    }
+
+    // Se ainda não achou, busca no banco global de boiadas
+    if (!resolvedLado && typeof globalBoiadas !== 'undefined' && Array.isArray(globalBoiadas)) {
+        globalBoiadas.forEach(b => {
+            if (b.lados && b.lados[nome]) {
+                resolvedLado = b.lados[nome];
+            }
+        });
+    }
+
+    notasState.rerideBull = { nome, cia, lado: resolvedLado };
     
-    // Reset radio buttons
-    document.querySelectorAll('input[name="manual-reride-lado"]').forEach(r => r.checked = false);
+    // Normaliza o lado
+    const l = String(resolvedLado || '').trim().toUpperCase();
+    const isEsquerdo = (l === 'E' || l === 'ESQUERDO' || l === 'ERRADO');
+    const isDireito = (l === 'D' || l === 'C' || l === 'DIREITO' || l === 'CERTO');
+
+    // Auto-seleciona o radio button do lado no modal de confirmação
+    document.querySelectorAll('input[name="manual-reride-lado"]').forEach(r => {
+        if (isEsquerdo && r.value === 'E') {
+            r.checked = true;
+        } else if (isDireito && r.value === 'D') {
+            r.checked = true;
+        } else if (!isEsquerdo && !isDireito) {
+            r.checked = (r.value === 'E'); // Padrão Esquerdo se não informado
+        } else {
+            r.checked = false;
+        }
+    });
     
     document.getElementById('modal-reride-bull').classList.add('hidden');
     document.getElementById('modal-reride-confirm').classList.remove('hidden');
@@ -7523,40 +7558,40 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.172": [
+        {
+            icon: "🐂",
+            title: "Seleção Automática do Lado no Re-Ride",
+            desc: "Ao selecionar um touro de re-ride, o sistema já identifica e marca automaticamente o lado do animal (Esquerdo ou Direito) cadastrado na boiada."
+        },
+        {
+            icon: "✨",
+            title: "Nomes de Competidor e Touro em 2 Linhas",
+            desc: "Nomes longos de competidores e touros agora quebram em até 2 linhas sem cortes ou reticências, com tipografia proporcional e legível."
+        },
+        {
+            icon: "🎯",
+            title: "Painel de Notas Total Centralizado",
+            desc: "Os totais de Peão, Touro e Montaria agora ficam perfeitamente centralizados e destacados no rodapé do card de notas."
+        },
+        {
+            icon: "🚀",
+            title: "Super Performance e Zero Gargalos",
+            desc: "Pipeline assíncrono com cache em memória RAM e renderização em lote atômica."
+        }
+    ],
     "1.0.171": [
         {
             icon: "🚀",
             title: "Otimização Profunda do Pipeline e Zero Gargalos",
-            desc: "Eliminamos chamadas de rede no caminho crítico de atualização local (`update-local-event`). Todas as ações de interface agora salvam e respondem instantaneamente sem esperar queries de nuvem."
-        },
-        {
-            icon: "⚡",
-            title: "Fim do Layout Thrashing (Batch DOM Rendering)",
-            desc: "Substituímos concatenações repetitivas de HTML dentro de loops por renderização em lote atômica com `map().join('')` em todas as telas de notas, juízes, exportação e sorteios."
-        },
-        {
-            icon: "🧠",
-            title: "Deduplicação de Competidores Instantânea O(N)",
-            desc: "A mesclagem de competidores do portal online agora roda com cache em memória (TTL 3 min) e busca por `Set` com tempo de execução quase zero."
-        },
-        {
-            icon: "🛡️",
-            title: "Unificação de Verificações de Conectividade",
-            desc: "Eliminamos loops concorrentes de verificação de conexão e polling repetitivo, liberando 100% dos ciclos de CPU para o app."
-        }
-    ],
-    "1.0.170": [
-        {
-            icon: "⚡",
-            title: "Super Otimização de Performance",
-            desc: "Cache em memória ultra-rápido e aceleração gráfica por GPU ativada."
+            desc: "Eliminamos chamadas de rede no caminho crítico de atualização local."
         }
     ]
 };
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.171';
+        let appVersion = '1.0.172';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -7568,8 +7603,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.171")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.171"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.172")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.172"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
