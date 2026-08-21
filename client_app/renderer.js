@@ -5671,30 +5671,30 @@ window.finishScoringFlow = () => {
     if (tableHeader) {
         if (isMultiJudge) {
             tableHeader.innerHTML = `
-                <tr class="text-[10px] font-black uppercase tracking-widest border-b border-slate-800 text-slate-400">
-                    <th class="py-4 px-3">POS</th>
-                    <th class="py-4 px-3">Competidor</th>
-                    <th class="py-4 px-3">Touro</th>
-                    <th class="py-4 px-3 text-center">Tempo</th>
-                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/5">Peão (${j1Name})</th>
-                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/5">Touro (${j1Name})</th>
-                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/5">Peão (${j2Name})</th>
-                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/5">Touro (${j2Name})</th>
-                    <th class="py-4 px-3 text-center text-white font-black bg-blue-500/10">Total Peão</th>
-                    <th class="py-4 px-3 text-center text-white font-black bg-blue-500/10">Total Touro</th>
-                    <th class="py-4 px-3 text-center text-yellow-500 font-black text-xs bg-yellow-500/10">Nota Final</th>
+                <tr class="text-[10px] font-black uppercase tracking-widest border-b border-slate-800 text-slate-400 bg-[#060b13]">
+                    <th class="py-4 px-3 sticky top-0 bg-[#060b13] z-20">POS</th>
+                    <th class="py-4 px-3 sticky top-0 bg-[#060b13] z-20">Competidor</th>
+                    <th class="py-4 px-3 sticky top-0 bg-[#060b13] z-20">Touro</th>
+                    <th class="py-4 px-3 text-center sticky top-0 bg-[#060b13] z-20">Tempo</th>
+                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/10 sticky top-0 z-20">Peão (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/10 sticky top-0 z-20">Touro (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/10 sticky top-0 z-20">Peão (${j2Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/10 sticky top-0 z-20">Touro (${j2Name})</th>
+                    <th class="py-4 px-3 text-center text-white font-black bg-blue-500/20 sticky top-0 z-20">Total Peão</th>
+                    <th class="py-4 px-3 text-center text-white font-black bg-blue-500/20 sticky top-0 z-20">Total Touro</th>
+                    <th class="py-4 px-3 text-center text-yellow-500 font-black text-xs bg-yellow-500/20 sticky top-0 z-20">Nota Final</th>
                 </tr>
             `;
         } else {
             tableHeader.innerHTML = `
-                <tr class="text-[10px] font-black uppercase tracking-widest border-b border-slate-800 text-slate-400">
-                    <th class="py-4 px-3">POS</th>
-                    <th class="py-4 px-3">Competidor</th>
-                    <th class="py-4 px-3">Touro</th>
-                    <th class="py-4 px-3 text-center">Tempo</th>
-                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/5">Nota Peão (${j1Name})</th>
-                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/5">Nota Touro (${j1Name})</th>
-                    <th class="py-4 px-3 text-center text-yellow-500 font-black text-xs bg-yellow-500/10">Nota Final</th>
+                <tr class="text-[10px] font-black uppercase tracking-widest border-b border-slate-800 text-slate-400 bg-[#060b13]">
+                    <th class="py-4 px-3 sticky top-0 bg-[#060b13] z-20">POS</th>
+                    <th class="py-4 px-3 sticky top-0 bg-[#060b13] z-20">Competidor</th>
+                    <th class="py-4 px-3 sticky top-0 bg-[#060b13] z-20">Touro</th>
+                    <th class="py-4 px-3 text-center sticky top-0 bg-[#060b13] z-20">Tempo</th>
+                    <th class="py-4 px-3 text-center text-emerald-400 bg-emerald-500/10 sticky top-0 z-20">Nota Peão (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-400 bg-yellow-500/10 sticky top-0 z-20">Nota Touro (${j1Name})</th>
+                    <th class="py-4 px-3 text-center text-yellow-500 font-black text-xs bg-yellow-500/20 sticky top-0 z-20">Nota Final</th>
                 </tr>
             `;
         }
@@ -7558,7 +7558,12 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
-    "1.0.172": [
+    "1.0.173": [
+        {
+            icon: "📜",
+            title: "Rolagem Fluida na Conferência de Notas",
+            desc: "A tabela de conferência de notas agora possui rolagem vertical suave com mouse wheel e cabeçalho fixo no topo, permitindo navegar por dezenas de montarias sem travar."
+        },
         {
             icon: "🐂",
             title: "Seleção Automática do Lado no Re-Ride",
@@ -7567,31 +7572,26 @@ const CHANGELOG_DATA = {
         {
             icon: "✨",
             title: "Nomes de Competidor e Touro em 2 Linhas",
-            desc: "Nomes longos de competidores e touros agora quebram em até 2 linhas sem cortes ou reticências, com tipografia proporcional e legível."
+            desc: "Nomes longos agora quebram em até 2 linhas sem cortes ou reticências."
         },
         {
             icon: "🎯",
             title: "Painel de Notas Total Centralizado",
-            desc: "Os totais de Peão, Touro e Montaria agora ficam perfeitamente centralizados e destacados no rodapé do card de notas."
-        },
-        {
-            icon: "🚀",
-            title: "Super Performance e Zero Gargalos",
-            desc: "Pipeline assíncrono com cache em memória RAM e renderização em lote atômica."
+            desc: "Os totais de Peão, Touro e Montaria agora ficam centralizados no card de notas."
         }
     ],
-    "1.0.171": [
+    "1.0.172": [
         {
-            icon: "🚀",
-            title: "Otimização Profunda do Pipeline e Zero Gargalos",
-            desc: "Eliminamos chamadas de rede no caminho crítico de atualização local."
+            icon: "🐂",
+            title: "Seleção Automática do Lado no Re-Ride",
+            desc: "Identificação automática do lado do animal no re-ride."
         }
     ]
 };
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.172';
+        let appVersion = '1.0.173';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -7603,8 +7603,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.172")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.172"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.173")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.173"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
