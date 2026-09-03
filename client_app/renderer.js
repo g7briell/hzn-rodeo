@@ -7685,22 +7685,35 @@ window.openTransmissaoSettingsModal = () => {
 
 window.copyTelaVerdeLink = (type = 'local') => {
     const inputId = type === 'local' ? 'trans-link-tela-verde-local' : 'trans-link-tela-verde-web';
-    const iconId = type === 'local' ? 'copy-icon-local' : 'copy-icon-web';
     const input = document.getElementById(inputId);
     if (!input || !input.value) return;
 
     input.select();
-    navigator.clipboard.writeText(input.value).then(() => {
-        const icon = document.getElementById(iconId);
-        if (icon) icon.innerText = '✅';
-        showToast(type === 'local' ? 'Link Local da Tela Verde copiado!' : 'Link Web da Tela Verde copiado!', 'success');
-        setTimeout(() => {
-            if (icon) icon.innerText = '📋';
-        }, 2000);
-    }).catch(() => {
+    input.setSelectionRange(0, 99999);
+
+    const btn = input.nextElementSibling;
+    const origHTML = btn ? btn.innerHTML : '';
+
+    const onSuccess = () => {
+        if (btn) {
+            btn.innerHTML = `<span>✅</span> Copiado!`;
+            btn.classList.add('bg-emerald-500/30', 'text-white');
+            setTimeout(() => {
+                btn.innerHTML = origHTML || `<span>📋</span> Copiar`;
+                btn.classList.remove('bg-emerald-500/30', 'text-white');
+            }, 2500);
+        }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(onSuccess).catch(() => {
+            document.execCommand('copy');
+            onSuccess();
+        });
+    } else {
         document.execCommand('copy');
-        showToast('Link copiado!', 'success');
-    });
+        onSuccess();
+    }
 };
 
 window.openTelaVerdeLink = (type = 'local') => {
@@ -8324,6 +8337,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.180": [
+        {
+            icon: "📋",
+            title: "Cópia Instantânea do Link da Tela Verde",
+            desc: "Cópia rápida com feedback visual direto no botão para o link local (OBS/vMix) e link web."
+        }
+    ],
     "1.0.179": [
         {
             icon: "🟩",
@@ -8412,7 +8432,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.179';
+        let appVersion = '1.0.180';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8424,8 +8444,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.179")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.179"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.180")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.180"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
