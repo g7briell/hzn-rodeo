@@ -206,37 +206,55 @@
     <!-- GRÁFICO 3: DETALHAMENTO DE NOTAS DOS JUÍZES (IMAGEM 4) -->
     <!-- ============================================================ -->
     <div id="overlay-score-container" class="fixed bottom-12 left-16 z-40 hidden">
-        <div class="flex items-center gap-5">
-            <!-- Círculo da Logo (Evento ou Splash Logo RodeoApp) -->
-            <div class="w-28 h-28 rounded-full bg-white border-4 border-[#a8101e] shadow-[0_15px_40px_rgba(0,0,0,0.85),0_0_30px_rgba(220,38,38,0.5)] flex items-center justify-center p-3 shrink-0 overflow-hidden relative">
-                <img id="score-event-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain">
+        <div class="flex items-center gap-6">
+            <!-- Logo Transparente em PNG Real (Sem círculo branco, sem borda vermelha) -->
+            <div class="w-32 h-28 flex items-center justify-center shrink-0">
+                <img id="score-event-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain filter drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]">
             </div>
 
             <!-- Caixa de Detalhamento Inteligente de Juízes -->
-            <div class="broadcast-wine-bar rounded-3xl px-8 py-4 min-w-[620px]">
-                <!-- Cabeçalho Dinâmico das Colunas -->
-                <div id="score-header-row" class="flex items-center text-slate-200 text-xs sm:text-sm font-black uppercase tracking-wider pb-2 border-b border-white/20">
-                    <!-- Gerado dinamicamente para 1, 2 ou 3 juízes -->
-                </div>
-
-                <!-- Linhas das Notas -->
-                <div class="flex items-center pt-3">
-                    <!-- Grade de Notas: Atleta e Animal -->
-                    <div id="score-body-grid" class="flex-1 space-y-2">
-                        <!-- Gerado dinamicamente via JS -->
+            <div class="broadcast-wine-bar rounded-3xl px-8 py-5 min-w-[660px] flex items-center gap-8">
+                <!-- Seção Esquerda: Grade de Juízes -->
+                <div class="flex-1 min-w-[340px]">
+                    <!-- Cabeçalho Dinâmico das Colunas dos Juízes (Sem "Categoria") -->
+                    <div class="flex items-center pb-2.5 mb-2.5 border-b border-white/20">
+                        <div class="w-24 sm:w-28 shrink-0"></div>
+                        <div id="score-judges-header" class="flex-1">
+                            <!-- Injetado dinamicamente: JUIZ 1, JUIZ 2, etc. -->
+                        </div>
                     </div>
 
-                    <!-- Divisor Vertical -->
-                    <div class="red-divider mx-6 h-16"></div>
+                    <!-- Linhas das Notas: ATLETA e ANIMAL -->
+                    <div class="space-y-3">
+                        <!-- Linha ATLETA -->
+                        <div class="flex items-center">
+                            <span class="w-24 sm:w-28 shrink-0 text-slate-300 font-extrabold text-sm tracking-wider uppercase">ATLETA</span>
+                            <div id="score-atleta-row" class="flex-1">
+                                <!-- Injetado dinamicamente -->
+                            </div>
+                        </div>
+                        <div class="border-t border-white/10"></div>
+                        <!-- Linha ANIMAL -->
+                        <div class="flex items-center">
+                            <span class="w-24 sm:w-28 shrink-0 text-slate-300 font-extrabold text-sm tracking-wider uppercase">ANIMAL</span>
+                            <div id="score-animal-row" class="flex-1">
+                                <!-- Injetado dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Direita: NOTA TOTAL EM DESTAQUE GIGANTE -->
-                    <div class="min-w-[120px] text-center">
-                        <div id="score-val-grand-total" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tighter leading-none drop-shadow-xl">
-                            0,00
-                        </div>
-                        <div id="score-val-status-label" class="text-xs font-black uppercase tracking-wider text-slate-300 mt-1">
-                            PONTOS
-                        </div>
+                <!-- Divisor Vertical Vermelho -->
+                <div class="red-divider h-20 shrink-0"></div>
+
+                <!-- Seção Direita: NOTA TOTAL DA MONTARIA -->
+                <div class="min-w-[130px] text-center shrink-0">
+                    <span class="text-xs font-black uppercase tracking-widest text-yellow-400 block mb-0.5">TOTAL</span>
+                    <div id="score-val-grand-total" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tighter leading-none drop-shadow-xl">
+                        0,00
+                    </div>
+                    <div id="score-val-status-label" class="text-xs font-black uppercase tracking-wider text-slate-300 mt-1">
+                        PONTOS
                     </div>
                 </div>
             </div>
@@ -248,10 +266,10 @@
     <!-- GRÁFICO 4: MOSTRAR APENAS NOTA (TOTAL DESTACADO) -->
     <!-- ============================================================ -->
     <div id="overlay-total-only-container" class="fixed bottom-12 left-16 z-40 hidden">
-        <div class="flex items-center gap-5">
-            <!-- Círculo da Logo -->
-            <div class="w-28 h-28 rounded-full bg-white border-4 border-[#a8101e] shadow-[0_15px_40px_rgba(0,0,0,0.85),0_0_30px_rgba(220,38,38,0.5)] flex items-center justify-center p-3 shrink-0 overflow-hidden relative">
-                <img id="total-only-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain">
+        <div class="flex items-center gap-6">
+            <!-- Logo Transparente em PNG Real (Sem círculo branco, sem borda vermelha) -->
+            <div class="w-32 h-28 flex items-center justify-center shrink-0">
+                <img id="total-only-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain filter drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]">
             </div>
 
             <!-- Barra Destacada com Nome, Touro e NOTA TOTAL -->
@@ -399,6 +417,9 @@
             }, 350);
         }
 
+        let scoreAutoHideTimeout = null;
+        let totalOnlyAutoHideTimeout = null;
+
         // ==========================================
         // RENDERIZADOR: TARJA DE NOTAS DETALHADA (GRAF 3)
         // ==========================================
@@ -408,7 +429,7 @@
             const container = document.getElementById('overlay-score-container');
             if (!container) return;
 
-            // Logo do Evento com fallback perfeito para splash_logo.png
+            // Logo do Evento transparente em PNG real
             const logoImg = document.getElementById('score-event-logo');
             logoImg.src = data.eventLogo || DEFAULT_LOGO;
             logoImg.onerror = () => { logoImg.src = DEFAULT_LOGO; };
@@ -416,64 +437,61 @@
             const judges = data.judges || [];
             const isSingleJudge = (judges.length === 1);
 
-            // Cabeçalho Inteligente
-            const headerRow = document.getElementById('score-header-row');
-            if (isSingleJudge) {
-                const j1Name = judges[0].nome || 'JUIZ 1';
-                headerRow.innerHTML = `
-                    <div class="w-28 text-slate-300">CATEGORIA</div>
-                    <div class="flex-1 text-center font-black text-white">${j1Name}</div>
-                    <div class="w-32 text-center text-yellow-400 font-black">TOTAL</div>
-                `;
-            } else {
-                const judgeColsHtml = judges.map(j => `<span>${j.nome || ('JUIZ ' + j.juizNum)}</span>`).join('');
-                headerRow.innerHTML = `
-                    <div class="w-28 text-slate-300">CATEGORIA</div>
-                    <div class="flex-1 flex items-center justify-around font-black text-white">
-                        ${judgeColsHtml}
-                        <span>NOTA</span>
-                    </div>
-                    <div class="w-32 text-center text-yellow-400 font-black">TOTAL</div>
-                `;
-            }
+            const headerJudgesEl = document.getElementById('score-judges-header');
+            const atletaRowEl = document.getElementById('score-atleta-row');
+            const animalRowEl = document.getElementById('score-animal-row');
 
-            // Linhas ATLETA e ANIMAL Inteligentes
-            const bodyGrid = document.getElementById('score-body-grid');
             if (isSingleJudge) {
+                const j1 = judges[0] || { nome: 'JUIZ 1', atleta: '--,--', animal: '--,--' };
+                headerJudgesEl.innerHTML = `
+                    <div class="text-center font-black text-white text-base uppercase tracking-wider">${j1.nome || 'JUIZ 1'}</div>
+                `;
+                atletaRowEl.innerHTML = `
+                    <div class="text-center font-mono font-black text-white text-2xl tracking-tight leading-none">${j1.atleta}</div>
+                `;
+                animalRowEl.innerHTML = `
+                    <div class="text-center font-mono font-black text-white text-2xl tracking-tight leading-none">${j1.animal}</div>
+                `;
+            } else if (judges.length === 2) {
                 const j1 = judges[0];
-                bodyGrid.innerHTML = `
-                    <!-- Linha ATLETA -->
-                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
-                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ATLETA</span>
-                        <div class="flex-1 text-center font-mono">${j1.atleta}</div>
+                const j2 = judges[1];
+                headerJudgesEl.innerHTML = `
+                    <div class="grid grid-cols-2 text-center font-black text-white text-sm uppercase tracking-wider">
+                        <span>${j1.nome || 'JUIZ 1'}</span>
+                        <span>${j2.nome || 'JUIZ 2'}</span>
                     </div>
-                    <div class="border-t border-white/20"></div>
-                    <!-- Linha ANIMAL -->
-                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
-                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ANIMAL</span>
-                        <div class="flex-1 text-center font-mono">${j1.animal}</div>
+                `;
+                atletaRowEl.innerHTML = `
+                    <div class="grid grid-cols-2 text-center font-mono font-black text-white text-2xl tracking-tight leading-none">
+                        <span>${j1.atleta}</span>
+                        <span>${j2.atleta}</span>
+                    </div>
+                `;
+                animalRowEl.innerHTML = `
+                    <div class="grid grid-cols-2 text-center font-mono font-black text-white text-2xl tracking-tight leading-none">
+                        <span>${j1.animal}</span>
+                        <span>${j2.animal}</span>
                     </div>
                 `;
             } else {
-                const atletaScoresHtml = judges.map(j => `<span>${j.atleta}</span>`).join('');
-                const animalScoresHtml = judges.map(j => `<span>${j.animal}</span>`).join('');
-                bodyGrid.innerHTML = `
-                    <!-- Linha ATLETA -->
-                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
-                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ATLETA</span>
-                        <div class="flex-1 flex items-center justify-around font-mono">
-                            ${atletaScoresHtml}
-                            <span class="text-yellow-400 font-extrabold">${data.sumAtleta || '--,--'}</span>
-                        </div>
+                const count = Math.max(1, judges.length);
+                const colHeaders = judges.map(j => `<span>${j.nome || ('JUIZ ' + j.juizNum)}</span>`).join('');
+                const atletaCols = judges.map(j => `<span>${j.atleta}</span>`).join('');
+                const animalCols = judges.map(j => `<span>${j.animal}</span>`).join('');
+
+                headerJudgesEl.innerHTML = `
+                    <div class="grid text-center font-black text-white text-sm uppercase tracking-wider" style="grid-template-columns: repeat(${count}, minmax(0, 1fr));">
+                        ${colHeaders}
                     </div>
-                    <div class="border-t border-white/20"></div>
-                    <!-- Linha ANIMAL -->
-                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
-                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ANIMAL</span>
-                        <div class="flex-1 flex items-center justify-around font-mono">
-                            ${animalScoresHtml}
-                            <span class="text-yellow-400 font-extrabold">${data.sumAnimal || '--,--'}</span>
-                        </div>
+                `;
+                atletaRowEl.innerHTML = `
+                    <div class="grid text-center font-mono font-black text-white text-2xl tracking-tight leading-none" style="grid-template-columns: repeat(${count}, minmax(0, 1fr));">
+                        ${atletaCols}
+                    </div>
+                `;
+                animalRowEl.innerHTML = `
+                    <div class="grid text-center font-mono font-black text-white text-2xl tracking-tight leading-none" style="grid-template-columns: repeat(${count}, minmax(0, 1fr));">
+                        ${animalCols}
                     </div>
                 `;
             }
@@ -491,9 +509,16 @@
 
             container.classList.remove('hidden', 'anim-slide-out');
             container.classList.add('anim-slide-in');
+
+            // Fica 10 segundos na tela e depois some automaticamente
+            if (scoreAutoHideTimeout) clearTimeout(scoreAutoHideTimeout);
+            scoreAutoHideTimeout = setTimeout(() => {
+                hideScoreLowerThird();
+            }, 10000);
         }
 
         function hideScoreLowerThird() {
+            if (scoreAutoHideTimeout) clearTimeout(scoreAutoHideTimeout);
             console.log('[OVERLAY] Ocultando Detalhamento de Notas');
             const container = document.getElementById('overlay-score-container');
             if (!container || container.classList.contains('hidden')) return;
@@ -541,9 +566,16 @@
 
             container.classList.remove('hidden', 'anim-slide-out');
             container.classList.add('anim-slide-in');
+
+            // Fica 10 segundos na tela e depois some automaticamente
+            if (totalOnlyAutoHideTimeout) clearTimeout(totalOnlyAutoHideTimeout);
+            totalOnlyAutoHideTimeout = setTimeout(() => {
+                hideTotalOnlyLowerThird();
+            }, 10000);
         }
 
         function hideTotalOnlyLowerThird() {
+            if (totalOnlyAutoHideTimeout) clearTimeout(totalOnlyAutoHideTimeout);
             console.log('[OVERLAY] Ocultando Apenas Nota');
             const container = document.getElementById('overlay-total-only-container');
             if (!container || container.classList.contains('hidden')) return;

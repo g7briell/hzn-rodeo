@@ -7441,7 +7441,7 @@ window.handleTransmissaoScoreReceived = (scoreData) => {
 
     renderTransmissaoJudgesGrid();
 
-    // A nota é pra ir na tela automaticamente assim que todos os juízes derem a nota!
+    // A nota é pra ir na tela automaticamente assim que todos os juízes derem a nota e sumir após 10s!
     if (allSubmitted) {
         const scoreData = getActiveOrLastScoreOverlayData();
         broadcastOverlayCommand('show_score', scoreData);
@@ -7452,7 +7452,20 @@ window.handleTransmissaoScoreReceived = (scoreData) => {
         const label = document.getElementById('label-overlay-score');
         if (btn) btn.className = "bg-emerald-500 hover:bg-emerald-400 border-2 border-emerald-300 text-black px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-[0_0_25px_rgba(16,185,129,0.5)] cursor-pointer";
         if (badge) badge.className = "w-3 h-3 rounded-full bg-red-600 animate-ping";
-        if (label) label.innerText = "🔴 NOTA NO AR • CLIQUE P/ TIRAR";
+        if (label) label.innerText = "🔴 NOTA NO AR (10s)";
+
+        if (scoreAutoHideTimer) clearTimeout(scoreAutoHideTimer);
+        scoreAutoHideTimer = setTimeout(() => {
+            if (overlayScoreOnAir) {
+                broadcastOverlayCommand('hide_score');
+                broadcastOverlayCommand('hide_total_only');
+                overlayScoreOnAir = false;
+
+                if (btn) btn.className = "bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 text-slate-200 px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-lg cursor-pointer";
+                if (badge) badge.className = "w-3 h-3 rounded-full bg-slate-500";
+                if (label) label.innerText = "⚡ MOSTRAR APENAS NOTA";
+            }
+        }, 10000);
     } else if (overlayScoreOnAir) {
         broadcastOverlayCommand('show_score', getActiveOrLastScoreOverlayData());
     }
@@ -7879,6 +7892,7 @@ function updateTransmissaoScoreModeBadge() {
 let overlayMatchupOnAir = false;
 let overlayScoreOnAir = false;
 let overlayRankingOnAir = false;
+let scoreAutoHideTimer = null;
 
 function formatRiderNameForOverlay(fullName) {
     if (!fullName) return '';
@@ -8173,6 +8187,11 @@ window.toggleOverlayScoreOnAir = () => {
 
     overlayScoreOnAir = !overlayScoreOnAir;
 
+    if (scoreAutoHideTimer) {
+        clearTimeout(scoreAutoHideTimer);
+        scoreAutoHideTimer = null;
+    }
+
     if (overlayScoreOnAir) {
         const scoreData = getActiveOrLastScoreOverlayData();
         if (btn) {
@@ -8182,11 +8201,23 @@ window.toggleOverlayScoreOnAir = () => {
             badge.className = "w-3 h-3 rounded-full bg-red-600 animate-ping";
         }
         if (label) {
-            label.innerText = "🔴 NOTA NO AR • CLIQUE P/ TIRAR";
+            label.innerText = "🔴 NOTA NO AR (10s)";
         }
 
-        // O botão Mostrar Apenas Nota exibe apenas o total em destaque!
+        // O botão Mostrar Apenas Nota exibe apenas o total em destaque e some após 10s!
         broadcastOverlayCommand('show_total_only', scoreData);
+
+        scoreAutoHideTimer = setTimeout(() => {
+            if (overlayScoreOnAir) {
+                broadcastOverlayCommand('hide_total_only');
+                broadcastOverlayCommand('hide_score');
+                overlayScoreOnAir = false;
+
+                if (btn) btn.className = "bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 text-slate-200 px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-lg cursor-pointer";
+                if (badge) badge.className = "w-3 h-3 rounded-full bg-slate-500";
+                if (label) label.innerText = "⚡ MOSTRAR APENAS NOTA";
+            }
+        }, 10000);
     } else {
         if (btn) {
             btn.className = "bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 text-slate-200 px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-lg cursor-pointer";
@@ -8199,6 +8230,7 @@ window.toggleOverlayScoreOnAir = () => {
         }
 
         broadcastOverlayCommand('hide_total_only');
+        broadcastOverlayCommand('hide_score');
     }
 };
 
@@ -8819,6 +8851,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.185": [
+        {
+            icon: "✨",
+            title: "Layout e Alinhamento Perfeito das Notas na TV",
+            desc: "Alinhamento milimétrico entre os nomes dos juízes e suas respectivas notas, remoção do texto 'Categoria', exibição da logo oficial em PNG transparente com sombra broadcast e auto-hide de 10 segundos da nota na tela."
+        }
+    ],
     "1.0.184": [
         {
             icon: "🟢",
@@ -8942,7 +8981,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.184';
+        let appVersion = '1.0.185';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8954,8 +8993,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.184")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.184"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.185")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.185"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
