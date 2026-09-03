@@ -1111,10 +1111,7 @@ window.selectSport = async (sport) => {
         
         if (sport === 'transmissao') {
             if (sportSelectScreen) sportSelectScreen.classList.add('hidden');
-            if (transmissaoScreen) {
-                transmissaoScreen.classList.remove('hidden');
-                transmissaoScreen.querySelectorAll('.reveal-item').forEach(item => item.classList.add('animate-reveal'));
-            }
+            openTransmissaoInitialScreen();
         } else {
             // Atualiza o badge do esporte no header
             const badge = document.getElementById('sport-active-badge');
@@ -1135,6 +1132,8 @@ window.selectSport = async (sport) => {
 window.backToSports = () => {
     if (homeScreen) homeScreen.classList.add('hidden');
     if (transmissaoScreen) transmissaoScreen.classList.add('hidden');
+    const tv = document.getElementById('transmissao-event-view');
+    if (tv) tv.classList.add('hidden');
     if (eventControlView) eventControlView.classList.add('hidden');
     const contentView = document.getElementById('content-view');
     if (contentView) contentView.classList.add('hidden');
@@ -3951,10 +3950,29 @@ window.initAblyRealtimeForEvent = (shareId) => {
             updateAblyStatusIndicator('failed');
         });
 
-        // Escutar notas enviadas pelos juízes
+        // 1. Escutar montaria selecionada na arena pelo juiz
+        currentAblyChannel.subscribe('judge-active-matchup', (message) => {
+            console.log('[ABLY REALTIME] Montaria ativa na arena:', message.data);
+            if (typeof handleJudgeActiveMatchupReceived === 'function') {
+                handleJudgeActiveMatchupReceived(message.data);
+            }
+        });
+
+        // 2. Escutar liberação/limpeza de montaria ativa
+        currentAblyChannel.subscribe('judge-active-matchup-cleared', (message) => {
+            console.log('[ABLY REALTIME] Montaria ativa liberada:', message.data);
+            if (typeof handleJudgeActiveMatchupClearedReceived === 'function') {
+                handleJudgeActiveMatchupClearedReceived(message.data);
+            }
+        });
+
+        // 3. Escutar notas enviadas pelos juízes
         currentAblyChannel.subscribe('judge-score-submitted', async (message) => {
             console.log('[ABLY REALTIME] Nota recebida do Juiz:', message.data);
             await handleJudgeScoreReceived(message.data);
+            if (typeof handleTransmissaoScoreReceived === 'function') {
+                handleTransmissaoScoreReceived(message.data);
+            }
         });
 
     } catch (err) {
@@ -3981,20 +3999,42 @@ window.closeAblyRealtime = () => {
 function updateAblyStatusIndicator(status) {
     const dot = document.getElementById('ably-sync-dot');
     const text = document.getElementById('ably-sync-text');
-    if (!dot || !text) return;
+    const transDot = document.getElementById('trans-ably-dot');
+    const transText = document.getElementById('trans-ably-text');
 
     if (status === 'connected') {
-        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse";
-        text.innerText = "ABLY REALTIME: ATIVO";
-        text.className = "text-[9px] font-black uppercase tracking-widest text-emerald-400";
+        if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse";
+        if (text) {
+            text.innerText = "ABLY REALTIME: ATIVO";
+            text.className = "text-[9px] font-black uppercase tracking-widest text-emerald-400";
+        }
+        if (transDot) transDot.className = "w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse";
+        if (transText) {
+            transText.innerText = "ABLY: AO VIVO NA ARENA";
+            transText.className = "text-[9px] font-black uppercase tracking-widest text-emerald-400";
+        }
     } else if (status === 'disconnected' || status === 'closed') {
-        dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
-        text.innerText = "ABLY: DESCONECTADO";
-        text.className = "text-[9px] font-black uppercase tracking-widest text-amber-400";
+        if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+        if (text) {
+            text.innerText = "ABLY: DESCONECTADO";
+            text.className = "text-[9px] font-black uppercase tracking-widest text-amber-400";
+        }
+        if (transDot) transDot.className = "w-2 h-2 rounded-full bg-amber-500";
+        if (transText) {
+            transText.innerText = "ABLY: RECONECTANDO...";
+            transText.className = "text-[9px] font-black uppercase tracking-widest text-amber-400";
+        }
     } else {
-        dot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
-        text.innerText = "ABLY: OFF";
-        text.className = "text-[9px] font-black uppercase tracking-widest text-red-400";
+        if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
+        if (text) {
+            text.innerText = "ABLY: OFF";
+            text.className = "text-[9px] font-black uppercase tracking-widest text-red-400";
+        }
+        if (transDot) transDot.className = "w-2 h-2 rounded-full bg-red-500";
+        if (transText) {
+            transText.innerText = "ABLY: DESCONECTADO";
+            transText.className = "text-[9px] font-black uppercase tracking-widest text-red-400";
+        }
     }
 }
 
@@ -7008,90 +7048,736 @@ window.copyAllShareInfo = () => {
     });
 };
 
-window.openTransmissaoEventsModal = async () => {
-    const email = getCurrentUserEmail();
-    const container = document.getElementById('transmissao-events-list-container');
-    if (!container) return;
+// ==========================================
+// MÓDULO TRANSMISSÃO AO VIVO (REFORMULADO)
+// ==========================================
+let transmissaoEvent = null;
+let transmissaoActiveMatchup = null;
+let transmissaoLastMatchup = null;
+let transmissaoScoresBuffer = {}; // { [judgeIdx]: scorePayload }
+let transmissaoScoreMode = localStorage.getItem('RODEOAPP_TRANSMISSAO_MODE') || 'completo'; // 'completo' | 'avulso'
+let transmissaoSelectedRound = 1;
 
-    document.getElementById('modal-transmissao-eventos').classList.remove('hidden');
-    
-    const events = await window.electronAPI.getLocalEvents(email);
-    
-    if (!events || events.length === 0) {
-        container.innerHTML = '<div class="col-span-2 p-20 text-center text-slate-500 italic font-bold">Nenhum evento carregado para a transmissão. Puxe um evento existente usando ID e Senha!</div>';
+// 1. Tela Inicial da Transmissão (Pede código do evento compartilhado)
+window.openTransmissaoInitialScreen = () => {
+    if (homeScreen) homeScreen.classList.add('hidden');
+    if (eventControlView) eventControlView.classList.add('hidden');
+    const contentView = document.getElementById('content-view');
+    if (contentView) contentView.classList.add('hidden');
+
+    // Se já tiver evento conectado na sessão, abre direto
+    if (transmissaoEvent) {
+        openTransmissaoLiveDashboard(transmissaoEvent);
         return;
     }
 
-    let html = '';
-    events.forEach(ev => {
-        html += `
-        <div onclick="document.getElementById('modal-transmissao-eventos').classList.add('hidden'); if(document.getElementById('transmissao-screen')) document.getElementById('transmissao-screen').classList.add('hidden'); openTransmissaoEventControl('${ev.id}')" class="w-full cursor-pointer glass p-8 rounded-[2.5rem] border-white/5 flex justify-between items-start text-left hover:border-accent transition-all relative group">
-            <div class="flex gap-6 items-start">
-                ${ev.logo ? `<img src="${ev.logo}" class="w-16 h-16 object-contain rounded-2xl bg-black/40 p-2 border border-white/10 shadow-lg">` : `<div class="w-16 h-16 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-slate-700 font-black italic text-[10px]">LOGO</div>`}
-                <div>
-                    <div class="text-[9px] font-black text-accent uppercase tracking-widest mb-1">${ev.type || 'EVENTO'}</div>
-                    <h4 class="text-2xl font-black italic mb-1 uppercase tracking-tighter text-white">${ev.name}</h4>
-                    <p class="text-slate-500 font-bold text-xs uppercase">${ev.city}</p>
-                    ${ev.share_id ? `<div class="text-[9px] text-slate-500 font-bold font-mono mt-2 uppercase tracking-wide">ID: ${ev.share_id}</div>` : ''}
-                </div>
-            </div>
-            <div class="text-[10px] font-black bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-400">${ev.days}D / ${ev.judges}J</div>
-        </div>`;
-    });
-    container.innerHTML = html;
-};
+    // Verifica se há evento recente salvo no localStorage
+    const lastShareId = localStorage.getItem('RODEOAPP_LAST_TRANS_SHARE_ID');
+    const lastName = localStorage.getItem('RODEOAPP_LAST_TRANS_NAME');
+    const recentBox = document.getElementById('trans-recent-event-box');
+    const recentName = document.getElementById('trans-recent-event-name');
+    const recentSub = document.getElementById('trans-recent-event-sub');
 
-window.openPullEventFromTransmissao = () => {
-    const pullModal = document.getElementById('modal-pull-event');
-    if (pullModal) {
-        pullModal.classList.remove('hidden');
-        document.getElementById('pull-share-id')?.focus();
+    if (lastShareId && recentBox && recentName && recentSub) {
+        recentName.innerText = lastName || 'ÚLTIMO EVENTO CONECTADO';
+        recentSub.innerText = `CÓDIGO: ${lastShareId}`;
+        recentBox.classList.remove('hidden');
+    } else if (recentBox) {
+        recentBox.classList.add('hidden');
+    }
+
+    const tScreen = document.getElementById('transmissao-screen');
+    if (tScreen) {
+        tScreen.classList.remove('hidden');
+        document.getElementById('trans-input-share-id')?.focus();
     }
 };
 
-window.showAlert = (message, title = "AVISO") => {
-    return new Promise((resolve) => {
-        document.getElementById('modal-alert-title').innerText = title;
-        document.getElementById('modal-alert-message').innerText = message;
-        document.getElementById('modal-alert').classList.remove('hidden');
+// 2. Conectar com o formulário de código compartilhado
+window.handleTransmissaoConnect = async (e) => {
+    if (e) e.preventDefault();
+    const shareId = document.getElementById('trans-input-share-id')?.value.trim();
+    const password = document.getElementById('trans-input-password')?.value.trim();
+    if (!shareId) {
+        alert("Por favor, digite o código do evento compartilhado.");
+        return;
+    }
+    await connectTransmissaoEvent(shareId, password);
+};
+
+// 3. Continuar no evento recente
+window.resumeRecentTransmissaoEvent = async () => {
+    const lastShareId = localStorage.getItem('RODEOAPP_LAST_TRANS_SHARE_ID');
+    if (lastShareId) {
+        await connectTransmissaoEvent(lastShareId, '');
+    }
+};
+
+// 4. Conectar e Baixar Evento da Nuvem / Iniciar Ably Realtime
+async function connectTransmissaoEvent(shareId, password) {
+    const loadingView = document.getElementById('transmissao-loading-view');
+    const loadingStatus = document.getElementById('trans-loading-status');
+    const loadingTitle = document.getElementById('trans-loading-title');
+
+    if (loadingView) loadingView.classList.remove('hidden');
+    if (loadingTitle) loadingTitle.innerText = "CONECTANDO À ARENA...";
+    if (loadingStatus) loadingStatus.innerText = "Localizando evento e baixando sorteios da nuvem...";
+
+    try {
+        const email = getCurrentUserEmail();
         
-        window.closeModalAlert = () => {
-            document.getElementById('modal-alert').classList.add('hidden');
-            resolve();
-        };
+        // Tenta buscar nos eventos locais primeiro
+        let foundEvent = null;
+        if (email) {
+            const localEvents = await window.electronAPI.getLocalEvents(email);
+            foundEvent = localEvents.find(ev => ev.share_id === shareId || ev.id === shareId);
+        }
+
+        // Se não encontrou localmente ou para garantir sincronização fresca
+        if (window.electronAPI.pullEventFromCloud) {
+            if (loadingStatus) loadingStatus.innerText = "Sincronizando competidores, boiadas e sorteios...";
+            const res = await window.electronAPI.pullEventFromCloud({ email, shareId, password });
+            if (res && res.success) {
+                const refreshed = await window.electronAPI.getLocalEvents(email);
+                foundEvent = refreshed.find(ev => ev.share_id === shareId || ev.id === res.eventId);
+            }
+        }
+
+        if (!foundEvent) {
+            throw new Error("Evento não localizado na nuvem com este código. Verifique se o ID e a senha estão corretos.");
+        }
+
+        // Define evento ativo
+        transmissaoEvent = foundEvent;
+        window.transmissaoEvent = foundEvent;
+        currentEvent = foundEvent;
+        window.currentEvent = foundEvent;
+
+        // Salva histórico recente
+        localStorage.setItem('RODEOAPP_LAST_TRANS_SHARE_ID', shareId);
+        localStorage.setItem('RODEOAPP_LAST_TRANS_NAME', foundEvent.name);
+
+        // Conecta ao canal Ably Realtime do Evento
+        if (loadingStatus) loadingStatus.innerText = "Conectando ao canal Ably Realtime...";
+        window.initAblyRealtimeForEvent(foundEvent.share_id || shareId);
+
+        // Abre a Cabine de Transmissão Ao Vivo
+        setTimeout(() => {
+            if (loadingView) loadingView.classList.add('hidden');
+            openTransmissaoLiveDashboard(foundEvent);
+        }, 500);
+
+    } catch (err) {
+        console.error("Erro ao conectar transmissão:", err);
+        if (loadingView) loadingView.classList.add('hidden');
+        alert("Falha na conexão: " + (err.message || err));
+    }
+}
+
+// 5. Abrir a Cabine de Transmissão Ao Vivo
+function openTransmissaoLiveDashboard(ev) {
+    if (!ev) return;
+    const tScreen = document.getElementById('transmissao-screen');
+    if (tScreen) tScreen.classList.add('hidden');
+
+    const liveView = document.getElementById('transmissao-event-view');
+    if (liveView) liveView.classList.remove('hidden');
+
+    // Header
+    const nameEl = document.getElementById('transmissao-event-name');
+    const infoEl = document.getElementById('transmissao-event-info');
+    if (nameEl) nameEl.innerText = ev.name || 'EVENTO DA TRANSMISSÃO';
+    if (infoEl) infoEl.innerText = `${ev.city || 'ARENA'} • ${ev.days || 1} DIAS • ${ev.judges || 2} JUÍZES`;
+
+    // Round Select
+    const roundSelect = document.getElementById('trans-round-select');
+    if (roundSelect) {
+        const totalDays = parseInt(ev.days) || 1;
+        roundSelect.innerHTML = Array.from({ length: totalDays }, (_, i) => 
+            `<option value="${i + 1}" ${i + 1 === transmissaoSelectedRound ? 'selected' : ''}>ROUND ${i + 1}</option>`
+        ).join('');
+    }
+
+    // Modo de Nota
+    updateTransmissaoScoreModeBadge();
+
+    // Select Manual de Montarias do Sorteio
+    updateTransmissaoManualSelect();
+
+    // Estado da Montaria
+    if (transmissaoActiveMatchup) {
+        renderTransmissaoActiveMatchup();
+    } else {
+        document.getElementById('trans-waiting-card')?.classList.remove('hidden');
+        document.getElementById('trans-active-card')?.classList.add('hidden');
+    }
+
+    // Renderiza última montaria
+    renderTransmissaoLastCard();
+}
+
+// 6. Receber Montaria Ativa na Arena (Juiz selecionou)
+window.handleJudgeActiveMatchupReceived = (data) => {
+    if (!data || !transmissaoEvent) return;
+    const { riderName, day } = data;
+    if (!riderName) return;
+
+    if (day && parseInt(day) !== transmissaoSelectedRound) {
+        transmissaoSelectedRound = parseInt(day);
+        const roundSelect = document.getElementById('trans-round-select');
+        if (roundSelect) roundSelect.value = day;
+        updateTransmissaoManualSelect();
+    }
+
+    const sorteios = transmissaoEvent.sorteios || {};
+    const daySorteios = sorteios[transmissaoSelectedRound] || [];
+    const itemSorteio = daySorteios.find(s => (s.peao === riderName || s.peaoNome === riderName));
+
+    const bullName = itemSorteio ? (itemSorteio.touro || itemSorteio.touroNome || 'TOURO DA ARENA') : 'TOURO DA ARENA';
+    const bullCia = itemSorteio ? (itemSorteio.cia || itemSorteio.boiada || '') : '';
+    const lado = itemSorteio ? (itemSorteio.lado || '') : '';
+
+    activateTransmissaoMatchup({
+        riderName,
+        bullName,
+        bullCia,
+        lado,
+        day: transmissaoSelectedRound
     });
 };
 
-window.openTransmissaoEventControl = async (id) => {
-    const email = getCurrentUserEmail();
-    const eventos = await window.electronAPI.getLocalEvents(email);
-    currentEvent = eventos.find(e => e.id === id);
-    if (!currentEvent) return;
-    window.currentEvent = currentEvent;
+// 7. Liberar Montaria Ativa na Arena
+window.handleJudgeActiveMatchupClearedReceived = () => {
+    // Se a montaria atual na tela ainda não tiver recebido notas, volta para o estado de espera
+    if (transmissaoActiveMatchup && Object.keys(transmissaoScoresBuffer).length === 0) {
+        clearTransmissaoActiveMatchup();
+    }
+};
 
-    // APLICAR COR DO EVENTO
-    applyThemeColor(currentEvent.themeColor || '#EAB308');
+// 8. Ativar Montaria na Mesa Central
+function activateTransmissaoMatchup(matchup) {
+    transmissaoActiveMatchup = matchup;
+    transmissaoScoresBuffer = {}; // Reseta buffer de notas dos juízes
 
-    document.getElementById('transmissao-event-name').innerText = currentEvent.name;
-    document.getElementById('transmissao-event-info').innerText = `${currentEvent.city} - ${currentEvent.days} DIAS - ${currentEvent.judges} JUIZES`;
-    
-    const tv = document.getElementById('transmissao-event-view');
-    if (tv) tv.classList.remove('hidden');
+    const waitingCard = document.getElementById('trans-waiting-card');
+    const activeCard = document.getElementById('trans-active-card');
+    if (waitingCard) waitingCard.classList.add('hidden');
+    if (activeCard) activeCard.classList.remove('hidden');
+
+    const riderEl = document.getElementById('trans-active-rider');
+    const bullEl = document.getElementById('trans-active-bull');
+    const ciaEl = document.getElementById('trans-active-cia');
+    const ladoEl = document.getElementById('trans-active-lado');
+    const roundBadge = document.getElementById('trans-active-round-badge');
+
+    if (riderEl) riderEl.innerText = matchup.riderName || 'COMPETIDOR';
+    if (bullEl) bullEl.innerText = matchup.bullName || 'TOURO';
+    if (ciaEl) ciaEl.innerText = matchup.bullCia || 'BOIADA';
+    if (roundBadge) roundBadge.innerText = `ROUND ${matchup.day || transmissaoSelectedRound}`;
+
+    if (ladoEl) {
+        if (matchup.lado) {
+            ladoEl.innerText = `LADO: ${matchup.lado}`;
+            ladoEl.classList.remove('hidden');
+        } else {
+            ladoEl.classList.add('hidden');
+        }
+    }
+
+    // Reseta placar
+    const tempoDisplay = document.getElementById('trans-tempo-display');
+    const tempoBadge = document.getElementById('trans-tempo-status-badge');
+    const totalScoreDisplay = document.getElementById('trans-total-score-display');
+
+    if (tempoDisplay) tempoDisplay.innerText = "8.00s";
+    if (tempoBadge) {
+        tempoBadge.innerText = "AVALIANDO NA ARENA";
+        tempoBadge.className = "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider";
+    }
+    if (totalScoreDisplay) totalScoreDisplay.innerText = "--.--";
+
+    // Renderiza boxes dinâmicas dos juízes
+    renderTransmissaoJudgesGrid();
+}
+
+// 9. Renderizar Boxes Dinâmicas dos Juízes
+function renderTransmissaoJudgesGrid() {
+    const grid = document.getElementById('trans-judges-grid');
+    if (!grid || !transmissaoEvent) return;
+
+    const totalJudges = parseInt(transmissaoEvent.judges) || 2;
+    const juizesCadastrados = transmissaoEvent.juizes || [];
+
+    let html = '';
+    for (let i = 0; i < totalJudges; i++) {
+        const juizObj = juizesCadastrados[i];
+        const juizNome = juizObj ? (juizObj.nome || juizObj) : `JUIZ ${i + 1}`;
+        const scoreData = transmissaoScoresBuffer[i];
+        const isAvulso = (transmissaoScoreMode === 'avulso');
+        const hasScore = Boolean(scoreData);
+
+        const allJudgesSubmitted = Object.keys(transmissaoScoresBuffer).length >= totalJudges;
+        const revealScore = isAvulso ? hasScore : (hasScore && allJudgesSubmitted);
+
+        if (revealScore && scoreData) {
+            const isQueda = Boolean(scoreData.isFall) || (parseFloat(scoreData.riderScore) === 0);
+            const rScore = parseFloat(scoreData.riderScore) || 0;
+            const bScore = parseFloat(scoreData.bullScore) || 0;
+            const subtotal = isQueda ? bScore : (rScore + bScore);
+
+            html += `
+            <div class="bg-black/70 border-2 border-emerald-500/60 p-4 rounded-2xl flex flex-col justify-between shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all">
+                <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-3">
+                    <span class="text-[10px] font-black text-white uppercase truncate">${juizNome}</span>
+                    <span class="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">ENVIADA</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-center mb-3">
+                    <div class="bg-slate-900/80 p-2 rounded-xl">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase block">PEÃO</span>
+                        <span class="text-base font-black ${isQueda ? 'text-red-400' : 'text-emerald-400'}">${isQueda ? '0.00' : rScore.toFixed(2)}</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-2 rounded-xl">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase block">TOURO</span>
+                        <span class="text-base font-black text-yellow-400">${bScore.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl flex items-center justify-between">
+                    <span class="text-[9px] font-black text-emerald-400 uppercase">SUBTOTAL</span>
+                    <span class="text-lg font-black text-emerald-300 font-mono">${subtotal.toFixed(2)}</span>
+                </div>
+            </div>`;
+        } else if (hasScore && !revealScore) {
+            html += `
+            <div class="bg-black/60 border border-yellow-500/40 p-4 rounded-2xl flex flex-col justify-between shadow-lg">
+                <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-3">
+                    <span class="text-[10px] font-black text-slate-300 uppercase truncate">${juizNome}</span>
+                    <span class="text-[9px] font-black text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">AVALIADO</span>
+                </div>
+                <div class="my-4 text-center">
+                    <div class="w-8 h-8 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-2 text-yellow-500">
+                        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Nota Registrada</span>
+                    <p class="text-[9px] text-slate-500">Aguardando outros juízes...</p>
+                </div>
+                <div class="text-center text-[9px] font-mono text-slate-600 bg-black/40 py-1 rounded-lg">
+                    --.-- PTS
+                </div>
+            </div>`;
+        } else {
+            html += `
+            <div class="bg-black/40 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between opacity-80 hover:opacity-100 transition-all">
+                <div class="flex items-center justify-between pb-2 border-b border-white/5 mb-3">
+                    <span class="text-[10px] font-black text-slate-400 uppercase truncate">${juizNome}</span>
+                    <span class="text-[9px] font-black text-slate-500 bg-slate-900 px-2 py-0.5 rounded">AGUARDANDO</span>
+                </div>
+                <div class="my-4 text-center">
+                    <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-2 text-slate-600 animate-pulse">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">Aguardando Nota...</span>
+                </div>
+                <div class="text-center text-[9px] font-mono text-slate-700 bg-black/30 py-1 rounded-lg">
+                    --.-- PTS
+                </div>
+            </div>`;
+        }
+    }
+    grid.innerHTML = html;
+
+    const countStatus = document.getElementById('trans-judges-count-status');
+    const submittedCount = Object.keys(transmissaoScoresBuffer).length;
+    if (countStatus) {
+        countStatus.innerText = `${submittedCount}/${totalJudges} JUIZ${totalJudges > 1 ? 'ES' : ''} ENVIARAM`;
+        countStatus.className = submittedCount >= totalJudges ? "text-[10px] font-black text-emerald-400" : "text-[10px] font-bold text-yellow-500";
+    }
+}
+
+// 10. Processar Nota Recebida via Ably
+window.handleTransmissaoScoreReceived = (scoreData) => {
+    if (!scoreData || !transmissaoEvent) return;
+    const { riderName, bullName, judgeIdx, isFall, fallTime } = scoreData;
+
+    // Se não houver montaria ativa ou for de outro competidor, ativa automaticamente
+    if (!transmissaoActiveMatchup || (transmissaoActiveMatchup.riderName !== riderName)) {
+        activateTransmissaoMatchup({
+            riderName,
+            bullName: bullName || 'TOURO',
+            bullCia: '',
+            day: scoreData.day || transmissaoSelectedRound
+        });
+    }
+
+    const jIdx = parseInt(judgeIdx) || 0;
+    transmissaoScoresBuffer[jIdx] = scoreData;
+
+    const totalJudgesExpected = parseInt(transmissaoEvent.judges) || 2;
+    const isAvulso = (transmissaoScoreMode === 'avulso');
+    const allSubmitted = Object.keys(transmissaoScoresBuffer).length >= totalJudgesExpected;
+
+    // Revela notas e totais
+    if (isAvulso || allSubmitted) {
+        let hasFall = false;
+        let lowestFallTime = 8.00;
+        let totalScore = 0;
+
+        Object.values(transmissaoScoresBuffer).forEach(sc => {
+            const r = parseFloat(sc.riderScore) || 0;
+            const b = parseFloat(sc.bullScore) || 0;
+            const fall = Boolean(sc.isFall) || (r === 0);
+            if (fall) {
+                hasFall = true;
+                if (sc.fallTime && parseFloat(sc.fallTime) < lowestFallTime) {
+                    lowestFallTime = parseFloat(sc.fallTime);
+                }
+            } else {
+                totalScore += (r + b);
+            }
+        });
+
+        const finalScore = hasFall ? 0.00 : totalScore;
+
+        const tempoDisplay = document.getElementById('trans-tempo-display');
+        const tempoBadge = document.getElementById('trans-tempo-status-badge');
+        const totalDisplay = document.getElementById('trans-total-score-display');
+
+        if (tempoDisplay) {
+            tempoDisplay.innerText = hasFall ? `${lowestFallTime.toFixed(2)}s` : '8.00s';
+        }
+        if (tempoBadge) {
+            if (hasFall) {
+                tempoBadge.innerText = "QUEDA (NÃO PAROU)";
+                tempoBadge.className = "bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider";
+            } else {
+                tempoBadge.innerText = "PAROU OS 8 SEGUNDOS";
+                tempoBadge.className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider";
+            }
+        }
+        if (totalDisplay) {
+            totalDisplay.innerText = finalScore.toFixed(2);
+            totalDisplay.classList.add('animate-pulse');
+            setTimeout(() => totalDisplay.classList.remove('animate-pulse'), 1000);
+        }
+    }
+
+    renderTransmissaoJudgesGrid();
+};
+
+// 11. Confirmar Montaria (OK -> Move para Última Montaria e Limpa a Mesa)
+window.confirmTransmissaoMatchupDone = () => {
+    if (!transmissaoActiveMatchup) return;
+
+    const tempoText = document.getElementById('trans-tempo-display')?.innerText || '8.00s';
+    const totalText = document.getElementById('trans-total-score-display')?.innerText || '0.00';
+
+    transmissaoLastMatchup = {
+        riderName: transmissaoActiveMatchup.riderName,
+        bullName: transmissaoActiveMatchup.bullName,
+        bullCia: transmissaoActiveMatchup.bullCia,
+        tempo: tempoText,
+        total: totalText,
+        timestamp: new Date().toLocaleTimeString()
+    };
+
+    renderTransmissaoLastCard();
+
+    // Limpa montaria ativa
+    transmissaoActiveMatchup = null;
+    transmissaoScoresBuffer = {};
+
+    document.getElementById('trans-active-card')?.classList.add('hidden');
+    document.getElementById('trans-waiting-card')?.classList.remove('hidden');
+
+    const manualSelect = document.getElementById('trans-manual-matchup-select');
+    if (manualSelect) manualSelect.value = '';
+};
+
+// 12. Limpar Montaria Ativa sem Salvar
+window.clearTransmissaoActiveMatchup = () => {
+    transmissaoActiveMatchup = null;
+    transmissaoScoresBuffer = {};
+    document.getElementById('trans-active-card')?.classList.add('hidden');
+    document.getElementById('trans-waiting-card')?.classList.remove('hidden');
+    const manualSelect = document.getElementById('trans-manual-matchup-select');
+    if (manualSelect) manualSelect.value = '';
+};
+
+// 13. Renderizar Card da Última Montaria
+function renderTransmissaoLastCard() {
+    const riderEl = document.getElementById('trans-last-rider');
+    const bullEl = document.getElementById('trans-last-bull');
+    const tempoEl = document.getElementById('trans-last-tempo');
+    const totalEl = document.getElementById('trans-last-total');
+    const timeStampEl = document.getElementById('trans-last-time-stamp');
+
+    if (!transmissaoLastMatchup) {
+        if (riderEl) riderEl.innerText = "NENHUMA MONTARIA CONCLUÍDA";
+        if (bullEl) bullEl.innerText = "Aguardando primeira nota...";
+        if (tempoEl) tempoEl.innerText = "--";
+        if (totalEl) totalEl.innerText = "--.--";
+        if (timeStampEl) timeStampEl.innerText = "--:--:--";
+        return;
+    }
+
+    if (riderEl) riderEl.innerText = transmissaoLastMatchup.riderName;
+    if (bullEl) bullEl.innerText = `${transmissaoLastMatchup.bullName} ${transmissaoLastMatchup.bullCia ? `(${transmissaoLastMatchup.bullCia})` : ''}`;
+    if (tempoEl) tempoEl.innerText = transmissaoLastMatchup.tempo;
+    if (totalEl) totalEl.innerText = transmissaoLastMatchup.total;
+    if (timeStampEl) timeStampEl.innerText = transmissaoLastMatchup.timestamp;
+}
+
+// 14. Modal de Ranking da Transmissão (Popup Focado por Competidor)
+window.openTransmissaoRankingModal = () => {
+    const modal = document.getElementById('modal-transmissao-ranking');
+    if (!modal || !transmissaoEvent) return;
+
+    modal.classList.remove('hidden');
+    const searchInput = document.getElementById('trans-ranking-search');
+    if (searchInput) searchInput.value = '';
+
+    renderTransmissaoRankingList('');
+};
+
+window.closeTransmissaoRankingModal = () => {
+    document.getElementById('modal-transmissao-ranking')?.classList.add('hidden');
+};
+
+window.filterTransmissaoRankingList = (term) => {
+    renderTransmissaoRankingList(term);
+};
+
+function calculateTransmissaoRankingData() {
+    if (!transmissaoEvent) return [];
+
+    const notas = transmissaoEvent.notas || [];
+    const competidores = transmissaoEvent.peoes || [];
+
+    const map = {};
+
+    competidores.forEach(p => {
+        const nome = typeof p === 'string' ? p : (p.nome || p.name);
+        if (!nome) return;
+        map[nome] = {
+            nome: nome,
+            cidade: p.cidade || '',
+            totalPontos: 0,
+            totalTempo: 0,
+            rounds: {}
+        };
+    });
+
+    notas.forEach(n => {
+        const nome = n.peaoNome || n.peao;
+        if (!nome) return;
+        if (!map[nome]) {
+            map[nome] = {
+                nome: nome,
+                cidade: n.cidade || '',
+                totalPontos: 0,
+                totalTempo: 0,
+                rounds: {}
+            };
+        }
+
+        const score = parseFloat(n.totalGeral) || 0;
+        const tempo = parseFloat(n.tempo) || (score > 0 ? 8.00 : 0.00);
+
+        map[nome].totalPontos += score;
+        map[nome].totalTempo += tempo;
+        map[nome].rounds[n.dia] = {
+            score: score,
+            tempo: tempo,
+            touro: n.touro || ''
+        };
+    });
+
+    const list = Object.values(map);
+    list.sort((a, b) => {
+        if (b.totalPontos !== a.totalPontos) return b.totalPontos - a.totalPontos;
+        return b.totalTempo - a.totalTempo;
+    });
+
+    list.forEach((item, idx) => {
+        item.posicao = idx + 1;
+    });
+
+    return list;
+}
+
+function renderTransmissaoRankingList(searchTerm) {
+    const container = document.getElementById('trans-ranking-names-list');
+    if (!container) return;
+
+    const ranking = calculateTransmissaoRankingData();
+    const term = (searchTerm || '').trim().toLowerCase();
+
+    const filtered = term ? ranking.filter(r => r.nome.toLowerCase().includes(term)) : ranking;
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="p-8 text-center text-slate-500 font-bold text-xs">Nenhum competidor encontrado.</div>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(r => `
+        <button onclick="selectTransmissaoRankingRider('${encodeURIComponent(r.nome)}')" class="w-full text-left p-3 rounded-xl bg-slate-900/60 hover:bg-yellow-500/20 border border-white/5 hover:border-yellow-500/40 transition-all flex items-center justify-between group">
+            <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                <span class="text-[10px] font-mono font-black text-slate-500 group-hover:text-yellow-400 w-6">${r.posicao}º</span>
+                <span class="text-xs font-black text-white uppercase truncate group-hover:text-yellow-400">${r.nome}</span>
+            </div>
+            <span class="text-[10px] font-black text-yellow-500/80 group-hover:text-yellow-400 font-mono whitespace-nowrap">${r.totalPontos.toFixed(2)}</span>
+        </button>
+    `).join('');
+
+    if (filtered.length > 0 && !searchTerm) {
+        selectTransmissaoRankingRider(encodeURIComponent(filtered[0].nome));
+    }
+}
+
+window.selectTransmissaoRankingRider = (encodedName) => {
+    const nome = decodeURIComponent(encodedName);
+    const ranking = calculateTransmissaoRankingData();
+    const rider = ranking.find(r => r.nome === nome);
+    if (!rider) return;
+
+    document.getElementById('trans-rank-detail-name').innerText = rider.nome;
+    document.getElementById('trans-rank-detail-city').innerText = rider.cidade ? `CIDADE: ${rider.cidade}` : '';
+    document.getElementById('trans-rank-detail-pos').innerText = `${rider.posicao}º LUGAR`;
+    document.getElementById('trans-rank-detail-points').innerText = `${rider.totalPontos.toFixed(2)} PTS`;
+    document.getElementById('trans-rank-detail-tempo').innerText = `${rider.totalTempo.toFixed(2)}s`;
+
+    const roundsContainer = document.getElementById('trans-rank-detail-rounds');
+    if (roundsContainer) {
+        const roundKeys = Object.keys(rider.rounds).sort((a, b) => parseInt(a) - parseInt(b));
+        if (roundKeys.length === 0) {
+            roundsContainer.innerHTML = '<div class="text-[11px] text-slate-500 font-bold p-4 text-center">Nenhuma montaria avaliada até o momento.</div>';
+        } else {
+            roundsContainer.innerHTML = roundKeys.map(k => {
+                const rd = rider.rounds[k];
+                return `
+                <div class="bg-black/50 border border-white/5 p-2.5 rounded-xl flex items-center justify-between text-xs">
+                    <div>
+                        <span class="font-black text-yellow-500 uppercase text-[10px]">ROUND ${k}</span>
+                        <p class="text-[11px] font-bold text-slate-300 uppercase">${rd.touro || 'Touro da Arena'}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-mono text-slate-400 text-[10px] mr-2">${rd.tempo.toFixed(2)}s</span>
+                        <span class="font-black ${rd.score > 0 ? 'text-emerald-400' : 'text-red-400'} text-xs">${rd.score.toFixed(2)} PTS</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    }
+};
+
+// 15. Modal de Configurações da Transmissão
+window.openTransmissaoSettingsModal = () => {
+    const modal = document.getElementById('modal-transmissao-settings');
+    if (!modal) return;
+
+    const radios = document.querySelectorAll('input[name="transmissao-score-mode"]');
+    radios.forEach(r => {
+        r.checked = (r.value === transmissaoScoreMode);
+    });
+
+    const keyInput = document.getElementById('trans-custom-ably-key');
+    if (keyInput) {
+        keyInput.value = localStorage.getItem('RODEOAPP_ABLY_KEY') || '';
+    }
+
+    modal.classList.remove('hidden');
+};
+
+window.closeTransmissaoSettingsModal = () => {
+    document.getElementById('modal-transmissao-settings')?.classList.add('hidden');
+};
+
+window.saveTransmissaoSettings = () => {
+    const selectedRadio = document.querySelector('input[name="transmissao-score-mode"]:checked');
+    if (selectedRadio) {
+        transmissaoScoreMode = selectedRadio.value;
+        localStorage.setItem('RODEOAPP_TRANSMISSAO_MODE', transmissaoScoreMode);
+    }
+
+    const keyInput = document.getElementById('trans-custom-ably-key');
+    if (keyInput && keyInput.value.trim()) {
+        localStorage.setItem('RODEOAPP_ABLY_KEY', keyInput.value.trim());
+    }
+
+    updateTransmissaoScoreModeBadge();
+    renderTransmissaoJudgesGrid();
+    closeTransmissaoSettingsModal();
+};
+
+function updateTransmissaoScoreModeBadge() {
+    const badge = document.getElementById('trans-mode-badge');
+    if (badge) {
+        badge.innerText = `MODO: ${transmissaoScoreMode === 'avulso' ? 'AVULSO' : 'COMPLETO'}`;
+        badge.className = transmissaoScoreMode === 'avulso' ?
+            "text-[9px] font-black text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-2.5 py-1 rounded border border-cyan-500/20" :
+            "text-[9px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2.5 py-1 rounded border border-yellow-500/20";
+    }
+}
+
+// 16. Controles de Round e Sorteio Manual
+window.handleTransmissaoRoundChange = () => {
+    const select = document.getElementById('trans-round-select');
+    if (select) {
+        transmissaoSelectedRound = parseInt(select.value) || 1;
+        updateTransmissaoManualSelect();
+    }
+};
+
+function updateTransmissaoManualSelect() {
+    const manualSelect = document.getElementById('trans-manual-matchup-select');
+    if (!manualSelect || !transmissaoEvent) return;
+
+    const sorteios = transmissaoEvent.sorteios || {};
+    const daySorteios = sorteios[transmissaoSelectedRound] || [];
+
+    if (daySorteios.length === 0) {
+        manualSelect.innerHTML = '<option value="">Sem sorteio cadastrado para este round</option>';
+        return;
+    }
+
+    manualSelect.innerHTML = '<option value="">Selecione uma montaria do sorteio...</option>' +
+        daySorteios.map(s => {
+            const p = s.peaoNome || s.peao || 'Competidor';
+            const t = s.touroNome || s.touro || 'Touro';
+            return `<option value="${encodeURIComponent(p)}">${p} vs ${t}</option>`;
+        }).join('');
+}
+
+window.handleManualMatchupSelect = (encodedRider) => {
+    if (!encodedRider || !transmissaoEvent) return;
+    const riderName = decodeURIComponent(encodedRider);
+    const sorteios = transmissaoEvent.sorteios || {};
+    const daySorteios = sorteios[transmissaoSelectedRound] || [];
+    const item = daySorteios.find(s => (s.peaoNome || s.peao) === riderName);
+
+    activateTransmissaoMatchup({
+        riderName: riderName,
+        bullName: item ? (item.touroNome || item.touro || 'Touro') : 'Touro',
+        bullCia: item ? (item.cia || item.boiada || '') : '',
+        lado: item ? (item.lado || '') : '',
+        day: transmissaoSelectedRound
+    });
+};
+
+window.disconnectTransmissaoEvent = () => {
+    closeTransmissaoEventControl();
 };
 
 window.closeTransmissaoEventControl = () => {
-    const tv = document.getElementById('transmissao-event-view');
-    if (tv) tv.classList.add('hidden');
-    
-    window.hideAllModalsAndViews();
-    
-    applyThemeColor('#EAB308'); // Volta para o Dourado RODEOAPP
-    
-    const transmissaoScreen = document.getElementById('transmissao-screen');
-    if (transmissaoScreen) transmissaoScreen.classList.remove('hidden');
-    
-    const modalTrans = document.getElementById('modal-transmissao-eventos');
-    if (modalTrans) modalTrans.classList.remove('hidden');
+    const liveView = document.getElementById('transmissao-event-view');
+    if (liveView) liveView.classList.add('hidden');
+
+    transmissaoEvent = null;
+    window.transmissaoEvent = null;
+    transmissaoActiveMatchup = null;
+    transmissaoScoresBuffer = {};
+
+    window.closeAblyRealtime();
+    openTransmissaoInitialScreen();
 };
 
 // --- CONTROLES DE OVERLAY (OBS/vMix) ---
@@ -7558,6 +8244,33 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.174": [
+        {
+            icon: "📡",
+            title: "Módulo Transmissão Totalmente Reformulado",
+            desc: "Acesso direto por código compartilhado com download automático de sorteios e conexão instantânea ao Ably Realtime."
+        },
+        {
+            icon: "⚡",
+            title: "Mesa de Notas ao Vivo na Arena",
+            desc: "Centro da tela exibe competidor e touro em destaque com boxes dinâmicas esperando e recebendo as notas dos juízes em tempo real."
+        },
+        {
+            icon: "⚙️",
+            title: "Modos de Notas: Completo ou Avulso",
+            desc: "Escolha nas configurações se prefere revelar as notas somente quando todos os juízes finalizarem ou nota por nota avulsa em tempo real."
+        },
+        {
+            icon: "🏆",
+            title: "Consulta Rápida de Ranking",
+            desc: "Pop-up focado com lista limpa de competidores, busca instantânea e histórico acumulado de montarias por round."
+        },
+        {
+            icon: "📌",
+            title: "Última Montaria Avaliada",
+            desc: "Ao dar OK, a montaria concluída é movida para o rodapé em card compacto, liberando o centro para a próxima montaria da arena."
+        }
+    ],
     "1.0.173": [
         {
             icon: "📜",
@@ -7591,7 +8304,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.173';
+        let appVersion = '1.0.174';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -7603,8 +8316,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.173")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.173"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.174")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.174"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
