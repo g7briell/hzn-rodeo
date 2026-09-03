@@ -82,40 +82,15 @@
             animation: fadeOutCenter 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
 
-        /* Animações da Transmissão do Vídeo */
-        @keyframes broadcastWipeReveal {
+        /* Animações da Transmissão (Suaves e sem flicker) */
+        @keyframes matchupSlideIn {
             0% {
-                clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
-                opacity: 0.8;
-                transform: translateX(-35px);
-            }
-            70% {
-                clip-path: polygon(0 0, 105% 0, 100% 100%, 0 100%);
-                opacity: 1;
-                transform: translateX(0);
-            }
-            100% {
-                clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        @keyframes broadcastBladeLead {
-            0% {
-                left: -15%;
-                width: 15%;
-                opacity: 1;
-            }
-            65% {
-                left: 95%;
-                width: 20%;
-                opacity: 1;
-            }
-            100% {
-                left: 110%;
-                width: 10%;
                 opacity: 0;
+                transform: translateY(30px) scale(0.98);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
 
@@ -125,10 +100,10 @@
                 opacity: 0;
             }
             30% {
-                opacity: 1;
+                opacity: 0.7;
             }
             70% {
-                opacity: 1;
+                opacity: 0.7;
             }
             100% {
                 transform: translateX(250%) skewX(-25deg);
@@ -138,15 +113,15 @@
 
         @keyframes logoOutroPop {
             0% {
-                transform: scale(0) rotate(-10deg);
+                transform: scale(0);
                 opacity: 0;
             }
-            65% {
-                transform: scale(1.15) rotate(2deg);
+            70% {
+                transform: scale(1.1);
                 opacity: 1;
             }
             100% {
-                transform: scale(1) rotate(0deg);
+                transform: scale(1);
                 opacity: 1;
             }
         }
@@ -155,20 +130,18 @@
             0% {
                 opacity: 1;
                 transform: translateX(0);
-                clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
             }
             100% {
                 opacity: 0;
                 transform: translateX(90px);
-                clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%);
             }
         }
 
-        .anim-broadcast-wipe {
-            animation: broadcastWipeReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .anim-matchup-in {
+            animation: matchupSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .anim-outro-slide {
-            animation: outroSlideAway 0.45s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+            animation: outroSlideAway 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
 
         /* Efeitos Visuais dos Painéis de TV */
@@ -217,9 +190,6 @@
         <!-- Barra Principal Vinho com Camadas Dinâmicas -->
         <div id="matchup-main-bar" class="broadcast-wine-bar rounded-3xl min-w-[960px] max-w-6xl relative overflow-hidden transition-all duration-300">
             
-            <!-- Lâmina de Abertura Dinâmica (Efeito do vídeo) -->
-            <div id="matchup-blade-lead" class="absolute top-0 bottom-0 pointer-events-none z-30 bg-gradient-to-r from-red-600 via-white to-red-600 opacity-0 shadow-[0_0_25px_#ffffff]"></div>
-
             <!-- Reflexo Metálico / Sheen -->
             <div id="matchup-sheen" class="absolute inset-0 pointer-events-none z-25 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] opacity-0"></div>
 
@@ -277,13 +247,13 @@
                 </div>
             </div>
 
-            <!-- Camada 2: Faixa de Saída (Outro) com a Logo do Evento no Centro -->
+            <!-- Camada 2: Faixa de Saída (Outro) com a Logo do Evento no Centro (Apenas PNG, sem círculo/bola em volta) -->
             <div id="matchup-outro-layer" class="absolute inset-0 z-20 bg-gradient-to-r from-[#70000a] via-[#c01826] to-[#70000a] flex items-center justify-center border-y-2 border-red-400 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)] opacity-0 pointer-events-none transition-opacity duration-300">
-                <!-- Efeito de feixe de luz passando pela faixa vermelha -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg]"></div>
-                <!-- Emblema Central da Logo do Evento -->
-                <div id="matchup-outro-logo-circle" class="w-16 h-16 rounded-full bg-white shadow-[0_0_25px_rgba(255,255,255,0.9),0_0_40px_rgba(220,38,38,0.8)] flex items-center justify-center p-2.5 overflow-hidden transform scale-0 transition-transform duration-500 z-10">
-                    <img id="matchup-outro-logo-img" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain">
+                <!-- Efeito sutil de feixe luminoso passando pela faixa vermelha -->
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-[-20deg]"></div>
+                <!-- Logo do Evento transparente em PNG puro (sem bola/círculo em volta) -->
+                <div id="matchup-outro-logo-box" class="h-20 max-w-[320px] flex items-center justify-center transform scale-0 transition-transform duration-500 z-10">
+                    <img id="matchup-outro-logo-img" src="assets/splash_logo.png" alt="Logo" class="max-h-full max-w-full object-contain filter drop-shadow-[0_8px_25px_rgba(0,0,0,0.95)]">
                 </div>
             </div>
 
@@ -472,40 +442,29 @@
             const pill = document.getElementById('matchup-round-pill');
             const contentLayer = document.getElementById('matchup-content-layer');
             const outroLayer = document.getElementById('matchup-outro-layer');
-            const logoCircle = document.getElementById('matchup-outro-logo-circle');
-            const bladeLead = document.getElementById('matchup-blade-lead');
+            const logoBox = document.getElementById('matchup-outro-logo-box');
             const sheen = document.getElementById('matchup-sheen');
 
-            // Resetar camadas para estado visível
-            container.classList.remove('hidden', 'anim-outro-slide', 'anim-slide-out');
+            // Resetar camadas para estado visível sem flicker
             if (pill) pill.style.opacity = '1';
             if (contentLayer) contentLayer.style.opacity = '1';
             if (outroLayer) {
                 outroLayer.classList.remove('opacity-100');
                 outroLayer.classList.add('opacity-0');
             }
-            if (logoCircle) {
-                logoCircle.style.animation = 'none';
-                logoCircle.style.transform = 'scale(0)';
+            if (logoBox) {
+                logoBox.style.animation = 'none';
+                logoBox.style.transform = 'scale(0)';
             }
 
-            // Animação de Entrada: Varredura de Corte Estilo Transmissão (Broadcast Wipe)
-            container.classList.remove('anim-broadcast-wipe');
-            void container.offsetWidth; // Forçar reflow
-            container.classList.add('anim-broadcast-wipe');
+            // Aplicar classe de animação de entrada direta (sem piscar nem dar flash)
+            container.className = "fixed bottom-12 left-16 z-40 anim-matchup-in";
 
-            // Disparar Lâmina de Luz Branca/Vermelha abrindo a tarja
-            if (bladeLead) {
-                bladeLead.style.animation = 'none';
-                void bladeLead.offsetWidth;
-                bladeLead.style.animation = 'broadcastBladeLead 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-            }
-
-            // Disparar Brilho Metálico pasando pelo painel
+            // Disparar Brilho Metálico passando pelo painel
             if (sheen) {
                 sheen.style.animation = 'none';
                 void sheen.offsetWidth;
-                sheen.style.animation = 'metallicSheenSweep 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards';
+                sheen.style.animation = 'metallicSheenSweep 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards';
             }
         }
 
@@ -520,19 +479,19 @@
             const pill = document.getElementById('matchup-round-pill');
             const contentLayer = document.getElementById('matchup-content-layer');
             const outroLayer = document.getElementById('matchup-outro-layer');
-            const logoCircle = document.getElementById('matchup-outro-logo-circle');
+            const logoBox = document.getElementById('matchup-outro-logo-box');
 
             // 1. Ocultar dados e pílula de round
             if (pill) pill.style.opacity = '0';
             if (contentLayer) contentLayer.style.opacity = '0';
 
-            // 2. Revelar a Faixa Vermelha e fazer a Logo do Evento brotar no centro
+            // 2. Revelar a Faixa Vermelha e fazer a Logo do Evento brotar no centro (Sem bola/círculo em volta)
             if (outroLayer) {
                 outroLayer.classList.remove('opacity-0');
                 outroLayer.classList.add('opacity-100');
             }
-            if (logoCircle) {
-                logoCircle.style.animation = 'logoOutroPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+            if (logoBox) {
+                logoBox.style.animation = 'logoOutroPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
             }
 
             // 3. Exibir a faixa com a logo por 1.2s e depois recolher para fora da tela
@@ -540,19 +499,18 @@
                 container.classList.add('anim-outro-slide');
 
                 matchupOutroHideTimeout = setTimeout(() => {
-                    container.classList.add('hidden');
-                    container.classList.remove('anim-broadcast-wipe', 'anim-outro-slide');
+                    container.className = "fixed bottom-12 left-16 z-40 hidden";
                     if (outroLayer) {
                         outroLayer.classList.remove('opacity-100');
                         outroLayer.classList.add('opacity-0');
                     }
                     if (contentLayer) contentLayer.style.opacity = '1';
                     if (pill) pill.style.opacity = '1';
-                    if (logoCircle) {
-                        logoCircle.style.animation = 'none';
-                        logoCircle.style.transform = 'scale(0)';
+                    if (logoBox) {
+                        logoBox.style.animation = 'none';
+                        logoBox.style.transform = 'scale(0)';
                     }
-                }, 450);
+                }, 400);
             }, 1200);
         }
 

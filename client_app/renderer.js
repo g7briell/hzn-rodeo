@@ -8853,6 +8853,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.187": [
+        {
+            icon: "✨",
+            title: "Entrada Ultra Suave e Logo em PNG Transparente",
+            desc: "Eliminada a piscada na entrada da tarja do competidor com animação acelerada por hardware de 60fps, e remoção da bola/círculo na logo do evento no encerramento, exibindo apenas o PNG transparente original com sombra de transmissão."
+        }
+    ],
     "1.0.186": [
         {
             icon: "🎬",
@@ -8990,7 +8997,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.186';
+        let appVersion = '1.0.187';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -9002,8 +9009,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.186")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.186"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.187")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.187"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
