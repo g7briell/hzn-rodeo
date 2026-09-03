@@ -7581,65 +7581,38 @@ window.filterTransmissaoRankingList = (term) => {
 };
 
 function calculateTransmissaoRankingData() {
-    const ev = transmissaoEvent || currentEvent;
-    if (!ev) return [];
+    try {
+        const ev = transmissaoEvent || currentEvent;
+        if (!ev) return [];
 
-    const notas = ev.notas || [];
-    const competidores = ev.peoes || [];
+        const rawNotas = ev.notas || [];
+        const notas = Array.isArray(rawNotas) ? rawNotas : Object.values(rawNotas);
+        const rawPeoes = ev.peoes || [];
+        const competidores = Array.isArray(rawPeoes) ? rawPeoes : Object.values(rawPeoes);
 
-    const map = {};
+        const map = {};
 
-    competidores.forEach(p => {
-        const nome = typeof p === 'string' ? p : (p.nome || p.name);
-        if (!nome) return;
-        map[nome] = {
-            nome: nome,
-            cidade: p.cidade || '',
-            totalPontos: 0,
-            totalTempo: 0,
-            paradas: 0,
-            rounds: {}
-        };
-    });
-
-    notas.forEach(n => {
-        const nome = n.peaoNome || n.peao;
-        if (!nome) return;
-        if (!map[nome]) {
+        competidores.forEach(p => {
+            const nome = typeof p === 'string' ? p : (p && (p.nome || p.name));
+            if (!nome) return;
             map[nome] = {
                 nome: nome,
-                cidade: n.cidade || '',
+                cidade: (p && p.cidade) || '',
                 totalPontos: 0,
                 totalTempo: 0,
                 paradas: 0,
                 rounds: {}
             };
-        }
+        });
 
-        const score = parseFloat(n.totalGeral) || 0;
-        const tempo = parseFloat(n.tempo) || (score > 0 ? 8.00 : 0.00);
-
-        map[nome].totalPontos += score;
-        map[nome].totalTempo += tempo;
-        if (score > 0 || tempo >= 8.00) {
-            map[nome].paradas += 1;
-        }
-        map[nome].rounds[n.dia] = {
-            score: score,
-            tempo: tempo,
-            touro: n.touro || ''
-        };
-    });
-
-    // Se houver montaria ativa recebendo notas no buffer em tempo real
-    if (transmissaoActiveMatchup && transmissaoScoresBuffer && Object.keys(transmissaoScoresBuffer).length > 0) {
-        const liveRider = transmissaoActiveMatchup.riderName;
-        const liveRound = transmissaoActiveMatchup.day || transmissaoSelectedRound || 1;
-        if (liveRider) {
-            if (!map[liveRider]) {
-                map[liveRider] = {
-                    nome: liveRider,
-                    cidade: '',
+        notas.forEach(n => {
+            if (!n) return;
+            const nome = n.peaoNome || n.peao;
+            if (!nome) return;
+            if (!map[nome]) {
+                map[nome] = {
+                    nome: nome,
+                    cidade: n.cidade || '',
                     totalPontos: 0,
                     totalTempo: 0,
                     paradas: 0,
@@ -7647,45 +7620,84 @@ function calculateTransmissaoRankingData() {
                 };
             }
 
-            // Verifica se este round já foi somado via notas persistidas
-            const roundAlreadyLogged = Boolean(map[liveRider].rounds[liveRound]);
-            if (!roundAlreadyLogged) {
-                let liveScore = 0;
-                let liveFall = false;
-                let liveTempo = 8.00;
-                Object.values(transmissaoScoresBuffer).forEach(sc => {
-                    const r = parseFloat(sc.riderScore) || 0;
-                    const b = parseFloat(sc.bullScore) || 0;
-                    if (Boolean(sc.isFall) || (r === 0)) liveFall = true;
-                    if (sc.fallTime && parseFloat(sc.fallTime) < liveTempo) liveTempo = parseFloat(sc.fallTime);
-                    liveScore += (r + b);
-                });
-                const finalLiveScore = liveFall ? 0.00 : liveScore;
-                map[liveRider].totalPontos += finalLiveScore;
-                map[liveRider].totalTempo += liveTempo;
-                if (finalLiveScore > 0 || liveTempo >= 8.00) {
-                    map[liveRider].paradas += 1;
-                }
-                map[liveRider].rounds[liveRound] = {
-                    score: finalLiveScore,
-                    tempo: liveTempo,
-                    touro: transmissaoActiveMatchup.bullName || ''
+            const score = parseFloat(n.totalGeral) || 0;
+            const tempo = parseFloat(n.tempo) || (score > 0 ? 8.00 : 0.00);
+
+            map[nome].totalPontos += score;
+            map[nome].totalTempo += tempo;
+            if (score > 0 || tempo >= 8.00) {
+                map[nome].paradas += 1;
+            }
+            if (n.dia !== undefined && n.dia !== null) {
+                map[nome].rounds[n.dia] = {
+                    score: score,
+                    tempo: tempo,
+                    touro: n.touro || ''
                 };
             }
+        });
+
+        // Se houver montaria ativa recebendo notas no buffer em tempo real
+        if (transmissaoActiveMatchup && transmissaoScoresBuffer && Object.keys(transmissaoScoresBuffer).length > 0) {
+            const liveRider = transmissaoActiveMatchup.riderName;
+            const liveRound = transmissaoActiveMatchup.day || transmissaoSelectedRound || 1;
+            if (liveRider) {
+                if (!map[liveRider]) {
+                    map[liveRider] = {
+                        nome: liveRider,
+                        cidade: '',
+                        totalPontos: 0,
+                        totalTempo: 0,
+                        paradas: 0,
+                        rounds: {}
+                    };
+                }
+
+                // Verifica se este round já foi somado via notas persistidas
+                const roundAlreadyLogged = Boolean(map[liveRider].rounds && map[liveRider].rounds[liveRound]);
+                if (!roundAlreadyLogged) {
+                    let liveScore = 0;
+                    let liveFall = false;
+                    let liveTempo = 8.00;
+                    Object.values(transmissaoScoresBuffer).forEach(sc => {
+                        if (!sc) return;
+                        const r = parseFloat(sc.riderScore) || 0;
+                        const b = parseFloat(sc.bullScore) || 0;
+                        if (Boolean(sc.isFall) || (r === 0)) liveFall = true;
+                        if (sc.fallTime && parseFloat(sc.fallTime) < liveTempo) liveTempo = parseFloat(sc.fallTime);
+                        liveScore += (r + b);
+                    });
+                    const finalLiveScore = liveFall ? 0.00 : liveScore;
+                    map[liveRider].totalPontos += finalLiveScore;
+                    map[liveRider].totalTempo += liveTempo;
+                    if (finalLiveScore > 0 || liveTempo >= 8.00) {
+                        map[liveRider].paradas += 1;
+                    }
+                    if (!map[liveRider].rounds) map[liveRider].rounds = {};
+                    map[liveRider].rounds[liveRound] = {
+                        score: finalLiveScore,
+                        tempo: liveTempo,
+                        touro: transmissaoActiveMatchup.bullName || ''
+                    };
+                }
+            }
         }
+
+        const list = Object.values(map);
+        list.sort((a, b) => {
+            if (b.totalPontos !== a.totalPontos) return b.totalPontos - a.totalPontos;
+            return b.totalTempo - a.totalTempo;
+        });
+
+        list.forEach((item, idx) => {
+            item.posicao = idx + 1;
+        });
+
+        return list;
+    } catch (e) {
+        console.error('[CALCULATE TRANSMISSAO RANKING ERR]', e);
+        return [];
     }
-
-    const list = Object.values(map);
-    list.sort((a, b) => {
-        if (b.totalPontos !== a.totalPontos) return b.totalPontos - a.totalPontos;
-        return b.totalTempo - a.totalTempo;
-    });
-
-    list.forEach((item, idx) => {
-        item.posicao = idx + 1;
-    });
-
-    return list;
 }
 
 function renderTransmissaoRankingList(searchTerm) {
@@ -7891,66 +7903,82 @@ function getOverlaySportModality(eventObj) {
 
 function getActiveMatchupOverlayData() {
     if (!transmissaoActiveMatchup) return null;
-    const ev = transmissaoEvent || currentEvent;
-    const ranking = calculateTransmissaoRankingData();
-    const riderName = transmissaoActiveMatchup.riderName || '';
+    try {
+        const ev = transmissaoEvent || currentEvent;
+        const ranking = calculateTransmissaoRankingData();
+        const riderName = transmissaoActiveMatchup.riderName || '';
 
-    const rItem = ranking.find(r => r.nome === riderName) || {
-        totalPontos: 0,
-        posicao: ranking.length + 1,
-        cidade: '',
-        paradas: 0
-    };
+        const rItem = (Array.isArray(ranking) && ranking.find(r => r.nome === riderName)) || {
+            totalPontos: 0,
+            posicao: (Array.isArray(ranking) ? ranking.length : 0) + 1,
+            cidade: '',
+            paradas: 0
+        };
 
-    const totalRounds = transmissaoSelectedRound || 1;
-    let paradasCount = rItem.paradas || 0;
+        const totalRounds = transmissaoSelectedRound || 1;
+        let paradasCount = rItem.paradas || 0;
 
-    // Achar cidade
-    let cidade = rItem.cidade || '';
-    if (!cidade && ev && ev.peoes) {
-        const peaoObj = ev.peoes.find(p => (typeof p === 'object' && (p.nome === riderName || p.name === riderName)));
-        if (peaoObj && peaoObj.cidade) cidade = peaoObj.cidade;
+        // Achar cidade
+        let cidade = rItem.cidade || '';
+        if (!cidade && ev && Array.isArray(ev.peoes)) {
+            const peaoObj = ev.peoes.find(p => (typeof p === 'object' && p && (p.nome === riderName || p.name === riderName)));
+            if (peaoObj && peaoObj.cidade) cidade = peaoObj.cidade;
+        }
+
+        // Sublinha formatada: CIDADE • VS NOME DO TOURO (COMPANHIA)
+        const bullName = transmissaoActiveMatchup.bullName || '';
+        const bullCia = transmissaoActiveMatchup.bullCia || '';
+        const vsPart = bullName ? `VS ${bullName}${bullCia ? ` (${bullCia})` : ''}` : '';
+        let subline = '';
+        if (cidade && vsPart) {
+            subline = `${cidade} • ${vsPart}`;
+        } else if (cidade) {
+            subline = cidade;
+        } else if (vsPart) {
+            subline = vsPart;
+        } else {
+            subline = 'BRASIL';
+        }
+
+        // Calcular Diferença do Líder (DIF. LÍDER)
+        const leader = (Array.isArray(ranking) && ranking.length > 0) ? ranking[0] : null;
+        const leaderTotal = leader ? (parseFloat(leader.totalPontos) || 0) : 0;
+        const riderTotal = parseFloat(rItem.totalPontos) || 0;
+        let difLider = '0,00';
+        if (rItem.posicao === 1 || riderTotal >= leaderTotal) {
+            difLider = 'LÍDER';
+        } else {
+            const diff = leaderTotal - riderTotal;
+            difLider = `-${diff.toFixed(2).replace('.', ',')}`;
+        }
+
+        return {
+            roundText: `ROUND ${transmissaoActiveMatchup.day || transmissaoSelectedRound || 1}`,
+            riderName: formatRiderNameForOverlay(riderName),
+            subline: subline.toUpperCase(),
+            difLider: difLider,
+            total: riderTotal > 0 ? riderTotal.toFixed(2).replace('.', ',') : '0,00',
+            posicao: `${rItem.posicao || 1}º`,
+            paradas: `${paradasCount}/${totalRounds}`,
+            bullName: bullName,
+            bullCia: bullCia,
+            lado: transmissaoActiveMatchup.lado || ''
+        };
+    } catch(err) {
+        console.error('[GET ACTIVE MATCHUP OVERLAY ERR]', err);
+        return {
+            roundText: `ROUND ${transmissaoActiveMatchup.day || transmissaoSelectedRound || 1}`,
+            riderName: formatRiderNameForOverlay(transmissaoActiveMatchup.riderName || 'COMPETIDOR'),
+            subline: `${transmissaoActiveMatchup.bullName ? 'VS ' + transmissaoActiveMatchup.bullName : 'BRASIL'}`.toUpperCase(),
+            difLider: '0,00',
+            total: '0,00',
+            posicao: '1º',
+            paradas: '0/1',
+            bullName: transmissaoActiveMatchup.bullName || '',
+            bullCia: transmissaoActiveMatchup.bullCia || '',
+            lado: transmissaoActiveMatchup.lado || ''
+        };
     }
-
-    // Sublinha formatada: CIDADE • VS NOME DO TOURO (COMPANHIA)
-    const bullName = transmissaoActiveMatchup.bullName || '';
-    const bullCia = transmissaoActiveMatchup.bullCia || '';
-    const vsPart = bullName ? `VS ${bullName}${bullCia ? ` (${bullCia})` : ''}` : '';
-    let subline = '';
-    if (cidade && vsPart) {
-        subline = `${cidade} • ${vsPart}`;
-    } else if (cidade) {
-        subline = cidade;
-    } else if (vsPart) {
-        subline = vsPart;
-    } else {
-        subline = 'BRASIL';
-    }
-
-    // Calcular Diferença do Líder (DIF. LÍDER)
-    const leader = (ranking && ranking.length > 0) ? ranking[0] : null;
-    const leaderTotal = leader ? leader.totalPontos : 0;
-    const riderTotal = rItem.totalPontos;
-    let difLider = '0,00';
-    if (rItem.posicao === 1 || riderTotal >= leaderTotal) {
-        difLider = 'LÍDER';
-    } else {
-        const diff = leaderTotal - riderTotal;
-        difLider = `-${diff.toFixed(2).replace('.', ',')}`;
-    }
-
-    return {
-        roundText: `ROUND ${transmissaoActiveMatchup.day || transmissaoSelectedRound || 1}`,
-        riderName: formatRiderNameForOverlay(riderName),
-        subline: subline.toUpperCase(),
-        difLider: difLider,
-        total: rItem.totalPontos > 0 ? rItem.totalPontos.toFixed(2).replace('.', ',') : '0,00',
-        posicao: `${rItem.posicao || 1}º`,
-        paradas: `${paradasCount}/${totalRounds}`,
-        bullName: bullName,
-        bullCia: bullCia,
-        lado: transmissaoActiveMatchup.lado || ''
-    };
 }
 
 function getActiveOrLastScoreOverlayData() {
@@ -8068,7 +8096,9 @@ function getOverlayLeaderboardData() {
 
 window.broadcastOverlayCommand = (action, data = null) => {
     const payload = { action, data };
+    console.log('[OVERLAY BROADCAST]', action, data);
 
+    // 1. WebSocket Local (Electron -> OBS / vMix via porta 3005)
     if (window.electronAPI && typeof window.electronAPI.sendOverlayCommand === 'function') {
         try {
             window.electronAPI.sendOverlayCommand(payload);
@@ -8077,12 +8107,18 @@ window.broadcastOverlayCommand = (action, data = null) => {
         }
     }
 
+    // 2. Ably Realtime Oficial (Sincronização em Nuvem para web.rodeoapp.pro)
     const ev = transmissaoEvent || currentEvent;
     const shareId = (ev && (ev.share_id || ev.shareId || ev.id)) || 'padrao';
-    if (window.ablyClient) {
+    const ably = ablyRealtimeClient || window.ablyRealtimeClient;
+    if (ably) {
         try {
-            const overlayChannel = window.ablyClient.channels.get(`rodeo-overlay-${shareId}`);
-            overlayChannel.publish('overlay_command', payload);
+            const channelName = `rodeoapp-event-${shareId}`;
+            const channel = currentAblyChannel || ably.channels.get(channelName);
+            if (channel) {
+                channel.publish('overlay_command', payload);
+                console.log('[OVERLAY BROADCAST ABLY] Publicado em:', channelName);
+            }
         } catch(e) {
             console.warn('[OVERLAY ABLY]', e);
         }
@@ -8783,6 +8819,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.184": [
+        {
+            icon: "🟢",
+            title: "Reconexão Instantânea e Estabilidade na Tela Verde",
+            desc: "Auto-reconexão contínua a cada 1.5s no WebSocket (OBS Studio/vMix) e integração oficial com Ably Realtime na nuvem, garantindo que os gráficos nunca falhem ao entrar no ar."
+        }
+    ],
     "1.0.183": [
         {
             icon: "🚀",
@@ -8899,7 +8942,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.183';
+        let appVersion = '1.0.184';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8911,8 +8954,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.183")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.183"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.184")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.184"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

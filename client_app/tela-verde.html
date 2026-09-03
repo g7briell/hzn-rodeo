@@ -107,7 +107,7 @@
     <!-- Indicador de Status Inicial (Discreto - Some após 4s para manter o chroma 100% limpo) -->
     <div id="status-pill" class="fixed bottom-5 right-5 z-50 transition-opacity duration-1000 opacity-100 pointer-events-none">
         <div class="bg-black/90 text-white border border-white/20 px-4 py-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 text-xs font-bold">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+            <span id="status-ws-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#f59e0b]"></span>
             <span class="tracking-wider uppercase font-black text-yellow-400">RODEOAPP</span>
             <span class="text-slate-400">|</span>
             <span class="uppercase tracking-wide text-slate-200">TELA VERDE ATIVA</span>
@@ -303,13 +303,14 @@
         setTimeout(() => {
             const pill = document.getElementById('status-pill');
             if (pill) pill.style.opacity = '0';
-        }, 4000);
+        }, 5000);
 
         // ==========================================
         // RENDERIZADOR: TARJA DO COMPETIDOR (GRAF 1)
         // ==========================================
         function showMatchupLowerThird(data) {
             if (!data) return;
+            console.log('[OVERLAY] Exibindo Tarja do Competidor:', data);
             const container = document.getElementById('overlay-matchup-container');
             if (!container) return;
 
@@ -326,6 +327,7 @@
         }
 
         function hideMatchupLowerThird() {
+            console.log('[OVERLAY] Ocultando Tarja do Competidor');
             const container = document.getElementById('overlay-matchup-container');
             if (!container || container.classList.contains('hidden')) return;
 
@@ -342,6 +344,7 @@
         // ==========================================
         function showRankingLeaderboard(data) {
             if (!data) return;
+            console.log('[OVERLAY] Exibindo Classificação Geral:', data);
             const container = document.getElementById('overlay-ranking-container');
             const rowsContainer = document.getElementById('ranking-rows-container');
             if (!container || !rowsContainer) return;
@@ -384,6 +387,7 @@
         }
 
         function hideRankingLeaderboard() {
+            console.log('[OVERLAY] Ocultando Classificação Geral');
             const container = document.getElementById('overlay-ranking-container');
             if (!container || container.classList.contains('hidden')) return;
 
@@ -400,6 +404,7 @@
         // ==========================================
         function showScoreLowerThird(data) {
             if (!data) return;
+            console.log('[OVERLAY] Exibindo Detalhamento de Notas:', data);
             const container = document.getElementById('overlay-score-container');
             if (!container) return;
 
@@ -489,6 +494,7 @@
         }
 
         function hideScoreLowerThird() {
+            console.log('[OVERLAY] Ocultando Detalhamento de Notas');
             const container = document.getElementById('overlay-score-container');
             if (!container || container.classList.contains('hidden')) return;
 
@@ -505,6 +511,7 @@
         // ==========================================
         function showTotalOnlyLowerThird(data) {
             if (!data) return;
+            console.log('[OVERLAY] Exibindo Apenas Nota Total:', data);
             const container = document.getElementById('overlay-total-only-container');
             if (!container) return;
 
@@ -537,6 +544,7 @@
         }
 
         function hideTotalOnlyLowerThird() {
+            console.log('[OVERLAY] Ocultando Apenas Nota');
             const container = document.getElementById('overlay-total-only-container');
             if (!container || container.classList.contains('hidden')) return;
 
@@ -553,77 +561,117 @@
         // ==========================================
         function handleOverlayCommand(payload) {
             if (!payload || !payload.action) return;
-            console.log('[RODEOAPP OVERLAY] Ação recebida:', payload.action, payload.data);
-
-            switch (payload.action) {
-                case 'show_matchup':
-                    showMatchupLowerThird(payload.data);
-                    break;
-                case 'hide_matchup':
-                    hideMatchupLowerThird();
-                    break;
-                case 'show_ranking':
-                    showRankingLeaderboard(payload.data);
-                    break;
-                case 'hide_ranking':
-                    hideRankingLeaderboard();
-                    break;
-                case 'show_score':
-                    showScoreLowerThird(payload.data);
-                    break;
-                case 'hide_score':
-                    hideScoreLowerThird();
-                    break;
-                case 'show_total_only':
-                    showTotalOnlyLowerThird(payload.data);
-                    break;
-                case 'hide_total_only':
-                    hideTotalOnlyLowerThird();
-                    break;
-                case 'clear':
-                    hideMatchupLowerThird();
-                    hideRankingLeaderboard();
-                    hideScoreLowerThird();
-                    hideTotalOnlyLowerThird();
-                    break;
+            console.log('⚡ [RODEOAPP OVERLAY RECEBIDO]:', payload.action, payload.data);
+            try {
+                switch (payload.action) {
+                    case 'show_matchup':
+                        showMatchupLowerThird(payload.data);
+                        break;
+                    case 'hide_matchup':
+                        hideMatchupLowerThird();
+                        break;
+                    case 'show_ranking':
+                        showRankingLeaderboard(payload.data);
+                        break;
+                    case 'hide_ranking':
+                        hideRankingLeaderboard();
+                        break;
+                    case 'show_score':
+                        showScoreLowerThird(payload.data);
+                        break;
+                    case 'hide_score':
+                        hideScoreLowerThird();
+                        break;
+                    case 'show_total_only':
+                        showTotalOnlyLowerThird(payload.data);
+                        break;
+                    case 'hide_total_only':
+                        hideTotalOnlyLowerThird();
+                        break;
+                    case 'clear':
+                        hideMatchupLowerThird();
+                        hideRankingLeaderboard();
+                        hideScoreLowerThird();
+                        hideTotalOnlyLowerThird();
+                        break;
+                }
+            } catch(e) {
+                console.error('[ERRO AO EXECUTAR OVERLAY COMMAND]:', e);
             }
         }
 
         // ==========================================
         // CONEXÕES REALTIME: WEBSOCKET & ABLY
         // ==========================================
-        // 1. WebSocket Local (Electron App)
-        if (window.location.host) {
+        // 1. WebSocket Local com Auto-Reconexão Contínua (OBS Studio / vMix)
+        let ws = null;
+        let wsReconnectTimer = null;
+
+        function connectLocalWebSocket() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                return;
+            }
+
             try {
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const ws = new WebSocket(`${protocol}//${window.location.host}`);
-                ws.onopen = () => console.log('[OVERLAY WS] Conectado ao servidor local na porta 3005');
+                const wsUrl = (window.location.protocol.startsWith('http') && window.location.host && window.location.host.includes(':3005'))
+                    ? `ws://${window.location.host}`
+                    : 'ws://127.0.0.1:3005';
+
+                console.log('[OVERLAY WS] Conectando a:', wsUrl);
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    console.log('🟢 [OVERLAY WS] Conectado com sucesso na porta 3005!');
+                    const statusDot = document.getElementById('status-ws-dot');
+                    if (statusDot) {
+                        statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+                    }
+                };
+
                 ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
                         handleOverlayCommand(data);
-                    } catch(e) {}
+                    } catch(e) {
+                        console.error('[OVERLAY WS PARSE ERR]', e);
+                    }
                 };
+
                 ws.onclose = () => {
-                    setTimeout(() => {
-                        // Reconexão se necessário
-                    }, 2500);
+                    console.warn('🟡 [OVERLAY WS] Conexão encerrada. Reconectando em 1.5s...');
+                    ws = null;
+                    clearTimeout(wsReconnectTimer);
+                    wsReconnectTimer = setTimeout(connectLocalWebSocket, 1500);
+                };
+
+                ws.onerror = (err) => {
+                    console.warn('🔴 [OVERLAY WS] Falha de conexão. Tentando novamente...');
+                    try { ws.close(); } catch(e) {}
                 };
             } catch(e) {
-                console.log('[OVERLAY WS] Sem WebSocket local');
+                console.error('[OVERLAY WS INIT ERR]', e);
+                clearTimeout(wsReconnectTimer);
+                wsReconnectTimer = setTimeout(connectLocalWebSocket, 2000);
             }
         }
 
-        // 2. Ably Realtime (web.rodeoapp.pro / Nuvem)
+        connectLocalWebSocket();
+
+        // 2. Ably Realtime (web.rodeoapp.pro / Nuvem Oficial)
+        const ABLY_OFFICIAL_KEY = 'ZpXrAw.0ShBdA:PN-cy5nGO2hVtllKkQIQppoPtl4FGufzq58uT9WHXts';
         try {
-            const ably = new Ably.Realtime('2E9X6w.kPj-bg:rI6e_Z6WlW1b0yWJ');
-            const channel = ably.channels.get(`rodeo-overlay-${eventParam}`);
-            channel.subscribe('overlay_command', (msg) => {
-                if (msg && msg.data) {
-                    handleOverlayCommand(msg.data);
-                }
-            });
-            console.log('[OVERLAY ABLY] Inscrito no canal:', `rodeo-overlay-${eventParam}`);
+            if (typeof Ably !== 'undefined') {
+                const ably = new Ably.Realtime({ key: ABLY_OFFICIAL_KEY, clientId: `overlay-${Date.now()}` });
+                const channelName = `rodeoapp-event-${eventParam}`;
+                const channel = ably.channels.get(channelName);
+                channel.subscribe('overlay_command', (msg) => {
+                    if (msg && msg.data) {
+                        console.log('[ABLY OVERLAY MSG]:', msg.data);
+                        handleOverlayCommand(msg.data);
+                    }
+                });
+                console.log('[OVERLAY ABLY] Inscrito com sucesso no canal:', channelName);
+            }
         } catch(e) {
             console.warn('[OVERLAY ABLY] Falha ao inicializar Ably:', e);
         }

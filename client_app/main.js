@@ -3187,11 +3187,24 @@ ipcMain.handle('delete-media', async (event, fileName) => {
 const wssOverlay = new WebSocket.Server({ server: overlayServer });
 
 wssOverlay.on('connection', (ws) => {
-    console.log('OBS Overlay Client connected');
+    console.log(`[OVERLAY WS SERVER] Cliente OBS/vMix conectado. Total ativos: ${overlayWsClients.length + 1}`);
     overlayWsClients.push(ws);
+
+    ws.on('message', (msg) => {
+        try {
+            const parsed = JSON.parse(msg.toString());
+            const message = JSON.stringify(parsed);
+            overlayWsClients.forEach(client => {
+                if (client !== ws && client.readyState === WebSocket.OPEN) {
+                    client.send(message);
+                }
+            });
+        } catch(e) {}
+    });
 
     ws.on('close', () => {
         overlayWsClients = overlayWsClients.filter(client => client !== ws);
+        console.log(`[OVERLAY WS SERVER] Cliente desconectado. Restantes: ${overlayWsClients.length}`);
     });
 });
 
@@ -3202,10 +3215,12 @@ overlayServer.listen(3005, () => {
 // Handler IPC para enviar comandos da Interface Principal para os Overlays
 ipcMain.on('send-overlay-command', (event, payload) => {
     const message = JSON.stringify(payload);
+    console.log(`[OVERLAY WS BROADCAST] Enviando comando para ${overlayWsClients.length} cliente(s):`, payload.action);
     overlayWsClients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
         }
     });
 });
+
 
