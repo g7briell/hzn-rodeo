@@ -85,16 +85,14 @@
         /* Animações da Transmissão (Revelar Dinâmico Estilo TV) */
         @keyframes broadcastRevealWipe {
             0% {
-                clip-path: inset(0 100% 0 0 round 24px);
-                transform: translateX(-35px);
+                clip-path: inset(0 100% 0 0);
                 opacity: 0;
             }
-            15% {
+            8% {
                 opacity: 1;
             }
             100% {
-                clip-path: inset(0 0% 0 0 round 24px);
-                transform: translateX(0);
+                clip-path: inset(0 0% 0 0);
                 opacity: 1;
             }
         }
@@ -104,8 +102,8 @@
                 left: 0%;
                 opacity: 1;
             }
-            85% {
-                left: 97%;
+            88% {
+                left: 98%;
                 opacity: 1;
             }
             100% {
@@ -117,7 +115,7 @@
         @keyframes pillDropIn {
             0% {
                 opacity: 0;
-                transform: translateY(12px);
+                transform: translateY(14px);
             }
             100% {
                 opacity: 1;
@@ -131,7 +129,7 @@
                 transform: translateX(-30px);
             }
             40% {
-                opacity: 0.4;
+                opacity: 0.5;
             }
             100% {
                 opacity: 1;
@@ -240,7 +238,7 @@
     <!-- ============================================================ -->
     <div id="overlay-matchup-container" class="fixed bottom-12 left-16 z-40 hidden">
         <!-- Pílula Superior de Round -->
-        <div id="matchup-round-pill" class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6 transition-opacity duration-300">
+        <div id="matchup-round-pill" class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6 transition-all duration-300" style="opacity: 0;">
             <span id="matchup-round-badge">ROUND 1</span>
         </div>
 
@@ -248,7 +246,7 @@
         <div id="matchup-main-bar" class="broadcast-wine-bar rounded-3xl min-w-[960px] max-w-6xl relative overflow-hidden transition-all duration-300">
             
             <!-- Lâmina de Corte Frontal (Leading Edge Blade do vídeo) -->
-            <div id="matchup-blade-lead" class="absolute top-0 bottom-0 pointer-events-none z-30 w-12 bg-gradient-to-r from-red-600 via-white to-transparent shadow-[0_0_25px_#ffffff,0_0_15px_#dc2626] opacity-0"></div>
+            <div id="matchup-blade-lead" class="absolute top-0 bottom-0 pointer-events-none z-30 w-12 bg-gradient-to-r from-red-600 via-white to-transparent shadow-[0_0_25px_#ffffff,0_0_15px_#dc2626]" style="opacity: 0;"></div>
 
             <!-- Reflexo Metálico / Sheen -->
             <div id="matchup-sheen" class="absolute inset-0 pointer-events-none z-25 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] opacity-0"></div>
@@ -507,8 +505,9 @@
             const outroLayer = document.getElementById('matchup-outro-layer');
             const logoBox = document.getElementById('matchup-outro-logo-box');
 
-            // Resetar camadas e remover animações anteriores
-            container.classList.remove('hidden', 'anim-outro-slide');
+            // 1. Manter o container OCULTO enquanto limpa e prepara os estados iniciais
+            container.classList.add('hidden');
+            container.classList.remove('anim-outro-slide');
 
             if (pill) {
                 pill.classList.remove('anim-pill-drop');
@@ -519,13 +518,13 @@
             }
             if (blade) {
                 blade.classList.remove('anim-blade-lead');
+                blade.style.opacity = '0';
             }
             if (sheen) {
                 sheen.classList.remove('anim-sheen-sweep');
             }
             if (contentLayer) {
                 contentLayer.classList.remove('anim-content-slide');
-                contentLayer.style.opacity = '1';
             }
             if (outroLayer) {
                 outroLayer.classList.remove('opacity-100');
@@ -536,15 +535,18 @@
                 logoBox.style.transform = 'scale(0)';
             }
 
-            // Forçar reflow limpo antes de disparar a revelação em sincronia
-            void container.offsetWidth;
-
-            // Disparar Animações Sincronizadas da Revelação Estilo Vídeo (Broadcast Wipe)
+            // 2. Anexar as classes de animação ANTES de desocultar (para não haver 1 frame visível)
             if (mainBar) mainBar.classList.add('anim-broadcast-reveal');
             if (blade) blade.classList.add('anim-blade-lead');
             if (pill) pill.classList.add('anim-pill-drop');
             if (contentLayer) contentLayer.classList.add('anim-content-slide');
             if (sheen) sheen.classList.add('anim-sheen-sweep');
+
+            // 3. Forçar reflow com tudo em 0%
+            void container.offsetWidth;
+
+            // 4. Revelar o container: a animação inicia instantaneamente de 0% para 100%, sem piscar!
+            container.classList.remove('hidden');
         }
 
         function hideMatchupLowerThird() {

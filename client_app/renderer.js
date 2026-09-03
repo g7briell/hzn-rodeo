@@ -8853,6 +8853,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.189": [
+        {
+            icon: "🎬",
+            title: "Perfeição Visual na Entrada (Wipe Reveal Sem Falhas)",
+            desc: "Correção definitiva na sincronização da animação de entrada: o container agora inicia estritamente a 0% de largura, eliminando o micro-flash e permitindo que a lâmina luminosa desenrole a tarja com máxima fluidez e acabamento esportivo de TV."
+        }
+    ],
     "1.0.188": [
         {
             icon: "🎬",
@@ -9004,7 +9011,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.188';
+        let appVersion = '1.0.189';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -9016,8 +9023,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.188")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.188"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.189")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.189"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
