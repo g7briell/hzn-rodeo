@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RODEOAPP • TELA VERDE (CHROMA KEY)</title>
+    <!-- Tailwind CSS CDN para renderização ágil dos gráficos futuros -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        html, body {
+            background-color: #00FF00 !important; /* Puro Verde Chroma Key Padrão Broadcast (RGB 0, 255, 0) */
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative bg-[#00FF00] overflow-hidden">
+
+    <!-- Indicador de Status Inicial (Discreto - Some após 4s para manter o chroma 100% limpo) -->
+    <div id="status-pill" class="fixed bottom-5 right-5 z-50 transition-opacity duration-1000 opacity-100 pointer-events-none">
+        <div class="bg-black/90 text-white border border-white/20 px-4 py-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 text-xs font-bold">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+            <span class="tracking-wider uppercase font-black text-yellow-400">RODEOAPP</span>
+            <span class="text-slate-400">|</span>
+            <span class="uppercase tracking-wide text-slate-200">TELA VERDE ATIVA</span>
+            <span class="text-slate-400">|</span>
+            <span id="status-event-name" class="text-emerald-400 font-mono text-[11px]">EVENTO: CARREGANDO...</span>
+        </div>
+    </div>
+
+    <!-- Container Principal dos Gráficos (Pronto para receber as informações da montaria e do evento) -->
+    <div id="overlay-root" class="relative w-full h-full z-10 pointer-events-none">
+        <!-- Elementos gráficos solicitados pelo usuário serão injetados dinamicamente aqui -->
+    </div>
+
+    <script>
+        // Captura o identificador do evento na URL (?event=... ou ?shareId=... ou ?id=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventParam = urlParams.get('event') || urlParams.get('shareId') || urlParams.get('id') || 'padrao';
+        
+        window.activeEventParam = eventParam;
+        console.log('[RODEOAPP TELA VERDE] Inicializada para o evento:', eventParam);
+
+        // Atualiza etiqueta de status
+        const statusLabel = document.getElementById('status-event-name');
+        if (statusLabel) {
+            statusLabel.innerText = 'EVENTO: ' + eventParam.toUpperCase();
+        }
+
+        // Esconde o aviso após 4 segundos para a tela ficar 100% verde puro no Chroma Key
+        setTimeout(() => {
+            const pill = document.getElementById('status-pill');
+            if (pill) {
+                pill.style.opacity = '0';
+            }
+        }, 4000);
+
+        // Conectar ao WebSocket do servidor local caso esteja rodando pelo desktop (Porta 3005)
+        if (window.location.host) {
+            try {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const ws = new WebSocket(protocol + '//' + window.location.host);
+                ws.onopen = () => console.log('[TELA VERDE] Conectado ao WebSocket local');
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('[TELA VERDE] Mensagem recebida via WS:', data);
+                    } catch(e) {}
+                };
+                ws.onclose = () => {
+                    setTimeout(() => {
+                        // Reconexão se necessário
+                    }, 3000);
+                };
+            } catch(e) {
+                console.log('[TELA VERDE] Modo web/externo (sem ws local)');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -7662,7 +7662,53 @@ window.openTransmissaoSettingsModal = () => {
         keyInput.value = localStorage.getItem('RODEOAPP_ABLY_KEY') || '';
     }
 
+    // Configura os links específicos da tela verde para o evento ativo
+    const ev = transmissaoEvent || currentEvent;
+    const eventIdentifier = (ev && (ev.share_id || ev.shareId || ev.id)) ? (ev.share_id || ev.shareId || ev.id) : 'padrao';
+
+    const localInput = document.getElementById('trans-link-tela-verde-local');
+    const webInput = document.getElementById('trans-link-tela-verde-web');
+
+    if (localInput) {
+        localInput.value = `http://localhost:3005/?event=${encodeURIComponent(eventIdentifier)}`;
+    }
+
+    if (webInput) {
+        const origin = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http'))
+            ? window.location.origin
+            : 'https://web.rodeoapp.pro';
+        webInput.value = `${origin}/tela-verde.html?event=${encodeURIComponent(eventIdentifier)}`;
+    }
+
     modal.classList.remove('hidden');
+};
+
+window.copyTelaVerdeLink = (type = 'local') => {
+    const inputId = type === 'local' ? 'trans-link-tela-verde-local' : 'trans-link-tela-verde-web';
+    const iconId = type === 'local' ? 'copy-icon-local' : 'copy-icon-web';
+    const input = document.getElementById(inputId);
+    if (!input || !input.value) return;
+
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        const icon = document.getElementById(iconId);
+        if (icon) icon.innerText = '✅';
+        showToast(type === 'local' ? 'Link Local da Tela Verde copiado!' : 'Link Web da Tela Verde copiado!', 'success');
+        setTimeout(() => {
+            if (icon) icon.innerText = '📋';
+        }, 2000);
+    }).catch(() => {
+        document.execCommand('copy');
+        showToast('Link copiado!', 'success');
+    });
+};
+
+window.openTelaVerdeLink = (type = 'local') => {
+    const inputId = type === 'local' ? 'trans-link-tela-verde-local' : 'trans-link-tela-verde-web';
+    const input = document.getElementById(inputId);
+    if (!input || !input.value) return;
+
+    window.open(input.value, '_blank');
 };
 
 window.closeTransmissaoSettingsModal = () => {
@@ -8278,6 +8324,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.179": [
+        {
+            icon: "🟩",
+            title: "Tela Verde Chroma Key para Transmissão",
+            desc: "Adicionados links exclusivos por evento nas configurações da transmissão para integração com OBS Studio, vMix e Wirecast (Localhost e Nuvem web.rodeoapp.pro)."
+        }
+    ],
     "1.0.178": [
         {
             icon: "🔒",
@@ -8359,7 +8412,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.178';
+        let appVersion = '1.0.179';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8371,8 +8424,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.178")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.178"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.179")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.179"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

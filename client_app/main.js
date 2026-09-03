@@ -3093,14 +3093,19 @@ let overlayWsClients = [];
 
 // Criar Servidor HTTP na porta 3005
 const overlayServer = http.createServer((req, res) => {
-    if (req.url === '/') {
-        fs.readFile(path.join(__dirname, 'overlay.html'), (err, content) => {
+    const parsedPath = (req.url || '/').split('?')[0];
+    if (parsedPath === '/' || parsedPath === '/tela-verde' || parsedPath === '/tela-verde.html' || parsedPath === '/overlay' || parsedPath === '/overlay.html') {
+        const telaVerdeFile = path.join(__dirname, 'tela-verde.html');
+        const overlayFile = path.join(__dirname, 'overlay.html');
+        const targetFile = fs.existsSync(telaVerdeFile) ? telaVerdeFile : overlayFile;
+
+        fs.readFile(targetFile, (err, content) => {
             if (err) {
                 res.writeHead(500);
-                res.end('Erro ao carregar overlay.html');
+                res.end('Erro ao carregar tela-verde.html');
                 return;
             }
-            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(content, 'utf-8');
         });
     } else if (req.url.startsWith('/media/')) {
