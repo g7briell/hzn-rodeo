@@ -661,12 +661,12 @@
                 O competidor tem direito a solicitar um novo touro de Re-Ride ou manter a nota atual.
             </p>
 
-            <div class="grid grid-cols-2 gap-3.5">
-                <button type="button" onclick="handleKeepLowScore()" class="h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-black text-sm uppercase tracking-wider active:scale-95 touch-active cursor-pointer">
-                    MANTER NOTA
+            <div class="grid grid-cols-2 gap-4">
+                <button type="button" onclick="handleKeepLowScore()" class="h-16 rounded-2xl bg-red-600/20 hover:bg-red-600/30 border-2 border-red-500 text-red-400 hover:text-red-300 font-black text-lg uppercase tracking-wider active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-red-950/40">
+                    ✕ NÃO
                 </button>
-                <button type="button" onclick="handleRequestNextBullReride()" class="h-16 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-amber-500/25 active:scale-95 touch-active cursor-pointer">
-                    PRÓXIMO TOURO
+                <button type="button" onclick="handleRequestNextBullReride()" class="h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-lg uppercase tracking-wider shadow-xl shadow-emerald-500/30 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                    ✓ SIM
                 </button>
             </div>
         </div>

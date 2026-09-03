@@ -812,6 +812,55 @@ window.selectDay = (day) => {
     renderRidesList();
 };
 
+// ==========================================
+// UTILITÁRIO: LOCALIZAR NOTA POR MONTARIA (PEÃO + TOURO + RERIDE)
+// ==========================================
+function findNotaForMatchup(notas, riderName, bullName, day, isRerideRide = false) {
+    if (!notas || !Array.isArray(notas)) return null;
+    const rLower = (riderName || '').trim().toLowerCase();
+    const bLower = (bullName || '').trim().toLowerCase();
+    const dStr = String(day || '1');
+
+    // 1. Tenta correspondência exata: peão + dia + touro + isReride
+    let found = notas.find(n => {
+        const matchPeao = ((n.peao || n.peaoNome || '').trim().toLowerCase() === rLower);
+        const matchDay = String(n.dia || n.day) === dStr;
+        const notReplaced = n.status !== 'substituida';
+        const matchBull = bLower ? ((n.touro || '').trim().toLowerCase() === bLower) : true;
+        const matchReride = (isRerideRide !== undefined && n.isReride !== undefined) 
+            ? Boolean(n.isReride) === Boolean(isRerideRide) 
+            : true;
+        return matchPeao && matchDay && notReplaced && matchBull && matchReride;
+    });
+
+    if (found) return found;
+
+    // 2. Se não achou com isReride estrito, tenta pelo touro exato
+    if (bLower) {
+        found = notas.find(n => {
+            const matchPeao = ((n.peao || n.peaoNome || '').trim().toLowerCase() === rLower);
+            const matchDay = String(n.dia || n.day) === dStr;
+            const notReplaced = n.status !== 'substituida';
+            const matchBull = ((n.touro || '').trim().toLowerCase() === bLower);
+            return matchPeao && matchDay && notReplaced && matchBull;
+        });
+        if (found) return found;
+    }
+
+    // 3. Fallback genérico: APENAS se esta montaria NÃO FOR RE-RIDE e a nota também NÃO FOR de re-ride
+    if (!isRerideRide) {
+        return notas.find(n => {
+            const matchPeao = ((n.peao || n.peaoNome || '').trim().toLowerCase() === rLower);
+            const matchDay = String(n.dia || n.day) === dStr;
+            const notReplaced = n.status !== 'substituida';
+            const notReride = !n.isReride;
+            return matchPeao && matchDay && notReplaced && notReride;
+        });
+    }
+
+    return null;
+}
+
 function renderRidesList() {
     const container = document.getElementById('rides-cards-container');
     const noRidesEl = document.getElementById('no-rides-message');
@@ -878,13 +927,10 @@ function renderRidesList() {
         const bullNome = (typeof bull === 'string' ? bull : (bull && bull.nome ? bull.nome : 'TOURO')).trim();
         const bullCia = (typeof bull === 'object' && bull ? bull.cia : '---') || '---';
         const bullLado = (typeof bull === 'object' && bull && bull.lado) ? String(bull.lado).toUpperCase() : 'C';
+        const isRerideRide = Boolean(r.isReride);
 
-        // Procura a nota deste Juiz para este competidor neste dia
-        const existingNota = notas.find(n => 
-            (n.peao === riderNome || n.peaoNome === riderNome) && 
-            n.dia === window.state.selectedDay && 
-            n.status !== 'substituida'
-        );
+        // Procura a nota deste Juiz para este competidor especificamente neste touro
+        const existingNota = findNotaForMatchup(notas, riderNome, bullNome, window.state.selectedDay, isRerideRide);
 
         let myJudgeGraded = false;
         let myScoreObj = { bScore: 0, rScore: 0, isFall: false };
@@ -921,7 +967,6 @@ function renderRidesList() {
         if (window.state.activeFilter === 'pending' && isGraded) return '';
         if (window.state.activeFilter === 'graded' && !isGraded) return '';
 
-        const isRerideRide = Boolean(r.isReride);
         const isArenaActive = Boolean(activeArenaRiderName && activeArenaRiderName.trim().toUpperCase() === riderNome.toUpperCase());
 
         // Efeito de Foco na Arena
@@ -1056,15 +1101,15 @@ window.handleRideCardClick = (matchupIdx) => {
     const r = currentSorteio.riders[matchupIdx];
     if (!r) return;
     const rNome = (typeof r === 'string' ? r : (r.nome || '')).trim();
+    const bullIdx = currentSorteio.assignments[matchupIdx] !== undefined ? currentSorteio.assignments[matchupIdx] : matchupIdx;
+    const bull = currentSorteio.bulls[bullIdx] || { nome: '' };
+    const bullNome = (typeof bull === 'string' ? bull : (bull.nome || '')).trim();
+    const isRerideRide = Boolean(r.isReride);
     const notas = (window.state.eventData && window.state.eventData.notas) || [];
     const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
 
-    // Verifica se este Juiz já avaliou este competidor
-    const existingNota = notas.find(n => 
-        (n.peao === rNome || n.peaoNome === rNome) && 
-        n.dia === window.state.selectedDay && 
-        n.status !== 'substituida'
-    );
+    // Verifica se este Juiz já avaliou este competidor neste touro específico
+    const existingNota = findNotaForMatchup(notas, rNome, bullNome, window.state.selectedDay, isRerideRide);
 
     let isAlreadyGradedByMe = false;
     if (existingNota) {
@@ -1146,14 +1191,10 @@ function openScoreModalDirect(matchupIdx) {
     document.getElementById('flow-rider-city').innerText = r.cidade || 'CIDADE - UF';
     document.getElementById('flow-bull-cia').innerText = bull.cia || 'CIA DE RODEIO';
 
-    // 1. Procura se este Juiz já possui nota gravada para carregar na tela
+    // 1. Procura se este Juiz já possui nota gravada para esta montaria específica
     const notas = (window.state.eventData && window.state.eventData.notas) || [];
     const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
-    const existingNota = notas.find(n => 
-        (n.peao === r.nome || n.peaoNome === r.nome) && 
-        n.dia === window.state.selectedDay && 
-        n.status !== 'substituida'
-    );
+    const existingNota = findNotaForMatchup(notas, r.nome, bull.nome, window.state.selectedDay, Boolean(r.isReride));
 
     const defaults = getDefaultScoresForJudge();
 
@@ -1466,13 +1507,9 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
         // 3. Atualiza estado na memória local
         updateLocalScoreState(scorePayload);
 
-        // Fecha a tela de notas
-        document.getElementById('view-judging-flow').classList.add('hidden');
-        broadcastClearActiveArenaMatchup();
-
         // 4. Verifica se todos os juízes já enviaram para esta montaria
         const totalJudgesExpected = parseInt(window.state.eventData.judges || 2) || 2;
-        const currentMatchupScores = getMatchupScoresMap(scorePayload.riderName, scorePayload.day);
+        const currentMatchupScores = getMatchupScoresMap(scorePayload.riderName, scorePayload.day, scorePayload.bullName, scorePayload.isReride);
 
         const submittedJudgesCount = Object.keys(currentMatchupScores).length;
 
@@ -1480,6 +1517,8 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
             // Entra na tela de "Aguardando avaliação do outro juiz" com polling de verificação
             window.state.waitingMatchup = {
                 riderName: scorePayload.riderName,
+                bullName: scorePayload.bullName,
+                isReride: scorePayload.isReride,
                 day: scorePayload.day,
                 matchupIdx: scorePayload.matchupIdx
             };
@@ -1501,9 +1540,9 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
     }
 };
 
-function getMatchupScoresMap(riderName, day) {
+function getMatchupScoresMap(riderName, day, bullName = null, isReride = false) {
     const notas = window.state.eventData?.notas || [];
-    const nota = notas.find(n => (n.peao === riderName || n.peaoNome === riderName) && n.dia === day && n.status !== 'substituida');
+    const nota = findNotaForMatchup(notas, riderName, bullName, day, isReride);
     if (!nota) return {};
     return nota.juizes_status || {};
 }
@@ -1548,7 +1587,8 @@ function startWaitingPollInterval() {
                     rawLocal.notas.forEach(cloudNota => {
                         const localNota = window.state.eventData.notas.find(n => 
                             n.dia === cloudNota.dia && 
-                            (n.peao === cloudNota.peao || n.peaoNome === cloudNota.peaoNome)
+                            (n.peao === cloudNota.peao || n.peaoNome === cloudNota.peaoNome) &&
+                            (n.touro && cloudNota.touro ? n.touro.toUpperCase() === cloudNota.touro.toUpperCase() : true)
                         );
                         if (localNota && localNota.juizes_status) {
                             cloudNota.juizes_status = { ...(cloudNota.juizes_status || {}), ...localNota.juizes_status };
@@ -1559,11 +1599,21 @@ function startWaitingPollInterval() {
                 window.state.eventData = rawLocal;
 
                 const totalJudgesExpected = parseInt(window.state.eventData.judges || 2) || 2;
-                const scoresMap = getMatchupScoresMap(window.state.waitingMatchup.riderName, window.state.waitingMatchup.day);
+                const scoresMap = getMatchupScoresMap(
+                    window.state.waitingMatchup.riderName,
+                    window.state.waitingMatchup.day,
+                    window.state.waitingMatchup.bullName,
+                    window.state.waitingMatchup.isReride
+                );
 
                 if (Object.keys(scoresMap).length >= totalJudgesExpected) {
                     stopWaitingPollInterval();
-                    handleAllJudgesCompleted(scoresMap, { riderName: window.state.waitingMatchup.riderName, day: window.state.waitingMatchup.day });
+                    handleAllJudgesCompleted(scoresMap, {
+                        riderName: window.state.waitingMatchup.riderName,
+                        bullName: window.state.waitingMatchup.bullName,
+                        isReride: window.state.waitingMatchup.isReride,
+                        day: window.state.waitingMatchup.day
+                    });
                 } else {
                     showWaitingOtherJudgeModal(scoresMap, totalJudgesExpected);
                 }
@@ -1630,9 +1680,25 @@ window.handleRequestNextBullReride = async () => {
     }
 
     const rider = window.state.currentRider;
+    const currentBull = window.state.currentBull;
     const day = window.state.selectedDay;
     const sorteios = window.state.eventData.sorteios || [];
     const currentSorteio = sorteios.find(s => s.day === day);
+
+    // Marca a nota anterior do touro original como substituída por Re-ride
+    if (window.state.eventData && window.state.eventData.notas) {
+        const prevNota = findNotaForMatchup(
+            window.state.eventData.notas,
+            rider.nome,
+            currentBull ? currentBull.nome : null,
+            day,
+            false
+        );
+        if (prevNota) {
+            prevNota.status = 'substituida';
+            prevNota.updatedAt = new Date().toISOString();
+        }
+    }
 
     // 1. Busca próximo touro reserva disponível no evento
     const availableBull = findNextAvailableRerideBull(currentSorteio);
@@ -1703,10 +1769,12 @@ window.closeRerideResultModal = () => {
 function updateLocalScoreState(scorePayload) {
     window.state.eventData.notas = window.state.eventData.notas || [];
     
-    let consolidatedNota = window.state.eventData.notas.find(n => 
-        (n.peao === scorePayload.riderName || n.peaoNome === scorePayload.riderName) && 
-        n.dia === scorePayload.day && 
-        n.status !== 'substituida'
+    let consolidatedNota = findNotaForMatchup(
+        window.state.eventData.notas,
+        scorePayload.riderName,
+        scorePayload.bullName,
+        scorePayload.day,
+        Boolean(scorePayload.isReride)
     );
 
     if (!consolidatedNota) {
@@ -1774,10 +1842,12 @@ async function saveScoreDirectToSupabase(scorePayload) {
         const localData = detalhes.localData || detalhes;
         localData.notas = localData.notas || [];
 
-        let consolidatedNota = localData.notas.find(n => 
-            (n.peao === scorePayload.riderName || n.peaoNome === scorePayload.riderName) && 
-            n.dia === scorePayload.day && 
-            n.status !== 'substituida'
+        let consolidatedNota = findNotaForMatchup(
+            localData.notas,
+            scorePayload.riderName,
+            scorePayload.bullName,
+            scorePayload.day,
+            Boolean(scorePayload.isReride)
         );
 
         if (!consolidatedNota) {

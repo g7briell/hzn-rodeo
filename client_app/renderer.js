@@ -4050,11 +4050,13 @@ async function handleJudgeScoreReceived(scoreData) {
     const jIdx = parseInt(judgeIdx) || 0;
     const isQueda = Boolean(isFall) || (rScore === 0);
 
-    // 1. Procura registro de nota consolidada para este competidor neste dia
+    // 1. Procura registro de nota consolidada para este competidor neste dia E neste touro específico (diferenciando re-ride)
     let consolidatedNota = currentEvent.notas.find(n => 
         (n.peao === riderName || n.peaoNome === riderName) && 
         n.dia === day && 
-        n.status !== 'substituida'
+        n.status !== 'substituida' &&
+        (bullName ? (n.touro && n.touro.trim().toLowerCase() === bullName.trim().toLowerCase()) : true) &&
+        (isReride !== undefined ? Boolean(n.isReride) === Boolean(isReride) : true)
     );
 
     if (!consolidatedNota) {
@@ -5621,10 +5623,13 @@ function getScoresForRiderAndBull(peaoNome, bullNome, dayVal) {
 
     let j1p = 0, j1t = 0, j2p = 0, j2t = 0, tempo = 0;
 
+    const bLower = (bullNome || '').trim().toLowerCase();
+
     const notaManual = currentEvent.notas.find(n => 
         ((n.peao || n.peaoNome || '').trim().toLowerCase() === peaoLower) &&
         (String(n.dia || n.day) === dayStr) &&
-        (n.status === 'ativa' || !n.status)
+        (n.status === 'ativa' || !n.status) &&
+        (bLower ? ((n.touro || '').trim().toLowerCase() === bLower) : true)
     );
 
     if (notaManual && (notaManual.j1_peao !== undefined || notaManual.j1_touro !== undefined || notaManual.totalPeao !== undefined || notaManual.notaPeao !== undefined)) {
@@ -8218,6 +8223,18 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.177": [
+        {
+            icon: "🐂",
+            title: "Isolamento Completo de Re-Rides",
+            desc: "Montarias de Re-ride agora possuem notas e histórico totalmente separados da montaria original, sem sobrescrever nem duplicar avaliações."
+        },
+        {
+            icon: "✅",
+            title: "Botões Claros no Modal de Re-Ride (Juiz)",
+            desc: "Adicionados botões diretos 'SIM' (Verde) e 'NÃO' (Vermelho) para facilitar e agilizar a decisão sob pressão na arena."
+        }
+    ],
     "1.0.176": [
         {
             icon: "🔕",
@@ -8275,7 +8292,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.176';
+        let appVersion = '1.0.177';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
