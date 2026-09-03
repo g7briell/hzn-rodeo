@@ -5,6 +5,23 @@
  */
 
 // ==========================================
+// PREVENÇÃO DE ZOOM ACIDENTAL NO IOS SAFARI (DOUBLE-TAP & PINCH)
+// ==========================================
+let __lastTouchEndTime = 0;
+document.addEventListener('touchend', (event) => {
+    const now = Date.now();
+    if (now - __lastTouchEndTime <= 350) {
+        event.preventDefault();
+    }
+    __lastTouchEndTime = now;
+}, { passive: false });
+
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('gesturechange', (e) => e.preventDefault());
+document.addEventListener('gestureend', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+
+// ==========================================
 // CONFIGURAÇÕES & CREDENCIAIS
 // ==========================================
 const SUPABASE_URL = 'https://api.rodeoapp.pro';

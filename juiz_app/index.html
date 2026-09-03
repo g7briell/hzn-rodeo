@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RODEOAPP - Portal do Juiz</title>
     
     <!-- Favicon Oficial -->
@@ -29,13 +29,21 @@
         * {
             -webkit-tap-highlight-color: transparent;
             box-sizing: border-box;
+            touch-action: manipulation;
         }
-        body {
+        html, body {
             background-color: var(--dark-bg);
             color: #f8fafc;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            -webkit-text-size-adjust: 100%;
+            overscroll-behavior-y: contain;
+        }
+        button, a, input, select, textarea, div, img, span {
+            touch-action: manipulation;
         }
         .hidden {
             display: none !important;

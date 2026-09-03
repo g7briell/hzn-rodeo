@@ -4121,55 +4121,15 @@ async function handleJudgeScoreReceived(scoreData) {
         renderNotasCards();
     }
 
-    // 5. Exibe notificação toast em tempo real para o Administrador
-    showJudgeScoreToast({
-        judgeName: judgeName || `JUIZ ${jIdx + 1}`,
-        riderName,
-        bullName,
-        rScore: isQueda ? 0 : rScore,
-        bScore,
-        total: (isQueda ? 0 : rScore) + bScore,
-        isFall: isQueda,
-        totalGeral: consolidatedNota.totalGeral,
-        juizesCount: Object.keys(consolidatedNota.juizes_status || {}).length
-    });
+    // Notificação toast do canto direito desativada a pedido do usuário
+    // showJudgeScoreToast({ ... });
 }
 
 function showJudgeScoreToast(data) {
+    // Desativado: o usuário não quer o popup no canto direito
     const existing = document.getElementById('realtime-score-toast');
     if (existing) existing.remove();
-
-    const toast = document.createElement('div');
-    toast.id = 'realtime-score-toast';
-    toast.className = "fixed top-6 right-6 z-[9999] bg-slate-900/95 border-2 border-yellow-500 p-5 rounded-2xl shadow-2xl backdrop-blur-xl flex items-start gap-4 transform transition-all duration-300 translate-y-0 text-left max-w-lg min-w-[300px] animate-bounce";
-    
-    toast.innerHTML = `
-        <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between gap-4 mb-2">
-                <span class="text-[10px] font-black uppercase tracking-widest text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 whitespace-nowrap">Nota Recebida • Realtime</span>
-                <span class="text-[10px] font-mono text-slate-400 whitespace-nowrap">${new Date().toLocaleTimeString()}</span>
-            </div>
-            <div class="text-sm font-black text-white uppercase leading-tight mb-2 break-words">
-                ${data.judgeName} AVALIOU ${data.riderName}
-            </div>
-            <div class="text-[11px] font-bold text-slate-400 uppercase mb-2">
-                ${data.isFall ? '<span class="text-red-400">QUEDA (0.00)</span>' : `Deste juiz: Peão <span class="text-white">${data.rScore.toFixed(2)}</span> + Touro <span class="text-yellow-400">${data.bScore.toFixed(2)}</span> = ${data.total.toFixed(2)}`}
-            </div>
-            <div class="text-sm font-black text-emerald-400 uppercase bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg inline-block w-full text-center">
-                NOTA SOMADA (${data.juizesCount} JUIZ${data.juizesCount > 1 ? 'ES' : ''}): ${data.totalGeral.toFixed(2)} PTS
-            </div>
-        </div>
-        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white font-bold p-1 flex-shrink-0 -mt-1 -mr-2">✕</button>
-    `;
-
-    document.body.appendChild(toast);
-    setTimeout(() => {
-        if (toast.parentElement) {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-20px)';
-            setTimeout(() => toast.remove(), 300);
-        }
-    }, 8000);
+    return;
 }
 
 // --- SISTEMA DE CORES DINÂMICAS ---
@@ -8258,6 +8218,18 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.176": [
+        {
+            icon: "🔕",
+            title: "Interface Mais Limpa",
+            desc: "Removida a notificação popup do canto superior direito para liberar totalmente a visão da tela e dos botões operacionais."
+        },
+        {
+            icon: "📱",
+            title: "Bloqueio de Zoom Acidental no Safari (iOS)",
+            desc: "Desabilitado o duplo clique e gesto de pinça no portal do juiz (juiz.rodeoapp.pro) para navegação 100% estável no iPhone/iPad."
+        }
+    ],
     "1.0.175": [
         {
             icon: "🐂",
@@ -8303,7 +8275,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.175';
+        let appVersion = '1.0.176';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8315,8 +8287,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.175")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.175"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.176")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.176"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
