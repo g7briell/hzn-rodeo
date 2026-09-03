@@ -929,8 +929,16 @@ function renderRidesList() {
         const bullLado = (typeof bull === 'object' && bull && bull.lado) ? String(bull.lado).toUpperCase() : 'C';
         const isRerideRide = Boolean(r.isReride);
 
+        // Verifica se esta montaria original foi substituída por um Re-Ride
+        const isReplacedRide = !isRerideRide && notas.some(n => 
+            ((n.peao || n.peaoNome || '').trim().toLowerCase() === riderNome.toLowerCase()) && 
+            String(n.dia || n.day) === String(window.state.selectedDay) && 
+            (n.status === 'substituida' || n.status === 're_ride') &&
+            (bullNome ? (n.touro && n.touro.trim().toLowerCase() === bullNome.toLowerCase()) : true)
+        );
+
         // Procura a nota deste Juiz para este competidor especificamente neste touro
-        const existingNota = findNotaForMatchup(notas, riderNome, bullNome, window.state.selectedDay, isRerideRide);
+        const existingNota = isReplacedRide ? null : findNotaForMatchup(notas, riderNome, bullNome, window.state.selectedDay, isRerideRide);
 
         let myJudgeGraded = false;
         let myScoreObj = { bScore: 0, rScore: 0, isFall: false };
@@ -959,7 +967,7 @@ function renderRidesList() {
             }
         }
 
-        const isGraded = myJudgeGraded;
+        const isGraded = myJudgeGraded || isReplacedRide;
         if (isGraded) gradedCount++;
         else pendingCount++;
 
@@ -969,17 +977,19 @@ function renderRidesList() {
 
         const isArenaActive = Boolean(activeArenaRiderName && activeArenaRiderName.trim().toUpperCase() === riderNome.toUpperCase());
 
-        // Efeito de Foco na Arena
+        // Efeito de Foco na Arena e montarias avaliadas apagadinhas
         let cardContainerClasses = "glass-card p-4 sm:p-5 rounded-3xl transition-all cursor-pointer group touch-active relative overflow-hidden";
         
         if (isArenaActive) {
             cardContainerClasses += " arena-active-card border-yellow-400";
         } else if (activeArenaRiderName) {
             cardContainerClasses += " opacity-35 scale-[0.98] hover:opacity-100 hover:scale-100 border-white/5";
+        } else if (isReplacedRide) {
+            cardContainerClasses += " opacity-35 grayscale bg-slate-950/80 border border-red-500/30 cursor-not-allowed";
         } else {
             cardContainerClasses += isRerideRide 
-                ? ' border-2 border-yellow-500 bg-yellow-500/10 shadow-lg shadow-yellow-500/10'
-                : (isGraded ? ' border-emerald-500/30 bg-emerald-950/10' : ' border-white/5 hover:border-yellow-500/40 bg-slate-900/60');
+                ? (isGraded ? ' border-yellow-500/40 bg-yellow-950/20 opacity-50 hover:opacity-90' : ' border-2 border-yellow-500 bg-yellow-500/10 shadow-lg shadow-yellow-500/10')
+                : (isGraded ? ' border-emerald-500/30 bg-emerald-950/20 opacity-50 hover:opacity-90' : ' border-white/5 hover:border-yellow-500/40 bg-slate-900/60');
         }
 
         let statusBadge = '';
@@ -994,6 +1004,12 @@ function renderRidesList() {
                     <span class="text-xs font-black uppercase underline">
                         ${isGraded ? 'EDITAR NOTA ➔' : 'AVALIAR AGORA ➔'}
                     </span>
+                </div>`;
+        } else if (isReplacedRide) {
+            statusBadge = `
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-red-500/20 text-red-400">
+                    <span class="text-[10px] font-black uppercase tracking-wider flex items-center gap-1">🔄 SUBSTITUÍDA (RE-RIDE)</span>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">ANULADA</span>
                 </div>`;
         } else if (isGraded) {
             if (myScoreObj.isFall || myScoreObj.rScore === 0) {
@@ -1103,10 +1119,22 @@ window.handleRideCardClick = (matchupIdx) => {
     const rNome = (typeof r === 'string' ? r : (r.nome || '')).trim();
     const bullIdx = currentSorteio.assignments[matchupIdx] !== undefined ? currentSorteio.assignments[matchupIdx] : matchupIdx;
     const bull = currentSorteio.bulls[bullIdx] || { nome: '' };
-    const bullNome = (typeof bull === 'string' ? bull : (bull.nome || '')).trim();
     const isRerideRide = Boolean(r.isReride);
     const notas = (window.state.eventData && window.state.eventData.notas) || [];
     const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
+
+    // Se esta montaria foi substituída por Re-Ride, bloqueia o acesso
+    const isReplacedRide = !isRerideRide && notas.some(n => 
+        ((n.peao || n.peaoNome || '').trim().toLowerCase() === rNome.toLowerCase()) && 
+        String(n.dia || n.day) === String(window.state.selectedDay) && 
+        (n.status === 'substituida' || n.status === 're_ride') &&
+        (bullNome ? (n.touro && n.touro.trim().toLowerCase() === bullNome.toLowerCase()) : true)
+    );
+
+    if (isReplacedRide) {
+        showToast("Esta montaria foi substituída por Re-Ride. Avalie o novo touro de Re-ride.", "info");
+        return;
+    }
 
     // Verifica se este Juiz já avaliou este competidor neste touro específico
     const existingNota = findNotaForMatchup(notas, rNome, bullNome, window.state.selectedDay, isRerideRide);
@@ -1667,6 +1695,11 @@ function handleAllJudgesCompleted(scoresMap, scorePayload) {
 // ==========================================
 window.handleKeepLowScore = () => {
     document.getElementById('modal-low-score-reride').classList.add('hidden');
+    document.getElementById('view-judging-flow').classList.add('hidden');
+    window.state.currentMatchupIdx = null;
+    window.state.currentRider = null;
+    window.state.currentBull = null;
+    broadcastClearActiveArenaMatchup();
     showToast("Nota confirmada mantida!", "success");
     renderRidesList();
 };
@@ -1756,6 +1789,13 @@ window.openRerideBullsListModal = () => {
 
 window.closeRerideBullsListModal = () => {
     document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
+    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
+    document.getElementById('modal-low-score-reride').classList.add('hidden');
+    document.getElementById('view-judging-flow').classList.add('hidden');
+    window.state.currentMatchupIdx = null;
+    window.state.currentRider = null;
+    window.state.currentBull = null;
+    broadcastClearActiveArenaMatchup();
     renderRidesList();
 };
 
@@ -1890,8 +1930,15 @@ async function confirmCreateRerideWithBull(selectedBull) {
     // 3. Salva na nuvem e transmite via Ably
     await syncEventUpdateToCloudAndAbly();
 
+    // Fecha a prancheta de avaliação e qualquer modal de seleção intermediário
+    document.getElementById('view-judging-flow').classList.add('hidden');
+    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
+    document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
+    document.getElementById('modal-low-score-reride').classList.add('hidden');
+    broadcastClearActiveArenaMatchup();
+
     // 4. Mostra Pop-up de Sucesso
-    document.getElementById('reride-msg-icon').className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto mb-4 flex items-center justify-center text-3xl border border-emerald-500/40";
+    document.getElementById('reride-msg-icon').className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto mb-4 flex items-center justify-center text-3xl font-black border border-emerald-500/40";
     document.getElementById('reride-msg-title').innerText = "MONTARIA DE RE-RIDE CRIADA";
     document.getElementById('reride-msg-text').innerHTML = `Montaria Criada para o Competidor <b class="text-white">${rider.nome}</b>, Touro <b class="text-yellow-400">${selectedBull.nome}</b> (CIA ${selectedBull.cia || '---'})`;
     document.getElementById('modal-reride-result-msg').classList.remove('hidden');
@@ -2000,6 +2047,15 @@ function findNextAvailableRerideBull(currentSorteio) {
 
 window.closeRerideResultModal = () => {
     document.getElementById('modal-reride-result-msg').classList.add('hidden');
+    document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
+    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
+    document.getElementById('modal-low-score-reride').classList.add('hidden');
+    document.getElementById('view-judging-flow').classList.add('hidden');
+    window.state.currentMatchupIdx = null;
+    window.state.currentRider = null;
+    window.state.currentBull = null;
+    window.state.suggestedRerideBull = null;
+    broadcastClearActiveArenaMatchup();
     renderRidesList();
 };
 
