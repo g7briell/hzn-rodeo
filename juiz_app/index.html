@@ -785,21 +785,26 @@
                 ALTERAR NOTA
             </h3>
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">
-                Esta montaria já foi avaliada. Digite sua senha de Juiz para desbloquear e alterar a nota:
+                Esta montaria já foi avaliada. Digite sua senha de Juiz ou a senha do Evento para desbloquear:
             </p>
 
             <div class="space-y-4 text-left">
                 <div class="relative">
-                    <input type="password" id="input-edit-security-pin" placeholder="Senha do Juiz" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-center text-xl font-mono outline-none focus:ring-2 focus:ring-yellow-500 tracking-widest" required autofocus onkeydown="if(event.key==='Enter'){confirmUnlockEditScore();}">
+                    <input type="password" id="input-edit-security-pin" placeholder="Senha do Juiz ou Evento" class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-white text-center text-xl font-mono outline-none focus:ring-2 focus:ring-yellow-500 tracking-widest" required autofocus onkeydown="if(event.key==='Enter'){confirmUnlockEditScore();}">
                     <button type="button" onclick="togglePasswordVisibility('input-edit-security-pin')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold p-1 cursor-pointer">
                         👁️
                     </button>
                 </div>
                 <p id="edit-security-error" class="text-xs font-bold text-red-400 mt-2 text-center hidden">Senha incorreta.</p>
 
-                <button type="button" onclick="confirmUnlockEditScore()" class="w-full h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/25 active:scale-95 cursor-pointer">
-                    DESBLOQUEAR PARA ALTERAR
-                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="closeSecurityChangeScoreModal()" class="h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-black text-xs uppercase tracking-wider cursor-pointer">
+                        CANCELAR
+                    </button>
+                    <button type="button" onclick="confirmUnlockEditScore()" class="h-14 rounded-2xl bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-xl shadow-yellow-500/25 active:scale-95 cursor-pointer">
+                        DESBLOQUEAR
+                    </button>
+                </div>
             </div>
         </div>
     </div>

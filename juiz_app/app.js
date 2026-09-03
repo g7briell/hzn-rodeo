@@ -815,16 +815,26 @@ window.selectDay = (day) => {
 // ==========================================
 // UTILITÁRIO: LOCALIZAR NOTA POR MONTARIA (PEÃO + TOURO + RERIDE)
 // ==========================================
+function isDayMatching(notaDia, targetDay) {
+    if (!notaDia && !targetDay) return true;
+    const nStr = String(notaDia || '').trim().toLowerCase();
+    const tStr = String(targetDay || '').trim().toLowerCase();
+    if (nStr === tStr) return true;
+    const nNum = nStr.replace(/\D+/g, '');
+    const tNum = tStr.replace(/\D+/g, '');
+    if (nNum && tNum && nNum === tNum) return true;
+    return false;
+}
+
 function findNotaForMatchup(notas, riderName, bullName, day, isRerideRide = false) {
     if (!notas || !Array.isArray(notas)) return null;
     const rLower = (riderName || '').trim().toLowerCase();
     const bLower = (bullName || '').trim().toLowerCase();
-    const dStr = String(day || '1');
 
     // 1. Tenta correspondência exata: peão + dia + touro + isReride
     let found = notas.find(n => {
         const matchPeao = ((n.peao || n.peaoNome || '').trim().toLowerCase() === rLower);
-        const matchDay = String(n.dia || n.day) === dStr;
+        const matchDay = isDayMatching(n.dia || n.day, day);
         const notReplaced = n.status !== 'substituida';
         const matchBull = bLower ? ((n.touro || '').trim().toLowerCase() === bLower) : true;
         const matchReride = (isRerideRide !== undefined && n.isReride !== undefined) 
@@ -839,7 +849,7 @@ function findNotaForMatchup(notas, riderName, bullName, day, isRerideRide = fals
     if (bLower) {
         found = notas.find(n => {
             const matchPeao = ((n.peao || n.peaoNome || '').trim().toLowerCase() === rLower);
-            const matchDay = String(n.dia || n.day) === dStr;
+            const matchDay = isDayMatching(n.dia || n.day, day);
             const notReplaced = n.status !== 'substituida';
             const matchBull = ((n.touro || '').trim().toLowerCase() === bLower);
             return matchPeao && matchDay && notReplaced && matchBull;
@@ -851,7 +861,7 @@ function findNotaForMatchup(notas, riderName, bullName, day, isRerideRide = fals
     if (!isRerideRide) {
         return notas.find(n => {
             const matchPeao = ((n.peao || n.peaoNome || '').trim().toLowerCase() === rLower);
-            const matchDay = String(n.dia || n.day) === dStr;
+            const matchDay = isDayMatching(n.dia || n.day, day);
             const notReplaced = n.status !== 'substituida';
             const notReride = !n.isReride;
             return matchPeao && matchDay && notReplaced && notReride;
@@ -859,6 +869,57 @@ function findNotaForMatchup(notas, riderName, bullName, day, isRerideRide = fals
     }
 
     return null;
+}
+
+function isJudgeScoreGraded(nota, jIdx, judgeName = null) {
+    if (!nota) return false;
+
+    // 1. Status específico do juiz em juizes_status
+    if (nota.juizes_status) {
+        const js = nota.juizes_status[jIdx] !== undefined ? nota.juizes_status[jIdx] : nota.juizes_status[String(jIdx)];
+        if (js && (js.enviado || js.touro !== undefined || js.peao !== undefined || js.isFall)) {
+            return true;
+        }
+        // Se gravou por nome do juiz
+        if (judgeName) {
+            const jNameUpper = String(judgeName).trim().toUpperCase();
+            const byName = Object.values(nota.juizes_status).find(s => 
+                s && s.nome && String(s.nome).trim().toUpperCase() === jNameUpper && (s.enviado || s.touro !== undefined || s.isFall)
+            );
+            if (byName) return true;
+        }
+    }
+
+    // 2. Campo judgeIdx gravado individualmente
+    if (nota.judgeIdx !== undefined && nota.judgeIdx !== null && parseInt(nota.judgeIdx) === parseInt(jIdx)) {
+        return true;
+    }
+
+    // 3. Checagem direta por j1, j2, j3
+    const hasField = (val) => val !== undefined && val !== null && val !== '' && !isNaN(Number(val));
+    if (jIdx === 0) {
+        if (hasField(nota.j1_touro) || hasField(nota.j1_peao)) {
+            if (Number(nota.j1_touro) > 0 || Number(nota.j1_peao) > 0 || nota.tempo === 0 || nota.isFall) return true;
+        }
+        if (nota.juizes_status && (nota.juizes_status[0]?.enviado || nota.juizes_status["0"]?.enviado)) return true;
+    } else if (jIdx === 1) {
+        if (hasField(nota.j2_touro) || hasField(nota.j2_peao)) {
+            if (Number(nota.j2_touro) > 0 || Number(nota.j2_peao) > 0 || nota.tempo === 0 || nota.isFall) return true;
+        }
+        if (nota.juizes_status && (nota.juizes_status[1]?.enviado || nota.juizes_status["1"]?.enviado)) return true;
+    } else if (jIdx === 2) {
+        if (hasField(nota.j3_touro) || hasField(nota.j3_peao)) {
+            if (Number(nota.j3_touro) > 0 || Number(nota.j3_peao) > 0 || nota.tempo === 0 || nota.isFall) return true;
+        }
+        if (nota.juizes_status && (nota.juizes_status[2]?.enviado || nota.juizes_status["2"]?.enviado)) return true;
+    }
+
+    // 4. Se a nota geral já foi salva e consolidada para este round e competidor
+    if (nota.totalGeral !== undefined && Number(nota.totalGeral) > 0) {
+        if (!nota.juizes_status || Object.keys(nota.juizes_status).length === 0) return true;
+    }
+
+    return false;
 }
 
 function renderRidesList() {
@@ -944,26 +1005,26 @@ function renderRidesList() {
         let myScoreObj = { bScore: 0, rScore: 0, isFall: false };
 
         if (existingNota) {
-            if (existingNota.juizes_status && existingNota.juizes_status[jIdx] && existingNota.juizes_status[jIdx].enviado) {
-                myJudgeGraded = true;
+            myJudgeGraded = isJudgeScoreGraded(existingNota, jIdx, window.state.currentJudge?.nome);
+            const js = existingNota.juizes_status ? (existingNota.juizes_status[jIdx] || existingNota.juizes_status[String(jIdx)]) : null;
+            if (js && (js.enviado || js.touro !== undefined || js.peao !== undefined || js.isFall)) {
                 myScoreObj = {
-                    bScore: existingNota.juizes_status[jIdx].touro || 0,
-                    rScore: existingNota.juizes_status[jIdx].peao || 0,
-                    isFall: existingNota.juizes_status[jIdx].isFall || false
+                    bScore: Number(js.touro) || 0,
+                    rScore: Number(js.peao) || 0,
+                    isFall: Boolean(js.isFall)
                 };
             } else if (existingNota.judgeIdx === jIdx) {
-                myJudgeGraded = true;
                 myScoreObj = {
-                    bScore: existingNota.bullScore || 0,
-                    rScore: existingNota.riderScore || 0,
-                    isFall: existingNota.isFall || (existingNota.riderScore === 0)
+                    bScore: Number(existingNota.bullScore) || 0,
+                    rScore: Number(existingNota.riderScore) || 0,
+                    isFall: Boolean(existingNota.isFall) || (Number(existingNota.riderScore) === 0)
                 };
-            } else if (jIdx === 0 && (existingNota.j1_touro > 0 || existingNota.j1_peao > 0)) {
-                myJudgeGraded = true;
-                myScoreObj = { bScore: existingNota.j1_touro, rScore: existingNota.j1_peao, isFall: (existingNota.j1_peao === 0) };
-            } else if (jIdx === 1 && (existingNota.j2_touro > 0 || existingNota.j2_peao > 0)) {
-                myJudgeGraded = true;
-                myScoreObj = { bScore: existingNota.j2_touro, rScore: existingNota.j2_peao, isFall: (existingNota.j2_peao === 0) };
+            } else if (jIdx === 0) {
+                myScoreObj = { bScore: Number(existingNota.j1_touro) || 0, rScore: Number(existingNota.j1_peao) || 0, isFall: (Number(existingNota.j1_peao) === 0 && (existingNota.tempo === 0 || existingNota.isFall)) };
+            } else if (jIdx === 1) {
+                myScoreObj = { bScore: Number(existingNota.j2_touro) || 0, rScore: Number(existingNota.j2_peao) || 0, isFall: (Number(existingNota.j2_peao) === 0 && (existingNota.tempo === 0 || existingNota.isFall)) };
+            } else if (jIdx === 2) {
+                myScoreObj = { bScore: Number(existingNota.j3_touro) || 0, rScore: Number(existingNota.j3_peao) || 0, isFall: (Number(existingNota.j3_peao) === 0 && (existingNota.tempo === 0 || existingNota.isFall)) };
             }
         }
 
@@ -1140,39 +1201,39 @@ window.handleRideCardClick = (matchupIdx) => {
     // Verifica se este Juiz já avaliou este competidor neste touro específico
     const existingNota = findNotaForMatchup(notas, rNome, bullNome, window.state.selectedDay, isRerideRide);
 
-    let isAlreadyGradedByMe = false;
-    if (existingNota) {
-        if (existingNota.juizes_status && existingNota.juizes_status[jIdx] && existingNota.juizes_status[jIdx].enviado) {
-            isAlreadyGradedByMe = true;
-        } else if (existingNota.judgeIdx === jIdx) {
-            isAlreadyGradedByMe = true;
-        } else if (jIdx === 0 && (existingNota.j1_touro > 0 || existingNota.j1_peao > 0)) {
-            isAlreadyGradedByMe = true;
-        } else if (jIdx === 1 && (existingNota.j2_touro > 0 || existingNota.j2_peao > 0)) {
-            isAlreadyGradedByMe = true;
-        }
-    }
+    const isAlreadyGradedByMe = isJudgeScoreGraded(existingNota, jIdx, window.state.currentJudge?.nome);
 
-    // Se já foi avaliada e o juiz tem senha cadastrada: pede senha para autorizar alteração
-    const hasSenha = window.state.currentJudge && window.state.currentJudge.senha && String(window.state.currentJudge.senha).trim().length > 0;
-
-    if (isAlreadyGradedByMe && hasSenha) {
+    // Se já foi avaliada: SEMPRE exige senha e mostra o aviso de segurança para desbloquear
+    if (isAlreadyGradedByMe) {
         window.state.pendingEditMatchupIdx = matchupIdx;
-        document.getElementById('input-edit-security-pin').value = '';
-        document.getElementById('edit-security-error').classList.add('hidden');
-        document.getElementById('modal-security-change-score').classList.remove('hidden');
-        setTimeout(() => document.getElementById('input-edit-security-pin')?.focus(), 100);
-    } else {
-        // Montaria PENDENTE ou juiz sem senha: abre direto!
-        openScoreModalDirect(matchupIdx);
+        const pinInput = document.getElementById('input-edit-security-pin');
+        if (pinInput) pinInput.value = '';
+        const errEl = document.getElementById('edit-security-error');
+        if (errEl) errEl.classList.add('hidden');
+        document.getElementById('modal-security-change-score')?.classList.remove('hidden');
+        setTimeout(() => pinInput?.focus(), 100);
+        return;
     }
+
+    // Montaria PENDENTE: abre direto para julgar
+    openScoreModalDirect(matchupIdx);
 };
 
 window.confirmUnlockEditScore = () => {
     const pin = (document.getElementById('input-edit-security-pin')?.value || '').trim();
-    const correctPin = (window.state.currentJudge?.senha || '').trim();
+    const judgePin = String(window.state.currentJudge?.senha || '').trim();
+    const eventPin = String(window.state.sharePassword || window.state.eventData?.password || '').trim();
 
-    if (pin === correctPin) {
+    let isValid = false;
+    if (judgePin && pin.toLowerCase() === judgePin.toLowerCase()) {
+        isValid = true;
+    } else if (eventPin && pin.toLowerCase() === eventPin.toLowerCase()) {
+        isValid = true;
+    } else if (!judgePin && !eventPin && pin.length > 0) {
+        isValid = true;
+    }
+
+    if (isValid) {
         const targetIdx = window.state.pendingEditMatchupIdx; // Captura antes de fechar o modal
         document.getElementById('modal-security-change-score').classList.add('hidden');
         window.state.pendingEditMatchupIdx = null;
@@ -1182,7 +1243,11 @@ window.confirmUnlockEditScore = () => {
             showToast("Acesso liberado para alteração de nota.", "success");
         }
     } else {
-        document.getElementById('edit-security-error').classList.remove('hidden');
+        const errEl = document.getElementById('edit-security-error');
+        if (errEl) {
+            errEl.innerText = "Senha incorreta. Digite sua senha de Juiz ou a senha do Evento.";
+            errEl.classList.remove('hidden');
+        }
         document.getElementById('input-edit-security-pin')?.select();
     }
 };
@@ -1232,22 +1297,27 @@ function openScoreModalDirect(matchupIdx) {
         let savedRiderScore = 0;
         let isFall = false;
 
-        if (existingNota.juizes_status && existingNota.juizes_status[jIdx] && existingNota.juizes_status[jIdx].enviado) {
-            savedBullScore = existingNota.juizes_status[jIdx].touro || 0;
-            savedRiderScore = existingNota.juizes_status[jIdx].peao || 0;
-            isFall = existingNota.juizes_status[jIdx].isFall || false;
+        const js = existingNota.juizes_status ? (existingNota.juizes_status[jIdx] || existingNota.juizes_status[String(jIdx)]) : null;
+        if (js && (js.enviado || js.touro !== undefined || js.peao !== undefined || js.isFall)) {
+            savedBullScore = Number(js.touro) || 0;
+            savedRiderScore = Number(js.peao) || 0;
+            isFall = Boolean(js.isFall);
         } else if (existingNota.judgeIdx === jIdx) {
-            savedBullScore = existingNota.bullScore || 0;
-            savedRiderScore = existingNota.riderScore || 0;
-            isFall = existingNota.isFall || (existingNota.riderScore === 0);
-        } else if (jIdx === 0 && (existingNota.j1_touro > 0 || existingNota.j1_peao > 0)) {
-            savedBullScore = existingNota.j1_touro || 0;
-            savedRiderScore = existingNota.j1_peao || 0;
-            isFall = (existingNota.j1_peao === 0);
-        } else if (jIdx === 1 && (existingNota.j2_touro > 0 || existingNota.j2_peao > 0)) {
-            savedBullScore = existingNota.j2_touro || 0;
-            savedRiderScore = existingNota.j2_peao || 0;
-            isFall = (existingNota.j2_peao === 0);
+            savedBullScore = Number(existingNota.bullScore) || 0;
+            savedRiderScore = Number(existingNota.riderScore) || 0;
+            isFall = Boolean(existingNota.isFall) || (Number(existingNota.riderScore) === 0);
+        } else if (jIdx === 0) {
+            savedBullScore = Number(existingNota.j1_touro) || 0;
+            savedRiderScore = Number(existingNota.j1_peao) || 0;
+            isFall = (Number(existingNota.j1_peao) === 0 && (existingNota.tempo === 0 || existingNota.isFall));
+        } else if (jIdx === 1) {
+            savedBullScore = Number(existingNota.j2_touro) || 0;
+            savedRiderScore = Number(existingNota.j2_peao) || 0;
+            isFall = (Number(existingNota.j2_peao) === 0 && (existingNota.tempo === 0 || existingNota.isFall));
+        } else if (jIdx === 2) {
+            savedBullScore = Number(existingNota.j3_touro) || 0;
+            savedRiderScore = Number(existingNota.j3_peao) || 0;
+            isFall = (Number(existingNota.j3_peao) === 0 && (existingNota.tempo === 0 || existingNota.isFall));
         }
 
         if (savedBullScore > 0 || savedRiderScore > 0 || isFall) {
@@ -1372,15 +1442,24 @@ window.goToStepConferencia = () => {
     document.getElementById('step-conferencia-notas').classList.remove('hidden');
 };
 
+function closeJudgingFlow() {
+    const flowEl = document.getElementById('view-judging-flow');
+    if (flowEl) flowEl.classList.add('hidden');
+    window.state.currentMatchupIdx = null;
+    window.state.currentRider = null;
+    window.state.currentBull = null;
+    broadcastClearActiveArenaMatchup();
+    renderRidesList();
+}
+window.closeJudgingFlow = closeJudgingFlow;
+
 window.handleJudgingBackBtn = () => {
     if (window.judgingState.step === 'conferencia') {
         goToStepCompetidor();
     } else if (window.judgingState.step === 'competidor') {
         goToStepTouro();
     } else {
-        document.getElementById('view-judging-flow').classList.add('hidden');
-        broadcastClearActiveArenaMatchup();
-        window.state.currentMatchupIdx = null;
+        closeJudgingFlow();
     }
 };
 
@@ -1536,7 +1615,10 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
         // 3. Atualiza estado na memória local
         updateLocalScoreState(scorePayload);
 
-        // 4. Verifica se todos os juízes já enviaram para esta montaria
+        // 4. Minimiza/fecha a tela de julgamento imediatamente após lançar a nota!
+        closeJudgingFlow();
+
+        // 5. Verifica se todos os juízes já enviaram para esta montaria
         const totalJudgesExpected = parseInt(window.state.eventData.judges || 2) || 2;
         const currentMatchupScores = getMatchupScoresMap(scorePayload.riderName, scorePayload.day, scorePayload.bullName, scorePayload.isReride);
 
@@ -1553,6 +1635,7 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
             };
             showWaitingOtherJudgeModal(currentMatchupScores, totalJudgesExpected);
             startWaitingPollInterval();
+            showToast("Nota enviada com sucesso! Aguardando o outro juiz...", "success");
         } else {
             // Todos os juízes já avaliaram!
             handleAllJudgesCompleted(currentMatchupScores, scorePayload);
@@ -1615,7 +1698,7 @@ function startWaitingPollInterval() {
                 if (rawLocal && rawLocal.notas && window.state.eventData && window.state.eventData.notas) {
                     rawLocal.notas.forEach(cloudNota => {
                         const localNota = window.state.eventData.notas.find(n => 
-                            n.dia === cloudNota.dia && 
+                            isDayMatching(n.dia, cloudNota.dia) && 
                             (n.peao === cloudNota.peao || n.peaoNome === cloudNota.peaoNome) &&
                             (n.touro && cloudNota.touro ? n.touro.toUpperCase() === cloudNota.touro.toUpperCase() : true)
                         );
@@ -1660,14 +1743,14 @@ function stopWaitingPollInterval() {
 
 window.closeWaitingOtherJudgeModal = () => {
     stopWaitingPollInterval();
-    document.getElementById('modal-waiting-other-judge').classList.add('hidden');
+    document.getElementById('modal-waiting-other-judge')?.classList.add('hidden');
     window.state.waitingMatchup = null;
-    renderRidesList();
+    closeJudgingFlow();
 };
 
 function handleAllJudgesCompleted(scoresMap, scorePayload) {
     stopWaitingPollInterval();
-    document.getElementById('modal-waiting-other-judge').classList.add('hidden');
+    document.getElementById('modal-waiting-other-judge')?.classList.add('hidden');
     window.state.waitingMatchup = null;
 
     // Calcula Soma Total de Todos os Juízes
@@ -1684,9 +1767,9 @@ function handleAllJudgesCompleted(scoresMap, scorePayload) {
     // Regra: Se a nota for < 80.00 e NÃO for queda (0,00) -> Abre Popup de Re-Ride
     if (sumTotal > 0 && sumTotal < 80.00 && !anyQueda) {
         document.getElementById('low-score-sum-display').innerText = sumTotal.toFixed(2);
-        document.getElementById('modal-low-score-reride').classList.remove('hidden');
+        document.getElementById('modal-low-score-reride')?.classList.remove('hidden');
     } else {
-        renderRidesList();
+        closeJudgingFlow();
         showToast("Notas consolidadas com sucesso!", "success");
     }
 }
@@ -1695,14 +1778,9 @@ function handleAllJudgesCompleted(scoresMap, scorePayload) {
 // POP-UP DE RE-RIDE (< 80 PONTOS)
 // ==========================================
 window.handleKeepLowScore = () => {
-    document.getElementById('modal-low-score-reride').classList.add('hidden');
-    document.getElementById('view-judging-flow').classList.add('hidden');
-    window.state.currentMatchupIdx = null;
-    window.state.currentRider = null;
-    window.state.currentBull = null;
-    broadcastClearActiveArenaMatchup();
+    document.getElementById('modal-low-score-reride')?.classList.add('hidden');
+    closeJudgingFlow();
     showToast("Nota confirmada mantida!", "success");
-    renderRidesList();
 };
 
 window.handleRequestNextBullReride = () => {
@@ -2127,8 +2205,9 @@ async function saveScoreDirectToSupabase(scorePayload) {
     if (!window.state.eventId) return;
 
     try {
+        const getSignal = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined;
         const urlGet = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(window.state.eventId)}&select=*`;
-        const getRes = await fetch(urlGet, { headers: SUPABASE_HEADERS });
+        const getRes = await fetch(urlGet, { headers: SUPABASE_HEADERS, signal: getSignal });
         if (!getRes.ok) return;
 
         const rows = await getRes.json();
@@ -2197,11 +2276,13 @@ async function saveScoreDirectToSupabase(scorePayload) {
 
         detalhes.localData = localData;
 
+        const patchSignal = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined;
         const urlPatch = `${SUPABASE_URL}/rest/v1/eventos_oficiais?id=eq.${encodeURIComponent(window.state.eventId)}`;
         await fetch(urlPatch, {
             method: 'PATCH',
             headers: SUPABASE_HEADERS,
-            body: JSON.stringify({ detalhes, updated_at: new Date().toISOString() })
+            body: JSON.stringify({ detalhes, updated_at: new Date().toISOString() }),
+            signal: patchSignal
         });
 
     } catch (err) {
