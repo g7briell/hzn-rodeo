@@ -7208,8 +7208,7 @@ window.handleJudgeActiveMatchupReceived = (data) => {
         updateTransmissaoManualSelect();
     }
 
-    const sorteios = transmissaoEvent.sorteios || {};
-    const daySorteios = sorteios[transmissaoSelectedRound] || [];
+    const daySorteios = getTransmissaoMatchupsForRound(transmissaoSelectedRound);
     const itemSorteio = daySorteios.find(s => (s.peao === riderName || s.peaoNome === riderName));
 
     const bullName = itemSorteio ? (itemSorteio.touro || itemSorteio.touroNome || 'TOURO DA ARENA') : 'TOURO DA ARENA';
@@ -7706,14 +7705,71 @@ window.handleTransmissaoRoundChange = () => {
     }
 };
 
+function getTransmissaoMatchupsForRound(roundNum) {
+    if (!transmissaoEvent || !transmissaoEvent.sorteios) return [];
+
+    const sorteios = transmissaoEvent.sorteios;
+    let targetSorteio = null;
+
+    if (Array.isArray(sorteios)) {
+        const cleanRound = String(roundNum).replace(/\D+/g, '');
+        targetSorteio = sorteios.find((s, idx) => {
+            if (!s) return false;
+            if (s.day) {
+                const sClean = String(s.day).replace(/\D+/g, '');
+                if (sClean && cleanRound && sClean === cleanRound) return true;
+                if (String(s.day).toUpperCase() === `DIA ${roundNum}` || String(s.day).toUpperCase() === `ROUND ${roundNum}`) return true;
+            }
+            return (idx + 1) === parseInt(roundNum);
+        });
+
+        if (!targetSorteio && sorteios.length > 0) {
+            targetSorteio = sorteios[parseInt(roundNum) - 1] || sorteios[0];
+        }
+    } else if (typeof sorteios === 'object') {
+        targetSorteio = sorteios[roundNum] || sorteios[`DIA ${roundNum}`] || sorteios[`ROUND ${roundNum}`] || Object.values(sorteios)[parseInt(roundNum) - 1];
+    }
+
+    if (!targetSorteio) return [];
+
+    if (Array.isArray(targetSorteio)) {
+        return targetSorteio;
+    }
+
+    if (targetSorteio.riders && Array.isArray(targetSorteio.riders)) {
+        const riders = targetSorteio.riders || [];
+        const bulls = targetSorteio.bulls || [];
+        const assignments = targetSorteio.assignments || {};
+
+        return riders.map((r, idx) => {
+            const pNome = (typeof r === 'string' ? r : (r && r.nome ? r.nome : `Competidor #${idx + 1}`)).trim();
+            const bullIdx = assignments[idx] !== undefined ? assignments[idx] : idx;
+            const b = bulls[bullIdx] || { nome: 'Touro', cia: '', lado: '' };
+            const bNome = (typeof b === 'string' ? b : (b && b.nome ? b.nome : 'Touro')).trim();
+            const bCia = (typeof b === 'object' && b ? (b.cia || '') : '');
+            const bLado = (typeof b === 'object' && b ? (b.lado || '') : '');
+
+            return {
+                peao: pNome,
+                peaoNome: pNome,
+                touro: bNome,
+                touroNome: bNome,
+                cia: bCia,
+                lado: bLado
+            };
+        });
+    }
+
+    return [];
+}
+
 function updateTransmissaoManualSelect() {
     const manualSelect = document.getElementById('trans-manual-matchup-select');
     if (!manualSelect || !transmissaoEvent) return;
 
-    const sorteios = transmissaoEvent.sorteios || {};
-    const daySorteios = sorteios[transmissaoSelectedRound] || [];
+    const daySorteios = getTransmissaoMatchupsForRound(transmissaoSelectedRound);
 
-    if (daySorteios.length === 0) {
+    if (!Array.isArray(daySorteios) || daySorteios.length === 0) {
         manualSelect.innerHTML = '<option value="">Sem sorteio cadastrado para este round</option>';
         return;
     }
@@ -7729,9 +7785,8 @@ function updateTransmissaoManualSelect() {
 window.handleManualMatchupSelect = (encodedRider) => {
     if (!encodedRider || !transmissaoEvent) return;
     const riderName = decodeURIComponent(encodedRider);
-    const sorteios = transmissaoEvent.sorteios || {};
-    const daySorteios = sorteios[transmissaoSelectedRound] || [];
-    const item = daySorteios.find(s => (s.peaoNome || s.peao) === riderName);
+    const daySorteios = getTransmissaoMatchupsForRound(transmissaoSelectedRound);
+    const item = Array.isArray(daySorteios) ? daySorteios.find(s => (s.peaoNome || s.peao) === riderName) : null;
 
     activateTransmissaoMatchup({
         riderName: riderName,
