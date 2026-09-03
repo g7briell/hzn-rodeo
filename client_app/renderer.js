@@ -7439,6 +7439,14 @@ window.handleTransmissaoScoreReceived = (scoreData) => {
     }
 
     renderTransmissaoJudgesGrid();
+
+    // Se a tarja de nota ou tarja do competidor estiver no ar, atualiza dinamicamente na tela verde
+    if (overlayScoreOnAir) {
+        broadcastOverlayCommand('show_score', getActiveOrLastScoreOverlayData());
+    }
+    if (overlayMatchupOnAir) {
+        broadcastOverlayCommand('show_matchup', getActiveMatchupOverlayData());
+    }
 };
 
 // 11. Confirmar Montaria (OK -> Move para Última Montaria e Limpa a Mesa)
@@ -7454,10 +7462,16 @@ window.confirmTransmissaoMatchupDone = () => {
         bullCia: transmissaoActiveMatchup.bullCia,
         tempo: tempoText,
         total: totalText,
+        scoresBuffer: { ...transmissaoScoresBuffer },
         timestamp: new Date().toLocaleTimeString()
     };
 
     renderTransmissaoLastCard();
+
+    // Se a tarja do competidor estiver no ar, recolhe suavemente
+    if (overlayMatchupOnAir) {
+        toggleOverlayMatchupOnAir();
+    }
 
     // Limpa montaria ativa
     transmissaoActiveMatchup = null;
@@ -7472,6 +7486,12 @@ window.confirmTransmissaoMatchupDone = () => {
 
 // 12. Limpar Montaria Ativa sem Salvar
 window.clearTransmissaoActiveMatchup = () => {
+    if (overlayMatchupOnAir) {
+        toggleOverlayMatchupOnAir();
+    }
+    if (overlayScoreOnAir) {
+        toggleOverlayScoreOnAir();
+    }
     transmissaoActiveMatchup = null;
     transmissaoScoresBuffer = {};
     document.getElementById('trans-active-card')?.classList.add('hidden');
@@ -7754,6 +7774,353 @@ function updateTransmissaoScoreModeBadge() {
             "text-[9px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2.5 py-1 rounded border border-yellow-500/20";
     }
 }
+
+// ==========================================
+// CONTROLES DE OVERLAY / TELA VERDE (CHROMA KEY)
+// ==========================================
+let overlayMatchupOnAir = false;
+let overlayScoreOnAir = false;
+let overlayRankingOnAir = false;
+
+function formatRiderNameForOverlay(fullName) {
+    if (!fullName) return '';
+    const clean = fullName.trim();
+    if (clean.length <= 22) return clean;
+    // Se for muito longo, corta o último sobrenome mantendo o padrão visual
+    const parts = clean.split(/\s+/);
+    if (parts.length > 2) {
+        return parts.slice(0, parts.length - 1).join(' ');
+    }
+    return clean;
+}
+
+function getOverlaySportModality(eventObj) {
+    const sport = (eventObj && (eventObj.esporte || eventObj.sport || 'touro')).toLowerCase();
+    if (sport.includes('cutiano')) return 'CLASSIFICAÇÃO GERAL – MODALIDADE CUTIANO';
+    if (sport.includes('tambor') || sport.includes('3tambores')) return 'CLASSIFICAÇÃO GERAL – MODALIDADE TRÊS TAMBORES';
+    if (sport.includes('sela') || sport.includes('americana')) return 'CLASSIFICAÇÃO GERAL – MODALIDADE SELA AMERICANA';
+    if (sport.includes('bareback')) return 'CLASSIFICAÇÃO GERAL – MODALIDADE BAREBACK';
+    return 'CLASSIFICAÇÃO GERAL – MODALIDADE TOURO';
+}
+
+function getActiveMatchupOverlayData() {
+    if (!transmissaoActiveMatchup) return null;
+    const ev = transmissaoEvent || currentEvent;
+    const ranking = calculateTransmissaoRankingData();
+    const riderName = transmissaoActiveMatchup.riderName || '';
+
+    const rItem = ranking.find(r => r.nome === riderName) || {
+        totalPontos: 0,
+        posicao: ranking.length + 1,
+        cidade: ''
+    };
+
+    let paradasCount = 0;
+    const totalRounds = transmissaoSelectedRound || 1;
+    if (ev && ev.notas) {
+        ev.notas.forEach(n => {
+            if ((n.peaoNome === riderName || n.peao === riderName) && (parseFloat(n.totalGeral) > 0 || parseFloat(n.tempo) >= 8)) {
+                paradasCount++;
+            }
+        });
+    }
+
+    let cidade = rItem.cidade || '';
+    if (!cidade && ev && ev.peoes) {
+        const peaoObj = ev.peoes.find(p => (typeof p === 'object' && (p.nome === riderName || p.name === riderName)));
+        if (peaoObj && peaoObj.cidade) cidade = peaoObj.cidade;
+    }
+
+    return {
+        roundText: `ROUND ${transmissaoActiveMatchup.day || transmissaoSelectedRound || 1}`,
+        riderName: formatRiderNameForOverlay(riderName),
+        cidade: cidade ? cidade.toUpperCase() : 'BRASIL',
+        total: rItem.totalPontos > 0 ? rItem.totalPontos.toFixed(2).replace('.', ',') : '0,00',
+        posicao: `${rItem.posicao || 1}º`,
+        paradas: `${paradasCount}/${totalRounds}`,
+        bullName: transmissaoActiveMatchup.bullName || '',
+        bullCia: transmissaoActiveMatchup.bullCia || '',
+        lado: transmissaoActiveMatchup.lado || ''
+    };
+}
+
+function getActiveOrLastScoreOverlayData() {
+    const ev = transmissaoEvent || currentEvent;
+    const eventLogo = (ev && (ev.logo || ev.logo_url || ev.logoUrl)) || '';
+    const eventName = (ev && (ev.name || ev.nome || 'RODEOAPP')).toUpperCase();
+
+    let buffer = transmissaoScoresBuffer;
+    let riderName = transmissaoActiveMatchup ? transmissaoActiveMatchup.riderName : '';
+    let bullName = transmissaoActiveMatchup ? transmissaoActiveMatchup.bullName : '';
+
+    if (!buffer || Object.keys(buffer).length === 0) {
+        if (transmissaoLastMatchup && transmissaoLastMatchup.scoresBuffer) {
+            buffer = transmissaoLastMatchup.scoresBuffer;
+            riderName = transmissaoLastMatchup.riderName;
+            bullName = transmissaoLastMatchup.bullName;
+        }
+    }
+
+    const judgesData = [];
+    let sumAtleta = 0;
+    let sumAnimal = 0;
+    let hasFall = false;
+    let fallTime = 8.00;
+
+    const judgeKeys = Object.keys(buffer || {}).sort((a, b) => parseInt(a) - parseInt(b));
+    judgeKeys.forEach(k => {
+        const sc = buffer[k];
+        const rScore = parseFloat(sc.riderScore) || 0;
+        const bScore = parseFloat(sc.bullScore) || 0;
+        const isFall = Boolean(sc.isFall) || (rScore === 0);
+        if (isFall) {
+            hasFall = true;
+            if (sc.fallTime && parseFloat(sc.fallTime) < fallTime) {
+                fallTime = parseFloat(sc.fallTime);
+            }
+        }
+        sumAtleta += rScore;
+        sumAnimal += bScore;
+        judgesData.push({
+            juizNum: parseInt(k) + 1,
+            atleta: rScore > 0 ? rScore.toFixed(2).replace('.', ',') : (isFall ? '0,00' : '--,--'),
+            animal: bScore > 0 ? bScore.toFixed(2).replace('.', ',') : '--,--',
+            isFall
+        });
+    });
+
+    while (judgesData.length < 2) {
+        judgesData.push({
+            juizNum: judgesData.length + 1,
+            atleta: '--,--',
+            animal: '--,--',
+            isFall: false
+        });
+    }
+
+    const grandTotal = hasFall ? 0 : (sumAtleta + sumAnimal);
+
+    return {
+        eventLogo,
+        eventName,
+        riderName: formatRiderNameForOverlay(riderName),
+        bullName: (bullName || '').toUpperCase(),
+        hasFall,
+        fallTime: fallTime < 8 ? `${fallTime.toFixed(2)}s` : '8.00s',
+        judges: judgesData,
+        sumAtleta: sumAtleta > 0 ? sumAtleta.toFixed(2).replace('.', ',') : '--,--',
+        sumAnimal: sumAnimal > 0 ? sumAnimal.toFixed(2).replace('.', ',') : '--,--',
+        grandTotal: grandTotal > 0 ? grandTotal.toFixed(2).replace('.', ',') : (hasFall ? '0,00' : '--,--')
+    };
+}
+
+function getOverlayLeaderboardData() {
+    const ev = transmissaoEvent || currentEvent;
+    if (!ev) return { items: [], eventName: 'RODEOAPP', modality: 'CLASSIFICAÇÃO GERAL – MODALIDADE TOURO' };
+
+    const eventName = (ev.name || ev.nome || 'RODEOAPP').toUpperCase();
+    const modality = getOverlaySportModality(ev);
+    const eventLogo = ev.logo || ev.logo_url || ev.logoUrl || '';
+
+    const notas = ev.notas || [];
+    const competidores = ev.peoes || [];
+
+    let maxDia = 1;
+    notas.forEach(n => {
+        const d = parseInt(n.dia) || 1;
+        if (d > maxDia) maxDia = d;
+    });
+
+    const map = {};
+    competidores.forEach(p => {
+        const nome = typeof p === 'string' ? p : (p.nome || p.name);
+        if (!nome) return;
+        map[nome] = {
+            nome: nome,
+            cidade: p.cidade || '',
+            totalPontos: 0,
+            prevPontos: 0
+        };
+    });
+
+    notas.forEach(n => {
+        const nome = n.peaoNome || n.peao;
+        if (!nome) return;
+        if (!map[nome]) {
+            map[nome] = {
+                nome: nome,
+                cidade: n.cidade || '',
+                totalPontos: 0,
+                prevPontos: 0
+            };
+        }
+
+        const score = parseFloat(n.totalGeral) || 0;
+        const dia = parseInt(n.dia) || 1;
+
+        map[nome].totalPontos += score;
+        if (dia < maxDia) {
+            map[nome].prevPontos += score;
+        }
+    });
+
+    const prevList = Object.values(map).map(item => ({ nome: item.nome, prevPontos: item.prevPontos }));
+    prevList.sort((a, b) => b.prevPontos - a.prevPontos);
+    const prevPosMap = {};
+    prevList.forEach((item, idx) => {
+        prevPosMap[item.nome] = idx + 1;
+    });
+
+    const currentList = Object.values(map);
+    currentList.sort((a, b) => b.totalPontos - a.totalPontos);
+    currentList.forEach((item, idx) => {
+        item.posicao = idx + 1;
+        const prevPos = maxDia > 1 ? (prevPosMap[item.nome] || item.posicao) : item.posicao;
+        item.delta = prevPos - item.posicao;
+        item.nomeFormatado = formatRiderNameForOverlay(item.nome);
+    });
+
+    return {
+        eventName,
+        modality,
+        eventLogo,
+        items: currentList.slice(0, 10)
+    };
+}
+
+window.broadcastOverlayCommand = (action, data = null) => {
+    const payload = { action, data };
+
+    if (window.electronAPI && typeof window.electronAPI.sendOverlayCommand === 'function') {
+        try {
+            window.electronAPI.sendOverlayCommand(payload);
+        } catch(e) {
+            console.warn('[OVERLAY IPC]', e);
+        }
+    }
+
+    const ev = transmissaoEvent || currentEvent;
+    const shareId = (ev && (ev.share_id || ev.shareId || ev.id)) || 'padrao';
+    if (window.ablyClient) {
+        try {
+            const overlayChannel = window.ablyClient.channels.get(`rodeo-overlay-${shareId}`);
+            overlayChannel.publish('overlay_command', payload);
+        } catch(e) {
+            console.warn('[OVERLAY ABLY]', e);
+        }
+    }
+};
+
+window.toggleOverlayMatchupOnAir = () => {
+    const btn = document.getElementById('btn-trans-toggle-overlay-matchup');
+    const badge = document.getElementById('badge-overlay-matchup');
+    const label = document.getElementById('label-overlay-matchup');
+
+    overlayMatchupOnAir = !overlayMatchupOnAir;
+
+    if (overlayMatchupOnAir) {
+        const matchupData = getActiveMatchupOverlayData();
+        if (!matchupData) {
+            alert('Selecione uma montaria ativa primeiro para lançar na tela!');
+            overlayMatchupOnAir = false;
+            return;
+        }
+
+        if (btn) {
+            btn.className = "bg-emerald-500 hover:bg-emerald-400 border-2 border-emerald-300 text-black px-5 sm:px-6 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-[0_0_25px_rgba(16,185,129,0.5)] cursor-pointer";
+        }
+        if (badge) {
+            badge.className = "w-3 h-3 rounded-full bg-red-600 animate-ping";
+        }
+        if (label) {
+            label.innerText = "🔴 NO AR • CLIQUE P/ TIRAR";
+        }
+
+        broadcastOverlayCommand('show_matchup', matchupData);
+    } else {
+        if (btn) {
+            btn.className = "bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 text-slate-200 px-5 sm:px-6 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-lg cursor-pointer";
+        }
+        if (badge) {
+            badge.className = "w-3 h-3 rounded-full bg-slate-500";
+        }
+        if (label) {
+            label.innerText = "📡 LANÇAR NA TELA";
+        }
+
+        broadcastOverlayCommand('hide_matchup');
+    }
+};
+
+window.toggleOverlayScoreOnAir = () => {
+    const btn = document.getElementById('btn-trans-toggle-overlay-score');
+    const badge = document.getElementById('badge-overlay-score');
+    const label = document.getElementById('label-overlay-score');
+
+    overlayScoreOnAir = !overlayScoreOnAir;
+
+    if (overlayScoreOnAir) {
+        const scoreData = getActiveOrLastScoreOverlayData();
+        if (btn) {
+            btn.className = "bg-emerald-500 hover:bg-emerald-400 border-2 border-emerald-300 text-black px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-[0_0_25px_rgba(16,185,129,0.5)] cursor-pointer";
+        }
+        if (badge) {
+            badge.className = "w-3 h-3 rounded-full bg-red-600 animate-ping";
+        }
+        if (label) {
+            label.innerText = "🔴 NOTA NO AR • CLIQUE P/ TIRAR";
+        }
+
+        broadcastOverlayCommand('show_score', scoreData);
+    } else {
+        if (btn) {
+            btn.className = "bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 text-slate-200 px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-lg cursor-pointer";
+        }
+        if (badge) {
+            badge.className = "w-3 h-3 rounded-full bg-slate-500";
+        }
+        if (label) {
+            label.innerText = "⚡ MOSTRAR APENAS NOTA";
+        }
+
+        broadcastOverlayCommand('hide_score');
+    }
+};
+
+window.toggleOverlayRankingOnAir = () => {
+    const btn = document.getElementById('btn-trans-toggle-overlay-ranking');
+    const badge = document.getElementById('badge-overlay-ranking');
+    const label = document.getElementById('label-overlay-ranking');
+
+    overlayRankingOnAir = !overlayRankingOnAir;
+
+    if (overlayRankingOnAir) {
+        const rankingData = getOverlayLeaderboardData();
+        if (btn) {
+            btn.className = "bg-emerald-500 hover:bg-emerald-400 border border-emerald-300 text-black px-4 sm:px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.5)]";
+        }
+        if (badge) {
+            badge.className = "w-2.5 h-2.5 rounded-full bg-red-600 animate-ping";
+        }
+        if (label) {
+            label.innerText = "🔴 CLASSIFICAÇÃO NO AR";
+        }
+
+        broadcastOverlayCommand('show_ranking', rankingData);
+    } else {
+        if (btn) {
+            btn.className = "bg-slate-900 border border-slate-700 hover:border-yellow-500/50 text-slate-300 hover:text-white px-4 sm:px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95 cursor-pointer shadow-lg";
+        }
+        if (badge) {
+            badge.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+        }
+        if (label) {
+            label.innerText = "📊 CLASSIFICAÇÃO NA TELA";
+        }
+
+        broadcastOverlayCommand('hide_ranking');
+    }
+};
 
 // 16. Controles de Round e Sorteio Manual
 window.handleTransmissaoRoundChange = () => {
@@ -8337,6 +8704,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.181": [
+        {
+            icon: "📡",
+            title: "Lançar na Tela & Gráficos para Transmissão",
+            desc: "Botões operacionais para colocar no ar em tempo real a Tarja do Competidor, Detalhamento de Notas com Logo e Tabela de Classificação com deltas de posições (▲ verde / ▼ vermelho)."
+        }
+    ],
     "1.0.180": [
         {
             icon: "📋",
@@ -8432,7 +8806,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.180';
+        let appVersion = '1.0.181';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8444,8 +8818,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.180")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.180"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.181")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.181"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

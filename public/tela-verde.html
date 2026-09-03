@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RODEOAPP • TELA VERDE (CHROMA KEY)</title>
-    <!-- Tailwind CSS CDN para renderização ágil dos gráficos futuros -->
+    <title>RODEOAPP • TELA VERDE (CHROMA KEY OVERLAY)</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {
@@ -14,13 +15,90 @@
             -webkit-user-select: none;
         }
         html, body {
-            background-color: #00FF00 !important; /* Puro Verde Chroma Key Padrão Broadcast (RGB 0, 255, 0) */
+            background-color: #00FF00 !important; /* Puro Verde Chroma Key (RGB 0, 255, 0) */
             margin: 0;
             padding: 0;
             width: 100vw;
             height: 100vh;
             overflow: hidden;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Animações Broadcast */
+        @keyframes slideInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(120px) scale(0.96);
+            }
+            70% {
+                transform: translateY(-8px) scale(1.01);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        @keyframes slideOutDown {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(120px) scale(0.96);
+            }
+        }
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: scale(0.92) translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes fadeOutScale {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.92) translateY(30px);
+            }
+        }
+
+        .anim-slide-in {
+            animation: slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-slide-out {
+            animation: slideOutDown 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+        }
+        .anim-fade-in {
+            animation: fadeInScale 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-fade-out {
+            animation: fadeOutScale 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+        }
+
+        /* Efeitos Visuais dos Painéis de TV */
+        .broadcast-wine-bar {
+            background: linear-gradient(90deg, #580009 0%, #300005 30%, #120002 75%, #050001 100%);
+            border: 2px solid #a8101e;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 30px rgba(180,10,25,0.4);
+        }
+
+        .broadcast-leaderboard {
+            background: linear-gradient(180deg, #62000b 0%, #320005 30%, #120002 75%, #060001 100%);
+            border: 2px solid #a8101e;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 40px rgba(180,10,25,0.35);
+        }
+
+        .red-divider {
+            width: 2px;
+            height: 42px;
+            background: linear-gradient(180deg, rgba(220,38,38,0.2) 0%, #e11d48 50%, rgba(220,38,38,0.2) 100%);
         }
     </style>
 </head>
@@ -38,53 +116,394 @@
         </div>
     </div>
 
-    <!-- Container Principal dos Gráficos (Pronto para receber as informações da montaria e do evento) -->
-    <div id="overlay-root" class="relative w-full h-full z-10 pointer-events-none">
-        <!-- Elementos gráficos solicitados pelo usuário serão injetados dinamicamente aqui -->
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 1: TARJA INFERIOR DO COMPETIDOR (LOWER THIRD - IMAGEM 2) -->
+    <!-- ============================================================ -->
+    <div id="overlay-matchup-container" class="fixed bottom-12 left-16 z-40 hidden">
+        <!-- Pílula Superior de Round -->
+        <div class="inline-block bg-[#85000f] text-white font-black text-xs sm:text-sm uppercase tracking-widest px-6 py-1 rounded-t-xl border-t-2 border-x-2 border-red-500 shadow-md ml-4">
+            <span id="matchup-round-badge">ROUND 1</span>
+        </div>
+
+        <!-- Barra Principal Vinho com Divisores -->
+        <div class="broadcast-wine-bar rounded-2xl px-6 py-3.5 flex items-center gap-6 min-w-[720px] max-w-4xl">
+            <!-- Nome e Cidade do Competidor -->
+            <div class="flex-1 min-w-[280px]">
+                <h2 id="matchup-rider-name" class="text-2xl sm:text-3xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md">
+                    NOME DO COMPETIDOR
+                </h2>
+                <p id="matchup-rider-city" class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200 mt-0.5">
+                    CIDADE, UF
+                </p>
+            </div>
+
+            <!-- Divisor Vermelho -->
+            <div class="red-divider"></div>
+
+            <!-- Coluna: TOTAL -->
+            <div class="text-center min-w-[90px]">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300 block">TOTAL</span>
+                <span id="matchup-total-score" class="text-2xl sm:text-3xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
+            </div>
+
+            <!-- Divisor Vermelho -->
+            <div class="red-divider"></div>
+
+            <!-- Coluna: POSIÇÃO -->
+            <div class="text-center min-w-[80px]">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300 block">POSIÇÃO</span>
+                <span id="matchup-posicao" class="text-2xl sm:text-3xl font-black text-white leading-none tracking-tight">1º</span>
+            </div>
+
+            <!-- Divisor Vermelho -->
+            <div class="red-divider"></div>
+
+            <!-- Coluna: PARADAS -->
+            <div class="text-center min-w-[80px]">
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300 block">PARADAS</span>
+                <span id="matchup-paradas" class="text-2xl sm:text-3xl font-black text-white leading-none tracking-tight">0/1</span>
+            </div>
+        </div>
     </div>
 
+
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 2: TABELA DE CLASSIFICAÇÃO GERAL (LEADERBOARD - IMAGEM 3) -->
+    <!-- ============================================================ -->
+    <div id="overlay-ranking-container" class="fixed top-12 left-16 z-30 hidden max-w-3xl w-full">
+        <!-- Título do Evento e Modalidade -->
+        <div class="mb-3 pl-2">
+            <h1 id="ranking-event-name" class="text-4xl sm:text-5xl font-black italic uppercase tracking-tight text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]">
+                BARRETOS 2026
+            </h1>
+            <p id="ranking-event-modality" class="text-sm sm:text-base font-black uppercase tracking-wider text-slate-200 mt-0.5">
+                CLASSIFICAÇÃO GERAL – MODALIDADE TOURO
+            </p>
+        </div>
+
+        <!-- Tabela do Top 10 -->
+        <div class="broadcast-leaderboard rounded-3xl p-5 w-full">
+            <div id="ranking-rows-container" class="space-y-2.5">
+                <!-- Linhas do Ranking injetadas dinamicamente via JS -->
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 3: TARJA DE NOTAS DOS JUÍZES (DETALHAMENTO - IMAGEM 4) -->
+    <!-- ============================================================ -->
+    <div id="overlay-score-container" class="fixed bottom-12 left-16 z-40 hidden">
+        <div class="flex items-center gap-4">
+            <!-- Círculo da Logo do Evento -->
+            <div class="w-24 h-24 rounded-full bg-white border-4 border-[#a8101e] shadow-[0_10px_30px_rgba(0,0,0,0.8),0_0_25px_rgba(220,38,38,0.5)] flex items-center justify-center p-2.5 shrink-0 overflow-hidden relative">
+                <img id="score-event-logo" src="" alt="Logo do Evento" class="max-w-full max-h-full object-contain">
+                <!-- Fallback Rodeo Emblem caso não tenha imagem de logo -->
+                <div id="score-logo-fallback" class="hidden text-[#85000f] font-black text-2xl text-center leading-tight">
+                    🤠<br><span class="text-[9px] uppercase tracking-wider font-extrabold text-black">HZN</span>
+                </div>
+            </div>
+
+            <!-- Caixa de Detalhamento das Notas -->
+            <div class="broadcast-wine-bar rounded-2xl px-6 py-3 min-w-[560px]">
+                <!-- Cabeçalho das Colunas -->
+                <div class="flex items-center text-slate-200 text-xs font-black uppercase tracking-wider pb-1.5 border-b border-white/20">
+                    <div class="w-24">CATEGORIA</div>
+                    <div class="flex-1 flex items-center justify-around">
+                        <span id="score-col-juiz1">JUIZ 1</span>
+                        <span id="score-col-juiz2">JUIZ 2</span>
+                        <span>NOTA</span>
+                    </div>
+                    <div class="w-28 text-center text-yellow-400 font-black">TOTAL</div>
+                </div>
+
+                <!-- Conteúdo das Notas: Linha ATLETA e Linha ANIMAL -->
+                <div class="flex items-center pt-2">
+                    <!-- Esquerda: Linhas Atleta e Animal -->
+                    <div class="flex-1 space-y-1.5">
+                        <!-- Linha ATLETA -->
+                        <div class="flex items-center text-white font-black text-base sm:text-lg">
+                            <span class="w-24 text-slate-300 font-bold text-sm tracking-wider uppercase">ATLETA</span>
+                            <div class="flex-1 flex items-center justify-around font-mono">
+                                <span id="score-val-j1-peao">0,00</span>
+                                <span id="score-val-j2-peao">0,00</span>
+                                <span id="score-val-soma-peao" class="text-yellow-400 font-extrabold">0,00</span>
+                            </div>
+                        </div>
+
+                        <!-- Divisor Horizontal Leve -->
+                        <div class="border-t border-white/20"></div>
+
+                        <!-- Linha ANIMAL -->
+                        <div class="flex items-center text-white font-black text-base sm:text-lg">
+                            <span class="w-24 text-slate-300 font-bold text-sm tracking-wider uppercase">ANIMAL</span>
+                            <div class="flex-1 flex items-center justify-around font-mono">
+                                <span id="score-val-j1-touro">0,00</span>
+                                <span id="score-val-j2-touro">0,00</span>
+                                <span id="score-val-soma-touro" class="text-yellow-400 font-extrabold">0,00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Divisor Vertical -->
+                    <div class="red-divider mx-4 h-14"></div>
+
+                    <!-- Direita: NOTA TOTAL EM DESTAQUE GIGANTE -->
+                    <div class="w-28 text-center">
+                        <div id="score-val-grand-total" class="text-4xl sm:text-5xl font-black text-white font-mono tracking-tighter leading-none drop-shadow-lg">
+                            0,00
+                        </div>
+                        <div id="score-val-status-label" class="text-[10px] font-black uppercase tracking-wider text-slate-300 mt-1">
+                            PONTOS
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SCRIPT CONTROLADOR DO OVERLAY -->
+    <!-- ============================================================ -->
     <script>
-        // Captura o identificador do evento na URL (?event=... ou ?shareId=... ou ?id=...)
+        // Parâmetros da URL (?event=... ou ?shareId=... ou ?id=...)
         const urlParams = new URLSearchParams(window.location.search);
         const eventParam = urlParams.get('event') || urlParams.get('shareId') || urlParams.get('id') || 'padrao';
         
         window.activeEventParam = eventParam;
-        console.log('[RODEOAPP TELA VERDE] Inicializada para o evento:', eventParam);
+        console.log('[RODEOAPP OVERLAY] Conectado ao evento:', eventParam);
 
-        // Atualiza etiqueta de status
+        // Status inicial
         const statusLabel = document.getElementById('status-event-name');
         if (statusLabel) {
             statusLabel.innerText = 'EVENTO: ' + eventParam.toUpperCase();
         }
 
-        // Esconde o aviso após 4 segundos para a tela ficar 100% verde puro no Chroma Key
         setTimeout(() => {
             const pill = document.getElementById('status-pill');
-            if (pill) {
-                pill.style.opacity = '0';
-            }
+            if (pill) pill.style.opacity = '0';
         }, 4000);
 
-        // Conectar ao WebSocket do servidor local caso esteja rodando pelo desktop (Porta 3005)
+        // ==========================================
+        // RENDERIZADOR: TARJA DO COMPETIDOR (GRAF 1)
+        // ==========================================
+        function showMatchupLowerThird(data) {
+            if (!data) return;
+            const container = document.getElementById('overlay-matchup-container');
+            if (!container) return;
+
+            document.getElementById('matchup-round-badge').innerText = (data.roundText || 'ROUND 1').toUpperCase();
+            document.getElementById('matchup-rider-name').innerText = (data.riderName || 'COMPETIDOR').toUpperCase();
+            document.getElementById('matchup-rider-city').innerText = (data.cidade || 'BRASIL').toUpperCase();
+            document.getElementById('matchup-total-score').innerText = data.total || '0,00';
+            document.getElementById('matchup-posicao').innerText = data.posicao || '1º';
+            document.getElementById('matchup-paradas').innerText = data.paradas || '0/1';
+
+            container.classList.remove('hidden', 'anim-slide-out');
+            container.classList.add('anim-slide-in');
+        }
+
+        function hideMatchupLowerThird() {
+            const container = document.getElementById('overlay-matchup-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            container.classList.remove('anim-slide-in');
+            container.classList.add('anim-slide-out');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                container.classList.remove('anim-slide-out');
+            }, 400);
+        }
+
+        // ==========================================
+        // RENDERIZADOR: TABELA DE CLASSIFICAÇÃO (GRAF 2)
+        // ==========================================
+        function showRankingLeaderboard(data) {
+            if (!data) return;
+            const container = document.getElementById('overlay-ranking-container');
+            const rowsContainer = document.getElementById('ranking-rows-container');
+            if (!container || !rowsContainer) return;
+
+            document.getElementById('ranking-event-name').innerText = (data.eventName || 'RODEOAPP').toUpperCase();
+            document.getElementById('ranking-event-modality').innerText = (data.modality || 'CLASSIFICAÇÃO GERAL – MODALIDADE TOURO').toUpperCase();
+
+            const items = data.items || [];
+            rowsContainer.innerHTML = items.map((item, idx) => {
+                let deltaHtml = '';
+                const delta = item.delta || 0;
+                if (delta > 0) {
+                    deltaHtml = `<span class="text-emerald-400 font-black text-base sm:text-lg flex items-center justify-end gap-1 w-14">▲ +${delta}</span>`;
+                } else if (delta < 0) {
+                    deltaHtml = `<span class="text-red-500 font-black text-base sm:text-lg flex items-center justify-end gap-1 w-14">▼ ${delta}</span>`;
+                } else {
+                    deltaHtml = `<span class="text-yellow-400 font-black text-base sm:text-lg flex items-center justify-end gap-1 w-14">■ 0</span>`;
+                }
+
+                const scoreStr = typeof item.totalPontos === 'number' ? item.totalPontos.toFixed(2).replace('.', ',') : (item.totalPontos || '0,00');
+
+                return `
+                    <div class="flex items-center justify-between py-1.5 px-3 rounded-xl bg-black/40 border border-white/5 text-white">
+                        <div class="flex items-center flex-1 min-w-0 mr-4">
+                            <span class="w-8 text-right font-black text-base sm:text-lg text-slate-200 mr-2.5">${item.posicao || (idx + 1)}º</span>
+                            <div class="w-0.5 h-4 bg-red-600/80 mr-3"></div>
+                            <span class="font-black text-sm sm:text-base uppercase tracking-tight truncate">${item.nomeFormatado || item.nome}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono font-black text-lg sm:text-xl text-white">${scoreStr}</span>
+                            <div class="w-0.5 h-4 bg-red-600/80"></div>
+                            ${deltaHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.classList.remove('hidden', 'anim-fade-out');
+            container.classList.add('anim-fade-in');
+        }
+
+        function hideRankingLeaderboard() {
+            const container = document.getElementById('overlay-ranking-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            container.classList.remove('anim-fade-in');
+            container.classList.add('anim-fade-out');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                container.classList.remove('anim-fade-out');
+            }, 350);
+        }
+
+        // ==========================================
+        // RENDERIZADOR: TARJA DE NOTAS (GRAF 3)
+        // ==========================================
+        function showScoreLowerThird(data) {
+            if (!data) return;
+            const container = document.getElementById('overlay-score-container');
+            if (!container) return;
+
+            // Logo do Evento
+            const logoImg = document.getElementById('score-event-logo');
+            const logoFallback = document.getElementById('score-logo-fallback');
+            if (data.eventLogo) {
+                logoImg.src = data.eventLogo;
+                logoImg.classList.remove('hidden');
+                logoFallback.classList.add('hidden');
+            } else {
+                logoImg.classList.add('hidden');
+                logoFallback.classList.remove('hidden');
+            }
+
+            // Valores de Juízes
+            const judges = data.judges || [];
+            const j1 = judges[0] || { atleta: '--,--', animal: '--,--' };
+            const j2 = judges[1] || { atleta: '--,--', animal: '--,--' };
+
+            document.getElementById('score-val-j1-peao').innerText = j1.atleta;
+            document.getElementById('score-val-j2-peao').innerText = j2.atleta;
+            document.getElementById('score-val-soma-peao').innerText = data.sumAtleta || '--,--';
+
+            document.getElementById('score-val-j1-touro').innerText = j1.animal;
+            document.getElementById('score-val-j2-touro').innerText = j2.animal;
+            document.getElementById('score-val-soma-touro').innerText = data.sumAnimal || '--,--';
+
+            document.getElementById('score-val-grand-total').innerText = data.grandTotal || '0,00';
+            
+            const statusLabel = document.getElementById('score-val-status-label');
+            if (data.hasFall) {
+                statusLabel.innerText = `QUEDA (${data.fallTime || '0.00s'})`;
+                statusLabel.className = "text-[10px] font-black uppercase tracking-wider text-red-500 mt-1";
+            } else {
+                statusLabel.innerText = "PONTOS";
+                statusLabel.className = "text-[10px] font-black uppercase tracking-wider text-slate-300 mt-1";
+            }
+
+            container.classList.remove('hidden', 'anim-slide-out');
+            container.classList.add('anim-slide-in');
+        }
+
+        function hideScoreLowerThird() {
+            const container = document.getElementById('overlay-score-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            container.classList.remove('anim-slide-in');
+            container.classList.add('anim-slide-out');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                container.classList.remove('anim-slide-out');
+            }, 400);
+        }
+
+        // ==========================================
+        // DISPATCHER DE COMANDOS OVERLAY
+        // ==========================================
+        function handleOverlayCommand(payload) {
+            if (!payload || !payload.action) return;
+            console.log('[RODEOAPP OVERLAY] Ação recebida:', payload.action, payload.data);
+
+            switch (payload.action) {
+                case 'show_matchup':
+                    showMatchupLowerThird(payload.data);
+                    break;
+                case 'hide_matchup':
+                    hideMatchupLowerThird();
+                    break;
+                case 'show_ranking':
+                    showRankingLeaderboard(payload.data);
+                    break;
+                case 'hide_ranking':
+                    hideRankingLeaderboard();
+                    break;
+                case 'show_score':
+                    showScoreLowerThird(payload.data);
+                    break;
+                case 'hide_score':
+                    hideScoreLowerThird();
+                    break;
+                case 'clear':
+                    hideMatchupLowerThird();
+                    hideRankingLeaderboard();
+                    hideScoreLowerThird();
+                    break;
+            }
+        }
+
+        // ==========================================
+        // CONEXÕES REALTIME: WEBSOCKET & ABLY
+        // ==========================================
+        // 1. WebSocket Local (Electron App)
         if (window.location.host) {
             try {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const ws = new WebSocket(protocol + '//' + window.location.host);
-                ws.onopen = () => console.log('[TELA VERDE] Conectado ao WebSocket local');
+                const ws = new WebSocket(`${protocol}//${window.location.host}`);
+                ws.onopen = () => console.log('[OVERLAY WS] Conectado ao servidor local na porta 3005');
                 ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
-                        console.log('[TELA VERDE] Mensagem recebida via WS:', data);
+                        handleOverlayCommand(data);
                     } catch(e) {}
                 };
                 ws.onclose = () => {
                     setTimeout(() => {
-                        // Reconexão se necessário
-                    }, 3000);
+                        // Reconexão suave se necessário
+                    }, 2500);
                 };
             } catch(e) {
-                console.log('[TELA VERDE] Modo web/externo (sem ws local)');
+                console.log('[OVERLAY WS] Sem WebSocket local');
             }
+        }
+
+        // 2. Ably Realtime (web.rodeoapp.pro / Nuvem)
+        try {
+            const ably = new Ably.Realtime('2E9X6w.kPj-bg:rI6e_Z6WlW1b0yWJ');
+            const channel = ably.channels.get(`rodeo-overlay-${eventParam}`);
+            channel.subscribe('overlay_command', (msg) => {
+                if (msg && msg.data) {
+                    handleOverlayCommand(msg.data);
+                }
+            });
+            console.log('[OVERLAY ABLY] Inscrito no canal:', `rodeo-overlay-${eventParam}`);
+        } catch(e) {
+            console.warn('[OVERLAY ABLY] Falha ao inicializar Ably:', e);
         }
     </script>
 </body>
