@@ -7976,21 +7976,23 @@ function getActiveMatchupOverlayData() {
             paradas: `${paradasCount}/${totalRounds}`,
             bullName: bullName,
             bullCia: bullCia,
-            lado: transmissaoActiveMatchup.lado || ''
+            lado: transmissaoActiveMatchup.lado || '',
+            eventLogo: (ev && (ev.logo || ev.logo_url || ev.image_url)) || ''
         };
     } catch(err) {
         console.error('[GET ACTIVE MATCHUP OVERLAY ERR]', err);
         return {
             roundText: `ROUND ${transmissaoActiveMatchup.day || transmissaoSelectedRound || 1}`,
             riderName: formatRiderNameForOverlay(transmissaoActiveMatchup.riderName || 'COMPETIDOR'),
-            subline: `${transmissaoActiveMatchup.bullName ? 'VS ' + transmissaoActiveMatchup.bullName : 'BRASIL'}`.toUpperCase(),
+            subline: 'BRASIL',
             difLider: '0,00',
             total: '0,00',
             posicao: '1º',
             paradas: '0/1',
             bullName: transmissaoActiveMatchup.bullName || '',
             bullCia: transmissaoActiveMatchup.bullCia || '',
-            lado: transmissaoActiveMatchup.lado || ''
+            lado: '',
+            eventLogo: ''
         };
     }
 }
@@ -8851,6 +8853,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.186": [
+        {
+            icon: "🎬",
+            title: "Animação de Transmissão Estilo Vídeo Profissional",
+            desc: "Ao clicar em 'Lançar Na Tela', a tarja do competidor entra com lâmina de corte dinâmico, brilho metálico e divisor em raio estilizado. Na saída, a barra transiciona para uma faixa vermelha com a logo oficial do evento pulsando no centro antes de recolher."
+        }
+    ],
     "1.0.185": [
         {
             icon: "✨",
@@ -8981,7 +8990,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.185';
+        let appVersion = '1.0.186';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8993,8 +9002,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.185")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.185"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.186")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.186"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

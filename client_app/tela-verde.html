@@ -82,6 +82,95 @@
             animation: fadeOutCenter 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
 
+        /* Animações da Transmissão do Vídeo */
+        @keyframes broadcastWipeReveal {
+            0% {
+                clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+                opacity: 0.8;
+                transform: translateX(-35px);
+            }
+            70% {
+                clip-path: polygon(0 0, 105% 0, 100% 100%, 0 100%);
+                opacity: 1;
+                transform: translateX(0);
+            }
+            100% {
+                clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes broadcastBladeLead {
+            0% {
+                left: -15%;
+                width: 15%;
+                opacity: 1;
+            }
+            65% {
+                left: 95%;
+                width: 20%;
+                opacity: 1;
+            }
+            100% {
+                left: 110%;
+                width: 10%;
+                opacity: 0;
+            }
+        }
+
+        @keyframes metallicSheenSweep {
+            0% {
+                transform: translateX(-150%) skewX(-25deg);
+                opacity: 0;
+            }
+            30% {
+                opacity: 1;
+            }
+            70% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(250%) skewX(-25deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes logoOutroPop {
+            0% {
+                transform: scale(0) rotate(-10deg);
+                opacity: 0;
+            }
+            65% {
+                transform: scale(1.15) rotate(2deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes outroSlideAway {
+            0% {
+                opacity: 1;
+                transform: translateX(0);
+                clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(90px);
+                clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%);
+            }
+        }
+
+        .anim-broadcast-wipe {
+            animation: broadcastWipeReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-outro-slide {
+            animation: outroSlideAway 0.45s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+        }
+
         /* Efeitos Visuais dos Painéis de TV */
         .broadcast-wine-bar {
             background: linear-gradient(90deg, #580009 0%, #2f0005 35%, #120002 75%, #050001 100%);
@@ -117,62 +206,87 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- GRÁFICO 1: TARJA INFERIOR DO COMPETIDOR (LOWER THIRD - IMAGEM 2) -->
+    <!-- GRÁFICO 1: TARJA INFERIOR DO COMPETIDOR (LOWER THIRD) -->
     <!-- ============================================================ -->
     <div id="overlay-matchup-container" class="fixed bottom-12 left-16 z-40 hidden">
         <!-- Pílula Superior de Round -->
-        <div class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6">
+        <div id="matchup-round-pill" class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6 transition-opacity duration-300">
             <span id="matchup-round-badge">ROUND 1</span>
         </div>
 
-        <!-- Barra Principal Vinho com Divisores -->
-        <div class="broadcast-wine-bar rounded-3xl px-8 py-5 flex items-center gap-8 min-w-[920px] max-w-6xl">
-            <!-- Nome e Cidade/Touro do Competidor -->
-            <div class="flex-1 min-w-[340px]">
-                <h2 id="matchup-rider-name" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md truncate">
-                    NOME DO COMPETIDOR
-                </h2>
-                <!-- Sublinha: CIDADE • VS NOME DO TOURO (NOME DA CIA) -->
-                <p id="matchup-rider-subline" class="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-100 mt-1 truncate">
-                    CIDADE, UF • VS NOME DO TOURO (COMPANHIA)
-                </p>
+        <!-- Barra Principal Vinho com Camadas Dinâmicas -->
+        <div id="matchup-main-bar" class="broadcast-wine-bar rounded-3xl min-w-[960px] max-w-6xl relative overflow-hidden transition-all duration-300">
+            
+            <!-- Lâmina de Abertura Dinâmica (Efeito do vídeo) -->
+            <div id="matchup-blade-lead" class="absolute top-0 bottom-0 pointer-events-none z-30 bg-gradient-to-r from-red-600 via-white to-red-600 opacity-0 shadow-[0_0_25px_#ffffff]"></div>
+
+            <!-- Reflexo Metálico / Sheen -->
+            <div id="matchup-sheen" class="absolute inset-0 pointer-events-none z-25 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] opacity-0"></div>
+
+            <!-- Camada 1: Conteúdo Principal do Competidor -->
+            <div id="matchup-content-layer" class="px-8 py-5 flex items-center gap-6 relative z-10 transition-opacity duration-300">
+                <!-- Nome e Cidade/Touro do Competidor -->
+                <div class="flex-1 min-w-[340px]">
+                    <h2 id="matchup-rider-name" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md truncate">
+                        NOME DO COMPETIDOR
+                    </h2>
+                    <!-- Sublinha: CIDADE • VS NOME DO TOURO (NOME DA CIA) -->
+                    <p id="matchup-rider-subline" class="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-100 mt-1 truncate">
+                        CIDADE, UF • VS NOME DO TOURO (COMPANHIA)
+                    </p>
+                </div>
+
+                <!-- Divisor Estilizado em Raio (Inspirado no vídeo) -->
+                <div class="px-2 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-10 text-red-500 fill-current drop-shadow-[0_0_12px_rgba(239,68,68,0.95)] animate-pulse" viewBox="0 0 24 24">
+                        <path d="M13 1L3 13h8l-2 10 12-14h-8l3-8z"/>
+                    </svg>
+                </div>
+
+                <!-- Coluna: DIFERENÇA DO LÍDER -->
+                <div class="text-center min-w-[100px]">
+                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">DIF. LÍDER</span>
+                    <span id="matchup-dif-lider" class="text-3xl sm:text-4xl font-black text-yellow-400 font-mono leading-none tracking-tight">0,00</span>
+                </div>
+
+                <!-- Divisor Vermelho -->
+                <div class="red-divider"></div>
+
+                <!-- Coluna: TOTAL -->
+                <div class="text-center min-w-[100px]">
+                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">TOTAL</span>
+                    <span id="matchup-total-score" class="text-3xl sm:text-4xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
+                </div>
+
+                <!-- Divisor Vermelho -->
+                <div class="red-divider"></div>
+
+                <!-- Coluna: POSIÇÃO -->
+                <div class="text-center min-w-[90px]">
+                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">POSIÇÃO</span>
+                    <span id="matchup-posicao" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">1º</span>
+                </div>
+
+                <!-- Divisor Vermelho -->
+                <div class="red-divider"></div>
+
+                <!-- Coluna: PARADAS -->
+                <div class="text-center min-w-[90px]">
+                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">PARADAS</span>
+                    <span id="matchup-paradas" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">0/1</span>
+                </div>
             </div>
 
-            <!-- Divisor Vermelho -->
-            <div class="red-divider"></div>
-
-            <!-- Coluna: DIFERENÇA DO LÍDER -->
-            <div class="text-center min-w-[100px]">
-                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">DIF. LÍDER</span>
-                <span id="matchup-dif-lider" class="text-3xl sm:text-4xl font-black text-yellow-400 font-mono leading-none tracking-tight">0,00</span>
+            <!-- Camada 2: Faixa de Saída (Outro) com a Logo do Evento no Centro -->
+            <div id="matchup-outro-layer" class="absolute inset-0 z-20 bg-gradient-to-r from-[#70000a] via-[#c01826] to-[#70000a] flex items-center justify-center border-y-2 border-red-400 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)] opacity-0 pointer-events-none transition-opacity duration-300">
+                <!-- Efeito de feixe de luz passando pela faixa vermelha -->
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg]"></div>
+                <!-- Emblema Central da Logo do Evento -->
+                <div id="matchup-outro-logo-circle" class="w-16 h-16 rounded-full bg-white shadow-[0_0_25px_rgba(255,255,255,0.9),0_0_40px_rgba(220,38,38,0.8)] flex items-center justify-center p-2.5 overflow-hidden transform scale-0 transition-transform duration-500 z-10">
+                    <img id="matchup-outro-logo-img" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain">
+                </div>
             </div>
 
-            <!-- Divisor Vermelho -->
-            <div class="red-divider"></div>
-
-            <!-- Coluna: TOTAL -->
-            <div class="text-center min-w-[100px]">
-                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">TOTAL</span>
-                <span id="matchup-total-score" class="text-3xl sm:text-4xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
-            </div>
-
-            <!-- Divisor Vermelho -->
-            <div class="red-divider"></div>
-
-            <!-- Coluna: POSIÇÃO -->
-            <div class="text-center min-w-[90px]">
-                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">POSIÇÃO</span>
-                <span id="matchup-posicao" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">1º</span>
-            </div>
-
-            <!-- Divisor Vermelho -->
-            <div class="red-divider"></div>
-
-            <!-- Coluna: PARADAS -->
-            <div class="text-center min-w-[90px]">
-                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">PARADAS</span>
-                <span id="matchup-paradas" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">0/1</span>
-            </div>
         </div>
     </div>
 
@@ -326,12 +440,20 @@
         // ==========================================
         // RENDERIZADOR: TARJA DO COMPETIDOR (GRAF 1)
         // ==========================================
+        let matchupOutroTimeout = null;
+        let matchupOutroHideTimeout = null;
+
         function showMatchupLowerThird(data) {
             if (!data) return;
-            console.log('[OVERLAY] Exibindo Tarja do Competidor:', data);
+            console.log('[OVERLAY] Exibindo Tarja do Competidor (Estilo Vídeo):', data);
             const container = document.getElementById('overlay-matchup-container');
             if (!container) return;
 
+            // Cancelar qualquer transição de saída em andamento
+            if (matchupOutroTimeout) { clearTimeout(matchupOutroTimeout); matchupOutroTimeout = null; }
+            if (matchupOutroHideTimeout) { clearTimeout(matchupOutroHideTimeout); matchupOutroHideTimeout = null; }
+
+            // Preencher dados dinâmicos
             document.getElementById('matchup-round-badge').innerText = (data.roundText || 'ROUND 1').toUpperCase();
             document.getElementById('matchup-rider-name').innerText = (data.riderName || 'COMPETIDOR').toUpperCase();
             document.getElementById('matchup-rider-subline').innerText = (data.subline || data.cidade || 'BRASIL').toUpperCase();
@@ -340,21 +462,98 @@
             document.getElementById('matchup-posicao').innerText = data.posicao || '1º';
             document.getElementById('matchup-paradas').innerText = data.paradas || '0/1';
 
-            container.classList.remove('hidden', 'anim-slide-out');
-            container.classList.add('anim-slide-in');
+            // Logo do Evento para a saída (outro)
+            const outroLogo = document.getElementById('matchup-outro-logo-img');
+            if (outroLogo) {
+                outroLogo.src = data.eventLogo || DEFAULT_LOGO;
+                outroLogo.onerror = () => { outroLogo.src = DEFAULT_LOGO; };
+            }
+
+            const pill = document.getElementById('matchup-round-pill');
+            const contentLayer = document.getElementById('matchup-content-layer');
+            const outroLayer = document.getElementById('matchup-outro-layer');
+            const logoCircle = document.getElementById('matchup-outro-logo-circle');
+            const bladeLead = document.getElementById('matchup-blade-lead');
+            const sheen = document.getElementById('matchup-sheen');
+
+            // Resetar camadas para estado visível
+            container.classList.remove('hidden', 'anim-outro-slide', 'anim-slide-out');
+            if (pill) pill.style.opacity = '1';
+            if (contentLayer) contentLayer.style.opacity = '1';
+            if (outroLayer) {
+                outroLayer.classList.remove('opacity-100');
+                outroLayer.classList.add('opacity-0');
+            }
+            if (logoCircle) {
+                logoCircle.style.animation = 'none';
+                logoCircle.style.transform = 'scale(0)';
+            }
+
+            // Animação de Entrada: Varredura de Corte Estilo Transmissão (Broadcast Wipe)
+            container.classList.remove('anim-broadcast-wipe');
+            void container.offsetWidth; // Forçar reflow
+            container.classList.add('anim-broadcast-wipe');
+
+            // Disparar Lâmina de Luz Branca/Vermelha abrindo a tarja
+            if (bladeLead) {
+                bladeLead.style.animation = 'none';
+                void bladeLead.offsetWidth;
+                bladeLead.style.animation = 'broadcastBladeLead 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+            }
+
+            // Disparar Brilho Metálico pasando pelo painel
+            if (sheen) {
+                sheen.style.animation = 'none';
+                void sheen.offsetWidth;
+                sheen.style.animation = 'metallicSheenSweep 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards';
+            }
         }
 
         function hideMatchupLowerThird() {
-            console.log('[OVERLAY] Ocultando Tarja do Competidor');
+            console.log('[OVERLAY] Ocultando Tarja com Outro de Logo do Evento');
             const container = document.getElementById('overlay-matchup-container');
             if (!container || container.classList.contains('hidden')) return;
 
-            container.classList.remove('anim-slide-in');
-            container.classList.add('anim-slide-out');
-            setTimeout(() => {
-                container.classList.add('hidden');
-                container.classList.remove('anim-slide-out');
-            }, 400);
+            if (matchupOutroTimeout) clearTimeout(matchupOutroTimeout);
+            if (matchupOutroHideTimeout) clearTimeout(matchupOutroHideTimeout);
+
+            const pill = document.getElementById('matchup-round-pill');
+            const contentLayer = document.getElementById('matchup-content-layer');
+            const outroLayer = document.getElementById('matchup-outro-layer');
+            const logoCircle = document.getElementById('matchup-outro-logo-circle');
+
+            // 1. Ocultar dados e pílula de round
+            if (pill) pill.style.opacity = '0';
+            if (contentLayer) contentLayer.style.opacity = '0';
+
+            // 2. Revelar a Faixa Vermelha e fazer a Logo do Evento brotar no centro
+            if (outroLayer) {
+                outroLayer.classList.remove('opacity-0');
+                outroLayer.classList.add('opacity-100');
+            }
+            if (logoCircle) {
+                logoCircle.style.animation = 'logoOutroPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+            }
+
+            // 3. Exibir a faixa com a logo por 1.2s e depois recolher para fora da tela
+            matchupOutroTimeout = setTimeout(() => {
+                container.classList.add('anim-outro-slide');
+
+                matchupOutroHideTimeout = setTimeout(() => {
+                    container.classList.add('hidden');
+                    container.classList.remove('anim-broadcast-wipe', 'anim-outro-slide');
+                    if (outroLayer) {
+                        outroLayer.classList.remove('opacity-100');
+                        outroLayer.classList.add('opacity-0');
+                    }
+                    if (contentLayer) contentLayer.style.opacity = '1';
+                    if (pill) pill.style.opacity = '1';
+                    if (logoCircle) {
+                        logoCircle.style.animation = 'none';
+                        logoCircle.style.transform = 'scale(0)';
+                    }
+                }, 450);
+            }, 1200);
         }
 
         // ==========================================
