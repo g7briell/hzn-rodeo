@@ -7389,7 +7389,8 @@ window.handleTransmissaoScoreReceived = (scoreData) => {
     const jIdx = parseInt(judgeIdx) || 0;
     transmissaoScoresBuffer[jIdx] = scoreData;
 
-    const totalJudgesExpected = parseInt(transmissaoEvent.judges) || 2;
+    const totalJudgesExpected = parseInt(transmissaoEvent.judges) || 
+        (Array.isArray(transmissaoEvent.juizes) ? transmissaoEvent.juizes.length : 0) || 1;
     const isAvulso = (transmissaoScoreMode === 'avulso');
     const allSubmitted = Object.keys(transmissaoScoresBuffer).length >= totalJudgesExpected;
 
@@ -7440,10 +7441,22 @@ window.handleTransmissaoScoreReceived = (scoreData) => {
 
     renderTransmissaoJudgesGrid();
 
-    // Se a tarja de nota ou tarja do competidor estiver no ar, atualiza dinamicamente na tela verde
-    if (overlayScoreOnAir) {
+    // A nota é pra ir na tela automaticamente assim que todos os juízes derem a nota!
+    if (allSubmitted) {
+        const scoreData = getActiveOrLastScoreOverlayData();
+        broadcastOverlayCommand('show_score', scoreData);
+        overlayScoreOnAir = true;
+
+        const btn = document.getElementById('btn-trans-toggle-overlay-score');
+        const badge = document.getElementById('badge-overlay-score');
+        const label = document.getElementById('label-overlay-score');
+        if (btn) btn.className = "bg-emerald-500 hover:bg-emerald-400 border-2 border-emerald-300 text-black px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-[0_0_25px_rgba(16,185,129,0.5)] cursor-pointer";
+        if (badge) badge.className = "w-3 h-3 rounded-full bg-red-600 animate-ping";
+        if (label) label.innerText = "🔴 NOTA NO AR • CLIQUE P/ TIRAR";
+    } else if (overlayScoreOnAir) {
         broadcastOverlayCommand('show_score', getActiveOrLastScoreOverlayData());
     }
+
     if (overlayMatchupOnAir) {
         broadcastOverlayCommand('show_matchup', getActiveMatchupOverlayData());
     }
@@ -7467,6 +7480,29 @@ window.confirmTransmissaoMatchupDone = () => {
     };
 
     renderTransmissaoLastCard();
+
+    // Persiste a nota no array do evento para alimentar as somas em tempo real
+    if (transmissaoEvent) {
+        if (!Array.isArray(transmissaoEvent.notas)) transmissaoEvent.notas = [];
+        const rider = transmissaoActiveMatchup.riderName;
+        const dia = transmissaoActiveMatchup.day || transmissaoSelectedRound || 1;
+        const existingIdx = transmissaoEvent.notas.findIndex(n => (n.peaoNome === rider || n.peao === rider) && parseInt(n.dia) === parseInt(dia));
+        const newNotaObj = {
+            peao: rider,
+            peaoNome: rider,
+            touro: transmissaoActiveMatchup.bullName || '',
+            touroNome: transmissaoActiveMatchup.bullName || '',
+            cia: transmissaoActiveMatchup.bullCia || '',
+            dia: dia,
+            tempo: tempoText.replace('s', ''),
+            totalGeral: totalText
+        };
+        if (existingIdx >= 0) {
+            transmissaoEvent.notas[existingIdx] = newNotaObj;
+        } else {
+            transmissaoEvent.notas.push(newNotaObj);
+        }
+    }
 
     // Se a tarja do competidor estiver no ar, recolhe suavemente
     if (overlayMatchupOnAir) {
@@ -7545,10 +7581,11 @@ window.filterTransmissaoRankingList = (term) => {
 };
 
 function calculateTransmissaoRankingData() {
-    if (!transmissaoEvent) return [];
+    const ev = transmissaoEvent || currentEvent;
+    if (!ev) return [];
 
-    const notas = transmissaoEvent.notas || [];
-    const competidores = transmissaoEvent.peoes || [];
+    const notas = ev.notas || [];
+    const competidores = ev.peoes || [];
 
     const map = {};
 
@@ -7560,6 +7597,7 @@ function calculateTransmissaoRankingData() {
             cidade: p.cidade || '',
             totalPontos: 0,
             totalTempo: 0,
+            paradas: 0,
             rounds: {}
         };
     });
@@ -7573,6 +7611,7 @@ function calculateTransmissaoRankingData() {
                 cidade: n.cidade || '',
                 totalPontos: 0,
                 totalTempo: 0,
+                paradas: 0,
                 rounds: {}
             };
         }
@@ -7582,12 +7621,59 @@ function calculateTransmissaoRankingData() {
 
         map[nome].totalPontos += score;
         map[nome].totalTempo += tempo;
+        if (score > 0 || tempo >= 8.00) {
+            map[nome].paradas += 1;
+        }
         map[nome].rounds[n.dia] = {
             score: score,
             tempo: tempo,
             touro: n.touro || ''
         };
     });
+
+    // Se houver montaria ativa recebendo notas no buffer em tempo real
+    if (transmissaoActiveMatchup && transmissaoScoresBuffer && Object.keys(transmissaoScoresBuffer).length > 0) {
+        const liveRider = transmissaoActiveMatchup.riderName;
+        const liveRound = transmissaoActiveMatchup.day || transmissaoSelectedRound || 1;
+        if (liveRider) {
+            if (!map[liveRider]) {
+                map[liveRider] = {
+                    nome: liveRider,
+                    cidade: '',
+                    totalPontos: 0,
+                    totalTempo: 0,
+                    paradas: 0,
+                    rounds: {}
+                };
+            }
+
+            // Verifica se este round já foi somado via notas persistidas
+            const roundAlreadyLogged = Boolean(map[liveRider].rounds[liveRound]);
+            if (!roundAlreadyLogged) {
+                let liveScore = 0;
+                let liveFall = false;
+                let liveTempo = 8.00;
+                Object.values(transmissaoScoresBuffer).forEach(sc => {
+                    const r = parseFloat(sc.riderScore) || 0;
+                    const b = parseFloat(sc.bullScore) || 0;
+                    if (Boolean(sc.isFall) || (r === 0)) liveFall = true;
+                    if (sc.fallTime && parseFloat(sc.fallTime) < liveTempo) liveTempo = parseFloat(sc.fallTime);
+                    liveScore += (r + b);
+                });
+                const finalLiveScore = liveFall ? 0.00 : liveScore;
+                map[liveRider].totalPontos += finalLiveScore;
+                map[liveRider].totalTempo += liveTempo;
+                if (finalLiveScore > 0 || liveTempo >= 8.00) {
+                    map[liveRider].paradas += 1;
+                }
+                map[liveRider].rounds[liveRound] = {
+                    score: finalLiveScore,
+                    tempo: liveTempo,
+                    touro: transmissaoActiveMatchup.bullName || ''
+                };
+            }
+        }
+    }
 
     const list = Object.values(map);
     list.sort((a, b) => {
@@ -7812,52 +7898,77 @@ function getActiveMatchupOverlayData() {
     const rItem = ranking.find(r => r.nome === riderName) || {
         totalPontos: 0,
         posicao: ranking.length + 1,
-        cidade: ''
+        cidade: '',
+        paradas: 0
     };
 
-    let paradasCount = 0;
     const totalRounds = transmissaoSelectedRound || 1;
-    if (ev && ev.notas) {
-        ev.notas.forEach(n => {
-            if ((n.peaoNome === riderName || n.peao === riderName) && (parseFloat(n.totalGeral) > 0 || parseFloat(n.tempo) >= 8)) {
-                paradasCount++;
-            }
-        });
-    }
+    let paradasCount = rItem.paradas || 0;
 
+    // Achar cidade
     let cidade = rItem.cidade || '';
     if (!cidade && ev && ev.peoes) {
         const peaoObj = ev.peoes.find(p => (typeof p === 'object' && (p.nome === riderName || p.name === riderName)));
         if (peaoObj && peaoObj.cidade) cidade = peaoObj.cidade;
     }
 
+    // Sublinha formatada: CIDADE • VS NOME DO TOURO (COMPANHIA)
+    const bullName = transmissaoActiveMatchup.bullName || '';
+    const bullCia = transmissaoActiveMatchup.bullCia || '';
+    const vsPart = bullName ? `VS ${bullName}${bullCia ? ` (${bullCia})` : ''}` : '';
+    let subline = '';
+    if (cidade && vsPart) {
+        subline = `${cidade} • ${vsPart}`;
+    } else if (cidade) {
+        subline = cidade;
+    } else if (vsPart) {
+        subline = vsPart;
+    } else {
+        subline = 'BRASIL';
+    }
+
+    // Calcular Diferença do Líder (DIF. LÍDER)
+    const leader = (ranking && ranking.length > 0) ? ranking[0] : null;
+    const leaderTotal = leader ? leader.totalPontos : 0;
+    const riderTotal = rItem.totalPontos;
+    let difLider = '0,00';
+    if (rItem.posicao === 1 || riderTotal >= leaderTotal) {
+        difLider = 'LÍDER';
+    } else {
+        const diff = leaderTotal - riderTotal;
+        difLider = `-${diff.toFixed(2).replace('.', ',')}`;
+    }
+
     return {
         roundText: `ROUND ${transmissaoActiveMatchup.day || transmissaoSelectedRound || 1}`,
         riderName: formatRiderNameForOverlay(riderName),
-        cidade: cidade ? cidade.toUpperCase() : 'BRASIL',
+        subline: subline.toUpperCase(),
+        difLider: difLider,
         total: rItem.totalPontos > 0 ? rItem.totalPontos.toFixed(2).replace('.', ',') : '0,00',
         posicao: `${rItem.posicao || 1}º`,
         paradas: `${paradasCount}/${totalRounds}`,
-        bullName: transmissaoActiveMatchup.bullName || '',
-        bullCia: transmissaoActiveMatchup.bullCia || '',
+        bullName: bullName,
+        bullCia: bullCia,
         lado: transmissaoActiveMatchup.lado || ''
     };
 }
 
 function getActiveOrLastScoreOverlayData() {
     const ev = transmissaoEvent || currentEvent;
-    const eventLogo = (ev && (ev.logo || ev.logo_url || ev.logoUrl)) || '';
+    const eventLogo = (ev && (ev.logo || ev.logo_url || ev.logoUrl)) || 'assets/splash_logo.png';
     const eventName = (ev && (ev.name || ev.nome || 'RODEOAPP')).toUpperCase();
 
     let buffer = transmissaoScoresBuffer;
     let riderName = transmissaoActiveMatchup ? transmissaoActiveMatchup.riderName : '';
     let bullName = transmissaoActiveMatchup ? transmissaoActiveMatchup.bullName : '';
+    let bullCia = transmissaoActiveMatchup ? transmissaoActiveMatchup.bullCia : '';
 
     if (!buffer || Object.keys(buffer).length === 0) {
         if (transmissaoLastMatchup && transmissaoLastMatchup.scoresBuffer) {
             buffer = transmissaoLastMatchup.scoresBuffer;
             riderName = transmissaoLastMatchup.riderName;
             bullName = transmissaoLastMatchup.bullName;
+            bullCia = transmissaoLastMatchup.bullCia;
         }
     }
 
@@ -7867,34 +7978,40 @@ function getActiveOrLastScoreOverlayData() {
     let hasFall = false;
     let fallTime = 8.00;
 
-    const judgeKeys = Object.keys(buffer || {}).sort((a, b) => parseInt(a) - parseInt(b));
-    judgeKeys.forEach(k => {
-        const sc = buffer[k];
-        const rScore = parseFloat(sc.riderScore) || 0;
-        const bScore = parseFloat(sc.bullScore) || 0;
-        const isFall = Boolean(sc.isFall) || (rScore === 0);
+    // Determina quantidade real de juízes de forma inteligente
+    const bufferKeys = Object.keys(buffer || {});
+    const registeredJudgesCount = Array.isArray(ev?.juizes) ? ev.juizes.length : 0;
+    const configJudgesCount = parseInt(ev?.judges) || 0;
+    const totalJudges = Math.max(1, configJudgesCount || registeredJudgesCount || bufferKeys.length);
+
+    for (let i = 0; i < totalJudges; i++) {
+        let jName = `JUIZ ${i + 1}`;
+        if (ev && Array.isArray(ev.juizes) && ev.juizes[i]) {
+            const jObj = ev.juizes[i];
+            jName = typeof jObj === 'string' ? jObj : (jObj.nome || jObj.name || jName);
+        }
+
+        const sc = buffer ? buffer[i] : null;
+        const rScore = sc ? (parseFloat(sc.riderScore) || 0) : 0;
+        const bScore = sc ? (parseFloat(sc.bullScore) || 0) : 0;
+        const isFall = sc ? (Boolean(sc.isFall) || (rScore === 0)) : false;
+
         if (isFall) {
             hasFall = true;
             if (sc.fallTime && parseFloat(sc.fallTime) < fallTime) {
                 fallTime = parseFloat(sc.fallTime);
             }
         }
+
         sumAtleta += rScore;
         sumAnimal += bScore;
+
         judgesData.push({
-            juizNum: parseInt(k) + 1,
+            juizNum: i + 1,
+            nome: jName.toUpperCase(),
             atleta: rScore > 0 ? rScore.toFixed(2).replace('.', ',') : (isFall ? '0,00' : '--,--'),
             animal: bScore > 0 ? bScore.toFixed(2).replace('.', ',') : '--,--',
             isFall
-        });
-    });
-
-    while (judgesData.length < 2) {
-        judgesData.push({
-            juizNum: judgesData.length + 1,
-            atleta: '--,--',
-            animal: '--,--',
-            isFall: false
         });
     }
 
@@ -7905,6 +8022,7 @@ function getActiveOrLastScoreOverlayData() {
         eventName,
         riderName: formatRiderNameForOverlay(riderName),
         bullName: (bullName || '').toUpperCase(),
+        bullCia: (bullCia || '').toUpperCase(),
         hasFall,
         fallTime: fallTime < 8 ? `${fallTime.toFixed(2)}s` : '8.00s',
         judges: judgesData,
@@ -7920,71 +8038,31 @@ function getOverlayLeaderboardData() {
 
     const eventName = (ev.name || ev.nome || 'RODEOAPP').toUpperCase();
     const modality = getOverlaySportModality(ev);
-    const eventLogo = ev.logo || ev.logo_url || ev.logoUrl || '';
+    const eventLogo = (ev && (ev.logo || ev.logo_url || ev.logoUrl)) || 'assets/splash_logo.png';
+
+    const ranking = calculateTransmissaoRankingData();
 
     const notas = ev.notas || [];
-    const competidores = ev.peoes || [];
-
     let maxDia = 1;
     notas.forEach(n => {
         const d = parseInt(n.dia) || 1;
         if (d > maxDia) maxDia = d;
     });
 
-    const map = {};
-    competidores.forEach(p => {
-        const nome = typeof p === 'string' ? p : (p.nome || p.name);
-        if (!nome) return;
-        map[nome] = {
-            nome: nome,
-            cidade: p.cidade || '',
-            totalPontos: 0,
-            prevPontos: 0
+    const items = ranking.slice(0, 10).map((item, idx) => {
+        const prevPos = maxDia > 1 ? item.posicao : item.posicao;
+        return {
+            ...item,
+            delta: 0,
+            nomeFormatado: formatRiderNameForOverlay(item.nome)
         };
-    });
-
-    notas.forEach(n => {
-        const nome = n.peaoNome || n.peao;
-        if (!nome) return;
-        if (!map[nome]) {
-            map[nome] = {
-                nome: nome,
-                cidade: n.cidade || '',
-                totalPontos: 0,
-                prevPontos: 0
-            };
-        }
-
-        const score = parseFloat(n.totalGeral) || 0;
-        const dia = parseInt(n.dia) || 1;
-
-        map[nome].totalPontos += score;
-        if (dia < maxDia) {
-            map[nome].prevPontos += score;
-        }
-    });
-
-    const prevList = Object.values(map).map(item => ({ nome: item.nome, prevPontos: item.prevPontos }));
-    prevList.sort((a, b) => b.prevPontos - a.prevPontos);
-    const prevPosMap = {};
-    prevList.forEach((item, idx) => {
-        prevPosMap[item.nome] = idx + 1;
-    });
-
-    const currentList = Object.values(map);
-    currentList.sort((a, b) => b.totalPontos - a.totalPontos);
-    currentList.forEach((item, idx) => {
-        item.posicao = idx + 1;
-        const prevPos = maxDia > 1 ? (prevPosMap[item.nome] || item.posicao) : item.posicao;
-        item.delta = prevPos - item.posicao;
-        item.nomeFormatado = formatRiderNameForOverlay(item.nome);
     });
 
     return {
         eventName,
         modality,
         eventLogo,
-        items: currentList.slice(0, 10)
+        items
     };
 }
 
@@ -8071,7 +8149,8 @@ window.toggleOverlayScoreOnAir = () => {
             label.innerText = "🔴 NOTA NO AR • CLIQUE P/ TIRAR";
         }
 
-        broadcastOverlayCommand('show_score', scoreData);
+        // O botão Mostrar Apenas Nota exibe apenas o total em destaque!
+        broadcastOverlayCommand('show_total_only', scoreData);
     } else {
         if (btn) {
             btn.className = "bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 text-slate-200 px-4 sm:px-5 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center gap-2.5 active:scale-95 shadow-lg cursor-pointer";
@@ -8083,7 +8162,7 @@ window.toggleOverlayScoreOnAir = () => {
             label.innerText = "⚡ MOSTRAR APENAS NOTA";
         }
 
-        broadcastOverlayCommand('hide_score');
+        broadcastOverlayCommand('hide_total_only');
     }
 };
 
@@ -8704,6 +8783,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.182": [
+        {
+            icon: "🐂",
+            title: "Overlays de Transmissão Inteligentes e Ampliados",
+            desc: "Diferença do líder na tarja, indicação de VS Touro (Cia), suporte dinâmico para 1 ou mais juízes, classificação centralizada e ampliada, envio automático de nota ao concluir e logo padrão RodeoApp."
+        }
+    ],
     "1.0.181": [
         {
             icon: "📡",
@@ -8806,7 +8892,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.181';
+        let appVersion = '1.0.182';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8818,8 +8904,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.181")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.181"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.182")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.182"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

@@ -15,7 +15,7 @@
             -webkit-user-select: none;
         }
         html, body {
-            background-color: #00FF00 !important; /* Puro Verde Chroma Key (RGB 0, 255, 0) */
+            background-color: #00FF00 !important; /* Puro Verde Chroma Key Broadcast (RGB 0, 255, 0) */
             margin: 0;
             padding: 0;
             width: 100vw;
@@ -24,14 +24,14 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        /* Animações Broadcast */
+        /* Animações Broadcast Modernas */
         @keyframes slideInUp {
             0% {
                 opacity: 0;
-                transform: translateY(120px) scale(0.96);
+                transform: translateY(140px) scale(0.95);
             }
             70% {
-                transform: translateY(-8px) scale(1.01);
+                transform: translateY(-6px) scale(1.01);
             }
             100% {
                 opacity: 1;
@@ -45,27 +45,27 @@
             }
             100% {
                 opacity: 0;
-                transform: translateY(120px) scale(0.96);
+                transform: translateY(140px) scale(0.95);
             }
         }
-        @keyframes fadeInScale {
+        @keyframes fadeInCenter {
             0% {
                 opacity: 0;
-                transform: scale(0.92) translateY(30px);
+                transform: scale(0.9) translateY(20px);
             }
             100% {
                 opacity: 1;
                 transform: scale(1) translateY(0);
             }
         }
-        @keyframes fadeOutScale {
+        @keyframes fadeOutCenter {
             0% {
                 opacity: 1;
                 transform: scale(1) translateY(0);
             }
             100% {
                 opacity: 0;
-                transform: scale(0.92) translateY(30px);
+                transform: scale(0.9) translateY(20px);
             }
         }
 
@@ -76,28 +76,28 @@
             animation: slideOutDown 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
         .anim-fade-in {
-            animation: fadeInScale 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: fadeInCenter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .anim-fade-out {
-            animation: fadeOutScale 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+            animation: fadeOutCenter 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
 
         /* Efeitos Visuais dos Painéis de TV */
         .broadcast-wine-bar {
-            background: linear-gradient(90deg, #580009 0%, #300005 30%, #120002 75%, #050001 100%);
-            border: 2px solid #a8101e;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 30px rgba(180,10,25,0.4);
+            background: linear-gradient(90deg, #580009 0%, #2f0005 35%, #120002 75%, #050001 100%);
+            border: 2.5px solid #b91c1c;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.25), 0 0 35px rgba(220,38,38,0.4);
         }
 
         .broadcast-leaderboard {
-            background: linear-gradient(180deg, #62000b 0%, #320005 30%, #120002 75%, #060001 100%);
-            border: 2px solid #a8101e;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 40px rgba(180,10,25,0.35);
+            background: linear-gradient(180deg, #65000c 0%, #300005 35%, #120002 75%, #050001 100%);
+            border: 2.5px solid #b91c1c;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.25), 0 0 50px rgba(220,38,38,0.4);
         }
 
         .red-divider {
             width: 2px;
-            height: 42px;
+            height: 50px;
             background: linear-gradient(180deg, rgba(220,38,38,0.2) 0%, #e11d48 50%, rgba(220,38,38,0.2) 100%);
         }
     </style>
@@ -121,139 +121,120 @@
     <!-- ============================================================ -->
     <div id="overlay-matchup-container" class="fixed bottom-12 left-16 z-40 hidden">
         <!-- Pílula Superior de Round -->
-        <div class="inline-block bg-[#85000f] text-white font-black text-xs sm:text-sm uppercase tracking-widest px-6 py-1 rounded-t-xl border-t-2 border-x-2 border-red-500 shadow-md ml-4">
+        <div class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6">
             <span id="matchup-round-badge">ROUND 1</span>
         </div>
 
         <!-- Barra Principal Vinho com Divisores -->
-        <div class="broadcast-wine-bar rounded-2xl px-6 py-3.5 flex items-center gap-6 min-w-[720px] max-w-4xl">
-            <!-- Nome e Cidade do Competidor -->
-            <div class="flex-1 min-w-[280px]">
-                <h2 id="matchup-rider-name" class="text-2xl sm:text-3xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md">
+        <div class="broadcast-wine-bar rounded-3xl px-8 py-5 flex items-center gap-8 min-w-[920px] max-w-6xl">
+            <!-- Nome e Cidade/Touro do Competidor -->
+            <div class="flex-1 min-w-[340px]">
+                <h2 id="matchup-rider-name" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md truncate">
                     NOME DO COMPETIDOR
                 </h2>
-                <p id="matchup-rider-city" class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200 mt-0.5">
-                    CIDADE, UF
+                <!-- Sublinha: CIDADE • VS NOME DO TOURO (NOME DA CIA) -->
+                <p id="matchup-rider-subline" class="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-100 mt-1 truncate">
+                    CIDADE, UF • VS NOME DO TOURO (COMPANHIA)
                 </p>
             </div>
 
             <!-- Divisor Vermelho -->
             <div class="red-divider"></div>
 
+            <!-- Coluna: DIFERENÇA DO LÍDER -->
+            <div class="text-center min-w-[100px]">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">DIF. LÍDER</span>
+                <span id="matchup-dif-lider" class="text-3xl sm:text-4xl font-black text-yellow-400 font-mono leading-none tracking-tight">0,00</span>
+            </div>
+
+            <!-- Divisor Vermelho -->
+            <div class="red-divider"></div>
+
             <!-- Coluna: TOTAL -->
-            <div class="text-center min-w-[90px]">
-                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300 block">TOTAL</span>
-                <span id="matchup-total-score" class="text-2xl sm:text-3xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
+            <div class="text-center min-w-[100px]">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">TOTAL</span>
+                <span id="matchup-total-score" class="text-3xl sm:text-4xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
             </div>
 
             <!-- Divisor Vermelho -->
             <div class="red-divider"></div>
 
             <!-- Coluna: POSIÇÃO -->
-            <div class="text-center min-w-[80px]">
-                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300 block">POSIÇÃO</span>
-                <span id="matchup-posicao" class="text-2xl sm:text-3xl font-black text-white leading-none tracking-tight">1º</span>
+            <div class="text-center min-w-[90px]">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">POSIÇÃO</span>
+                <span id="matchup-posicao" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">1º</span>
             </div>
 
             <!-- Divisor Vermelho -->
             <div class="red-divider"></div>
 
             <!-- Coluna: PARADAS -->
-            <div class="text-center min-w-[80px]">
-                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300 block">PARADAS</span>
-                <span id="matchup-paradas" class="text-2xl sm:text-3xl font-black text-white leading-none tracking-tight">0/1</span>
+            <div class="text-center min-w-[90px]">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">PARADAS</span>
+                <span id="matchup-paradas" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">0/1</span>
             </div>
         </div>
     </div>
 
 
     <!-- ============================================================ -->
-    <!-- GRÁFICO 2: TABELA DE CLASSIFICAÇÃO GERAL (LEADERBOARD - IMAGEM 3) -->
+    <!-- GRÁFICO 2: TABELA DE CLASSIFICAÇÃO GERAL (CENTRO DA TELA - IMAGEM 3) -->
     <!-- ============================================================ -->
-    <div id="overlay-ranking-container" class="fixed top-12 left-16 z-30 hidden max-w-3xl w-full">
-        <!-- Título do Evento e Modalidade -->
-        <div class="mb-3 pl-2">
-            <h1 id="ranking-event-name" class="text-4xl sm:text-5xl font-black italic uppercase tracking-tight text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]">
-                BARRETOS 2026
-            </h1>
-            <p id="ranking-event-modality" class="text-sm sm:text-base font-black uppercase tracking-wider text-slate-200 mt-0.5">
-                CLASSIFICAÇÃO GERAL – MODALIDADE TOURO
-            </p>
-        </div>
+    <div id="overlay-ranking-container" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 hidden pointer-events-none">
+        <div class="w-[1020px] max-w-[92vw]">
+            <!-- Título do Evento e Modalidade -->
+            <div class="mb-4 pl-3">
+                <h1 id="ranking-event-name" class="text-5xl sm:text-6xl font-black italic uppercase tracking-tight text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.95)]">
+                    BARRETOS 2026
+                </h1>
+                <p id="ranking-event-modality" class="text-lg sm:text-xl font-black uppercase tracking-wider text-slate-200 mt-1">
+                    CLASSIFICAÇÃO GERAL – MODALIDADE TOURO
+                </p>
+            </div>
 
-        <!-- Tabela do Top 10 -->
-        <div class="broadcast-leaderboard rounded-3xl p-5 w-full">
-            <div id="ranking-rows-container" class="space-y-2.5">
-                <!-- Linhas do Ranking injetadas dinamicamente via JS -->
+            <!-- Tabela do Top 10 com Visual Broadcast Ampliado -->
+            <div class="broadcast-leaderboard rounded-3xl p-6 w-full shadow-2xl">
+                <div id="ranking-rows-container" class="space-y-3">
+                    <!-- Linhas do Ranking injetadas dinamicamente via JS -->
+                </div>
             </div>
         </div>
     </div>
 
 
     <!-- ============================================================ -->
-    <!-- GRÁFICO 3: TARJA DE NOTAS DOS JUÍZES (DETALHAMENTO - IMAGEM 4) -->
+    <!-- GRÁFICO 3: DETALHAMENTO DE NOTAS DOS JUÍZES (IMAGEM 4) -->
     <!-- ============================================================ -->
     <div id="overlay-score-container" class="fixed bottom-12 left-16 z-40 hidden">
-        <div class="flex items-center gap-4">
-            <!-- Círculo da Logo do Evento -->
-            <div class="w-24 h-24 rounded-full bg-white border-4 border-[#a8101e] shadow-[0_10px_30px_rgba(0,0,0,0.8),0_0_25px_rgba(220,38,38,0.5)] flex items-center justify-center p-2.5 shrink-0 overflow-hidden relative">
-                <img id="score-event-logo" src="" alt="Logo do Evento" class="max-w-full max-h-full object-contain">
-                <!-- Fallback Rodeo Emblem caso não tenha imagem de logo -->
-                <div id="score-logo-fallback" class="hidden text-[#85000f] font-black text-2xl text-center leading-tight">
-                    🤠<br><span class="text-[9px] uppercase tracking-wider font-extrabold text-black">HZN</span>
-                </div>
+        <div class="flex items-center gap-5">
+            <!-- Círculo da Logo (Evento ou Splash Logo RodeoApp) -->
+            <div class="w-28 h-28 rounded-full bg-white border-4 border-[#a8101e] shadow-[0_15px_40px_rgba(0,0,0,0.85),0_0_30px_rgba(220,38,38,0.5)] flex items-center justify-center p-3 shrink-0 overflow-hidden relative">
+                <img id="score-event-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain">
             </div>
 
-            <!-- Caixa de Detalhamento das Notas -->
-            <div class="broadcast-wine-bar rounded-2xl px-6 py-3 min-w-[560px]">
-                <!-- Cabeçalho das Colunas -->
-                <div class="flex items-center text-slate-200 text-xs font-black uppercase tracking-wider pb-1.5 border-b border-white/20">
-                    <div class="w-24">CATEGORIA</div>
-                    <div class="flex-1 flex items-center justify-around">
-                        <span id="score-col-juiz1">JUIZ 1</span>
-                        <span id="score-col-juiz2">JUIZ 2</span>
-                        <span>NOTA</span>
-                    </div>
-                    <div class="w-28 text-center text-yellow-400 font-black">TOTAL</div>
+            <!-- Caixa de Detalhamento Inteligente de Juízes -->
+            <div class="broadcast-wine-bar rounded-3xl px-8 py-4 min-w-[620px]">
+                <!-- Cabeçalho Dinâmico das Colunas -->
+                <div id="score-header-row" class="flex items-center text-slate-200 text-xs sm:text-sm font-black uppercase tracking-wider pb-2 border-b border-white/20">
+                    <!-- Gerado dinamicamente para 1, 2 ou 3 juízes -->
                 </div>
 
-                <!-- Conteúdo das Notas: Linha ATLETA e Linha ANIMAL -->
-                <div class="flex items-center pt-2">
-                    <!-- Esquerda: Linhas Atleta e Animal -->
-                    <div class="flex-1 space-y-1.5">
-                        <!-- Linha ATLETA -->
-                        <div class="flex items-center text-white font-black text-base sm:text-lg">
-                            <span class="w-24 text-slate-300 font-bold text-sm tracking-wider uppercase">ATLETA</span>
-                            <div class="flex-1 flex items-center justify-around font-mono">
-                                <span id="score-val-j1-peao">0,00</span>
-                                <span id="score-val-j2-peao">0,00</span>
-                                <span id="score-val-soma-peao" class="text-yellow-400 font-extrabold">0,00</span>
-                            </div>
-                        </div>
-
-                        <!-- Divisor Horizontal Leve -->
-                        <div class="border-t border-white/20"></div>
-
-                        <!-- Linha ANIMAL -->
-                        <div class="flex items-center text-white font-black text-base sm:text-lg">
-                            <span class="w-24 text-slate-300 font-bold text-sm tracking-wider uppercase">ANIMAL</span>
-                            <div class="flex-1 flex items-center justify-around font-mono">
-                                <span id="score-val-j1-touro">0,00</span>
-                                <span id="score-val-j2-touro">0,00</span>
-                                <span id="score-val-soma-touro" class="text-yellow-400 font-extrabold">0,00</span>
-                            </div>
-                        </div>
+                <!-- Linhas das Notas -->
+                <div class="flex items-center pt-3">
+                    <!-- Grade de Notas: Atleta e Animal -->
+                    <div id="score-body-grid" class="flex-1 space-y-2">
+                        <!-- Gerado dinamicamente via JS -->
                     </div>
 
                     <!-- Divisor Vertical -->
-                    <div class="red-divider mx-4 h-14"></div>
+                    <div class="red-divider mx-6 h-16"></div>
 
                     <!-- Direita: NOTA TOTAL EM DESTAQUE GIGANTE -->
-                    <div class="w-28 text-center">
-                        <div id="score-val-grand-total" class="text-4xl sm:text-5xl font-black text-white font-mono tracking-tighter leading-none drop-shadow-lg">
+                    <div class="min-w-[120px] text-center">
+                        <div id="score-val-grand-total" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tighter leading-none drop-shadow-xl">
                             0,00
                         </div>
-                        <div id="score-val-status-label" class="text-[10px] font-black uppercase tracking-wider text-slate-300 mt-1">
+                        <div id="score-val-status-label" class="text-xs font-black uppercase tracking-wider text-slate-300 mt-1">
                             PONTOS
                         </div>
                     </div>
@@ -262,10 +243,50 @@
         </div>
     </div>
 
+
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 4: MOSTRAR APENAS NOTA (TOTAL DESTACADO) -->
+    <!-- ============================================================ -->
+    <div id="overlay-total-only-container" class="fixed bottom-12 left-16 z-40 hidden">
+        <div class="flex items-center gap-5">
+            <!-- Círculo da Logo -->
+            <div class="w-28 h-28 rounded-full bg-white border-4 border-[#a8101e] shadow-[0_15px_40px_rgba(0,0,0,0.85),0_0_30px_rgba(220,38,38,0.5)] flex items-center justify-center p-3 shrink-0 overflow-hidden relative">
+                <img id="total-only-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain">
+            </div>
+
+            <!-- Barra Destacada com Nome, Touro e NOTA TOTAL -->
+            <div class="broadcast-wine-bar rounded-3xl px-8 py-5 flex items-center gap-8 min-w-[650px]">
+                <div class="flex-1 min-w-[260px]">
+                    <span id="total-only-round" class="text-xs font-black uppercase tracking-widest text-yellow-400 block mb-0.5">NOTA FINAL DA MONTARIA</span>
+                    <h2 id="total-only-rider" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight truncate">
+                        NOME DO COMPETIDOR
+                    </h2>
+                    <p id="total-only-bull" class="text-sm font-bold uppercase tracking-wider text-slate-200 mt-1 truncate">
+                        TOURO (COMPANHIA)
+                    </p>
+                </div>
+
+                <div class="red-divider"></div>
+
+                <div class="text-center min-w-[150px]">
+                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">NOTA TOTAL</span>
+                    <div id="total-only-score" class="text-5xl sm:text-6xl font-black text-white font-mono leading-none tracking-tight">
+                        84,50
+                    </div>
+                    <span id="total-only-unit" class="text-xs font-black uppercase tracking-wider text-yellow-400 mt-1 block">PONTOS</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <!-- ============================================================ -->
     <!-- SCRIPT CONTROLADOR DO OVERLAY -->
     <!-- ============================================================ -->
     <script>
+        // Fallback de logo oficial do RodeoApp
+        const DEFAULT_LOGO = 'assets/splash_logo.png';
+
         // Parâmetros da URL (?event=... ou ?shareId=... ou ?id=...)
         const urlParams = new URLSearchParams(window.location.search);
         const eventParam = urlParams.get('event') || urlParams.get('shareId') || urlParams.get('id') || 'padrao';
@@ -294,7 +315,8 @@
 
             document.getElementById('matchup-round-badge').innerText = (data.roundText || 'ROUND 1').toUpperCase();
             document.getElementById('matchup-rider-name').innerText = (data.riderName || 'COMPETIDOR').toUpperCase();
-            document.getElementById('matchup-rider-city').innerText = (data.cidade || 'BRASIL').toUpperCase();
+            document.getElementById('matchup-rider-subline').innerText = (data.subline || data.cidade || 'BRASIL').toUpperCase();
+            document.getElementById('matchup-dif-lider').innerText = data.difLider || '0,00';
             document.getElementById('matchup-total-score').innerText = data.total || '0,00';
             document.getElementById('matchup-posicao').innerText = data.posicao || '1º';
             document.getElementById('matchup-paradas').innerText = data.paradas || '0/1';
@@ -332,25 +354,25 @@
                 let deltaHtml = '';
                 const delta = item.delta || 0;
                 if (delta > 0) {
-                    deltaHtml = `<span class="text-emerald-400 font-black text-base sm:text-lg flex items-center justify-end gap-1 w-14">▲ +${delta}</span>`;
+                    deltaHtml = `<span class="text-emerald-400 font-black text-xl sm:text-2xl flex items-center justify-end gap-1.5 w-20">▲ +${delta}</span>`;
                 } else if (delta < 0) {
-                    deltaHtml = `<span class="text-red-500 font-black text-base sm:text-lg flex items-center justify-end gap-1 w-14">▼ ${delta}</span>`;
+                    deltaHtml = `<span class="text-red-500 font-black text-xl sm:text-2xl flex items-center justify-end gap-1.5 w-20">▼ ${delta}</span>`;
                 } else {
-                    deltaHtml = `<span class="text-yellow-400 font-black text-base sm:text-lg flex items-center justify-end gap-1 w-14">■ 0</span>`;
+                    deltaHtml = `<span class="text-yellow-400 font-black text-xl sm:text-2xl flex items-center justify-end gap-1.5 w-20">■ 0</span>`;
                 }
 
                 const scoreStr = typeof item.totalPontos === 'number' ? item.totalPontos.toFixed(2).replace('.', ',') : (item.totalPontos || '0,00');
 
                 return `
-                    <div class="flex items-center justify-between py-1.5 px-3 rounded-xl bg-black/40 border border-white/5 text-white">
-                        <div class="flex items-center flex-1 min-w-0 mr-4">
-                            <span class="w-8 text-right font-black text-base sm:text-lg text-slate-200 mr-2.5">${item.posicao || (idx + 1)}º</span>
-                            <div class="w-0.5 h-4 bg-red-600/80 mr-3"></div>
-                            <span class="font-black text-sm sm:text-base uppercase tracking-tight truncate">${item.nomeFormatado || item.nome}</span>
+                    <div class="flex items-center justify-between py-2.5 px-5 rounded-2xl bg-black/50 border border-white/10 text-white shadow-md">
+                        <div class="flex items-center flex-1 min-w-0 mr-6">
+                            <span class="w-12 text-right font-black text-xl sm:text-2xl text-slate-200 mr-4">${item.posicao || (idx + 1)}º</span>
+                            <div class="w-0.5 h-6 bg-red-600 mr-4"></div>
+                            <span class="font-black text-lg sm:text-xl uppercase tracking-tight truncate">${item.nomeFormatado || item.nome}</span>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <span class="font-mono font-black text-lg sm:text-xl text-white">${scoreStr}</span>
-                            <div class="w-0.5 h-4 bg-red-600/80"></div>
+                        <div class="flex items-center gap-4">
+                            <span class="font-mono font-black text-2xl sm:text-3xl text-white">${scoreStr}</span>
+                            <div class="w-0.5 h-6 bg-red-600"></div>
                             ${deltaHtml}
                         </div>
                     </div>
@@ -374,47 +396,92 @@
         }
 
         // ==========================================
-        // RENDERIZADOR: TARJA DE NOTAS (GRAF 3)
+        // RENDERIZADOR: TARJA DE NOTAS DETALHADA (GRAF 3)
         // ==========================================
         function showScoreLowerThird(data) {
             if (!data) return;
             const container = document.getElementById('overlay-score-container');
             if (!container) return;
 
-            // Logo do Evento
+            // Logo do Evento com fallback perfeito para splash_logo.png
             const logoImg = document.getElementById('score-event-logo');
-            const logoFallback = document.getElementById('score-logo-fallback');
-            if (data.eventLogo) {
-                logoImg.src = data.eventLogo;
-                logoImg.classList.remove('hidden');
-                logoFallback.classList.add('hidden');
+            logoImg.src = data.eventLogo || DEFAULT_LOGO;
+            logoImg.onerror = () => { logoImg.src = DEFAULT_LOGO; };
+
+            const judges = data.judges || [];
+            const isSingleJudge = (judges.length === 1);
+
+            // Cabeçalho Inteligente
+            const headerRow = document.getElementById('score-header-row');
+            if (isSingleJudge) {
+                const j1Name = judges[0].nome || 'JUIZ 1';
+                headerRow.innerHTML = `
+                    <div class="w-28 text-slate-300">CATEGORIA</div>
+                    <div class="flex-1 text-center font-black text-white">${j1Name}</div>
+                    <div class="w-32 text-center text-yellow-400 font-black">TOTAL</div>
+                `;
             } else {
-                logoImg.classList.add('hidden');
-                logoFallback.classList.remove('hidden');
+                const judgeColsHtml = judges.map(j => `<span>${j.nome || ('JUIZ ' + j.juizNum)}</span>`).join('');
+                headerRow.innerHTML = `
+                    <div class="w-28 text-slate-300">CATEGORIA</div>
+                    <div class="flex-1 flex items-center justify-around font-black text-white">
+                        ${judgeColsHtml}
+                        <span>NOTA</span>
+                    </div>
+                    <div class="w-32 text-center text-yellow-400 font-black">TOTAL</div>
+                `;
             }
 
-            // Valores de Juízes
-            const judges = data.judges || [];
-            const j1 = judges[0] || { atleta: '--,--', animal: '--,--' };
-            const j2 = judges[1] || { atleta: '--,--', animal: '--,--' };
-
-            document.getElementById('score-val-j1-peao').innerText = j1.atleta;
-            document.getElementById('score-val-j2-peao').innerText = j2.atleta;
-            document.getElementById('score-val-soma-peao').innerText = data.sumAtleta || '--,--';
-
-            document.getElementById('score-val-j1-touro').innerText = j1.animal;
-            document.getElementById('score-val-j2-touro').innerText = j2.animal;
-            document.getElementById('score-val-soma-touro').innerText = data.sumAnimal || '--,--';
+            // Linhas ATLETA e ANIMAL Inteligentes
+            const bodyGrid = document.getElementById('score-body-grid');
+            if (isSingleJudge) {
+                const j1 = judges[0];
+                bodyGrid.innerHTML = `
+                    <!-- Linha ATLETA -->
+                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
+                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ATLETA</span>
+                        <div class="flex-1 text-center font-mono">${j1.atleta}</div>
+                    </div>
+                    <div class="border-t border-white/20"></div>
+                    <!-- Linha ANIMAL -->
+                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
+                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ANIMAL</span>
+                        <div class="flex-1 text-center font-mono">${j1.animal}</div>
+                    </div>
+                `;
+            } else {
+                const atletaScoresHtml = judges.map(j => `<span>${j.atleta}</span>`).join('');
+                const animalScoresHtml = judges.map(j => `<span>${j.animal}</span>`).join('');
+                bodyGrid.innerHTML = `
+                    <!-- Linha ATLETA -->
+                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
+                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ATLETA</span>
+                        <div class="flex-1 flex items-center justify-around font-mono">
+                            ${atletaScoresHtml}
+                            <span class="text-yellow-400 font-extrabold">${data.sumAtleta || '--,--'}</span>
+                        </div>
+                    </div>
+                    <div class="border-t border-white/20"></div>
+                    <!-- Linha ANIMAL -->
+                    <div class="flex items-center text-white font-black text-lg sm:text-xl">
+                        <span class="w-28 text-slate-300 font-bold text-sm tracking-wider uppercase">ANIMAL</span>
+                        <div class="flex-1 flex items-center justify-around font-mono">
+                            ${animalScoresHtml}
+                            <span class="text-yellow-400 font-extrabold">${data.sumAnimal || '--,--'}</span>
+                        </div>
+                    </div>
+                `;
+            }
 
             document.getElementById('score-val-grand-total').innerText = data.grandTotal || '0,00';
             
             const statusLabel = document.getElementById('score-val-status-label');
             if (data.hasFall) {
                 statusLabel.innerText = `QUEDA (${data.fallTime || '0.00s'})`;
-                statusLabel.className = "text-[10px] font-black uppercase tracking-wider text-red-500 mt-1";
+                statusLabel.className = "text-xs font-black uppercase tracking-wider text-red-500 mt-1";
             } else {
                 statusLabel.innerText = "PONTOS";
-                statusLabel.className = "text-[10px] font-black uppercase tracking-wider text-slate-300 mt-1";
+                statusLabel.className = "text-xs font-black uppercase tracking-wider text-slate-300 mt-1";
             }
 
             container.classList.remove('hidden', 'anim-slide-out');
@@ -423,6 +490,54 @@
 
         function hideScoreLowerThird() {
             const container = document.getElementById('overlay-score-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            container.classList.remove('anim-slide-in');
+            container.classList.add('anim-slide-out');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                container.classList.remove('anim-slide-out');
+            }, 400);
+        }
+
+        // ==========================================
+        // RENDERIZADOR: MOSTRAR APENAS NOTA (GRAF 4)
+        // ==========================================
+        function showTotalOnlyLowerThird(data) {
+            if (!data) return;
+            const container = document.getElementById('overlay-total-only-container');
+            if (!container) return;
+
+            const logoImg = document.getElementById('total-only-logo');
+            logoImg.src = data.eventLogo || DEFAULT_LOGO;
+            logoImg.onerror = () => { logoImg.src = DEFAULT_LOGO; };
+
+            document.getElementById('total-only-rider').innerText = (data.riderName || 'COMPETIDOR').toUpperCase();
+            
+            const bullInfo = data.bullName ? `${data.bullName}${data.bullCia ? ` (${data.bullCia})` : ''}` : '';
+            document.getElementById('total-only-bull').innerText = bullInfo.toUpperCase();
+
+            const scoreVal = document.getElementById('total-only-score');
+            const unitEl = document.getElementById('total-only-unit');
+
+            if (data.hasFall) {
+                scoreVal.innerText = `QUEDA (${data.fallTime || '0.00s'})`;
+                scoreVal.className = "text-3xl sm:text-4xl font-black text-red-500 font-mono leading-none tracking-tight";
+                unitEl.innerText = "NÃO PAROU";
+                unitEl.className = "text-xs font-black uppercase tracking-wider text-red-400 mt-1 block";
+            } else {
+                scoreVal.innerText = data.grandTotal || '0,00';
+                scoreVal.className = "text-5xl sm:text-6xl font-black text-white font-mono leading-none tracking-tight";
+                unitEl.innerText = "PONTOS";
+                unitEl.className = "text-xs font-black uppercase tracking-wider text-yellow-400 mt-1 block";
+            }
+
+            container.classList.remove('hidden', 'anim-slide-out');
+            container.classList.add('anim-slide-in');
+        }
+
+        function hideTotalOnlyLowerThird() {
+            const container = document.getElementById('overlay-total-only-container');
             if (!container || container.classList.contains('hidden')) return;
 
             container.classList.remove('anim-slide-in');
@@ -459,10 +574,17 @@
                 case 'hide_score':
                     hideScoreLowerThird();
                     break;
+                case 'show_total_only':
+                    showTotalOnlyLowerThird(payload.data);
+                    break;
+                case 'hide_total_only':
+                    hideTotalOnlyLowerThird();
+                    break;
                 case 'clear':
                     hideMatchupLowerThird();
                     hideRankingLeaderboard();
                     hideScoreLowerThird();
+                    hideTotalOnlyLowerThird();
                     break;
             }
         }
@@ -484,7 +606,7 @@
                 };
                 ws.onclose = () => {
                     setTimeout(() => {
-                        // Reconexão suave se necessário
+                        // Reconexão se necessário
                     }, 2500);
                 };
             } catch(e) {
