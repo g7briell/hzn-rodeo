@@ -8278,6 +8278,18 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.178": [
+        {
+            icon: "🔒",
+            title: "Segurança de Notas no App do Juiz",
+            desc: "Bloqueio com senha de juiz/evento e aviso obrigatório ao tentar reabrir cards já avaliados. A prancheta agora fecha e minimiza imediatamente após o envio da nota."
+        },
+        {
+            icon: "📡",
+            title: "Estabilidade na Cabine de Transmissão",
+            desc: "Carregamento e sincronização automática e segura de sorteios ao vivo, eliminando falhas em eventos anteriores ou em andamento."
+        }
+    ],
     "1.0.177": [
         {
             icon: "🐂",
@@ -8347,7 +8359,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.177';
+        let appVersion = '1.0.178';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8359,8 +8371,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.176")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.176"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.178")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.178"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
