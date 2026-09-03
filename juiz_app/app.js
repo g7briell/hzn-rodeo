@@ -1671,7 +1671,7 @@ window.handleKeepLowScore = () => {
     renderRidesList();
 };
 
-window.handleRequestNextBullReride = async () => {
+window.handleRequestNextBullReride = () => {
     document.getElementById('modal-low-score-reride').classList.add('hidden');
 
     if (!window.state.currentRider) {
@@ -1679,13 +1679,176 @@ window.handleRequestNextBullReride = async () => {
         return;
     }
 
+    const day = window.state.selectedDay;
+    const sorteios = window.state.eventData?.sorteios || [];
+    const currentSorteio = sorteios.find(s => s.day === day) || sorteios[0];
+
+    if (!currentSorteio) {
+        showToast("Sorteio do dia não encontrado!", "error");
+        return;
+    }
+
+    // Busca o touro sugerido da reserva
+    const availableBull = findNextAvailableRerideBull(currentSorteio);
+
+    if (availableBull) {
+        window.state.suggestedRerideBull = availableBull;
+        
+        // Abre o modal de confirmação do touro sugerido
+        const riderNameEl = document.getElementById('confirm-reride-rider-name');
+        if (riderNameEl) riderNameEl.innerHTML = `Competidor: <span class="text-white font-black">${window.state.currentRider.nome}</span>`;
+
+        const bNameEl = document.getElementById('confirm-reride-bull-name');
+        if (bNameEl) bNameEl.innerText = availableBull.nome;
+
+        const bCiaEl = document.getElementById('confirm-reride-bull-cia');
+        if (bCiaEl) bCiaEl.innerText = `CIA ${availableBull.cia || '---'}`;
+
+        const bLadoEl = document.getElementById('confirm-reride-bull-lado');
+        if (bLadoEl) {
+            const ladoStr = availableBull.lado === 'E' ? 'ESQUERDA (E)' : (availableBull.lado === 'D' ? 'DIREITA (D)' : 'CENTRO / AMBOS (C)');
+            bLadoEl.innerText = `LADO: ${ladoStr}`;
+        }
+
+        document.getElementById('modal-confirm-reride-bull').classList.remove('hidden');
+    } else {
+        // Sem touro sugerido automaticamente: abre a lista completa de touros de re-ride
+        openRerideBullsListModal();
+    }
+};
+
+// Clicou em "SIM" no modal de confirmação do touro sugerido
+window.handleAcceptSuggestedRerideBull = async () => {
+    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
+    const bull = window.state.suggestedRerideBull;
+    if (bull) {
+        await confirmCreateRerideWithBull(bull);
+    }
+};
+
+// Clicou em "NÃO" no modal de confirmação do touro sugerido -> Abre lista de touros de re-ride
+window.handleRejectSuggestedBullAndOpenList = () => {
+    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
+    openRerideBullsListModal();
+};
+
+// Abre modal com todos os touros de re-ride / boiadas disponíveis
+window.openRerideBullsListModal = () => {
+    const day = window.state.selectedDay;
+    const sorteios = window.state.eventData?.sorteios || [];
+    const currentSorteio = sorteios.find(s => s.day === day) || sorteios[0];
+
+    const rider = window.state.currentRider;
+    const subEl = document.getElementById('reride-list-rider-sub');
+    if (subEl && rider) {
+        subEl.innerHTML = `Competidor: <span class="text-yellow-400 font-black">${rider.nome}</span>`;
+    }
+
+    const searchInput = document.getElementById('input-search-reride-bull');
+    if (searchInput) searchInput.value = '';
+
+    const allBulls = getAllAvailableRerideBulls(currentSorteio);
+    window.state.allRerideBullsList = allBulls;
+
+    renderRerideBullsList(allBulls);
+    document.getElementById('modal-select-reride-bull-list').classList.remove('hidden');
+};
+
+window.closeRerideBullsListModal = () => {
+    document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
+    renderRidesList();
+};
+
+window.filterRerideBullsList = (query) => {
+    const q = (query || '').trim().toLowerCase();
+    const all = window.state.allRerideBullsList || [];
+    if (!q) {
+        renderRerideBullsList(all);
+        return;
+    }
+    const filtered = all.filter(b => 
+        (b.nome || '').toLowerCase().includes(q) || 
+        (b.cia || '').toLowerCase().includes(q)
+    );
+    renderRerideBullsList(filtered);
+};
+
+function renderRerideBullsList(bulls) {
+    const container = document.getElementById('reride-bulls-grid');
+    if (!container) return;
+
+    if (!bulls || bulls.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-8 text-slate-500 font-bold text-xs uppercase tracking-wider">
+                Nenhum touro de re-ride encontrado.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = bulls.map((b, idx) => {
+        const isE = b.lado === 'E';
+        const ladoClass = isE 
+            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+            : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30';
+        
+        const badgeReserva = b.isReservaDoDia 
+            ? `<span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">⭐ RESERVA DO DIA</span>` 
+            : '';
+
+        const badgeUsed = b.isUsed 
+            ? `<span class="px-2 py-0.5 rounded text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-800">Já correu hoje</span>` 
+            : `<span class="px-2 py-0.5 rounded text-[9px] font-black text-emerald-400 bg-emerald-950/30 border border-emerald-800/40">Disponível</span>`;
+
+        return `
+            <div onclick="selectRerideBullFromList(${idx})" class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-yellow-500/60 hover:bg-yellow-500/5 transition-all cursor-pointer group flex items-center justify-between gap-3 active:scale-[0.99] touch-active">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-sm sm:text-base font-black text-white uppercase group-hover:text-yellow-400 transition-colors truncate">${b.nome}</span>
+                        ${badgeReserva}
+                    </div>
+                    <div class="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase">
+                        <span class="truncate">CIA ${b.cia || '---'}</span>
+                        <span>•</span>
+                        ${badgeUsed}
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase ${ladoClass}">
+                        ${b.lado || 'C'}
+                    </span>
+                    <span class="w-8 h-8 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 flex items-center justify-center text-xs font-black group-hover:bg-yellow-500 group-hover:text-black transition-colors">
+                        ➔
+                    </span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.selectRerideBullFromList = async (bullIdx) => {
+    const all = window.state.allRerideBullsList || [];
+    const chosenBull = all[bullIdx];
+    if (!chosenBull) return;
+
+    document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
+    await confirmCreateRerideWithBull(chosenBull);
+};
+
+// Efetiva a criação da montaria de re-ride com o touro escolhido
+async function confirmCreateRerideWithBull(selectedBull) {
+    if (!window.state.currentRider || !selectedBull) return;
+
     const rider = window.state.currentRider;
     const currentBull = window.state.currentBull;
     const day = window.state.selectedDay;
-    const sorteios = window.state.eventData.sorteios || [];
-    const currentSorteio = sorteios.find(s => s.day === day);
+    const sorteios = window.state.eventData?.sorteios || [];
+    const currentSorteio = sorteios.find(s => s.day === day) || sorteios[0];
 
-    // Marca a nota anterior do touro original como substituída por Re-ride
+    if (!currentSorteio) return;
+
+    // 1. Marca a nota anterior do touro original como substituída por Re-Ride
     if (window.state.eventData && window.state.eventData.notas) {
         const prevNota = findNotaForMatchup(
             window.state.eventData.notas,
@@ -1700,59 +1863,136 @@ window.handleRequestNextBullReride = async () => {
         }
     }
 
-    // 1. Busca próximo touro reserva disponível no evento
-    const availableBull = findNextAvailableRerideBull(currentSorteio);
+    // 2. Cria nova montaria de Re-Ride no sorteio
+    currentSorteio.riders = currentSorteio.riders || [];
+    currentSorteio.bulls = currentSorteio.bulls || [];
+    currentSorteio.assignments = currentSorteio.assignments || {};
 
-    if (availableBull) {
-        // Cria nova montaria de Re-Ride no sorteio
-        if (currentSorteio) {
-            currentSorteio.riders = currentSorteio.riders || [];
-            currentSorteio.bulls = currentSorteio.bulls || [];
-            currentSorteio.assignments = currentSorteio.assignments || {};
+    const newRiderIndex = currentSorteio.riders.length;
+    currentSorteio.riders.push({
+        nome: rider.nome,
+        cidade: rider.cidade || '',
+        isReride: true
+    });
 
-            const newRiderIndex = currentSorteio.riders.length;
-            currentSorteio.riders.push({
-                nome: rider.nome,
-                cidade: rider.cidade || '',
-                isReride: true
-            });
-
-            let bullIdx = currentSorteio.bulls.findIndex(b => b.nome === availableBull.nome);
-            if (bullIdx === -1) {
-                currentSorteio.bulls.push(availableBull);
-                bullIdx = currentSorteio.bulls.length - 1;
-            }
-
-            currentSorteio.assignments[newRiderIndex] = bullIdx;
-
-            // Salva na nuvem e transmite via Ably
-            await syncEventUpdateToCloudAndAbly();
-
-            // Mostra Pop-up de Sucesso
-            document.getElementById('reride-msg-icon').className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto mb-4 flex items-center justify-center text-3xl border border-emerald-500/40";
-            document.getElementById('reride-msg-title').innerText = "MONTARIA DE RE-RIDE CRIADA";
-            document.getElementById('reride-msg-text').innerHTML = `Montaria Criada para o Competidor <b class="text-white">${rider.nome}</b>, Touro <b class="text-yellow-400">${availableBull.nome}</b> (CIA ${availableBull.cia || '---'})`;
-            document.getElementById('modal-reride-result-msg').classList.remove('hidden');
-        }
-    } else {
-        // Sem touros de re-ride disponíveis
-        document.getElementById('reride-msg-icon').className = "w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto mb-4 flex items-center justify-center text-3xl border border-amber-500/40";
-        document.getElementById('reride-msg-title').innerText = "SEM TOUROS DE RE-RIDE";
-        document.getElementById('reride-msg-text').innerText = "Sem Touros de Re-ride, Montaria para o Próximo Dia";
-        document.getElementById('modal-reride-result-msg').classList.remove('hidden');
+    let bullIdx = currentSorteio.bulls.findIndex(b => b.nome.trim().toUpperCase() === selectedBull.nome.trim().toUpperCase());
+    if (bullIdx === -1) {
+        currentSorteio.bulls.push({
+            nome: selectedBull.nome,
+            cia: selectedBull.cia || '---',
+            lado: selectedBull.lado || 'C'
+        });
+        bullIdx = currentSorteio.bulls.length - 1;
     }
-};
+
+    currentSorteio.assignments[newRiderIndex] = bullIdx;
+
+    // 3. Salva na nuvem e transmite via Ably
+    await syncEventUpdateToCloudAndAbly();
+
+    // 4. Mostra Pop-up de Sucesso
+    document.getElementById('reride-msg-icon').className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto mb-4 flex items-center justify-center text-3xl border border-emerald-500/40";
+    document.getElementById('reride-msg-title').innerText = "MONTARIA DE RE-RIDE CRIADA";
+    document.getElementById('reride-msg-text').innerHTML = `Montaria Criada para o Competidor <b class="text-white">${rider.nome}</b>, Touro <b class="text-yellow-400">${selectedBull.nome}</b> (CIA ${selectedBull.cia || '---'})`;
+    document.getElementById('modal-reride-result-msg').classList.remove('hidden');
+}
+
+function getAllAvailableRerideBulls(currentSorteio) {
+    const list = [];
+    const usedBullNames = new Set(
+        Object.values(currentSorteio.assignments || {})
+            .map(idx => currentSorteio.bulls[idx]?.nome?.trim()?.toUpperCase())
+            .filter(Boolean)
+    );
+
+    // 1. Touros reservas do sorteio do dia (não atribuídos)
+    (currentSorteio.bulls || []).forEach((b, idx) => {
+        if (!b || !b.nome) return;
+        const bNameUpper = b.nome.trim().toUpperCase();
+        const isAssigned = Object.values(currentSorteio.assignments || {}).includes(idx);
+        if (!isAssigned) {
+            list.push({
+                nome: b.nome.trim(),
+                cia: b.cia || '---',
+                lado: b.lado || 'C',
+                isReservaDoDia: true,
+                isUsed: false
+            });
+        }
+    });
+
+    // 2. Touros cadastrados nas boiadas do evento
+    const boiadas = window.state.eventData?.boiadas || [];
+    boiadas.forEach(cia => {
+        const ciaNome = cia.nome || 'CIA';
+        const touros = cia.touros || [];
+        touros.forEach(tNome => {
+            const tUpper = (tNome || '').trim().toUpperCase();
+            if (list.some(item => item.nome.toUpperCase() === tUpper)) return;
+
+            const isUsed = usedBullNames.has(tUpper);
+            const lado = (cia.lados && cia.lados[tNome]) ? cia.lados[tNome] : 'C';
+
+            list.push({
+                nome: tNome.trim(),
+                cia: ciaNome,
+                lado: lado,
+                isReservaDoDia: false,
+                isUsed: isUsed
+            });
+        });
+    });
+
+    // 3. Fallback: todos os touros de currentSorteio.bulls se a lista estiver vazia
+    if (list.length === 0 && currentSorteio.bulls && currentSorteio.bulls.length > 0) {
+        currentSorteio.bulls.forEach(b => {
+            if (b && b.nome && !list.some(item => item.nome.toUpperCase() === b.nome.trim().toUpperCase())) {
+                list.push({
+                    nome: b.nome.trim(),
+                    cia: b.cia || '---',
+                    lado: b.lado || 'C',
+                    isReservaDoDia: false,
+                    isUsed: true
+                });
+            }
+        });
+    }
+
+    return list;
+}
 
 function findNextAvailableRerideBull(currentSorteio) {
-    const allBulls = window.state.eventData?.boiadas || [];
-    const usedBulls = Object.values(currentSorteio.assignments || {}).map(idx => currentSorteio.bulls[idx]?.nome);
+    // 1. Procura primeiro nos reservas do sorteio do dia
+    const availableReservas = (currentSorteio.bulls || []).filter((b, idx) => {
+        if (!b || !b.nome) return false;
+        const isAssigned = Object.values(currentSorteio.assignments || {}).includes(idx);
+        return !isAssigned;
+    });
 
-    // Touros marcados como re-ride ou touros ainda não utilizados hoje
-    const available = allBulls.find(b => !usedBulls.includes(b.nome));
-    if (available) return available;
+    if (availableReservas.length > 0) {
+        return availableReservas[0];
+    }
 
-    if (allBulls.length > 0) {
-        return allBulls[Math.floor(Math.random() * allBulls.length)];
+    // 2. Procura nas boiadas touro que ainda não foi montado hoje
+    const usedBulls = Object.values(currentSorteio.assignments || {}).map(idx => currentSorteio.bulls[idx]?.nome?.trim()?.toUpperCase());
+    const boiadas = window.state.eventData?.boiadas || [];
+
+    for (const cia of boiadas) {
+        for (const t of (cia.touros || [])) {
+            if (!usedBulls.includes(t.trim().toUpperCase())) {
+                const lado = (cia.lados && cia.lados[t]) ? cia.lados[t] : 'C';
+                return { nome: t, cia: cia.nome, lado: lado };
+            }
+        }
+    }
+
+    // 3. Fallback: qualquer touro cadastrado
+    for (const cia of boiadas) {
+        if (cia.touros && cia.touros.length > 0) {
+            const t = cia.touros[0];
+            const lado = (cia.lados && cia.lados[t]) ? cia.lados[t] : 'C';
+            return { nome: t, cia: cia.nome, lado: lado };
+        }
     }
 
     return null;
