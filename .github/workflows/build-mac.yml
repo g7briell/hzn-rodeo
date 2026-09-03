@@ -56,24 +56,16 @@ jobs:
             cp "$FIRST_ZIP" "HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}-mac.zip"
           fi
 
-      - name: Upload macOS release zip files
-        uses: svenstaro/upload-release-action@v2
+      - name: Publish macOS Release
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: client_app/dist/*.zip
-          file_glob: true
-          tag: v${{ steps.get_version.outputs.VERSION }}
-          overwrite: true
-
-      - name: Upload macOS latest-mac.yml (Auto-Updater)
-        uses: svenstaro/upload-release-action@v2
-        continue-on-error: true
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: client_app/dist/latest-mac.yml
-          asset_name: latest-mac.yml
-          tag: v${{ steps.get_version.outputs.VERSION }}
-          overwrite: true
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: v${{ steps.get_version.outputs.VERSION }}
+          files: |
+            client_app/dist/*.zip
+            client_app/dist/latest-mac.yml
+          fail_on_unmatched_files: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload macOS build artifact
         uses: actions/upload-artifact@v4

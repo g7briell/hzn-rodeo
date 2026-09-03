@@ -8783,6 +8783,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.183": [
+        {
+            icon: "🚀",
+            title: "Pipeline de Release Estável",
+            desc: "Atualização no sistema de build e publicação de releases do Windows e macOS com a nova ação nativa do GitHub, garantindo downloads e atualizações automáticas sem falhas."
+        }
+    ],
     "1.0.182": [
         {
             icon: "🐂",
@@ -8892,7 +8899,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.182';
+        let appVersion = '1.0.183';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8904,8 +8911,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.182")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.182"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.183")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.183"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

@@ -47,34 +47,17 @@ jobs:
           VERSION=$(node -p "require('./client_app/package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Upload Windows setup EXE
-        uses: svenstaro/upload-release-action@v2
+      - name: Publish Windows Release
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: client_app/dist/*.exe
-          file_glob: true
-          tag: v${{ steps.get_version.outputs.VERSION }}
-          overwrite: true
-
-      - name: Upload Windows latest.yml (Auto-Updater)
-        uses: svenstaro/upload-release-action@v2
-        continue-on-error: true
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: client_app/dist/latest.yml
-          asset_name: latest.yml
-          tag: v${{ steps.get_version.outputs.VERSION }}
-          overwrite: true
-
-      - name: Upload Windows blockmap (Auto-Updater)
-        uses: svenstaro/upload-release-action@v2
-        continue-on-error: true
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: client_app/dist/*.blockmap
-          file_glob: true
-          tag: v${{ steps.get_version.outputs.VERSION }}
-          overwrite: true
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: v${{ steps.get_version.outputs.VERSION }}
+          files: |
+            client_app/dist/*.exe
+            client_app/dist/latest.yml
+            client_app/dist/*.blockmap
+          fail_on_unmatched_files: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Windows build artifact
         uses: actions/upload-artifact@v4
