@@ -1119,6 +1119,7 @@ window.handleRideCardClick = (matchupIdx) => {
     const rNome = (typeof r === 'string' ? r : (r.nome || '')).trim();
     const bullIdx = currentSorteio.assignments[matchupIdx] !== undefined ? currentSorteio.assignments[matchupIdx] : matchupIdx;
     const bull = currentSorteio.bulls[bullIdx] || { nome: '' };
+    const bullNome = (typeof bull === 'string' ? bull : (bull && bull.nome ? bull.nome : '')).trim();
     const isRerideRide = Boolean(r.isReride);
     const notas = (window.state.eventData && window.state.eventData.notas) || [];
     const jIdx = window.state.currentJudge ? window.state.currentJudge.idx : 0;
@@ -1197,7 +1198,7 @@ window.closeSecurityChangeScoreModal = () => {
 function openScoreModalDirect(matchupIdx) {
     if (matchupIdx === null || matchupIdx === undefined) return;
     const sorteios = (window.state.eventData && window.state.eventData.sorteios) || [];
-    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay);
+    const currentSorteio = sorteios.find(s => s.day === window.state.selectedDay) || sorteios[0];
     if (!currentSorteio || !currentSorteio.riders) return;
 
     const r = currentSorteio.riders[matchupIdx];
