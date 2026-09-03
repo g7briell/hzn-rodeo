@@ -82,15 +82,60 @@
             animation: fadeOutCenter 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
 
-        /* Animações da Transmissão (Suaves e sem flicker) */
-        @keyframes matchupSlideIn {
+        /* Animações da Transmissão (Revelar Dinâmico Estilo TV) */
+        @keyframes broadcastRevealWipe {
+            0% {
+                clip-path: inset(0 100% 0 0 round 24px);
+                transform: translateX(-35px);
+                opacity: 0;
+            }
+            15% {
+                opacity: 1;
+            }
+            100% {
+                clip-path: inset(0 0% 0 0 round 24px);
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bladeSweepLead {
+            0% {
+                left: 0%;
+                opacity: 1;
+            }
+            85% {
+                left: 97%;
+                opacity: 1;
+            }
+            100% {
+                left: 104%;
+                opacity: 0;
+            }
+        }
+
+        @keyframes pillDropIn {
             0% {
                 opacity: 0;
-                transform: translateY(30px) scale(0.98);
+                transform: translateY(12px);
             }
             100% {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes contentRevealSlide {
+            0% {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            40% {
+                opacity: 0.4;
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
             }
         }
 
@@ -137,8 +182,20 @@
             }
         }
 
-        .anim-matchup-in {
-            animation: matchupSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .anim-broadcast-reveal {
+            animation: broadcastRevealWipe 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-blade-lead {
+            animation: bladeSweepLead 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-pill-drop {
+            animation: pillDropIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+        }
+        .anim-content-slide {
+            animation: contentRevealSlide 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+        }
+        .anim-sheen-sweep {
+            animation: metallicSheenSweep 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
         }
         .anim-outro-slide {
             animation: outroSlideAway 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
@@ -190,6 +247,9 @@
         <!-- Barra Principal Vinho com Camadas Dinâmicas -->
         <div id="matchup-main-bar" class="broadcast-wine-bar rounded-3xl min-w-[960px] max-w-6xl relative overflow-hidden transition-all duration-300">
             
+            <!-- Lâmina de Corte Frontal (Leading Edge Blade do vídeo) -->
+            <div id="matchup-blade-lead" class="absolute top-0 bottom-0 pointer-events-none z-30 w-12 bg-gradient-to-r from-red-600 via-white to-transparent shadow-[0_0_25px_#ffffff,0_0_15px_#dc2626] opacity-0"></div>
+
             <!-- Reflexo Metálico / Sheen -->
             <div id="matchup-sheen" class="absolute inset-0 pointer-events-none z-25 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] opacity-0"></div>
 
@@ -440,14 +500,33 @@
             }
 
             const pill = document.getElementById('matchup-round-pill');
+            const mainBar = document.getElementById('matchup-main-bar');
+            const blade = document.getElementById('matchup-blade-lead');
+            const sheen = document.getElementById('matchup-sheen');
             const contentLayer = document.getElementById('matchup-content-layer');
             const outroLayer = document.getElementById('matchup-outro-layer');
             const logoBox = document.getElementById('matchup-outro-logo-box');
-            const sheen = document.getElementById('matchup-sheen');
 
-            // Resetar camadas para estado visível sem flicker
-            if (pill) pill.style.opacity = '1';
-            if (contentLayer) contentLayer.style.opacity = '1';
+            // Resetar camadas e remover animações anteriores
+            container.classList.remove('hidden', 'anim-outro-slide');
+
+            if (pill) {
+                pill.classList.remove('anim-pill-drop');
+                pill.style.opacity = '0';
+            }
+            if (mainBar) {
+                mainBar.classList.remove('anim-broadcast-reveal');
+            }
+            if (blade) {
+                blade.classList.remove('anim-blade-lead');
+            }
+            if (sheen) {
+                sheen.classList.remove('anim-sheen-sweep');
+            }
+            if (contentLayer) {
+                contentLayer.classList.remove('anim-content-slide');
+                contentLayer.style.opacity = '1';
+            }
             if (outroLayer) {
                 outroLayer.classList.remove('opacity-100');
                 outroLayer.classList.add('opacity-0');
@@ -457,15 +536,15 @@
                 logoBox.style.transform = 'scale(0)';
             }
 
-            // Aplicar classe de animação de entrada direta (sem piscar nem dar flash)
-            container.className = "fixed bottom-12 left-16 z-40 anim-matchup-in";
+            // Forçar reflow limpo antes de disparar a revelação em sincronia
+            void container.offsetWidth;
 
-            // Disparar Brilho Metálico passando pelo painel
-            if (sheen) {
-                sheen.style.animation = 'none';
-                void sheen.offsetWidth;
-                sheen.style.animation = 'metallicSheenSweep 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards';
-            }
+            // Disparar Animações Sincronizadas da Revelação Estilo Vídeo (Broadcast Wipe)
+            if (mainBar) mainBar.classList.add('anim-broadcast-reveal');
+            if (blade) blade.classList.add('anim-blade-lead');
+            if (pill) pill.classList.add('anim-pill-drop');
+            if (contentLayer) contentLayer.classList.add('anim-content-slide');
+            if (sheen) sheen.classList.add('anim-sheen-sweep');
         }
 
         function hideMatchupLowerThird() {
@@ -499,7 +578,8 @@
                 container.classList.add('anim-outro-slide');
 
                 matchupOutroHideTimeout = setTimeout(() => {
-                    container.className = "fixed bottom-12 left-16 z-40 hidden";
+                    container.classList.add('hidden');
+                    container.classList.remove('anim-outro-slide');
                     if (outroLayer) {
                         outroLayer.classList.remove('opacity-100');
                         outroLayer.classList.add('opacity-0');
