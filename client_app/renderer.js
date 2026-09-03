@@ -4406,12 +4406,26 @@ function setupAutocomplete(inputId, listId, getDataFn, onSelectCallback, display
 
 window.addEventListener('DOMContentLoaded', () => {
     setupAutocomplete('peao-name', 'peao-autocomplete-list', () => globalPeoes, (item) => {
-        document.getElementById('peao-city').value = item.cidade || '';
-        document.getElementById('peao-cpf').value = item.cpf || '';
+        const cityInput = document.getElementById('peao-city');
+        const cpfInput = document.getElementById('peao-cpf');
+        if (cityInput) cityInput.value = item.cidade || '';
+        if (cpfInput) cpfInput.value = item.cpf || '';
     }, 'nome');
 
     setupAutocomplete('boiada-cia', 'boiada-autocomplete-list', () => globalBoiadas, (item) => {
-        document.getElementById('touros-bulk').value = (item.touros || []).join('\n');
+        const inputCerto = document.getElementById('touros-certo');
+        const inputErrado = document.getElementById('touros-errado');
+        const certoList = [];
+        const erradoList = [];
+        (item.touros || []).forEach(t => {
+            if (item.lados && (item.lados[t] === 'E' || item.lados[t] === 'ERRADO')) {
+                erradoList.push(t);
+            } else {
+                certoList.push(t);
+            }
+        });
+        if (inputCerto) inputCerto.value = certoList.join('\n');
+        if (inputErrado) inputErrado.value = erradoList.join('\n');
     }, 'nome');
 });
 
@@ -8244,6 +8258,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.175": [
+        {
+            icon: "🐂",
+            title: "Correção na Importação de Boiada",
+            desc: "Corrigido o preenchimento automático de touros ao selecionar uma companhia no cadastro de boiada, separando os animais por lado certo e errado sem erros."
+        }
+    ],
     "1.0.174": [
         {
             icon: "📡",
@@ -8276,35 +8297,13 @@ const CHANGELOG_DATA = {
             icon: "📜",
             title: "Rolagem Fluida na Conferência de Notas",
             desc: "A tabela de conferência de notas agora possui rolagem vertical suave com mouse wheel e cabeçalho fixo no topo, permitindo navegar por dezenas de montarias sem travar."
-        },
-        {
-            icon: "🐂",
-            title: "Seleção Automática do Lado no Re-Ride",
-            desc: "Ao selecionar um touro de re-ride, o sistema já identifica e marca automaticamente o lado do animal (Esquerdo ou Direito) cadastrado na boiada."
-        },
-        {
-            icon: "✨",
-            title: "Nomes de Competidor e Touro em 2 Linhas",
-            desc: "Nomes longos agora quebram em até 2 linhas sem cortes ou reticências."
-        },
-        {
-            icon: "🎯",
-            title: "Painel de Notas Total Centralizado",
-            desc: "Os totais de Peão, Touro e Montaria agora ficam centralizados no card de notas."
-        }
-    ],
-    "1.0.172": [
-        {
-            icon: "🐂",
-            title: "Seleção Automática do Lado no Re-Ride",
-            desc: "Identificação automática do lado do animal no re-ride."
         }
     ]
 };
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.174';
+        let appVersion = '1.0.175';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -8316,8 +8315,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.174")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.174"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.175")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.175"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `
