@@ -8853,6 +8853,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.190": [
+        {
+            icon: "🚀",
+            title: "Eliminação Total de Flicker (Aceleração 100% GPU)",
+            desc: "Substituição completa do algoritmo de animação de entrada por renderização por hardware (GPU Compositor): sem clip-path e sem recriação de texturas no OBS. A lâmina vermelha desliza suavemente sobre a tarja com zero oscilação visual."
+        }
+    ],
     "1.0.189": [
         {
             icon: "🎬",
@@ -9011,7 +9018,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.189';
+        let appVersion = '1.0.190';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -9023,8 +9030,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.189")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.189"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.190")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.190"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

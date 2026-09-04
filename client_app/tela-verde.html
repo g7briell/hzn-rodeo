@@ -82,40 +82,13 @@
             animation: fadeOutCenter 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
 
-        /* Animações da Transmissão (Revelar Dinâmico Estilo TV) */
-        @keyframes broadcastRevealWipe {
-            0% {
-                clip-path: inset(0 100% 0 0);
-                opacity: 0;
-            }
-            8% {
-                opacity: 1;
-            }
-            100% {
-                clip-path: inset(0 0% 0 0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes bladeSweepLead {
-            0% {
-                left: 0%;
-                opacity: 1;
-            }
-            88% {
-                left: 98%;
-                opacity: 1;
-            }
-            100% {
-                left: 104%;
-                opacity: 0;
-            }
-        }
-
-        @keyframes pillDropIn {
+        /* ============================================================ */
+        /* ANIMAÇÃO DE ENTRADA BROADCAST (100% GPU - ZERO FLICKER NO OBS) */
+        /* ============================================================ */
+        @keyframes containerEntrance {
             0% {
                 opacity: 0;
-                transform: translateY(14px);
+                transform: translateY(35px);
             }
             100% {
                 opacity: 1;
@@ -123,13 +96,36 @@
             }
         }
 
-        @keyframes contentRevealSlide {
+        @keyframes broadcastWipeSweep {
+            0% {
+                transform: translate3d(-105%, 0, 0);
+            }
+            45% {
+                transform: translate3d(0%, 0, 0);
+            }
+            100% {
+                transform: translate3d(105%, 0, 0);
+            }
+        }
+
+        @keyframes pillSlideDown {
             0% {
                 opacity: 0;
-                transform: translateX(-30px);
+                transform: translateY(16px);
             }
-            40% {
-                opacity: 0.5;
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes contentRevealFade {
+            0% {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            50% {
+                opacity: 0.3;
             }
             100% {
                 opacity: 1;
@@ -139,7 +135,7 @@
 
         @keyframes metallicSheenSweep {
             0% {
-                transform: translateX(-150%) skewX(-25deg);
+                transform: translate3d(-150%, 0, 0) skewX(-25deg);
                 opacity: 0;
             }
             30% {
@@ -149,7 +145,7 @@
                 opacity: 0.7;
             }
             100% {
-                transform: translateX(250%) skewX(-25deg);
+                transform: translate3d(250%, 0, 0) skewX(-25deg);
                 opacity: 0;
             }
         }
@@ -172,28 +168,28 @@
         @keyframes outroSlideAway {
             0% {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translate3d(0, 0, 0);
             }
             100% {
                 opacity: 0;
-                transform: translateX(90px);
+                transform: translate3d(90px, 0, 0);
             }
         }
 
-        .anim-broadcast-reveal {
-            animation: broadcastRevealWipe 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .anim-container-in {
+            animation: containerEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        .anim-blade-lead {
-            animation: bladeSweepLead 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .anim-wipe-sweep {
+            animation: broadcastWipeSweep 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        .anim-pill-drop {
-            animation: pillDropIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+        .anim-pill-in {
+            animation: pillSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
         }
-        .anim-content-slide {
-            animation: contentRevealSlide 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+        .anim-content-in {
+            animation: contentRevealFade 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
         }
         .anim-sheen-sweep {
-            animation: metallicSheenSweep 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+            animation: metallicSheenSweep 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards;
         }
         .anim-outro-slide {
             animation: outroSlideAway 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
@@ -245,8 +241,8 @@
         <!-- Barra Principal Vinho com Camadas Dinâmicas -->
         <div id="matchup-main-bar" class="broadcast-wine-bar rounded-3xl min-w-[960px] max-w-6xl relative overflow-hidden transition-all duration-300">
             
-            <!-- Lâmina de Corte Frontal (Leading Edge Blade do vídeo) -->
-            <div id="matchup-blade-lead" class="absolute top-0 bottom-0 pointer-events-none z-30 w-12 bg-gradient-to-r from-red-600 via-white to-transparent shadow-[0_0_25px_#ffffff,0_0_15px_#dc2626]" style="opacity: 0;"></div>
+            <!-- Cortina / Lâmina Vermelha de Revelação (Wipe do vídeo - 100% GPU, zero flicker) -->
+            <div id="matchup-wipe-curtain" class="absolute inset-0 z-30 pointer-events-none bg-gradient-to-r from-[#60000a] via-[#b91c1c] to-[#e11d48] border-r-4 border-white shadow-[0_0_25px_#ffffff,0_0_15px_#ef4444]" style="transform: translate3d(-105%, 0, 0);"></div>
 
             <!-- Reflexo Metálico / Sheen -->
             <div id="matchup-sheen" class="absolute inset-0 pointer-events-none z-25 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] opacity-0"></div>
@@ -498,33 +494,25 @@
             }
 
             const pill = document.getElementById('matchup-round-pill');
-            const mainBar = document.getElementById('matchup-main-bar');
-            const blade = document.getElementById('matchup-blade-lead');
+            const curtain = document.getElementById('matchup-wipe-curtain');
             const sheen = document.getElementById('matchup-sheen');
             const contentLayer = document.getElementById('matchup-content-layer');
             const outroLayer = document.getElementById('matchup-outro-layer');
             const logoBox = document.getElementById('matchup-outro-logo-box');
 
-            // 1. Manter o container OCULTO enquanto limpa e prepara os estados iniciais
-            container.classList.add('hidden');
-            container.classList.remove('anim-outro-slide');
-
+            // Resetar camadas para estado inicial
             if (pill) {
-                pill.classList.remove('anim-pill-drop');
-                pill.style.opacity = '0';
+                pill.classList.remove('anim-pill-in');
             }
-            if (mainBar) {
-                mainBar.classList.remove('anim-broadcast-reveal');
-            }
-            if (blade) {
-                blade.classList.remove('anim-blade-lead');
-                blade.style.opacity = '0';
+            if (curtain) {
+                curtain.classList.remove('anim-wipe-sweep');
             }
             if (sheen) {
                 sheen.classList.remove('anim-sheen-sweep');
             }
             if (contentLayer) {
-                contentLayer.classList.remove('anim-content-slide');
+                contentLayer.classList.remove('anim-content-in');
+                contentLayer.style.opacity = '1';
             }
             if (outroLayer) {
                 outroLayer.classList.remove('opacity-100');
@@ -535,18 +523,16 @@
                 logoBox.style.transform = 'scale(0)';
             }
 
-            // 2. Anexar as classes de animação ANTES de desocultar (para não haver 1 frame visível)
-            if (mainBar) mainBar.classList.add('anim-broadcast-reveal');
-            if (blade) blade.classList.add('anim-blade-lead');
-            if (pill) pill.classList.add('anim-pill-drop');
-            if (contentLayer) contentLayer.classList.add('anim-content-slide');
+            // Exibir container com animação de subida suave (Zero flicker no OBS)
+            container.classList.remove('hidden', 'anim-outro-slide', 'anim-container-in');
+            void container.offsetWidth; // Reflow limpo
+            container.classList.add('anim-container-in');
+
+            // Disparar o Wipe Sweep da lâmina vermelha sobre a barra (100% GPU)
+            if (curtain) curtain.classList.add('anim-wipe-sweep');
+            if (pill) pill.classList.add('anim-pill-in');
+            if (contentLayer) contentLayer.classList.add('anim-content-in');
             if (sheen) sheen.classList.add('anim-sheen-sweep');
-
-            // 3. Forçar reflow com tudo em 0%
-            void container.offsetWidth;
-
-            // 4. Revelar o container: a animação inicia instantaneamente de 0% para 100%, sem piscar!
-            container.classList.remove('hidden');
         }
 
         function hideMatchupLowerThird() {
@@ -581,7 +567,7 @@
 
                 matchupOutroHideTimeout = setTimeout(() => {
                     container.classList.add('hidden');
-                    container.classList.remove('anim-outro-slide');
+                    container.classList.remove('anim-container-in', 'anim-outro-slide');
                     if (outroLayer) {
                         outroLayer.classList.remove('opacity-100');
                         outroLayer.classList.add('opacity-0');
