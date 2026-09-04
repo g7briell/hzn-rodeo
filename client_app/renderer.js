@@ -1869,8 +1869,9 @@ window.openEventControl = async (id) => {
     window.syncUserEventsWithCloud();
 
     // Inicializa canal Ably Realtime para receber notas dos Juízes ao vivo
-    if (currentEvent.share_id) {
-        window.initAblyRealtimeForEvent(currentEvent.share_id);
+    const sId = currentEvent.share_id || currentEvent.shareId || currentEvent.id;
+    if (sId) {
+        window.initAblyRealtimeForEvent(sId);
     }
 };
 
@@ -3922,7 +3923,11 @@ window.initAblyRealtimeForEvent = (shareId) => {
     }
 
     try {
-        if (currentAblyChannel && currentAblyChannel.name === `rodeoapp-event-${shareId}`) {
+        const cleanShareId = String(shareId).trim().toLowerCase();
+        const channelName = `rodeoapp-event-${cleanShareId}`;
+
+        if (currentAblyChannel && currentAblyChannel.name === channelName) {
+            console.log(`[ABLY REALTIME] Já conectado no canal correto: ${channelName}`);
             return; // Já conectado no canal correto
         }
 
@@ -3931,7 +3936,6 @@ window.initAblyRealtimeForEvent = (shareId) => {
         const ablyKey = localStorage.getItem('RODEOAPP_ABLY_KEY') || DEFAULT_ABLY_KEY;
         ablyRealtimeClient = new Ably.Realtime({ key: ablyKey, clientId: `admin-${Date.now()}` });
 
-        const channelName = `rodeoapp-event-${shareId}`;
         currentAblyChannel = ablyRealtimeClient.channels.get(channelName);
 
         // Status de conexão do Ably
@@ -4039,10 +4043,13 @@ function updateAblyStatusIndicator(status) {
 }
 
 async function handleJudgeScoreReceived(scoreData) {
-    if (!currentEvent || !scoreData) return;
+    const ev = currentEvent || transmissaoEvent;
+    if (!ev || !scoreData) return;
+    if (!currentEvent) currentEvent = ev;
 
     const { day, riderName, bullName, judgeName, judgeIdx, riderScore, bullScore, isFall, fallTime, isReride } = scoreData;
 
+    ev.notas = ev.notas || [];
     currentEvent.notas = currentEvent.notas || [];
     
     const rScore = parseFloat(riderScore) || 0;
@@ -7197,7 +7204,9 @@ function openTransmissaoLiveDashboard(ev) {
 
 // 6. Receber Montaria Ativa na Arena (Juiz selecionou)
 window.handleJudgeActiveMatchupReceived = (data) => {
-    if (!data || !transmissaoEvent) return;
+    const ev = transmissaoEvent || currentEvent;
+    if (!data || !ev) return;
+    if (!transmissaoEvent) transmissaoEvent = ev;
     const { riderName, day } = data;
     if (!riderName) return;
 
@@ -7373,7 +7382,9 @@ function renderTransmissaoJudgesGrid() {
 
 // 10. Processar Nota Recebida via Ably
 window.handleTransmissaoScoreReceived = (scoreData) => {
-    if (!scoreData || !transmissaoEvent) return;
+    const ev = transmissaoEvent || currentEvent;
+    if (!scoreData || !ev) return;
+    if (!transmissaoEvent) transmissaoEvent = ev;
     const { riderName, bullName, judgeIdx, isFall, fallTime } = scoreData;
 
     // Se não houver montaria ativa ou for de outro competidor, ativa automaticamente
@@ -8126,11 +8137,12 @@ window.broadcastOverlayCommand = (action, data = null) => {
     // 2. Ably Realtime Oficial (Sincronização em Nuvem para web.rodeoapp.pro)
     const ev = transmissaoEvent || currentEvent;
     const shareId = (ev && (ev.share_id || ev.shareId || ev.id)) || 'padrao';
+    const cleanShareId = String(shareId).trim().toLowerCase();
     const ably = ablyRealtimeClient || window.ablyRealtimeClient;
     if (ably) {
         try {
-            const channelName = `rodeoapp-event-${shareId}`;
-            const channel = currentAblyChannel || ably.channels.get(channelName);
+            const channelName = `rodeoapp-event-${cleanShareId}`;
+            const channel = (currentAblyChannel && currentAblyChannel.name === channelName) ? currentAblyChannel : ably.channels.get(channelName);
             if (channel) {
                 channel.publish('overlay_command', payload);
                 console.log('[OVERLAY BROADCAST ABLY] Publicado em:', channelName);
@@ -8853,6 +8865,13 @@ window.saveTabletControlDesktop = async () => {
 // CHANGELOG & NOVIDADES DA VERSÃO (MODAL)
 // ==========================================
 const CHANGELOG_DATA = {
+    "1.0.193": [
+        {
+            icon: "⚡",
+            title: "Sincronização Ably Realtime & Revelação Suave OBS",
+            desc: "Normalização total dos canais do Ably Realtime entre o aplicativo dos juízes e a central do controlador: seleção de competidor na arena e lançamento de notas 100% em tempo real. Animação de entrada no OBS com GPU Compositor clip-path zero reflow e lâmina deslizante fluida sem oscilações."
+        }
+    ],
     "1.0.190": [
         {
             icon: "🚀",
@@ -9018,7 +9037,7 @@ const CHANGELOG_DATA = {
 
 window.checkAndShowWhatsNew = async () => {
     try {
-        let appVersion = '1.0.190';
+        let appVersion = '1.0.193';
         if (window.electronAPI && typeof window.electronAPI.getAppVersion === 'function') {
             const v = await window.electronAPI.getAppVersion();
             if (v) appVersion = v;
@@ -9030,8 +9049,8 @@ window.checkAndShowWhatsNew = async () => {
             if (versionEl) versionEl.innerText = `v${appVersion}`;
 
             const container = document.getElementById('whats-new-items-container');
-            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.190")
-            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.190"];
+            // Busca o changelog exato. Se não achar da versão atual, exibe o mais recente ("1.0.193")
+            const items = CHANGELOG_DATA[appVersion] || CHANGELOG_DATA["1.0.193"];
 
             if (container && items) {
                 container.innerHTML = items.map(item => `

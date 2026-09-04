@@ -221,7 +221,8 @@ window.handleEventLogin = async () => {
             return false;
         }
 
-        window.state.shareId = shareId;
+        const cleanShareId = String(cloudEvent.share_id || shareId).trim().toLowerCase();
+        window.state.shareId = cleanShareId;
         window.state.sharePassword = password;
         window.state.eventData = normalizeEventData(cloudEvent);
         window.state.eventId = cloudEvent.id;
@@ -234,7 +235,7 @@ window.handleEventLogin = async () => {
         }
 
         // Conecta ao canal específico do evento no Ably
-        subscribeToEventChannel(shareId);
+        subscribeToEventChannel(cleanShareId);
 
         // Salva sessão parcial
         saveSession();
@@ -274,7 +275,8 @@ async function restoreSession(savedSession) {
             return;
         }
 
-        window.state.shareId = savedSession.shareId;
+        const cleanShareId = String(cloudEvent.share_id || savedSession.shareId).trim().toLowerCase();
+        window.state.shareId = cleanShareId;
         window.state.sharePassword = savedSession.sharePassword;
         window.state.eventData = normalizeEventData(cloudEvent);
         window.state.eventId = cloudEvent.id;
@@ -2355,8 +2357,10 @@ function subscribeToEventChannel(shareId) {
             ablyChannel = null;
         }
 
-        const channelName = `rodeoapp-event-${shareId}`;
+        const cleanShareId = String(shareId).trim().toLowerCase();
+        const channelName = `rodeoapp-event-${cleanShareId}`;
         ablyChannel = ablyClient.channels.get(channelName);
+        console.log(`[RODEOAPP JUIZ] Conectado ao canal Ably: ${channelName}`);
         updateAblyBadge('live');
 
         // Escuta quando um juiz começa a avaliar uma montaria na arena (Destaque e Foco)
