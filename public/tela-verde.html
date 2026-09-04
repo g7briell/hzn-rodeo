@@ -486,22 +486,28 @@
             // Remover classes de animação de saída residuais
             container.classList.remove('anim-outro-slide');
 
-            // ─── STEP 1: Tornar container visível ───
-            // SEGURO: revealWindow.width = 0px + overflow:hidden = nada visível no frame 1
+            // ─── STEP 1: Tornar container visível com width=0 ───
+            // Neste ponto: container visível MAS revealWindow.width = 0px
+            // overflow:hidden garante que NENHUM pixel do conteúdo aparece.
             container.classList.remove('hidden');
 
-            // ─── STEP 2: Forçar reflow para garantir que o DOM aplicou width:0px ───
-            // Sem esse reflow, o browser pode "batchear" as mudanças e pular o frame 0.
+            // ─── STEP 2: Double requestAnimationFrame ───
+            // O void offsetWidth força layout SÍNCRONO (o DOM "vê" width:0px).
+            // O double-rAF garante que o CEF/OBS renderize pelo menos 1 frame
+            // com width=0 ANTES de adicionar a classe de animação.
+            // Sem isso, o CEF pode "batchear" display:block + animation start
+            // no mesmo compositor frame, causando o flicker de 1 frame.
             void revealWindow.offsetWidth;
-
-            // ─── STEP 3: Disparar animação de expansão da janela ───
-            // A partir daqui, a janela expande de 0 para 1080px progressivamente.
-            // O overflow:hidden clipa o filho #matchup-main-bar em cada frame.
-            if (revealWindow) revealWindow.classList.add('anim-reveal-window');
-            if (blade) blade.classList.add('anim-blade-fade');
-
-            // Pílula aparece com leve delay após a barra começar a abrir
-            if (pill) pill.classList.add('anim-pill-drop');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    // ─── STEP 3: Só agora disparar a animação ───
+                    // Frame anterior já foi pintado (tela verde pura = zero flicker).
+                    // Agora a janela expande de 0 → 1080px.
+                    if (revealWindow) revealWindow.classList.add('anim-reveal-window');
+                    if (blade) blade.classList.add('anim-blade-fade');
+                    if (pill) pill.classList.add('anim-pill-drop');
+                });
+            });
         }
 
         function hideMatchupLowerThird() {
