@@ -1279,11 +1279,12 @@ function openScoreModalDirect(matchupIdx) {
     window.state.currentBull = bull;
 
     // Transmite pelo Ably que esta montaria está sendo avaliada na arena agora
-    broadcastActiveArenaMatchup(r.nome);
+    broadcastActiveArenaMatchup(r.nome, bull.nome, bull.cia, bull.lado, Boolean(r.isReride));
 
     // Preenche cabeçalhos fixos da montaria
     document.getElementById('flow-matchup-number').innerText = `#${matchupIdx + 1}`;
-    document.getElementById('flow-matchup-title').innerText = `${r.nome} VS ${bull.nome}`;
+    const rerideTag = r.isReride ? ' (RE-RIDE)' : '';
+    document.getElementById('flow-matchup-title').innerText = `${r.nome}${rerideTag} VS ${bull.nome}`;
     document.getElementById('flow-rider-city').innerText = r.cidade || 'CIDADE - UF';
     document.getElementById('flow-bull-cia').innerText = bull.cia || 'CIA DE RODEIO';
 
@@ -1340,7 +1341,7 @@ function openScoreModalDirect(matchupIdx) {
             window.judgingState.competidorInt = defaults.compInt;
             window.judgingState.competidorDec = defaults.compDec;
             window.judgingState.isFall = false;
-            window.judgingState.isReride = false;
+            window.judgingState.isReride = Boolean(r.isReride);
         }
     } else {
         window.judgingState.touroInt = defaults.touroInt;
@@ -1348,7 +1349,7 @@ function openScoreModalDirect(matchupIdx) {
         window.judgingState.competidorInt = defaults.compInt;
         window.judgingState.competidorDec = defaults.compDec;
         window.judgingState.isFall = false;
-        window.judgingState.isReride = false;
+        window.judgingState.isReride = Boolean(r.isReride);
     }
 
     updateDisplays();
@@ -1363,13 +1364,17 @@ function formatDecString(decStr) {
     return ',00';
 }
 
-function broadcastActiveArenaMatchup(riderName) {
+function broadcastActiveArenaMatchup(riderName, bullName = null, bullCia = null, lado = null, isReride = false) {
     window.state.activeArenaRider = riderName;
     renderRidesList();
 
     if (ablyChannel && window.state.currentJudge) {
         ablyChannel.publish('judge-active-matchup', {
             riderName: riderName,
+            bullName: bullName,
+            bullCia: bullCia,
+            lado: lado,
+            isReride: Boolean(isReride),
             day: window.state.selectedDay,
             judgeName: window.state.currentJudge.nome,
             timestamp: Date.now()
@@ -1617,6 +1622,19 @@ window.submitFinalScoreToRealtime = async (isFallOverride = null, isRerideOverri
         // 3. Atualiza estado na memória local
         updateLocalScoreState(scorePayload);
 
+        // Salva dados da montaria antes de fechar a tela para permitir Re-Ride
+        window.state.lastCompletedMatchup = {
+            matchupIdx: window.state.currentMatchupIdx,
+            rider: window.state.currentRider,
+            bull: window.state.currentBull,
+            day: window.state.selectedDay,
+            isReride: isReride,
+            riderName: scorePayload.riderName,
+            bullName: scorePayload.bullName,
+            bullCia: scorePayload.bullCia,
+            riderCity: scorePayload.riderCity
+        };
+
         // 4. Minimiza/fecha a tela de julgamento imediatamente após lançar a nota!
         closeJudgingFlow();
 
@@ -1753,7 +1771,6 @@ window.closeWaitingOtherJudgeModal = () => {
 function handleAllJudgesCompleted(scoresMap, scorePayload) {
     stopWaitingPollInterval();
     document.getElementById('modal-waiting-other-judge')?.classList.add('hidden');
-    window.state.waitingMatchup = null;
 
     // Calcula Soma Total de Todos os Juízes
     let sumTotal = 0;
@@ -1767,10 +1784,88 @@ function handleAllJudgesCompleted(scoresMap, scorePayload) {
     console.log(`[RODEOAPP JUIZ] Montaria finalizada por todos os juízes. Soma Total: ${sumTotal}, Queda: ${anyQueda}`);
 
     // Regra: Se a nota for < 80.00 e NÃO for queda (0,00) -> Abre Popup de Re-Ride
-    if (sumTotal > 0 && sumTotal < 80.00 && !anyQueda) {
-        document.getElementById('low-score-sum-display').innerText = sumTotal.toFixed(2);
+    const isLowScore = (sumTotal > 0 && sumTotal < 80.00 && !anyQueda);
+    const isRerideFlag = Boolean(scorePayload?.isReride);
+
+    if (isLowScore || isRerideFlag) {
+        const day = scorePayload?.day || window.state.lastCompletedMatchup?.day || window.state.waitingMatchup?.day || window.state.selectedDay;
+        const sorteios = window.state.eventData?.sorteios || [];
+        const currentSorteio = sorteios.find(s => s.day === day) || sorteios[0];
+        
+        let riderObj = window.state.currentRider || window.state.lastCompletedMatchup?.rider;
+        let bullObj = window.state.currentBull || window.state.lastCompletedMatchup?.bull;
+        let mIdx = (window.state.currentMatchupIdx !== null && window.state.currentMatchupIdx !== undefined)
+            ? window.state.currentMatchupIdx 
+            : (window.state.lastCompletedMatchup?.matchupIdx !== undefined ? window.state.lastCompletedMatchup.matchupIdx : window.state.waitingMatchup?.matchupIdx);
+
+        const rName = scorePayload?.riderName || window.state.lastCompletedMatchup?.rider?.nome || window.state.waitingMatchup?.riderName;
+
+        if ((!riderObj || mIdx === null || mIdx === undefined) && currentSorteio && currentSorteio.riders) {
+            if (rName) {
+                const foundIdx = currentSorteio.riders.findIndex(r => r && r.nome && r.nome.trim().toUpperCase() === rName.trim().toUpperCase());
+                if (foundIdx !== -1) {
+                    mIdx = foundIdx;
+                    riderObj = currentSorteio.riders[foundIdx];
+                }
+            }
+        }
+
+        if (mIdx !== null && mIdx !== undefined && currentSorteio && currentSorteio.bulls) {
+            const bullIdx = currentSorteio.assignments[mIdx] !== undefined ? currentSorteio.assignments[mIdx] : mIdx;
+            if (currentSorteio.bulls[bullIdx]) {
+                bullObj = currentSorteio.bulls[bullIdx];
+            }
+        }
+
+        if (!riderObj && rName) {
+            riderObj = { nome: rName, cidade: scorePayload?.riderCity || '' };
+        }
+        if (!bullObj && scorePayload?.bullName) {
+            bullObj = { nome: scorePayload.bullName, cia: scorePayload.bullCia || '---' };
+        }
+
+        window.state.reridePendingMatchup = {
+            rider: riderObj,
+            bull: bullObj,
+            matchupIdx: mIdx,
+            day: day
+        };
+        window.state.currentRider = riderObj;
+        window.state.currentBull = bullObj;
+        window.state.currentMatchupIdx = mIdx;
+        window.state.waitingMatchup = null;
+
+        // Atualiza display da nota
+        const sumDisplayEl = document.getElementById('low-score-sum-display');
+        if (sumDisplayEl) sumDisplayEl.innerText = sumTotal.toFixed(2);
+
+        // Busca o touro sugerido da reserva
+        const availableBull = currentSorteio ? findNextAvailableRerideBull(currentSorteio) : null;
+        window.state.suggestedRerideBull = availableBull;
+
+        const rNameEl = document.getElementById('low-score-rider-display');
+        if (rNameEl && riderObj) rNameEl.innerText = `COMPETIDOR: ${riderObj.nome}`;
+
+        const bullSuggestBox = document.getElementById('low-score-bull-suggest-box');
+        const bullSuggestName = document.getElementById('low-score-suggested-bull-name');
+        const bullSuggestCia = document.getElementById('low-score-suggested-bull-cia');
+        const bullSuggestLado = document.getElementById('low-score-suggested-bull-lado');
+
+        if (availableBull) {
+            if (bullSuggestBox) bullSuggestBox.classList.remove('hidden');
+            if (bullSuggestName) bullSuggestName.innerText = availableBull.nome;
+            if (bullSuggestCia) bullSuggestCia.innerText = `CIA ${availableBull.cia || '---'}`;
+            if (bullSuggestLado) {
+                const ladoStr = availableBull.lado === 'E' ? 'ESQUERDA (E)' : (availableBull.lado === 'D' ? 'DIREITA (D)' : 'CENTRO / AMBOS (C)');
+                bullSuggestLado.innerText = `LADO: ${ladoStr}`;
+            }
+        } else {
+            if (bullSuggestBox) bullSuggestBox.classList.add('hidden');
+        }
+
         document.getElementById('modal-low-score-reride')?.classList.remove('hidden');
     } else {
+        window.state.waitingMatchup = null;
         closeJudgingFlow();
         showToast("Notas consolidadas com sucesso!", "success");
     }
@@ -1781,14 +1876,23 @@ function handleAllJudgesCompleted(scoresMap, scorePayload) {
 // ==========================================
 window.handleKeepLowScore = () => {
     document.getElementById('modal-low-score-reride')?.classList.add('hidden');
+    window.state.suggestedRerideBull = null;
+    window.state.reridePendingMatchup = null;
     closeJudgingFlow();
     showToast("Nota confirmada mantida!", "success");
 };
 
-window.handleRequestNextBullReride = () => {
-    document.getElementById('modal-low-score-reride').classList.add('hidden');
+window.handleRequestNextBullReride = async () => {
+    document.getElementById('modal-low-score-reride')?.classList.add('hidden');
+
+    if (!window.state.currentRider && window.state.reridePendingMatchup?.rider) {
+        window.state.currentRider = window.state.reridePendingMatchup.rider;
+        window.state.currentBull = window.state.reridePendingMatchup.bull;
+        window.state.currentMatchupIdx = window.state.reridePendingMatchup.matchupIdx;
+    }
 
     if (!window.state.currentRider) {
+        showToast("Competidor não encontrado para Re-Ride.", "error");
         renderRidesList();
         return;
     }
@@ -1803,28 +1907,11 @@ window.handleRequestNextBullReride = () => {
     }
 
     // Busca o touro sugerido da reserva
-    const availableBull = findNextAvailableRerideBull(currentSorteio);
+    let bull = window.state.suggestedRerideBull || findNextAvailableRerideBull(currentSorteio);
 
-    if (availableBull) {
-        window.state.suggestedRerideBull = availableBull;
-        
-        // Abre o modal de confirmação do touro sugerido
-        const riderNameEl = document.getElementById('confirm-reride-rider-name');
-        if (riderNameEl) riderNameEl.innerHTML = `Competidor: <span class="text-white font-black">${window.state.currentRider.nome}</span>`;
-
-        const bNameEl = document.getElementById('confirm-reride-bull-name');
-        if (bNameEl) bNameEl.innerText = availableBull.nome;
-
-        const bCiaEl = document.getElementById('confirm-reride-bull-cia');
-        if (bCiaEl) bCiaEl.innerText = `CIA ${availableBull.cia || '---'}`;
-
-        const bLadoEl = document.getElementById('confirm-reride-bull-lado');
-        if (bLadoEl) {
-            const ladoStr = availableBull.lado === 'E' ? 'ESQUERDA (E)' : (availableBull.lado === 'D' ? 'DIREITA (D)' : 'CENTRO / AMBOS (C)');
-            bLadoEl.innerText = `LADO: ${ladoStr}`;
-        }
-
-        document.getElementById('modal-confirm-reride-bull').classList.remove('hidden');
+    if (bull) {
+        // Concede diretamente o Re-Ride e vai para a TELA DO TOURO!
+        await confirmCreateRerideWithBull(bull);
     } else {
         // Sem touro sugerido automaticamente: abre a lista completa de touros de re-ride
         openRerideBullsListModal();
@@ -1833,7 +1920,7 @@ window.handleRequestNextBullReride = () => {
 
 // Clicou em "SIM" no modal de confirmação do touro sugerido
 window.handleAcceptSuggestedRerideBull = async () => {
-    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
+    document.getElementById('modal-confirm-reride-bull')?.classList.add('hidden');
     const bull = window.state.suggestedRerideBull;
     if (bull) {
         await confirmCreateRerideWithBull(bull);
@@ -1842,12 +1929,21 @@ window.handleAcceptSuggestedRerideBull = async () => {
 
 // Clicou em "NÃO" no modal de confirmação do touro sugerido -> Abre lista de touros de re-ride
 window.handleRejectSuggestedBullAndOpenList = () => {
-    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
+    document.getElementById('modal-confirm-reride-bull')?.classList.add('hidden');
     openRerideBullsListModal();
 };
 
 // Abre modal com todos os touros de re-ride / boiadas disponíveis
 window.openRerideBullsListModal = () => {
+    document.getElementById('modal-low-score-reride')?.classList.add('hidden');
+    document.getElementById('modal-confirm-reride-bull')?.classList.add('hidden');
+
+    if (!window.state.currentRider && window.state.reridePendingMatchup?.rider) {
+        window.state.currentRider = window.state.reridePendingMatchup.rider;
+        window.state.currentBull = window.state.reridePendingMatchup.bull;
+        window.state.currentMatchupIdx = window.state.reridePendingMatchup.matchupIdx;
+    }
+
     const day = window.state.selectedDay;
     const sorteios = window.state.eventData?.sorteios || [];
     const currentSorteio = sorteios.find(s => s.day === day) || sorteios[0];
@@ -1865,19 +1961,11 @@ window.openRerideBullsListModal = () => {
     window.state.allRerideBullsList = allBulls;
 
     renderRerideBullsList(allBulls);
-    document.getElementById('modal-select-reride-bull-list').classList.remove('hidden');
+    document.getElementById('modal-select-reride-bull-list')?.classList.remove('hidden');
 };
 
 window.closeRerideBullsListModal = () => {
-    document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
-    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
-    document.getElementById('modal-low-score-reride').classList.add('hidden');
-    document.getElementById('view-judging-flow').classList.add('hidden');
-    window.state.currentMatchupIdx = null;
-    window.state.currentRider = null;
-    window.state.currentBull = null;
-    broadcastClearActiveArenaMatchup();
-    renderRidesList();
+    document.getElementById('modal-select-reride-bull-list')?.classList.add('hidden');
 };
 
 window.filterRerideBullsList = (query) => {
@@ -1959,7 +2047,16 @@ window.selectRerideBullFromList = async (bullIdx) => {
 
 // Efetiva a criação da montaria de re-ride com o touro escolhido
 async function confirmCreateRerideWithBull(selectedBull) {
-    if (!window.state.currentRider || !selectedBull) return;
+    if (!window.state.currentRider && window.state.reridePendingMatchup?.rider) {
+        window.state.currentRider = window.state.reridePendingMatchup.rider;
+        window.state.currentBull = window.state.reridePendingMatchup.bull;
+        window.state.currentMatchupIdx = window.state.reridePendingMatchup.matchupIdx;
+    }
+
+    if (!window.state.currentRider || !selectedBull) {
+        showToast("Erro ao criar Re-Ride: competidor ou touro inválido.", "error");
+        return;
+    }
 
     const rider = window.state.currentRider;
     const currentBull = window.state.currentBull;
@@ -1996,7 +2093,7 @@ async function confirmCreateRerideWithBull(selectedBull) {
         isReride: true
     });
 
-    let bullIdx = currentSorteio.bulls.findIndex(b => b.nome.trim().toUpperCase() === selectedBull.nome.trim().toUpperCase());
+    let bullIdx = currentSorteio.bulls.findIndex(b => b && b.nome && b.nome.trim().toUpperCase() === selectedBull.nome.trim().toUpperCase());
     if (bullIdx === -1) {
         currentSorteio.bulls.push({
             nome: selectedBull.nome,
@@ -2011,18 +2108,34 @@ async function confirmCreateRerideWithBull(selectedBull) {
     // 3. Salva na nuvem e transmite via Ably
     await syncEventUpdateToCloudAndAbly();
 
-    // Fecha a prancheta de avaliação e qualquer modal de seleção intermediário
-    document.getElementById('view-judging-flow').classList.add('hidden');
-    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
-    document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
-    document.getElementById('modal-low-score-reride').classList.add('hidden');
-    broadcastClearActiveArenaMatchup();
+    // Notifica outros juízes e transmissão que o re-ride foi criado
+    if (ablyChannel) {
+        ablyChannel.publish('judge-reride-created', {
+            riderName: rider.nome,
+            bullName: selectedBull.nome,
+            bullCia: selectedBull.cia || '---',
+            lado: selectedBull.lado || 'C',
+            newRiderIndex: newRiderIndex,
+            day: day,
+            judgeName: window.state.currentJudge?.nome || 'Juiz'
+        });
+    }
 
-    // 4. Mostra Pop-up de Sucesso
-    document.getElementById('reride-msg-icon').className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto mb-4 flex items-center justify-center text-3xl font-black border border-emerald-500/40";
-    document.getElementById('reride-msg-title').innerText = "MONTARIA DE RE-RIDE CRIADA";
-    document.getElementById('reride-msg-text').innerHTML = `Montaria Criada para o Competidor <b class="text-white">${rider.nome}</b>, Touro <b class="text-yellow-400">${selectedBull.nome}</b> (CIA ${selectedBull.cia || '---'})`;
-    document.getElementById('modal-reride-result-msg').classList.remove('hidden');
+    // Fecha todos os modais de re-ride e de espera
+    document.getElementById('modal-confirm-reride-bull')?.classList.add('hidden');
+    document.getElementById('modal-select-reride-bull-list')?.classList.add('hidden');
+    document.getElementById('modal-low-score-reride')?.classList.add('hidden');
+    document.getElementById('modal-reride-result-msg')?.classList.add('hidden');
+    document.getElementById('modal-waiting-other-judge')?.classList.add('hidden');
+    stopWaitingPollInterval();
+    window.state.suggestedRerideBull = null;
+    window.state.reridePendingMatchup = null;
+
+    // 4. ABRE IMEDIATAMENTE A TELA DO TOURO PARA O NOVO RE-RIDE!
+    openScoreModalDirect(newRiderIndex);
+    goToStepTouro();
+
+    showToast(`Re-Ride criado! Julgando ${selectedBull.nome}`, "success");
 }
 
 function getAllAvailableRerideBulls(currentSorteio) {
@@ -2127,17 +2240,12 @@ function findNextAvailableRerideBull(currentSorteio) {
 }
 
 window.closeRerideResultModal = () => {
-    document.getElementById('modal-reride-result-msg').classList.add('hidden');
-    document.getElementById('modal-select-reride-bull-list').classList.add('hidden');
-    document.getElementById('modal-confirm-reride-bull').classList.add('hidden');
-    document.getElementById('modal-low-score-reride').classList.add('hidden');
-    document.getElementById('view-judging-flow').classList.add('hidden');
-    window.state.currentMatchupIdx = null;
-    window.state.currentRider = null;
-    window.state.currentBull = null;
+    document.getElementById('modal-reride-result-msg')?.classList.add('hidden');
+    document.getElementById('modal-select-reride-bull-list')?.classList.add('hidden');
+    document.getElementById('modal-confirm-reride-bull')?.classList.add('hidden');
+    document.getElementById('modal-low-score-reride')?.classList.add('hidden');
     window.state.suggestedRerideBull = null;
-    broadcastClearActiveArenaMatchup();
-    renderRidesList();
+    window.state.reridePendingMatchup = null;
 };
 
 // ==========================================
@@ -2390,13 +2498,31 @@ function subscribeToEventChannel(shareId) {
                 // Se estava esperando este juiz na tela de espera
                 if (window.state.waitingMatchup && window.state.waitingMatchup.riderName === message.data.riderName && window.state.waitingMatchup.day === message.data.day) {
                     const totalJudgesExpected = parseInt(window.state.eventData.judges || 2) || 2;
-                    const scoresMap = getMatchupScoresMap(message.data.riderName, message.data.day);
+                    const scoresMap = getMatchupScoresMap(message.data.riderName, message.data.day, message.data.bullName, message.data.isReride);
                     
                     if (Object.keys(scoresMap).length >= totalJudgesExpected) {
                         handleAllJudgesCompleted(scoresMap, message.data);
                     } else {
                         showWaitingOtherJudgeModal(scoresMap, totalJudgesExpected);
                     }
+                }
+            }
+        });
+
+        // Escuta criação de Re-Ride feita pelo outro juiz ou pelo Admin
+        ablyChannel.subscribe('judge-reride-created', (message) => {
+            console.log("[ABLY REALTIME] Re-ride criado recebido:", message.data);
+            if (message.data && message.data.day === window.state.selectedDay) {
+                document.getElementById('modal-low-score-reride')?.classList.add('hidden');
+                document.getElementById('modal-confirm-reride-bull')?.classList.add('hidden');
+                document.getElementById('modal-select-reride-bull-list')?.classList.add('hidden');
+                document.getElementById('modal-waiting-other-judge')?.classList.add('hidden');
+                stopWaitingPollInterval();
+
+                if (message.data.newRiderIndex !== undefined && message.data.newRiderIndex !== null) {
+                    openScoreModalDirect(message.data.newRiderIndex);
+                    goToStepTouro();
+                    showToast(`Re-Ride criado: Julgando ${message.data.bullName || 'Touro'}`, "info");
                 }
             }
         });

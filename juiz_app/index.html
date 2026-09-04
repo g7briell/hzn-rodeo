@@ -646,28 +646,47 @@
     <!-- MODAL: POP-UP DE RE-RIDE (NOTA < 80)       -->
     <!-- ========================================== -->
     <div id="modal-low-score-reride" class="fixed inset-0 z-[130] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 hidden">
-        <div class="w-full max-w-md glass-card p-8 sm:p-10 rounded-[2.5rem] border-2 border-amber-500 text-center shadow-2xl relative">
-            <div class="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto mb-4 flex items-center justify-center text-3xl border border-amber-500/40">
+        <div class="w-full max-w-md glass-card p-6 sm:p-8 rounded-[2.5rem] border-2 border-amber-500 text-center shadow-2xl relative">
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto mb-3 flex items-center justify-center text-3xl border border-amber-500/40">
                 ⚠️
             </div>
 
             <h3 class="text-3xl font-black italic uppercase tracking-tighter text-white mb-1">
                 RE-RIDE?
             </h3>
-            <p class="text-sm font-bold text-amber-400 mb-2">
+            <p id="low-score-rider-display" class="text-xs font-black text-white uppercase tracking-wider mb-1">
+                ---
+            </p>
+            <p class="text-sm font-bold text-amber-400 mb-3">
                 Nota Somada: <span id="low-score-sum-display" class="text-white text-xl font-mono">00.00</span> (Abaixo de 80,00)
             </p>
-            <p class="text-xs text-slate-400 font-medium mb-6">
+
+            <!-- Card em destaque do touro sugerido para Re-Ride -->
+            <div id="low-score-bull-suggest-box" class="bg-slate-950/90 border-2 border-yellow-500/50 p-4 rounded-2xl mb-4 text-center shadow-inner hidden">
+                <div class="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">NOVO TOURO (RESERVA)</div>
+                <div id="low-score-suggested-bull-name" class="text-2xl font-black text-white uppercase italic tracking-tight mb-0.5">---</div>
+                <div id="low-score-suggested-bull-cia" class="text-xs font-black text-slate-300 uppercase">CIA ---</div>
+                <div id="low-score-suggested-bull-lado" class="mt-2 inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+                    LADO: ---
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400 font-medium mb-5">
                 O competidor tem direito a solicitar um novo touro de Re-Ride ou manter a nota atual.
             </p>
 
-            <div class="grid grid-cols-2 gap-4">
-                <button type="button" onclick="handleKeepLowScore()" class="h-16 rounded-2xl bg-red-600/20 hover:bg-red-600/30 border-2 border-red-500 text-red-400 hover:text-red-300 font-black text-lg uppercase tracking-wider active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-red-950/40">
-                    ✕ NÃO
+            <div class="space-y-3">
+                <button type="button" onclick="handleRequestNextBullReride()" class="w-full h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-lg uppercase tracking-wider shadow-xl shadow-emerald-500/30 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
+                    ✓ SIM, JULGAR TOURO
                 </button>
-                <button type="button" onclick="handleRequestNextBullReride()" class="h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-lg uppercase tracking-wider shadow-xl shadow-emerald-500/30 active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-2">
-                    ✓ SIM
-                </button>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="handleKeepLowScore()" class="h-14 rounded-2xl bg-red-600/20 hover:bg-red-600/30 border-2 border-red-500 text-red-400 hover:text-red-300 font-black text-xs uppercase tracking-wider active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40">
+                        ✕ MANTER NOTA
+                    </button>
+                    <button type="button" onclick="openRerideBullsListModal()" class="h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-yellow-400 hover:text-yellow-300 font-black text-xs uppercase tracking-wider active:scale-95 touch-active cursor-pointer flex items-center justify-center gap-1.5 shadow-lg">
+                        🔄 OUTRO TOURO
+                    </button>
+                </div>
             </div>
         </div>
     </div>

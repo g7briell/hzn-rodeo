@@ -3979,6 +3979,46 @@ window.initAblyRealtimeForEvent = (shareId) => {
             }
         });
 
+        // 4. Escutar Re-ride criado pelo Juiz
+        currentAblyChannel.subscribe('judge-reride-created', async (message) => {
+            console.log('[ABLY REALTIME] Re-ride criado pelo Juiz:', message.data);
+            const ev = currentEvent || transmissaoEvent;
+            if (ev && message.data) {
+                const { riderName, bullName, bullCia, lado, day } = message.data;
+                const s = (ev.sorteios || []).find(x => x.day === day) || ev.sorteios?.[0];
+                if (s) {
+                    s.riders = s.riders || [];
+                    s.bulls = s.bulls || [];
+                    s.assignments = s.assignments || {};
+                    const newRIdx = s.riders.length;
+                    s.riders.push({ nome: riderName, isReride: true });
+                    let bIdx = s.bulls.findIndex(b => b && b.nome && b.nome.toUpperCase() === (bullName || '').toUpperCase());
+                    if (bIdx === -1) {
+                        s.bulls.push({ nome: bullName, cia: bullCia || '---', lado: lado || 'C' });
+                        bIdx = s.bulls.length - 1;
+                    }
+                    s.assignments[newRIdx] = bIdx;
+                    await window.persistAndSyncEvent(ev);
+                    if (typeof renderNotasCards === 'function') renderNotasCards();
+                }
+            }
+        });
+
+        // 5. Escutar atualização completa do evento emitida pelo Juiz ou Admin
+        currentAblyChannel.subscribe('admin-event-updated', async (message) => {
+            console.log('[ABLY REALTIME] Evento atualizado remotamente:', message.data);
+            if (message.data && message.data.localData) {
+                const ev = currentEvent || transmissaoEvent;
+                if (ev) {
+                    if (message.data.localData.sorteios) ev.sorteios = message.data.localData.sorteios;
+                    if (message.data.localData.notas) ev.notas = message.data.localData.notas;
+                    if (message.data.localData.boiadas) ev.boiadas = message.data.localData.boiadas;
+                    await window.persistAndSyncEvent(ev);
+                    if (typeof renderNotasCards === 'function') renderNotasCards();
+                }
+            }
+        });
+
     } catch (err) {
         console.error("Erro ao inicializar Ably Realtime:", err);
     }
@@ -7207,7 +7247,7 @@ window.handleJudgeActiveMatchupReceived = (data) => {
     const ev = transmissaoEvent || currentEvent;
     if (!data || !ev) return;
     if (!transmissaoEvent) transmissaoEvent = ev;
-    const { riderName, day } = data;
+    const { riderName, bullName: dataBull, bullCia: dataCia, lado: dataLado, isReride, day } = data;
     if (!riderName) return;
 
     if (day && parseInt(day) !== transmissaoSelectedRound) {
@@ -7218,17 +7258,24 @@ window.handleJudgeActiveMatchupReceived = (data) => {
     }
 
     const daySorteios = getTransmissaoMatchupsForRound(transmissaoSelectedRound);
-    const itemSorteio = daySorteios.find(s => (s.peao === riderName || s.peaoNome === riderName));
+    let itemSorteio = null;
+    if (isReride) {
+        itemSorteio = daySorteios.find(s => (s.peao === riderName || s.peaoNome === riderName) && (s.isReride || (dataBull && (s.touro || s.touroNome) === dataBull)));
+    }
+    if (!itemSorteio) {
+        itemSorteio = daySorteios.find(s => (s.peao === riderName || s.peaoNome === riderName));
+    }
 
-    const bullName = itemSorteio ? (itemSorteio.touro || itemSorteio.touroNome || 'TOURO DA ARENA') : 'TOURO DA ARENA';
-    const bullCia = itemSorteio ? (itemSorteio.cia || itemSorteio.boiada || '') : '';
-    const lado = itemSorteio ? (itemSorteio.lado || '') : '';
+    const bullName = dataBull || (itemSorteio ? (itemSorteio.touro || itemSorteio.touroNome || 'TOURO DA ARENA') : 'TOURO DA ARENA');
+    const bullCia = dataCia || (itemSorteio ? (itemSorteio.cia || itemSorteio.boiada || '') : '');
+    const lado = dataLado || (itemSorteio ? (itemSorteio.lado || '') : '');
 
     activateTransmissaoMatchup({
         riderName,
         bullName,
         bullCia,
         lado,
+        isReride: Boolean(isReride),
         day: transmissaoSelectedRound
     });
 };
