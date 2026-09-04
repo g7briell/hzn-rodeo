@@ -83,113 +83,49 @@
         }
 
         /* ============================================================ */
-        /* ANIMAÇÃO DE ENTRADA BROADCAST (100% GPU - ZERO FLICKER NO OBS) */
+        /* ANIMAÇÃO BROADCAST - overflow:hidden + width:0→full (PROVA DE FLICKER) */
         /* ============================================================ */
-        @keyframes containerEntrance {
-            0% {
-                opacity: 0;
-                transform: translateY(35px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
+
+        /* Janela que expande da esquerda para a direita, clipa o conteúdo interno */
+        @keyframes revealWindow {
+            0%   { width: 0px; }
+            100% { width: 1080px; }
         }
 
-        @keyframes broadcastWipeSweep {
-            0% {
-                transform: translate3d(-105%, 0, 0);
-            }
-            45% {
-                transform: translate3d(0%, 0, 0);
-            }
-            100% {
-                transform: translate3d(105%, 0, 0);
-            }
+        /* Pílula desce de cima após a barra aparecer */
+        @keyframes pillDropIn {
+            0%   { opacity: 0; transform: translateY(14px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes pillSlideDown {
-            0% {
-                opacity: 0;
-                transform: translateY(16px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* Fio branco de borda que desaparece ao final */
+        @keyframes bladeFade {
+            0%   { opacity: 1; }
+            80%  { opacity: 1; }
+            100% { opacity: 0; }
         }
 
-        @keyframes contentRevealFade {
-            0% {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            50% {
-                opacity: 0.3;
-            }
-            100% {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        @keyframes metallicSheenSweep {
-            0% {
-                transform: translate3d(-150%, 0, 0) skewX(-25deg);
-                opacity: 0;
-            }
-            30% {
-                opacity: 0.7;
-            }
-            70% {
-                opacity: 0.7;
-            }
-            100% {
-                transform: translate3d(250%, 0, 0) skewX(-25deg);
-                opacity: 0;
-            }
-        }
-
-        @keyframes logoOutroPop {
-            0% {
-                transform: scale(0);
-                opacity: 0;
-            }
-            70% {
-                transform: scale(1.1);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
+        /* Saída: slide para a direita */
         @keyframes outroSlideAway {
-            0% {
-                opacity: 1;
-                transform: translate3d(0, 0, 0);
-            }
-            100% {
-                opacity: 0;
-                transform: translate3d(90px, 0, 0);
-            }
+            0%   { opacity: 1; transform: translate3d(0, 0, 0); }
+            100% { opacity: 0; transform: translate3d(120px, 0, 0); }
         }
 
-        .anim-container-in {
-            animation: containerEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        /* Logo no outro */
+        @keyframes logoOutroPop {
+            0%   { transform: scale(0); opacity: 0; }
+            70%  { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
         }
-        .anim-wipe-sweep {
-            animation: broadcastWipeSweep 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+        .anim-reveal-window {
+            animation: revealWindow 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        .anim-pill-in {
-            animation: pillSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+        .anim-pill-drop {
+            animation: pillDropIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
         }
-        .anim-content-in {
-            animation: contentRevealFade 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
-        }
-        .anim-sheen-sweep {
-            animation: metallicSheenSweep 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards;
+        .anim-blade-fade {
+            animation: bladeFade 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .anim-outro-slide {
             animation: outroSlideAway 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
@@ -233,86 +169,101 @@
     <!-- GRÁFICO 1: TARJA INFERIOR DO COMPETIDOR (LOWER THIRD) -->
     <!-- ============================================================ -->
     <div id="overlay-matchup-container" class="fixed bottom-12 left-16 z-40 hidden">
-        <!-- Pílula Superior de Round -->
-        <div id="matchup-round-pill" class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6 transition-all duration-300" style="opacity: 0;">
+
+        <!-- Pílula Superior de Round — fica fora da janela, anima depois -->
+        <div id="matchup-round-pill" class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6" style="opacity: 0;">
             <span id="matchup-round-badge">ROUND 1</span>
         </div>
 
-        <!-- Barra Principal Vinho com Camadas Dinâmicas -->
-        <div id="matchup-main-bar" class="broadcast-wine-bar rounded-3xl min-w-[960px] max-w-6xl relative overflow-hidden transition-all duration-300">
-            
-            <!-- Cortina / Lâmina Vermelha de Revelação (Wipe do vídeo - 100% GPU, zero flicker) -->
-            <div id="matchup-wipe-curtain" class="absolute inset-0 z-30 pointer-events-none bg-gradient-to-r from-[#60000a] via-[#b91c1c] to-[#e11d48] border-r-4 border-white shadow-[0_0_25px_#ffffff,0_0_15px_#ef4444]" style="transform: translate3d(-105%, 0, 0);"></div>
+        <!--
+            ▼▼▼ JANELA DE REVELAÇÃO — NÚCLEO DA CORREÇÃO DO FLICKER ▼▼▼
+            width começa em 0px e anima até 1080px.
+            overflow:hidden clipa FISICAMENTE o conteúdo interno.
+            O filho #matchup-main-bar tem width:1080px fixo — nunca muda.
+            Resultado: frame 0 = invisível, frames 1-15 = revelação progressiva.
+            ZERO FLICKER garantido porque nenhum pixel de conteúdo escapa do clip.
+        -->
+        <div id="matchup-reveal-window" style="width: 0px; overflow: hidden; border-radius: 1.5rem; position: relative;">
 
-            <!-- Reflexo Metálico / Sheen -->
-            <div id="matchup-sheen" class="absolute inset-0 pointer-events-none z-25 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] opacity-0"></div>
+            <!-- Barra Principal Vinho — largura FIXA 1080px (jamais use min-w aqui) -->
+            <div id="matchup-main-bar" class="broadcast-wine-bar relative overflow-hidden" style="width: 1080px;">
 
-            <!-- Camada 1: Conteúdo Principal do Competidor -->
-            <div id="matchup-content-layer" class="px-8 py-5 flex items-center gap-6 relative z-10 transition-opacity duration-300">
-                <!-- Nome e Cidade/Touro do Competidor -->
-                <div class="flex-1 min-w-[340px]">
-                    <h2 id="matchup-rider-name" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md truncate">
-                        NOME DO COMPETIDOR
-                    </h2>
-                    <!-- Sublinha: CIDADE • VS NOME DO TOURO (NOME DA CIA) -->
-                    <p id="matchup-rider-subline" class="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-100 mt-1 truncate">
-                        CIDADE, UF • VS NOME DO TOURO (COMPANHIA)
-                    </p>
+                <!-- Reflexo Metálico / Sheen (decorativo) -->
+                <div id="matchup-sheen" class="absolute inset-0 pointer-events-none z-25 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-25deg] opacity-0"></div>
+
+                <!-- Camada 1: Conteúdo Principal do Competidor -->
+                <div id="matchup-content-layer" class="px-8 py-5 flex items-center gap-6 relative z-10">
+                    <!-- Nome e Cidade/Touro do Competidor -->
+                    <div class="flex-1 min-w-[340px]">
+                        <h2 id="matchup-rider-name" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md truncate">
+                            NOME DO COMPETIDOR
+                        </h2>
+                        <!-- Sublinha: CIDADE • VS NOME DO TOURO (NOME DA CIA) -->
+                        <p id="matchup-rider-subline" class="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-100 mt-1 truncate">
+                            CIDADE, UF • VS NOME DO TOURO (COMPANHIA)
+                        </p>
+                    </div>
+
+                    <!-- Divisor Estilizado em Raio -->
+                    <div class="px-2 flex items-center justify-center shrink-0">
+                        <svg class="w-6 h-10 text-red-500 fill-current drop-shadow-[0_0_12px_rgba(239,68,68,0.95)] animate-pulse" viewBox="0 0 24 24">
+                            <path d="M13 1L3 13h8l-2 10 12-14h-8l3-8z"/>
+                        </svg>
+                    </div>
+
+                    <!-- Coluna: DIFERENÇA DO LÍDER -->
+                    <div class="text-center min-w-[100px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">DIF. LÍDER</span>
+                        <span id="matchup-dif-lider" class="text-3xl sm:text-4xl font-black text-yellow-400 font-mono leading-none tracking-tight">0,00</span>
+                    </div>
+
+                    <!-- Divisor Vermelho -->
+                    <div class="red-divider"></div>
+
+                    <!-- Coluna: TOTAL -->
+                    <div class="text-center min-w-[100px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">TOTAL</span>
+                        <span id="matchup-total-score" class="text-3xl sm:text-4xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
+                    </div>
+
+                    <!-- Divisor Vermelho -->
+                    <div class="red-divider"></div>
+
+                    <!-- Coluna: POSIÇÃO -->
+                    <div class="text-center min-w-[90px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">POSIÇÃO</span>
+                        <span id="matchup-posicao" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">1º</span>
+                    </div>
+
+                    <!-- Divisor Vermelho -->
+                    <div class="red-divider"></div>
+
+                    <!-- Coluna: PARADAS -->
+                    <div class="text-center min-w-[90px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">PARADAS</span>
+                        <span id="matchup-paradas" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">0/1</span>
+                    </div>
                 </div>
 
-                <!-- Divisor Estilizado em Raio (Inspirado no vídeo) -->
-                <div class="px-2 flex items-center justify-center shrink-0">
-                    <svg class="w-6 h-10 text-red-500 fill-current drop-shadow-[0_0_12px_rgba(239,68,68,0.95)] animate-pulse" viewBox="0 0 24 24">
-                        <path d="M13 1L3 13h8l-2 10 12-14h-8l3-8z"/>
-                    </svg>
+                <!-- Camada 2: Faixa de Saída (Outro) com a Logo do Evento no Centro -->
+                <div id="matchup-outro-layer" class="absolute inset-0 z-20 bg-gradient-to-r from-[#70000a] via-[#c01826] to-[#70000a] flex items-center justify-center border-y-2 border-red-400 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)] opacity-0 pointer-events-none transition-opacity duration-300">
+                    <!-- Efeito sutil de feixe luminoso -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-[-20deg]"></div>
+                    <!-- Logo do Evento PNG puro (sem bola/círculo) -->
+                    <div id="matchup-outro-logo-box" class="h-20 max-w-[320px] flex items-center justify-center transform scale-0 transition-transform duration-500 z-10">
+                        <img id="matchup-outro-logo-img" src="assets/splash_logo.png" alt="Logo" class="max-h-full max-w-full object-contain filter drop-shadow-[0_8px_25px_rgba(0,0,0,0.95)]">
+                    </div>
                 </div>
 
-                <!-- Coluna: DIFERENÇA DO LÍDER -->
-                <div class="text-center min-w-[100px]">
-                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">DIF. LÍDER</span>
-                    <span id="matchup-dif-lider" class="text-3xl sm:text-4xl font-black text-yellow-400 font-mono leading-none tracking-tight">0,00</span>
-                </div>
+            </div><!-- /#matchup-main-bar -->
 
-                <!-- Divisor Vermelho -->
-                <div class="red-divider"></div>
+            <!-- Lâmina branca na borda direita — fica DENTRO da janela, FORA da barra,
+                 posicionada absolutamente para cavalgar a borda que expande -->
+            <div id="matchup-blade" class="pointer-events-none" style="position: absolute; top: 0; right: 0; bottom: 0; width: 12px; background: linear-gradient(to right, transparent, white); box-shadow: 0 0 20px #fff, 0 0 35px #ef4444; z-index: 40;"></div>
 
-                <!-- Coluna: TOTAL -->
-                <div class="text-center min-w-[100px]">
-                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">TOTAL</span>
-                    <span id="matchup-total-score" class="text-3xl sm:text-4xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
-                </div>
+        </div><!-- /#matchup-reveal-window -->
 
-                <!-- Divisor Vermelho -->
-                <div class="red-divider"></div>
-
-                <!-- Coluna: POSIÇÃO -->
-                <div class="text-center min-w-[90px]">
-                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">POSIÇÃO</span>
-                    <span id="matchup-posicao" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">1º</span>
-                </div>
-
-                <!-- Divisor Vermelho -->
-                <div class="red-divider"></div>
-
-                <!-- Coluna: PARADAS -->
-                <div class="text-center min-w-[90px]">
-                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">PARADAS</span>
-                    <span id="matchup-paradas" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">0/1</span>
-                </div>
-            </div>
-
-            <!-- Camada 2: Faixa de Saída (Outro) com a Logo do Evento no Centro (Apenas PNG, sem círculo/bola em volta) -->
-            <div id="matchup-outro-layer" class="absolute inset-0 z-20 bg-gradient-to-r from-[#70000a] via-[#c01826] to-[#70000a] flex items-center justify-center border-y-2 border-red-400 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)] opacity-0 pointer-events-none transition-opacity duration-300">
-                <!-- Efeito sutil de feixe luminoso passando pela faixa vermelha -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-[-20deg]"></div>
-                <!-- Logo do Evento transparente em PNG puro (sem bola/círculo em volta) -->
-                <div id="matchup-outro-logo-box" class="h-20 max-w-[320px] flex items-center justify-center transform scale-0 transition-transform duration-500 z-10">
-                    <img id="matchup-outro-logo-img" src="assets/splash_logo.png" alt="Logo" class="max-h-full max-w-full object-contain filter drop-shadow-[0_8px_25px_rgba(0,0,0,0.95)]">
-                </div>
-            </div>
-
-        </div>
-    </div>
+    </div><!-- /#overlay-matchup-container -->
 
 
     <!-- ============================================================ -->
@@ -493,27 +444,36 @@
                 outroLogo.onerror = () => { outroLogo.src = DEFAULT_LOGO; };
             }
 
+
             const pill = document.getElementById('matchup-round-pill');
-            const curtain = document.getElementById('matchup-wipe-curtain');
-            const sheen = document.getElementById('matchup-sheen');
-            const contentLayer = document.getElementById('matchup-content-layer');
+            const revealWindow = document.getElementById('matchup-reveal-window');
+            const blade = document.getElementById('matchup-blade');
             const outroLayer = document.getElementById('matchup-outro-layer');
             const logoBox = document.getElementById('matchup-outro-logo-box');
 
-            // Resetar camadas para estado inicial
+            // ─── RESETAR ESTADO: GARANTIR width=0 ANTES DE QUALQUER RENDER ───
+            // Isso DEVE acontecer antes de remover 'hidden' para que o overflow:hidden
+            // clipe tudo desde o primeiro frame — eliminando o flicker definitivamente.
+
+            // Pílula: resetar
             if (pill) {
-                pill.classList.remove('anim-pill-in');
+                pill.classList.remove('anim-pill-drop');
+                pill.style.opacity = '0';
             }
-            if (curtain) {
-                curtain.classList.remove('anim-wipe-sweep');
+
+            // Janela de revelação: forçar width=0 (sem animação ainda)
+            if (revealWindow) {
+                revealWindow.classList.remove('anim-reveal-window');
+                revealWindow.style.width = '0px';
             }
-            if (sheen) {
-                sheen.classList.remove('anim-sheen-sweep');
+
+            // Lâmina: resetar opacidade
+            if (blade) {
+                blade.classList.remove('anim-blade-fade');
+                blade.style.opacity = '1';
             }
-            if (contentLayer) {
-                contentLayer.classList.remove('anim-content-in');
-                contentLayer.style.opacity = '1';
-            }
+
+            // Outro: resetar
             if (outroLayer) {
                 outroLayer.classList.remove('opacity-100');
                 outroLayer.classList.add('opacity-0');
@@ -523,16 +483,25 @@
                 logoBox.style.transform = 'scale(0)';
             }
 
-            // Exibir container com animação de subida suave (Zero flicker no OBS)
-            container.classList.remove('hidden', 'anim-outro-slide', 'anim-container-in');
-            void container.offsetWidth; // Reflow limpo
-            container.classList.add('anim-container-in');
+            // Remover classes de animação de saída residuais
+            container.classList.remove('anim-outro-slide');
 
-            // Disparar o Wipe Sweep da lâmina vermelha sobre a barra (100% GPU)
-            if (curtain) curtain.classList.add('anim-wipe-sweep');
-            if (pill) pill.classList.add('anim-pill-in');
-            if (contentLayer) contentLayer.classList.add('anim-content-in');
-            if (sheen) sheen.classList.add('anim-sheen-sweep');
+            // ─── STEP 1: Tornar container visível ───
+            // SEGURO: revealWindow.width = 0px + overflow:hidden = nada visível no frame 1
+            container.classList.remove('hidden');
+
+            // ─── STEP 2: Forçar reflow para garantir que o DOM aplicou width:0px ───
+            // Sem esse reflow, o browser pode "batchear" as mudanças e pular o frame 0.
+            void revealWindow.offsetWidth;
+
+            // ─── STEP 3: Disparar animação de expansão da janela ───
+            // A partir daqui, a janela expande de 0 para 1080px progressivamente.
+            // O overflow:hidden clipa o filho #matchup-main-bar em cada frame.
+            if (revealWindow) revealWindow.classList.add('anim-reveal-window');
+            if (blade) blade.classList.add('anim-blade-fade');
+
+            // Pílula aparece com leve delay após a barra começar a abrir
+            if (pill) pill.classList.add('anim-pill-drop');
         }
 
         function hideMatchupLowerThird() {
@@ -544,15 +513,13 @@
             if (matchupOutroHideTimeout) clearTimeout(matchupOutroHideTimeout);
 
             const pill = document.getElementById('matchup-round-pill');
-            const contentLayer = document.getElementById('matchup-content-layer');
             const outroLayer = document.getElementById('matchup-outro-layer');
             const logoBox = document.getElementById('matchup-outro-logo-box');
 
-            // 1. Ocultar dados e pílula de round
+            // 1. Ocultar pílula
             if (pill) pill.style.opacity = '0';
-            if (contentLayer) contentLayer.style.opacity = '0';
 
-            // 2. Revelar a Faixa Vermelha e fazer a Logo do Evento brotar no centro (Sem bola/círculo em volta)
+            // 2. Revelar a Faixa Vermelha e logo do Evento (PNG puro, sem bola/círculo)
             if (outroLayer) {
                 outroLayer.classList.remove('opacity-0');
                 outroLayer.classList.add('opacity-100');
@@ -567,13 +534,22 @@
 
                 matchupOutroHideTimeout = setTimeout(() => {
                     container.classList.add('hidden');
-                    container.classList.remove('anim-container-in', 'anim-outro-slide');
+                    container.classList.remove('anim-outro-slide');
+                    // Limpar estado para próxima entrada
+                    const revealWindow = document.getElementById('matchup-reveal-window');
+                    const blade = document.getElementById('matchup-blade');
+                    if (revealWindow) {
+                        revealWindow.classList.remove('anim-reveal-window');
+                        revealWindow.style.width = '0px';
+                    }
+                    if (blade) {
+                        blade.classList.remove('anim-blade-fade');
+                        blade.style.opacity = '1';
+                    }
                     if (outroLayer) {
                         outroLayer.classList.remove('opacity-100');
                         outroLayer.classList.add('opacity-0');
                     }
-                    if (contentLayer) contentLayer.style.opacity = '1';
-                    if (pill) pill.style.opacity = '1';
                     if (logoBox) {
                         logoBox.style.animation = 'none';
                         logoBox.style.transform = 'scale(0)';
