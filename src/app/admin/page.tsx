@@ -66,6 +66,19 @@ const formatSide = (s: any) => {
   return s;
 };
 
+const safeParseJson = (data: any, fallback: any = {}) => {
+  if (!data) return fallback;
+  if (typeof data === 'object') return data;
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+};
+
 export default function AdminDashboard() {
   const [session, setSession] = useState<any>(null);
   const [authStep, setAuthStep] = useState<"email" | "code">("email");
@@ -76,6 +89,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile menu toggle
   const [licenses, setLicenses] = useState<any[]>([]);
+  const [eventos, setEventos] = useState<any[]>([]);
   const [boiadas, setBoiadas] = useState<any[]>([]);
   const [boiadaName, setBoiadaName] = useState("");
   const [tourosCertoTexto, setTourosCertoTexto] = useState("");
@@ -267,7 +281,7 @@ export default function AdminDashboard() {
 
   const getEventCompetitors = (ev: any): string[] => {
     if (!ev) return [];
-    const det = ev.detalhes || {};
+    const det = safeParseJson(ev.detalhes);
     const set = new Set<string>();
 
     if (Array.isArray(det.sorteios)) {
@@ -305,7 +319,7 @@ export default function AdminDashboard() {
 
   const handleSelectEventForTablet = (ev: any) => {
     setSelectedTabletEventId(ev.id);
-    const tc = ev.detalhes?.tablet_config || {};
+    const tc = safeParseJson(ev.detalhes).tablet_config || {};
     setTabletDiaAtivo(tc.dia_ativo || 'DIA 1');
     setTabletDiasDisponiveis(tc.dias_disponiveis || ['DIA 1', 'DIA 2', 'DIA 3', 'FINAL']);
     setTabletTicker(tc.ticker_noticias || tc.ticker || '');
@@ -323,6 +337,15 @@ export default function AdminDashboard() {
       setTabletAberturaCompetidoresDestaque(savedComps);
     } else {
       setTabletAberturaCompetidoresDestaque([]);
+    }
+  };
+
+  const handleToggleTabletDiaDisponivel = (day: string) => {
+    if (tabletDiasDisponiveis.includes(day)) {
+      if (tabletDiasDisponiveis.length === 1) return alert("Ao menos 1 dia deve estar disponível.");
+      setTabletDiasDisponiveis(prev => prev.filter(d => d !== day));
+    } else {
+      setTabletDiasDisponiveis(prev => [...prev, day]);
     }
   };
 
@@ -388,8 +411,9 @@ export default function AdminDashboard() {
         updated_at: new Date().toISOString()
       };
 
+      const detObj = safeParseJson(ev.detalhes);
       const updatedDetalhes = {
-        ...(ev.detalhes || {}),
+        ...detObj,
         tablet_config: tabletConfig
       };
 
@@ -2843,7 +2867,7 @@ export default function AdminDashboard() {
                           <div>
                             <div className="font-black uppercase text-sm mb-1">{e.nome}</div>
                             <div className="text-[9px] font-bold text-yellow-500 uppercase tracking-widest">
-                              Diretor: {(typeof e.detalhes === 'string' ? JSON.parse(e.detalhes) : e.detalhes)?.diretor || e.organizador_email}
+                              Diretor: {safeParseJson(e.detalhes)?.diretor || e.organizador_email}
                             </div>
                             <div className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">{e.local} | {e.data_inicio} - {e.data_fim}</div>
                           </div>
@@ -2876,13 +2900,13 @@ export default function AdminDashboard() {
                     <div className="text-white/30 text-xs font-bold uppercase tracking-widest py-8 text-center">Nenhum evento aprovado</div>
                   ) : (
                     eventos.filter(e => e.status === 'aprovado').map(e => {
-                      const portalConfig = (typeof e.detalhes === 'string' ? JSON.parse(e.detalhes) : (e.detalhes || {})).portalConfig || { ordem: '', ocultarDaHome: false };
+                      const portalConfig = safeParseJson(e.detalhes).portalConfig || { ordem: '', ocultarDaHome: false };
                       return (
                       <div key={e.id} className="bg-black border border-white/10 p-5 rounded-2xl flex justify-between items-center group hover:border-yellow-500/50 transition-all">
                         <div className="flex-1">
                           <div className="font-black uppercase text-sm mb-1">{e.nome}</div>
                           <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                            {e.local} | {e.data_inicio} • <span className="text-yellow-500">Diretor: {(typeof e.detalhes === 'string' ? JSON.parse(e.detalhes) : e.detalhes)?.diretor || e.organizador_email}</span>
+                            {e.local} | {e.data_inicio} • <span className="text-yellow-500">Diretor: {safeParseJson(e.detalhes)?.diretor || e.organizador_email}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -4453,7 +4477,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {eventos.map((ev: any) => {
                     const isSelected = selectedTabletEventId === ev.id;
-                    const tc = ev.detalhes?.tablet_config;
+                    const tc = safeParseJson(ev.detalhes)?.tablet_config;
                     const activeDay = tc?.dia_ativo || "N/D";
                     return (
                       <div
