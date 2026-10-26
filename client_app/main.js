@@ -1,5 +1,5 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { machineIdSync } = require('node-machine-id');
 const { createClient } = require('@supabase/supabase-js');
@@ -8,6 +8,25 @@ const crypto = require('crypto');
 const ExcelJS = require('exceljs');
 const WebSocket = require('ws');
 global.WebSocket = WebSocket;
+
+// Caminho do LibreOffice (soffice) por plataforma. Apps abertos pelo Finder/Explorer
+// não herdam o PATH do terminal, então testamos os locais de instalação padrão
+// antes de cair para "soffice" no PATH.
+function getSofficeCommand() {
+  const candidates = [];
+  if (process.platform === 'win32') {
+    for (const base of [process.env['ProgramFiles'], process.env['ProgramFiles(x86)'], 'C:\\Program Files', 'C:\\Program Files (x86)']) {
+      if (base) candidates.push(path.join(base, 'LibreOffice', 'program', 'soffice.exe'));
+    }
+  } else if (process.platform === 'darwin') {
+    candidates.push('/Applications/LibreOffice.app/Contents/MacOS/soffice');
+    candidates.push(path.join(require('os').homedir(), 'Applications', 'LibreOffice.app', 'Contents', 'MacOS', 'soffice'));
+  } else {
+    candidates.push('/usr/bin/soffice', '/usr/local/bin/soffice', '/snap/bin/libreoffice');
+  }
+  const found = candidates.find(c => { try { return fs.existsSync(c); } catch (e) { return false; } });
+  return found ? `"${found}"` : 'soffice';
+}
 
 // Flags de Alto Desempenho e Aceleração de Hardware do Chromium
 app.commandLine.appendSwitch('enable-gpu-rasterization');
@@ -276,6 +295,20 @@ function createWindow() {
 
   mainWindow = win;
 
+  // Atalhos só desta janela (globalShortcut capturava Cmd/Ctrl+R e F5 em outros programas)
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const key = (input.key || '').toLowerCase();
+    const cmdOrCtrl = process.platform === 'darwin' ? input.meta : input.control;
+    if ((cmdOrCtrl && !input.shift && !input.alt && key === 'r') || input.key === 'F5') {
+      event.preventDefault();
+      win.reload();
+    } else if (input.key === 'F12' || (cmdOrCtrl && input.shift && key === 'i')) {
+      event.preventDefault();
+      win.webContents.toggleDevTools();
+    }
+  });
+
   win.maximize();
   win.loadFile('index.html');
   win.once('ready-to-show', () => win.show());
@@ -283,23 +316,6 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
-  globalShortcut.register('CommandOrControl+R', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.reload();
-  });
-  globalShortcut.register('F5', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.reload();
-  });
-  globalShortcut.register('F12', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.webContents.toggleDevTools();
-  });
-  globalShortcut.register('CommandOrControl+Shift+I', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.webContents.toggleDevTools();
-  });
-
   // Checagem automática de atualizações na inicialização do app
   setTimeout(() => {
     try {
@@ -1550,7 +1566,7 @@ ipcMain.handle('export-contracts', async (event, { email, eventId, target, forma
         const convertToPdf = (docxPath, pdfPath) => {
             return new Promise((resolve, reject) => {
                 const { exec } = require('child_process');
-                const sofficePath = '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"';
+                const sofficePath = getSofficeCommand();
                 const outDirArg = path.dirname(pdfPath);
                 
                 const cmd = `${sofficePath} --headless --convert-to pdf "${docxPath}" --outdir "${outDirArg}"`;
@@ -1801,9 +1817,7 @@ ipcMain.handle('export-melhor-cia', async (event, { eventName, data, format }) =
             const util = require('util');
             const execAsync = util.promisify(exec);
             
-            const soffice = process.platform === 'win32' 
-                ? '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"'
-                : 'soffice';
+            const soffice = getSofficeCommand();
                 
             const outdir = path.dirname(filePath);
             const cmd = `${soffice} --headless --convert-to pdf "${tempXlsx}" --outdir "${outdir}"`;
@@ -1999,9 +2013,7 @@ ipcMain.handle('export-melhor-animal', async (event, { eventName, data, format }
             const util = require('util');
             const execAsync = util.promisify(exec);
             
-            const soffice = process.platform === 'win32' 
-                ? '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"'
-                : 'soffice';
+            const soffice = getSofficeCommand();
                 
             const outdir = path.dirname(filePath);
             const cmd = `${soffice} --headless --convert-to pdf "${tempXlsx}" --outdir "${outdir}"`;
