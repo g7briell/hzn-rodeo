@@ -1,5 +1,4 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { machineIdSync } = require('node-machine-id');
 const { createClient } = require('@supabase/supabase-js');
@@ -8,6 +7,25 @@ const crypto = require('crypto');
 const ExcelJS = require('exceljs');
 const WebSocket = require('ws');
 global.WebSocket = WebSocket;
+
+// Caminho do LibreOffice (soffice) por plataforma. Apps abertos pelo Finder/Explorer
+// não herdam o PATH do terminal, então testamos os locais de instalação padrão
+// antes de cair para "soffice" no PATH.
+function getSofficeCommand() {
+  const candidates = [];
+  if (process.platform === 'win32') {
+    for (const base of [process.env['ProgramFiles'], process.env['ProgramFiles(x86)'], 'C:\\Program Files', 'C:\\Program Files (x86)']) {
+      if (base) candidates.push(path.join(base, 'LibreOffice', 'program', 'soffice.exe'));
+    }
+  } else if (process.platform === 'darwin') {
+    candidates.push('/Applications/LibreOffice.app/Contents/MacOS/soffice');
+    candidates.push(path.join(require('os').homedir(), 'Applications', 'LibreOffice.app', 'Contents', 'MacOS', 'soffice'));
+  } else {
+    candidates.push('/usr/bin/soffice', '/usr/local/bin/soffice', '/snap/bin/libreoffice');
+  }
+  const found = candidates.find(c => { try { return fs.existsSync(c); } catch (e) { return false; } });
+  return found ? `"${found}"` : 'soffice';
+}
 
 // Flags de Alto Desempenho e Aceleração de Hardware do Chromium
 app.commandLine.appendSwitch('enable-gpu-rasterization');
@@ -276,6 +294,20 @@ function createWindow() {
 
   mainWindow = win;
 
+  // Atalhos só desta janela (globalShortcut capturava Cmd/Ctrl+R e F5 em outros programas)
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const key = (input.key || '').toLowerCase();
+    const cmdOrCtrl = process.platform === 'darwin' ? input.meta : input.control;
+    if ((cmdOrCtrl && !input.shift && !input.alt && key === 'r') || input.key === 'F5') {
+      event.preventDefault();
+      win.reload();
+    } else if (input.key === 'F12' || (cmdOrCtrl && input.shift && key === 'i')) {
+      event.preventDefault();
+      win.webContents.toggleDevTools();
+    }
+  });
+
   win.maximize();
   win.loadFile('index.html');
   win.once('ready-to-show', () => win.show());
@@ -283,23 +315,6 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
-  globalShortcut.register('CommandOrControl+R', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.reload();
-  });
-  globalShortcut.register('F5', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.reload();
-  });
-  globalShortcut.register('F12', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.webContents.toggleDevTools();
-  });
-  globalShortcut.register('CommandOrControl+Shift+I', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) win.webContents.toggleDevTools();
-  });
-
   // Checagem automática de atualizações na inicialização do app
   setTimeout(() => {
     try {
@@ -1550,7 +1565,7 @@ ipcMain.handle('export-contracts', async (event, { email, eventId, target, forma
         const convertToPdf = (docxPath, pdfPath) => {
             return new Promise((resolve, reject) => {
                 const { exec } = require('child_process');
-                const sofficePath = '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"';
+                const sofficePath = getSofficeCommand();
                 const outDirArg = path.dirname(pdfPath);
                 
                 const cmd = `${sofficePath} --headless --convert-to pdf "${docxPath}" --outdir "${outDirArg}"`;
@@ -1801,9 +1816,7 @@ ipcMain.handle('export-melhor-cia', async (event, { eventName, data, format }) =
             const util = require('util');
             const execAsync = util.promisify(exec);
             
-            const soffice = process.platform === 'win32' 
-                ? '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"'
-                : 'soffice';
+            const soffice = getSofficeCommand();
                 
             const outdir = path.dirname(filePath);
             const cmd = `${soffice} --headless --convert-to pdf "${tempXlsx}" --outdir "${outdir}"`;
@@ -1999,9 +2012,7 @@ ipcMain.handle('export-melhor-animal', async (event, { eventName, data, format }
             const util = require('util');
             const execAsync = util.promisify(exec);
             
-            const soffice = process.platform === 'win32' 
-                ? '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"'
-                : 'soffice';
+            const soffice = getSofficeCommand();
                 
             const outdir = path.dirname(filePath);
             const cmd = `${soffice} --headless --convert-to pdf "${tempXlsx}" --outdir "${outdir}"`;
@@ -2051,6 +2062,24 @@ function isNewerVersion(latest, current) {
     return false;
 }
 
+// Arquitetura real do Mac. Um build Intel rodando via Rosetta num Mac Apple Silicon
+// reporta process.arch === 'x64'; nesse caso migramos para o build arm64 nativo.
+function getMacUpdateArch() {
+    if (process.arch === 'arm64' || app.runningUnderARM64Translation) return 'arm64';
+    return 'x64';
+}
+
+// Escolhe o zip do release para a arquitetura. Nomes esperados:
+// HZN-RodeoApp-Setup-<versao>-arm64.zip e HZN-RodeoApp-Setup-<versao>-x64.zip.
+function pickMacUpdateAsset(assets, macArch) {
+    const macArchives = assets.filter(a => /\.(zip|dmg)$/i.test(a.name));
+    const exact = macArchives.find(a => new RegExp(`-${macArch}\\.(zip|dmg)$`, 'i').test(a.name));
+    if (exact) return exact;
+    // Sem o build exato, usa o Intel (o alias -mac.zip também é Intel): roda em qualquer Mac,
+    // via Rosetta no Apple Silicon. Nunca entrega arm64 a um Mac Intel.
+    return macArchives.find(a => /-(x64|mac)\.(zip|dmg)$/i.test(a.name)) || null;
+}
+
 function checkMacUpdates() {
     return new Promise((resolve, reject) => {
         const options = {
@@ -2076,16 +2105,9 @@ function checkMacUpdates() {
                     console.log(`[RODEOAPP MAC UPDATER] Latest tag: ${release.tag_name}, Current: ${currentVersion}`);
 
                     if (isNewerVersion(latestVersion, currentVersion)) {
-                        const macArch = process.arch; // 'arm64' or 'x64'
-                        let zipAsset = release.assets.find(asset => 
-                            (asset.name.endsWith('.zip') || asset.name.endsWith('.dmg')) && asset.name.includes(macArch)
-                        );
-
-                        if (!zipAsset) {
-                            zipAsset = release.assets.find(asset => 
-                                (asset.name.endsWith('.zip') || asset.name.endsWith('.dmg')) && !asset.name.endsWith('.exe') && !asset.name.endsWith('.blockmap')
-                            );
-                        }
+                        const macArch = getMacUpdateArch();
+                        const zipAsset = pickMacUpdateAsset(release.assets || [], macArch);
+                        console.log(`[RODEOAPP MAC UPDATER] Arch: ${macArch}, asset: ${zipAsset ? zipAsset.name : 'none'}`);
 
                         if (zipAsset) {
                             macUpdateInfo = {
@@ -2947,7 +2969,13 @@ function mergeEventObjects(localEv, cloudEv) {
             const key = (b.nome || '').trim().toLowerCase();
             if (boiadaMap.has(key)) {
                 const existing = boiadaMap.get(key);
-                const allTouros = Array.from(new Set([...(existing.touros || []), ...(b.touros || [])]));
+                // Deduplica por valor (touros podem vir como objeto) para o merge não crescer a cada sync
+                const tourosMap = new Map();
+                [...(existing.touros || []), ...(b.touros || [])].forEach(t => {
+                    const tKey = typeof t === 'string' ? t : JSON.stringify(t);
+                    if (!tourosMap.has(tKey)) tourosMap.set(tKey, t);
+                });
+                const allTouros = Array.from(tourosMap.values());
                 boiadaMap.set(key, { ...existing, ...b, touros: allTouros });
             } else {
                 boiadaMap.set(key, b);
@@ -2989,6 +3017,27 @@ function mergeEventObjects(localEv, cloudEv) {
     return merged;
 }
 
+// Compara dois valores como JSON (ignora ordem das chaves e campos undefined)
+function isSameJSONValue(a, b) {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (!isSameJSONValue(a[i], b[i])) return false;
+        }
+        return true;
+    }
+    const aKeys = Object.keys(a).filter(k => a[k] !== undefined);
+    const bKeys = Object.keys(b).filter(k => b[k] !== undefined);
+    if (aKeys.length !== bKeys.length) return false;
+    for (const k of aKeys) {
+        if (!Object.prototype.hasOwnProperty.call(b, k) || !isSameJSONValue(a[k], b[k])) return false;
+    }
+    return true;
+}
+
 // Sincronizar todos os eventos do usuário com a nuvem (Otimizado)
 ipcMain.handle('sync-user-cloud-events', async (event, email) => {
     try {
@@ -3006,7 +3055,7 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
 
         const localData = getLocalData(cleanEmail, currentSportSession);
         localData.eventos = localData.eventos || [];
-        let hasChanges = false;
+        const changedIds = [];
 
         if (Array.isArray(cloudEvents) && cloudEvents.length > 0) {
             cloudEvents.forEach(cloudEv => {
@@ -3038,21 +3087,25 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
                 );
 
                 if (idx > -1) {
-                    const merged = mergeEventObjects(localData.eventos[idx], cloudLocal);
-                    localData.eventos[idx] = merged;
-                    hasChanges = true;
+                    const current = localData.eventos[idx];
+                    const merged = mergeEventObjects(current, cloudLocal);
+                    // Só conta como mudança se o merge realmente alterou o evento local
+                    if (!isSameJSONValue(current, merged)) {
+                        localData.eventos[idx] = merged;
+                        changedIds.push(merged.id != null ? String(merged.id) : null);
+                    }
                 } else {
                     localData.eventos.push(cloudLocal);
-                    hasChanges = true;
+                    changedIds.push(cloudLocal.id != null ? String(cloudLocal.id) : null);
                 }
             });
 
-            if (hasChanges) {
+            if (changedIds.length > 0) {
                 saveLocalData(cleanEmail, localData, currentSportSession);
             }
         }
 
-        return { success: true, hasChanges };
+        return { success: true, hasChanges: changedIds.length > 0, changedIds };
     } catch (e) {
         console.error("Erro ao sincronizar eventos do usuário na nuvem:", e);
         return { success: false, error: e.message || String(e) };
@@ -3091,6 +3144,22 @@ const http = require('http');
 
 let overlayWsClients = [];
 
+// Resolve um caminho relativo vindo da URL garantindo que fique dentro de baseDir
+// (bloqueia "../", caminhos absolutos e barras invertidas no Windows).
+function resolveInsideDir(baseDir, relPath) {
+    let decoded;
+    try {
+        decoded = decodeURIComponent(relPath || '');
+    } catch (e) {
+        return null;
+    }
+    if (!decoded || decoded.includes('\0')) return null;
+    const base = path.resolve(baseDir);
+    const target = path.resolve(base, decoded);
+    if (!target.startsWith(base + path.sep)) return null;
+    return target;
+}
+
 // Criar Servidor HTTP na porta 3005
 const overlayServer = http.createServer((req, res) => {
     const parsedPath = (req.url || '/').split('?')[0];
@@ -3108,14 +3177,18 @@ const overlayServer = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(content, 'utf-8');
         });
-    } else if (req.url.startsWith('/media/')) {
+    } else if (parsedPath.startsWith('/media/')) {
         // Servir arquivos de mídia salvos pelo usuário (logos, vídeos de patrocinadores)
         const mediaDir = path.join(app.getPath('userData'), 'media');
         if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
         
-        const fileName = decodeURIComponent(req.url.replace('/media/', ''));
-        const filePath = path.join(mediaDir, fileName);
-        
+        const filePath = resolveInsideDir(mediaDir, parsedPath.slice('/media/'.length));
+        if (!filePath) {
+            res.writeHead(404);
+            res.end('Not found');
+            return;
+        }
+
         fs.readFile(filePath, (err, content) => {
             if (err) {
                 res.writeHead(404);
@@ -3132,9 +3205,14 @@ const overlayServer = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(content);
         });
-    } else {
-        // Servir assets do app caso o overlay os requisite
-        const filePath = path.join(__dirname, req.url);
+    } else if (parsedPath.startsWith('/assets/')) {
+        // Servir apenas a pasta assets/ do app (logos usados pela tela verde)
+        const filePath = resolveInsideDir(path.join(__dirname, 'assets'), parsedPath.slice('/assets/'.length));
+        if (!filePath) {
+            res.writeHead(404);
+            res.end('Not found');
+            return;
+        }
         fs.readFile(filePath, (err, content) => {
             if (err) {
                 res.writeHead(404);
@@ -3151,6 +3229,9 @@ const overlayServer = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(content, 'utf-8');
         });
+    } else {
+        res.writeHead(404);
+        res.end('Not found');
     }
 });
 
@@ -3173,8 +3254,9 @@ ipcMain.handle('upload-media', async (event, sourcePath) => {
 ipcMain.handle('delete-media', async (event, fileName) => {
     try {
         const mediaDir = path.join(app.getPath('userData'), 'media');
-        const filePath = path.join(mediaDir, fileName);
-        if (fs.existsSync(filePath)) {
+        const safeName = path.basename(String(fileName || ''));
+        const filePath = safeName ? path.join(mediaDir, safeName) : null;
+        if (filePath && fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
         return { success: true };
@@ -3208,7 +3290,9 @@ wssOverlay.on('connection', (ws) => {
     });
 });
 
-overlayServer.listen(3005, () => {
+// Escuta só no loopback: OBS/vMix no mesmo PC continuam funcionando, mas outros
+// computadores da rede não conseguem acessar o servidor nem o WebSocket de comandos.
+overlayServer.listen(3005, '127.0.0.1', () => {
     console.log('Overlay server running at http://localhost:3005/');
 });
 
