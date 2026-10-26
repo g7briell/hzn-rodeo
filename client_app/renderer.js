@@ -137,7 +137,13 @@ window.syncUserEventsWithCloud = async () => {
                 if (res.hasChanges) {
                     renderEvents();
 
-                    if (currentEvent) {
+                    // Só recarrega o evento aberto se ele estiver entre os alterados
+                    // (id nulo em changedIds = evento sem id, recarrega por segurança)
+                    const changedIds = Array.isArray(res.changedIds) ? res.changedIds : null;
+                    const currentChanged = !changedIds || changedIds.includes(null) ||
+                        (currentEvent && (currentEvent.id == null || changedIds.includes(String(currentEvent.id))));
+
+                    if (currentEvent && currentChanged) {
                         const allEvs = await window.electronAPI.getLocalEvents(email);
                         const freshEv = (allEvs || []).find(e => 
                             (e.id && currentEvent.id && String(e.id) === String(currentEvent.id)) || 

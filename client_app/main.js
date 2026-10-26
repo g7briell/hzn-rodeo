@@ -2947,7 +2947,13 @@ function mergeEventObjects(localEv, cloudEv) {
             const key = (b.nome || '').trim().toLowerCase();
             if (boiadaMap.has(key)) {
                 const existing = boiadaMap.get(key);
-                const allTouros = Array.from(new Set([...(existing.touros || []), ...(b.touros || [])]));
+                // Deduplica por valor (touros podem vir como objeto) para o merge não crescer a cada sync
+                const tourosMap = new Map();
+                [...(existing.touros || []), ...(b.touros || [])].forEach(t => {
+                    const tKey = typeof t === 'string' ? t : JSON.stringify(t);
+                    if (!tourosMap.has(tKey)) tourosMap.set(tKey, t);
+                });
+                const allTouros = Array.from(tourosMap.values());
                 boiadaMap.set(key, { ...existing, ...b, touros: allTouros });
             } else {
                 boiadaMap.set(key, b);
@@ -2989,6 +2995,27 @@ function mergeEventObjects(localEv, cloudEv) {
     return merged;
 }
 
+// Compara dois valores como JSON (ignora ordem das chaves e campos undefined)
+function isSameJSONValue(a, b) {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (!isSameJSONValue(a[i], b[i])) return false;
+        }
+        return true;
+    }
+    const aKeys = Object.keys(a).filter(k => a[k] !== undefined);
+    const bKeys = Object.keys(b).filter(k => b[k] !== undefined);
+    if (aKeys.length !== bKeys.length) return false;
+    for (const k of aKeys) {
+        if (!Object.prototype.hasOwnProperty.call(b, k) || !isSameJSONValue(a[k], b[k])) return false;
+    }
+    return true;
+}
+
 // Sincronizar todos os eventos do usuário com a nuvem (Otimizado)
 ipcMain.handle('sync-user-cloud-events', async (event, email) => {
     try {
@@ -3006,7 +3033,7 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
 
         const localData = getLocalData(cleanEmail, currentSportSession);
         localData.eventos = localData.eventos || [];
-        let hasChanges = false;
+        const changedIds = [];
 
         if (Array.isArray(cloudEvents) && cloudEvents.length > 0) {
             cloudEvents.forEach(cloudEv => {
@@ -3038,21 +3065,25 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
                 );
 
                 if (idx > -1) {
-                    const merged = mergeEventObjects(localData.eventos[idx], cloudLocal);
-                    localData.eventos[idx] = merged;
-                    hasChanges = true;
+                    const current = localData.eventos[idx];
+                    const merged = mergeEventObjects(current, cloudLocal);
+                    // Só conta como mudança se o merge realmente alterou o evento local
+                    if (!isSameJSONValue(current, merged)) {
+                        localData.eventos[idx] = merged;
+                        changedIds.push(merged.id != null ? String(merged.id) : null);
+                    }
                 } else {
                     localData.eventos.push(cloudLocal);
-                    hasChanges = true;
+                    changedIds.push(cloudLocal.id != null ? String(cloudLocal.id) : null);
                 }
             });
 
-            if (hasChanges) {
+            if (changedIds.length > 0) {
                 saveLocalData(cleanEmail, localData, currentSportSession);
             }
         }
 
-        return { success: true, hasChanges };
+        return { success: true, hasChanges: changedIds.length > 0, changedIds };
     } catch (e) {
         console.error("Erro ao sincronizar eventos do usuário na nuvem:", e);
         return { success: false, error: e.message || String(e) };
