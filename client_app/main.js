@@ -2051,6 +2051,24 @@ function isNewerVersion(latest, current) {
     return false;
 }
 
+// Arquitetura real do Mac. Um build Intel rodando via Rosetta num Mac Apple Silicon
+// reporta process.arch === 'x64'; nesse caso migramos para o build arm64 nativo.
+function getMacUpdateArch() {
+    if (process.arch === 'arm64' || app.runningUnderARM64Translation) return 'arm64';
+    return 'x64';
+}
+
+// Escolhe o zip do release para a arquitetura. Nomes esperados:
+// HZN-RodeoApp-Setup-<versao>-arm64.zip e HZN-RodeoApp-Setup-<versao>-x64.zip.
+function pickMacUpdateAsset(assets, macArch) {
+    const macArchives = assets.filter(a => /\.(zip|dmg)$/i.test(a.name));
+    const exact = macArchives.find(a => new RegExp(`-${macArch}\\.(zip|dmg)$`, 'i').test(a.name));
+    if (exact) return exact;
+    // Sem o build exato, usa o Intel (o alias -mac.zip também é Intel): roda em qualquer Mac,
+    // via Rosetta no Apple Silicon. Nunca entrega arm64 a um Mac Intel.
+    return macArchives.find(a => /-(x64|mac)\.(zip|dmg)$/i.test(a.name)) || null;
+}
+
 function checkMacUpdates() {
     return new Promise((resolve, reject) => {
         const options = {
@@ -2076,16 +2094,9 @@ function checkMacUpdates() {
                     console.log(`[RODEOAPP MAC UPDATER] Latest tag: ${release.tag_name}, Current: ${currentVersion}`);
 
                     if (isNewerVersion(latestVersion, currentVersion)) {
-                        const macArch = process.arch; // 'arm64' or 'x64'
-                        let zipAsset = release.assets.find(asset => 
-                            (asset.name.endsWith('.zip') || asset.name.endsWith('.dmg')) && asset.name.includes(macArch)
-                        );
-
-                        if (!zipAsset) {
-                            zipAsset = release.assets.find(asset => 
-                                (asset.name.endsWith('.zip') || asset.name.endsWith('.dmg')) && !asset.name.endsWith('.exe') && !asset.name.endsWith('.blockmap')
-                            );
-                        }
+                        const macArch = getMacUpdateArch();
+                        const zipAsset = pickMacUpdateAsset(release.assets || [], macArch);
+                        console.log(`[RODEOAPP MAC UPDATER] Arch: ${macArch}, asset: ${zipAsset ? zipAsset.name : 'none'}`);
 
                         if (zipAsset) {
                             macUpdateInfo = {

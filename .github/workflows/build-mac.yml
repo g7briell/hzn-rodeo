@@ -48,13 +48,19 @@ jobs:
           VERSION=$(node -p "require('./client_app/package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create backward-compatible mac zip alias
+      - name: Check per-arch zips and create backward-compatible alias
         run: |
           cd client_app/dist
-          FIRST_ZIP=$(ls HZN-RodeoApp-Setup-*.zip 2>/dev/null | head -n 1)
-          if [ -n "$FIRST_ZIP" ]; then
-            cp "$FIRST_ZIP" "HZN-RodeoApp-Setup-${{ steps.get_version.outputs.VERSION }}-mac.zip"
-          fi
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          ls -la *.zip
+          for ARCH in x64 arm64; do
+            if [ ! -f "HZN-RodeoApp-Setup-${VERSION}-${ARCH}.zip" ]; then
+              echo "Missing HZN-RodeoApp-Setup-${VERSION}-${ARCH}.zip"
+              exit 1
+            fi
+          done
+          # O alias -mac.zip aponta para o build Intel: roda em todo Mac (Apple Silicon via Rosetta).
+          cp "HZN-RodeoApp-Setup-${VERSION}-x64.zip" "HZN-RodeoApp-Setup-${VERSION}-mac.zip"
 
       - name: Publish macOS Release
         uses: softprops/action-gh-release@v2
