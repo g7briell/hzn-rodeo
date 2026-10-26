@@ -136,6 +136,8 @@ function sanitizeEventForCloudPayload(rawEv) {
     if (ev.rawPdf) delete ev.rawPdf;
     if (ev.pdfData) delete ev.pdfData;
     if (ev.exportCache) delete ev.exportCache;
+    // Marcador local de sincronização: não faz sentido em outro aparelho
+    delete ev._syncedAt;
 
     // Remove qualquer string Base64 ou buffer gigante (> 50KB)
     function cleanDeep(obj, depth = 0) {
@@ -501,7 +503,8 @@ ipcMain.handle('save-local-event', async (event, arg1, arg2) => {
   const eventToSave = {
     ...newEvent,
     id: newEvent.id || Date.now().toString(),
-    created_at: newEvent.created_at || new Date().toISOString()
+    created_at: newEvent.created_at || new Date().toISOString(),
+    updatedAt: Date.now()
   };
 
   const existingIdx = data.eventos.findIndex(e => String(e.id) === String(eventToSave.id) || (e.name && newEvent.name && e.name.toLowerCase() === newEvent.name.toLowerCase()));
@@ -581,6 +584,9 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail || !updatedEvent) return { success: false, error: "Dados inválidos para atualizar." };
 
+  // Marca a hora da alteração: o sync usa isso para saber qual lado (local ou nuvem) é o mais novo
+  updatedEvent.updatedAt = Date.now();
+
   // 1. Salva LOCAL imediatamente (já vai para o cache em memória, sem I/O bloqueante)
   const data = getLocalData(cleanEmail);
   let found = false;
@@ -597,59 +603,13 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
   }
   saveLocalData(cleanEmail, data);
 
-  // 2. Retorna IMEDIATAMENTE para o renderer — nenhum gargalo de rede no caminho crítico
+  // 2. Retorna IMEDIATAMENTE para o renderer — nenhum gargalo de rede no caminho crítico.
+  // Se o envio falhar, o loop de sync de 30s reenvia (o evento local fica mais novo que a nuvem).
+  const sportAtSave = currentSportSession;
   setImmediate(async () => {
     try {
-      const sanitizedEv = sanitizeEventForCloudPayload(updatedEvent);
-
-      const payload = {
-        nome: updatedEvent.name,
-        local: updatedEvent.city || '',
-        organizador_email: cleanEmail,
-        status: updatedEvent.share_id ? 'compartilhado' : 'ativo',
-        detalhes: {
-          share_id: updatedEvent.share_id || '',
-          share_password: updatedEvent.share_password || '',
-          sport: currentSportSession || 'rodeio',
-          localData: sanitizedEv
-        }
-      };
-
-      // Cache de IDs na nuvem para evitar múltiplas queries de busca
-      const cacheKey = `${cleanEmail}::${updatedEvent.id || updatedEvent.name}`;
-      if (!cloudIdCache) cloudIdCache = new Map();
-
-      let cloudId = cloudIdCache.get(cacheKey);
-
-      if (!cloudId) {
-        // Só faz lookup se não tiver em cache
-        if (updatedEvent.id && /^[0-9a-f-]{36}$/i.test(String(updatedEvent.id))) {
-          const { data: byId } = await supabase.from('eventos_oficiais').select('id').eq('id', updatedEvent.id).limit(1);
-          if (byId && byId.length > 0) cloudId = byId[0].id;
-        }
-        if (!cloudId && updatedEvent.share_id) {
-          const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', updatedEvent.share_id).limit(1);
-          if (byShare && byShare.length > 0) cloudId = byShare[0].id;
-        }
-        if (!cloudId) {
-          const { data: byEmailName } = await supabase.from('eventos_oficiais')
-            .select('id')
-            .eq('organizador_email', cleanEmail)
-            .eq('nome', updatedEvent.name.trim())
-            .limit(1);
-          if (byEmailName && byEmailName.length > 0) cloudId = byEmailName[0].id;
-        }
-        if (cloudId) cloudIdCache.set(cacheKey, cloudId);
-      }
-
-      if (cloudId) {
-        await supabase.from('eventos_oficiais').update(payload).eq('id', cloudId);
-      } else {
-        const newId = require('crypto').randomUUID();
-        payload.id = newId;
-        await supabase.from('eventos_oficiais').insert([payload]);
-        cloudIdCache.set(cacheKey, newId);
-      }
+      await pushEventToCloud(cleanEmail, updatedEvent);
+      markEventSynced(cleanEmail, updatedEvent, sportAtSave);
     } catch (err) {
       console.error("Cloud update background error in main.js:", err);
     }
@@ -657,6 +617,81 @@ ipcMain.handle('update-local-event', async (event, arg1, arg2, arg3) => {
 
   return { success: true };
 });
+
+// Evento com alteração local que ainda não subiu para a nuvem
+function eventNeedsPush(ev) {
+  return !!ev && (Number(ev.updatedAt) || 0) > (Number(ev._syncedAt) || 0);
+}
+
+// Registra no evento local que a versão enviada chegou na nuvem.
+// Se houve outra edição depois do envio, não marca (o próximo sync reenvia).
+function markEventSynced(cleanEmail, sentEv, esporte = currentSportSession) {
+  const data = getLocalData(cleanEmail, esporte);
+  const stored = (data.eventos || []).find(e =>
+    (e.id != null && sentEv.id != null && String(e.id) === String(sentEv.id)) ||
+    (e.name && sentEv.name && e.name.toLowerCase() === sentEv.name.toLowerCase())
+  );
+  if (!stored || stored.updatedAt !== sentEv.updatedAt) return;
+  stored._syncedAt = stored.updatedAt;
+  saveLocalData(cleanEmail, data, esporte);
+}
+
+// Envia o evento local completo para a nuvem (update se já existir, insert se não).
+// Lança erro se o Supabase recusar, para quem chamou saber que não subiu.
+async function pushEventToCloud(cleanEmail, ev) {
+  const sanitizedEv = sanitizeEventForCloudPayload(ev);
+
+  const payload = {
+    nome: ev.name,
+    local: ev.city || '',
+    organizador_email: cleanEmail,
+    status: ev.share_id ? 'compartilhado' : 'ativo',
+    detalhes: {
+      share_id: ev.share_id || '',
+      share_password: ev.share_password || '',
+      sport: currentSportSession || 'rodeio',
+      localData: sanitizedEv
+    }
+  };
+
+  // Cache de IDs na nuvem para evitar múltiplas queries de busca
+  const cacheKey = `${cleanEmail}::${ev.id || ev.name}`;
+  if (!cloudIdCache) cloudIdCache = new Map();
+
+  let cloudId = cloudIdCache.get(cacheKey);
+
+  if (!cloudId) {
+    // Só faz lookup se não tiver em cache
+    if (ev.id && /^[0-9a-f-]{36}$/i.test(String(ev.id))) {
+      const { data: byId } = await supabase.from('eventos_oficiais').select('id').eq('id', ev.id).limit(1);
+      if (byId && byId.length > 0) cloudId = byId[0].id;
+    }
+    if (!cloudId && ev.share_id) {
+      const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', ev.share_id).limit(1);
+      if (byShare && byShare.length > 0) cloudId = byShare[0].id;
+    }
+    if (!cloudId && ev.name) {
+      const { data: byEmailName } = await supabase.from('eventos_oficiais')
+        .select('id')
+        .eq('organizador_email', cleanEmail)
+        .eq('nome', ev.name.trim())
+        .limit(1);
+      if (byEmailName && byEmailName.length > 0) cloudId = byEmailName[0].id;
+    }
+    if (cloudId) cloudIdCache.set(cacheKey, cloudId);
+  }
+
+  if (cloudId) {
+    const { error } = await supabase.from('eventos_oficiais').update(payload).eq('id', cloudId);
+    if (error) throw error;
+  } else {
+    const newId = require('crypto').randomUUID();
+    payload.id = newId;
+    const { error } = await supabase.from('eventos_oficiais').insert([payload]);
+    if (error) throw error;
+    cloudIdCache.set(cacheKey, newId);
+  }
+}
 
 ipcMain.handle('delete-local-event', async (event, arg1, arg2) => {
   let email = '';
@@ -2944,74 +2979,79 @@ function mergeEventObjects(localEv, cloudEv) {
     if (!localEv) return cloudEv;
     if (!cloudEv) return localEv;
 
-    const merged = { ...cloudEv, ...localEv };
+    // Quem foi alterado por último ganha. Sem data (eventos antigos) mantém a regra antiga:
+    // campos do evento ficam com o local e itens das listas (peões, notas...) com a nuvem.
+    const localTime = Number(localEv.updatedAt) || 0;
+    const cloudTime = Number(cloudEv.updatedAt) || 0;
+    const cloudNewer = cloudTime > localTime;
+    const localNewer = localTime > cloudTime;
+
+    const merged = cloudNewer ? { ...localEv, ...cloudEv } : { ...cloudEv, ...localEv };
+    if (localEv._syncedAt !== undefined) merged._syncedAt = localEv._syncedAt;
+
+    // Junta duas listas pela chave sem apagar itens (mantém a ordem local).
+    // Item presente nos dois lados: combine(perdedor, vencedor).
+    const mergeList = (localArr, cloudArr, keyFn, combine) => {
+        const map = new Map();
+        (localArr || []).forEach(item => {
+            const key = keyFn(item);
+            if (key !== null) map.set(key, item);
+        });
+        (cloudArr || []).forEach(item => {
+            const key = keyFn(item);
+            if (key === null) return;
+            if (map.has(key)) {
+                const localItem = map.get(key);
+                map.set(key, localNewer ? combine(item, localItem) : combine(localItem, item));
+            } else {
+                map.set(key, item);
+            }
+        });
+        return Array.from(map.values());
+    };
+    const norm = v => String(v == null ? '' : v).trim().toLowerCase();
+    const replace = (loser, winner) => winner;
+    const overlay = (loser, winner) => ({ ...loser, ...winner });
 
     // Mescla peões (preserva dados de ambos)
     if (Array.isArray(localEv.peoes) || Array.isArray(cloudEv.peoes)) {
-        const peaoMap = new Map();
-        (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').trim().toLowerCase(), p));
-        (cloudEv.peoes || []).forEach(p => {
-            const key = (p.id || p.nome || '').trim().toLowerCase();
-            if (peaoMap.has(key)) {
-                peaoMap.set(key, { ...peaoMap.get(key), ...p });
-            } else {
-                peaoMap.set(key, p);
-            }
-        });
-        merged.peoes = Array.from(peaoMap.values());
+        merged.peoes = mergeList(localEv.peoes, cloudEv.peoes, p => norm(p && (p.id || p.nome)), overlay);
     }
 
     // Mescla boiadas e touros sem apagar itens
     if (Array.isArray(localEv.boiadas) || Array.isArray(cloudEv.boiadas)) {
-        const boiadaMap = new Map();
-        (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').trim().toLowerCase(), b));
-        (cloudEv.boiadas || []).forEach(b => {
-            const key = (b.nome || '').trim().toLowerCase();
-            if (boiadaMap.has(key)) {
-                const existing = boiadaMap.get(key);
-                // Deduplica por valor (touros podem vir como objeto) para o merge não crescer a cada sync
-                const tourosMap = new Map();
-                [...(existing.touros || []), ...(b.touros || [])].forEach(t => {
-                    const tKey = typeof t === 'string' ? t : JSON.stringify(t);
-                    if (!tourosMap.has(tKey)) tourosMap.set(tKey, t);
-                });
-                const allTouros = Array.from(tourosMap.values());
-                boiadaMap.set(key, { ...existing, ...b, touros: allTouros });
-            } else {
-                boiadaMap.set(key, b);
-            }
+        merged.boiadas = mergeList(localEv.boiadas, cloudEv.boiadas, b => norm(b && b.nome), (loser, winner) => {
+            // Deduplica por valor (touros podem vir como objeto) para o merge não crescer a cada sync
+            const tourosMap = new Map();
+            [...(loser.touros || []), ...(winner.touros || [])].forEach(t => {
+                const tKey = typeof t === 'string' ? t : JSON.stringify(t);
+                if (!tourosMap.has(tKey)) tourosMap.set(tKey, t);
+            });
+            return { ...loser, ...winner, touros: Array.from(tourosMap.values()) };
         });
-        merged.boiadas = Array.from(boiadaMap.values());
     }
 
     // Mescla juízes
     if (Array.isArray(localEv.juizes) || Array.isArray(cloudEv.juizes)) {
-        const jMap = new Map();
-        (localEv.juizes || []).forEach(j => {
-            const name = typeof j === 'string' ? j : (j.nome || '');
-            if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
-        });
-        (cloudEv.juizes || []).forEach(j => {
-            const name = typeof j === 'string' ? j : (j.nome || '');
-            if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
-        });
-        merged.juizes = Array.from(jMap.values());
+        const asJudge = j => typeof j === 'string' ? { nome: j } : j;
+        const judgeKey = j => {
+            const name = typeof j === 'string' ? j : (j && j.nome) || '';
+            return name ? norm(name) : null;
+        };
+        merged.juizes = mergeList(
+            (localEv.juizes || []).map(asJudge), (cloudEv.juizes || []).map(asJudge), judgeKey, replace
+        );
     }
 
     // Mescla sorteios
     if (Array.isArray(localEv.sorteios) || Array.isArray(cloudEv.sorteios)) {
-        const sMap = new Map();
-        (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
-        (cloudEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
-        merged.sorteios = Array.from(sMap.values());
+        merged.sorteios = mergeList(localEv.sorteios, cloudEv.sorteios, s => norm(s && (s.day || s.date)), replace);
     }
 
     // Mescla notas
     if (Array.isArray(localEv.notas) || Array.isArray(cloudEv.notas)) {
-        const nMap = new Map();
-        (localEv.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
-        (cloudEv.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
-        merged.notas = Array.from(nMap.values());
+        merged.notas = mergeList(localEv.notas, cloudEv.notas,
+            n => n ? norm(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`) : null, replace);
     }
 
     return merged;
@@ -3053,7 +3093,8 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
 
         if (error) throw error;
 
-        const localData = getLocalData(cleanEmail, currentSportSession);
+        const sport = currentSportSession;
+        const localData = getLocalData(cleanEmail, sport);
         localData.eventos = localData.eventos || [];
         const changedIds = [];
 
@@ -3088,24 +3129,42 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
 
                 if (idx > -1) {
                     const current = localData.eventos[idx];
+                    const pending = eventNeedsPush(current);
                     const merged = mergeEventObjects(current, cloudLocal);
+                    // Sem alteração local pendente, o resultado já está igual ao que veio da nuvem
+                    if (!pending && merged.updatedAt !== undefined) merged._syncedAt = merged.updatedAt;
                     // Só conta como mudança se o merge realmente alterou o evento local
                     if (!isSameJSONValue(current, merged)) {
                         localData.eventos[idx] = merged;
                         changedIds.push(merged.id != null ? String(merged.id) : null);
                     }
                 } else {
+                    if (cloudLocal.updatedAt !== undefined) cloudLocal._syncedAt = cloudLocal.updatedAt;
                     localData.eventos.push(cloudLocal);
                     changedIds.push(cloudLocal.id != null ? String(cloudLocal.id) : null);
                 }
             });
 
             if (changedIds.length > 0) {
-                saveLocalData(cleanEmail, localData, currentSportSession);
+                saveLocalData(cleanEmail, localData, sport);
             }
         }
 
-        return { success: true, hasChanges: changedIds.length > 0, changedIds };
+        // Reenvia o que foi alterado aqui e ainda não chegou na nuvem
+        // (envio que falhou, edição offline, ou alteração feita junto com outro aparelho)
+        let pushError = null;
+        const toPush = localData.eventos.filter(eventNeedsPush);
+        for (const ev of toPush) {
+            try {
+                await pushEventToCloud(cleanEmail, ev);
+                markEventSynced(cleanEmail, ev, sport);
+            } catch (pushErr) {
+                console.error("Erro ao reenviar evento para a nuvem:", pushErr);
+                pushError = (pushErr && pushErr.message) || String(pushErr);
+            }
+        }
+
+        return { success: true, hasChanges: changedIds.length > 0, changedIds, pushError };
     } catch (e) {
         console.error("Erro ao sincronizar eventos do usuário na nuvem:", e);
         return { success: false, error: e.message || String(e) };

@@ -62,6 +62,182 @@
     }
   };
 
+  // ===== Sincronização de eventos (mesmas regras do app desktop em main.js) =====
+
+  // id da tabela eventos_oficiais é UUID: um id fora desse formato faz o insert falhar
+  const _newCloudId = () => {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  };
+
+  const _eventNeedsPush = (ev) => !!ev && (Number(ev.updatedAt) || 0) > (Number(ev._syncedAt) || 0);
+
+  const _sanitizeEventForCloud = (ev) => {
+    const clean = JSON.parse(JSON.stringify(ev));
+    if (clean.overlaySettings) delete clean.overlaySettings.mediaData;
+    delete clean._syncedAt;
+    return clean;
+  };
+
+  const _fetchJSONOrThrow = async (url, options) => {
+    const res = await fetch(url, options);
+    if (!res.ok) {
+      let detail = '';
+      try { detail = await res.text(); } catch (e) {}
+      throw new Error(`Erro no servidor de banco de dados (${res.status}) ${detail}`.trim());
+    }
+    const txt = await res.text();
+    return txt ? JSON.parse(txt) : null;
+  };
+
+  // Envia o evento completo para a nuvem (PATCH se já existir, POST se não). Lança erro se falhar.
+  const _pushEventToCloud = async (cleanEmail, ev, extraPayload) => {
+    const payload = {
+      nome: ev.name,
+      local: ev.city || '',
+      organizador_email: cleanEmail,
+      status: ev.share_id ? 'compartilhado' : 'ativo',
+      detalhes: {
+        share_id: ev.share_id || '',
+        share_password: ev.share_password || '',
+        sport: 'rodeio',
+        localData: _sanitizeEventForCloud(ev)
+      },
+      ...(extraPayload || {})
+    };
+
+    let targetRecordId = null;
+    if (ev.id && /^[0-9a-f-]{36}$/i.test(String(ev.id))) {
+      const list = await _fetchJSONOrThrow(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&id=eq.${encodeURIComponent(ev.id)}&limit=1`, { headers: SUPABASE_HEADERS });
+      if (list && list.length > 0) targetRecordId = list[0].id;
+    }
+    if (!targetRecordId && ev.share_id) {
+      const list = await _fetchJSONOrThrow(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&detalhes->>share_id=eq.${encodeURIComponent(ev.share_id)}&limit=1`, { headers: SUPABASE_HEADERS });
+      if (list && list.length > 0) targetRecordId = list[0].id;
+    }
+    if (!targetRecordId && ev.name) {
+      const list = await _fetchJSONOrThrow(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=ilike.${encodeURIComponent(cleanEmail)}&nome=ilike.${encodeURIComponent(ev.name.trim())}&order=created_at.desc&limit=1`, { headers: SUPABASE_HEADERS });
+      if (list && list.length > 0) targetRecordId = list[0].id;
+    }
+
+    if (targetRecordId) {
+      await _fetchJSONOrThrow(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${targetRecordId}`, {
+        method: 'PATCH',
+        headers: SUPABASE_HEADERS,
+        body: JSON.stringify(payload)
+      });
+    } else {
+      payload.id = _newCloudId();
+      await _fetchJSONOrThrow('https://api.rodeoapp.pro/rest/v1/eventos_oficiais', {
+        method: 'POST',
+        headers: SUPABASE_HEADERS,
+        body: JSON.stringify(payload)
+      });
+    }
+  };
+
+  const _sameEvent = (a, b) =>
+    (a.id != null && b.id != null && String(a.id) === String(b.id)) ||
+    (a.name && b.name && a.name.toLowerCase() === b.name.toLowerCase());
+
+  // Marca no localStorage que a versão enviada chegou na nuvem (se não houve outra edição depois)
+  const _markEventSynced = (cleanEmail, sentEv) => {
+    const key = getStorageKey(cleanEmail, 'events');
+    const current = JSON.parse(localStorage.getItem(key) || '[]');
+    const stored = current.find(e => _sameEvent(e, sentEv));
+    if (!stored || stored.updatedAt !== sentEv.updatedAt) return;
+    stored._syncedAt = stored.updatedAt;
+    localStorage.setItem(key, JSON.stringify(current));
+  };
+
+  const _isSameJSONValue = (a, b) => {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) if (!_isSameJSONValue(a[i], b[i])) return false;
+      return true;
+    }
+    const aKeys = Object.keys(a).filter(k => a[k] !== undefined);
+    const bKeys = Object.keys(b).filter(k => b[k] !== undefined);
+    if (aKeys.length !== bKeys.length) return false;
+    for (const k of aKeys) {
+      if (!Object.prototype.hasOwnProperty.call(b, k) || !_isSameJSONValue(a[k], b[k])) return false;
+    }
+    return true;
+  };
+
+  // Quem foi alterado por último ganha; sem data (eventos antigos) os campos ficam com o local
+  // e os itens das listas com a nuvem. Nenhum item é apagado no merge.
+  const _mergeEventObjects = (localEv, cloudEv) => {
+    if (!localEv) return cloudEv;
+    if (!cloudEv) return localEv;
+
+    const localTime = Number(localEv.updatedAt) || 0;
+    const cloudTime = Number(cloudEv.updatedAt) || 0;
+    const cloudNewer = cloudTime > localTime;
+    const localNewer = localTime > cloudTime;
+
+    const merged = cloudNewer ? { ...localEv, ...cloudEv } : { ...cloudEv, ...localEv };
+    if (localEv._syncedAt !== undefined) merged._syncedAt = localEv._syncedAt;
+
+    const mergeList = (localArr, cloudArr, keyFn, combine) => {
+      const map = new Map();
+      (localArr || []).forEach(item => {
+        const k = keyFn(item);
+        if (k !== null) map.set(k, item);
+      });
+      (cloudArr || []).forEach(item => {
+        const k = keyFn(item);
+        if (k === null) return;
+        if (map.has(k)) {
+          const localItem = map.get(k);
+          map.set(k, localNewer ? combine(item, localItem) : combine(localItem, item));
+        } else {
+          map.set(k, item);
+        }
+      });
+      return Array.from(map.values());
+    };
+    const norm = v => String(v == null ? '' : v).trim().toLowerCase();
+    const replace = (loser, winner) => winner;
+    const overlay = (loser, winner) => ({ ...loser, ...winner });
+
+    if (Array.isArray(localEv.peoes) || Array.isArray(cloudEv.peoes)) {
+      merged.peoes = mergeList(localEv.peoes, cloudEv.peoes, p => norm(p && (p.id || p.nome)), overlay);
+    }
+    if (Array.isArray(localEv.boiadas) || Array.isArray(cloudEv.boiadas)) {
+      merged.boiadas = mergeList(localEv.boiadas, cloudEv.boiadas, b => norm(b && b.nome), (loser, winner) => {
+        const tourosMap = new Map();
+        [...(loser.touros || []), ...(winner.touros || [])].forEach(t => {
+          const tKey = typeof t === 'string' ? t : JSON.stringify(t);
+          if (!tourosMap.has(tKey)) tourosMap.set(tKey, t);
+        });
+        return { ...loser, ...winner, touros: Array.from(tourosMap.values()) };
+      });
+    }
+    if (Array.isArray(localEv.juizes) || Array.isArray(cloudEv.juizes)) {
+      const asJudge = j => typeof j === 'string' ? { nome: j } : j;
+      const judgeKey = j => {
+        const name = typeof j === 'string' ? j : (j && j.nome) || '';
+        return name ? norm(name) : null;
+      };
+      merged.juizes = mergeList((localEv.juizes || []).map(asJudge), (cloudEv.juizes || []).map(asJudge), judgeKey, replace);
+    }
+    if (Array.isArray(localEv.sorteios) || Array.isArray(cloudEv.sorteios)) {
+      merged.sorteios = mergeList(localEv.sorteios, cloudEv.sorteios, s => norm(s && (s.day || s.date)), replace);
+    }
+    if (Array.isArray(localEv.notas) || Array.isArray(cloudEv.notas)) {
+      merged.notas = mergeList(localEv.notas, cloudEv.notas,
+        n => n ? norm(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`) : null, replace);
+    }
+    return merged;
+  };
+
   window.electronAPI = {
     getAppVersion: async () => CURRENT_WEB_VERSION + ' Web',
     getHWID: async () => getLocalHWID(),
@@ -177,7 +353,9 @@
         const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail) return { success: false, error: "Email do usuário não informado." };
 
-        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&or=(organizador_email.ilike.${encodeURIComponent(cleanEmail)},status.eq.compartilhado)&order=created_at.desc&limit=500`;
+        // Só os eventos deste organizador (igual ao desktop). Eventos compartilhados de outros
+        // organizadores entram pelo "importar evento", não pelo sync automático.
+        const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&organizador_email=ilike.${encodeURIComponent(cleanEmail)}&order=created_at.desc&limit=500`;
         const res = await fetch(url, { headers: SUPABASE_HEADERS });
         if (!res.ok) {
           throw new Error(`Erro no servidor de banco de dados (${res.status} ${res.statusText})`);
@@ -186,6 +364,7 @@
 
         const key = getStorageKey(cleanEmail, 'events');
         let localEvents = JSON.parse(localStorage.getItem(key) || '[]');
+        const changedIds = [];
 
         if (Array.isArray(cloudEvents)) {
           cloudEvents.forEach(cloudEv => {
@@ -209,7 +388,7 @@
               };
             }
 
-            const idx = localEvents.findIndex(l => 
+            const idx = localEvents.findIndex(l =>
               (l.id && cloudLocal.id && String(l.id) === String(cloudLocal.id)) ||
               (l.id && cloudEv.id && String(l.id) === String(cloudEv.id)) ||
               (l.share_id && cloudEv.detalhes && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id) ||
@@ -217,70 +396,38 @@
             );
 
             if (idx > -1) {
-              const localEv = localEvents[idx];
-              const merged = { ...cloudLocal, ...localEv };
-
-              if (Array.isArray(localEv.peoes) || Array.isArray(cloudLocal.peoes)) {
-                const peaoMap = new Map();
-                (localEv.peoes || []).forEach(p => peaoMap.set((p.id || p.nome || '').trim().toLowerCase(), p));
-                (cloudLocal.peoes || []).forEach(p => {
-                  const k = (p.id || p.nome || '').trim().toLowerCase();
-                  if (peaoMap.has(k)) peaoMap.set(k, { ...peaoMap.get(k), ...p });
-                  else peaoMap.set(k, p);
-                });
-                merged.peoes = Array.from(peaoMap.values());
+              const current = localEvents[idx];
+              const pending = _eventNeedsPush(current);
+              const merged = _mergeEventObjects(current, cloudLocal);
+              if (!pending && merged.updatedAt !== undefined) merged._syncedAt = merged.updatedAt;
+              if (!_isSameJSONValue(current, merged)) {
+                localEvents[idx] = merged;
+                changedIds.push(merged.id != null ? String(merged.id) : null);
               }
-
-              if (Array.isArray(localEv.boiadas) || Array.isArray(cloudLocal.boiadas)) {
-                const boiadaMap = new Map();
-                (localEv.boiadas || []).forEach(b => boiadaMap.set((b.nome || '').trim().toLowerCase(), b));
-                (cloudLocal.boiadas || []).forEach(b => {
-                  const k = (b.nome || '').trim().toLowerCase();
-                  if (boiadaMap.has(k)) {
-                    const ex = boiadaMap.get(k);
-                    const allT = Array.from(new Set([...(ex.touros || []), ...(b.touros || [])]));
-                    boiadaMap.set(k, { ...ex, ...b, touros: allT });
-                  } else boiadaMap.set(k, b);
-                });
-                merged.boiadas = Array.from(boiadaMap.values());
-              }
-
-              if (Array.isArray(localEv.juizes) || Array.isArray(cloudLocal.juizes)) {
-                const jMap = new Map();
-                (localEv.juizes || []).forEach(j => {
-                  const name = typeof j === 'string' ? j : (j.nome || '');
-                  if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
-                });
-                (cloudLocal.juizes || []).forEach(j => {
-                  const name = typeof j === 'string' ? j : (j.nome || '');
-                  if (name) jMap.set(name.trim().toLowerCase(), typeof j === 'string' ? { nome: name } : j);
-                });
-                merged.juizes = Array.from(jMap.values());
-              }
-
-              if (Array.isArray(localEv.sorteios) || Array.isArray(cloudLocal.sorteios)) {
-                const sMap = new Map();
-                (localEv.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
-                (cloudLocal.sorteios || []).forEach(s => sMap.set((s.day || s.date || '').trim().toLowerCase(), s));
-                merged.sorteios = Array.from(sMap.values());
-              }
-
-              if (Array.isArray(localEv.notas) || Array.isArray(cloudLocal.notas)) {
-                const nMap = new Map();
-                (localEv.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
-                (cloudLocal.notas || []).forEach(n => nMap.set(`${n.day || n.dia}_${n.peaoNome || n.peao}_${n.juiz || ''}`.trim().toLowerCase(), n));
-                merged.notas = Array.from(nMap.values());
-              }
-
-              localEvents[idx] = merged;
             } else {
+              if (cloudLocal.updatedAt !== undefined) cloudLocal._syncedAt = cloudLocal.updatedAt;
               localEvents.push(cloudLocal);
+              changedIds.push(cloudLocal.id != null ? String(cloudLocal.id) : null);
             }
           });
-          localStorage.setItem(key, JSON.stringify(localEvents));
+          if (changedIds.length > 0) {
+            localStorage.setItem(key, JSON.stringify(localEvents));
+          }
         }
 
-        return { success: true };
+        // Reenvia o que foi alterado aqui e ainda não chegou na nuvem
+        let pushError = null;
+        for (const ev of localEvents.filter(_eventNeedsPush)) {
+          try {
+            await _pushEventToCloud(cleanEmail, ev);
+            _markEventSynced(cleanEmail, ev);
+          } catch (pushErr) {
+            console.error("Erro ao reenviar evento para a nuvem (web):", pushErr);
+            pushError = (pushErr && pushErr.message) || String(pushErr);
+          }
+        }
+
+        return { success: true, hasChanges: changedIds.length > 0, changedIds, pushError };
       } catch (e) {
         console.error("Erro em syncUserCloudEvents (web):", e);
         return { success: false, error: e.message || String(e) };
@@ -305,12 +452,13 @@
         const eventToSave = {
           ...newEvent,
           id: newEvent.id || ('web_' + Date.now().toString() + '_' + Math.random().toString(36).substring(2, 7)),
-          created_at: newEvent.created_at || new Date().toISOString()
+          created_at: newEvent.created_at || new Date().toISOString(),
+          updatedAt: Date.now()
         };
 
         const key = getStorageKey(cleanEmail, 'events');
         const current = JSON.parse(localStorage.getItem(key) || '[]');
-        
+
         const existingIdx = current.findIndex(e => (e.id && String(e.id) === String(eventToSave.id)) || (e.name && eventToSave.name && e.name.toLowerCase() === eventToSave.name.toLowerCase()));
         if (existingIdx > -1) {
           current[existingIdx] = eventToSave;
@@ -319,55 +467,12 @@
         }
         localStorage.setItem(key, JSON.stringify(current));
 
-        const sanitizedEv = JSON.parse(JSON.stringify(eventToSave));
-        if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
-
-        const payload = {
-          nome: newEvent.name,
-          data_inicio: (newEvent.days || '3') + ' dias',
-          data_fim: '',
-          local: newEvent.city || '',
-          organizador_email: cleanEmail,
-          status: newEvent.share_id ? 'compartilhado' : 'ativo',
-          detalhes: {
-            share_id: newEvent.share_id || '',
-            share_password: newEvent.share_password || '',
-            sport: 'rodeio',
-            localData: sanitizedEv
-          }
-        };
-
-        let targetRecordId = null;
-        if (newEvent.id && /^[0-9a-f-]{36}$/i.test(String(newEvent.id))) {
-          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&id=eq.${encodeURIComponent(newEvent.id)}&limit=1`, { headers: SUPABASE_HEADERS });
-          const checkList = await checkRes.json();
-          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
-        }
-        if (!targetRecordId && newEvent.share_id) {
-          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&detalhes->>share_id=eq.${encodeURIComponent(newEvent.share_id)}&limit=1`, { headers: SUPABASE_HEADERS });
-          const checkList = await checkRes.json();
-          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
-        }
-        if (!targetRecordId) {
-          const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=ilike.${encodeURIComponent(cleanEmail)}&nome=ilike.${encodeURIComponent(newEvent.name.trim())}&order=created_at.desc&limit=1`;
-          const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
-          const checkList = await checkRes.json();
-          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
-        }
-
-        if (targetRecordId) {
-          await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${targetRecordId}`, {
-            method: 'PATCH',
-            headers: SUPABASE_HEADERS,
-            body: JSON.stringify(payload)
-          });
-        } else {
-          payload.id = 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 8);
-          await fetch('https://api.rodeoapp.pro/rest/v1/eventos_oficiais', {
-            method: 'POST',
-            headers: SUPABASE_HEADERS,
-            body: JSON.stringify(payload)
-          });
+        // Se falhar aqui, o sync de 30s reenvia
+        try {
+          await _pushEventToCloud(cleanEmail, eventToSave, { data_inicio: (newEvent.days || '3') + ' dias', data_fim: '' });
+          _markEventSynced(cleanEmail, eventToSave);
+        } catch (pushErr) {
+          console.error("Erro ao enviar evento novo para a nuvem (web):", pushErr);
         }
 
         return { success: true };
@@ -395,15 +500,19 @@
         const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail || !updatedEvent) return { success: false, error: "Dados inválidos para atualizar evento." };
 
+        // Marca a hora da alteração: o sync usa isso para saber qual lado é o mais novo
+        updatedEvent.updatedAt = Date.now();
+
         const key = getStorageKey(cleanEmail, 'events');
         let current = JSON.parse(localStorage.getItem(key) || '[]');
         const targetId = updatedEvent.id;
-        
+
         let found = false;
         current = current.map(ev => {
           if (String(ev.id) === String(targetId) || (ev.name && updatedEvent.name && ev.name.toLowerCase() === updatedEvent.name.toLowerCase())) {
             found = true;
-            return updatedEvent;
+            // Mantém o marcador de sync do que está salvo (o objeto da tela pode estar sem ele)
+            return { ...updatedEvent, _syncedAt: ev._syncedAt };
           }
           return ev;
         });
@@ -414,53 +523,12 @@
 
         localStorage.setItem(key, JSON.stringify(current));
 
-        const sanitizedEv = JSON.parse(JSON.stringify(updatedEvent));
-        if (sanitizedEv.overlaySettings) delete sanitizedEv.overlaySettings.mediaData;
-
-        const payload = {
-          nome: updatedEvent.name,
-          local: updatedEvent.city || '',
-          organizador_email: cleanEmail,
-          status: updatedEvent.share_id ? 'compartilhado' : 'ativo',
-          detalhes: {
-            share_id: updatedEvent.share_id || '',
-            share_password: updatedEvent.share_password || '',
-            sport: 'rodeio',
-            localData: sanitizedEv
-          }
-        };
-
-        let targetRecordId = null;
-        if (updatedEvent.id && /^[0-9a-f-]{36}$/i.test(String(updatedEvent.id))) {
-          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&id=eq.${encodeURIComponent(updatedEvent.id)}&limit=1`, { headers: SUPABASE_HEADERS });
-          const checkList = await checkRes.json();
-          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
-        }
-        if (!targetRecordId && updatedEvent.share_id) {
-          const checkRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&detalhes->>share_id=eq.${encodeURIComponent(updatedEvent.share_id)}&limit=1`, { headers: SUPABASE_HEADERS });
-          const checkList = await checkRes.json();
-          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
-        }
-        if (!targetRecordId) {
-          const checkUrl = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&organizador_email=ilike.${encodeURIComponent(cleanEmail)}&nome=ilike.${encodeURIComponent(updatedEvent.name.trim())}&order=created_at.desc&limit=1`;
-          const checkRes = await fetch(checkUrl, { headers: SUPABASE_HEADERS });
-          const checkList = await checkRes.json();
-          if (checkList && checkList.length > 0) targetRecordId = checkList[0].id;
-        }
-
-        if (targetRecordId) {
-          await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${targetRecordId}`, {
-            method: 'PATCH',
-            headers: SUPABASE_HEADERS,
-            body: JSON.stringify(payload)
-          });
-        } else {
-          payload.id = 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 8);
-          await fetch('https://api.rodeoapp.pro/rest/v1/eventos_oficiais', {
-            method: 'POST',
-            headers: SUPABASE_HEADERS,
-            body: JSON.stringify(payload)
-          });
+        // Se falhar aqui, o sync de 30s reenvia
+        try {
+          await _pushEventToCloud(cleanEmail, updatedEvent);
+          _markEventSynced(cleanEmail, updatedEvent);
+        } catch (pushErr) {
+          console.error("Erro ao enviar alteração para a nuvem (web):", pushErr);
         }
 
         return { success: true };
@@ -1228,7 +1296,7 @@
             body: JSON.stringify(payload)
           });
         } else {
-          payload.id = 'web-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 8);
+          payload.id = _newCloudId();
           await fetch('https://api.rodeoapp.pro/rest/v1/eventos_oficiais', {
             method: 'POST',
             headers: SUPABASE_HEADERS,

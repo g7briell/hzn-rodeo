@@ -131,7 +131,12 @@ window.syncUserEventsWithCloud = async () => {
         if (window.electronAPI && window.electronAPI.syncUserCloudEvents) {
             const res = await window.electronAPI.syncUserCloudEvents(email);
             if (res && res.success) {
-                updateConnectionStatus('synced');
+                // Baixou da nuvem, mas algum evento alterado aqui não conseguiu subir (tenta de novo no próximo ciclo)
+                if (res.pushError) {
+                    updateConnectionStatus('error', "Não foi possível enviar alterações para a nuvem: " + res.pushError);
+                } else {
+                    updateConnectionStatus('synced');
+                }
 
                 // Só re-renderiza a tela se de fato houve alteração vinda da nuvem
                 if (res.hasChanges) {
