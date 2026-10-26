@@ -1,4 +1,3 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
 const path = require('path');
 const { machineIdSync } = require('node-machine-id');
@@ -3091,6 +3090,22 @@ const http = require('http');
 
 let overlayWsClients = [];
 
+// Resolve um caminho relativo vindo da URL garantindo que fique dentro de baseDir
+// (bloqueia "../", caminhos absolutos e barras invertidas no Windows).
+function resolveInsideDir(baseDir, relPath) {
+    let decoded;
+    try {
+        decoded = decodeURIComponent(relPath || '');
+    } catch (e) {
+        return null;
+    }
+    if (!decoded || decoded.includes('\0')) return null;
+    const base = path.resolve(baseDir);
+    const target = path.resolve(base, decoded);
+    if (!target.startsWith(base + path.sep)) return null;
+    return target;
+}
+
 // Criar Servidor HTTP na porta 3005
 const overlayServer = http.createServer((req, res) => {
     const parsedPath = (req.url || '/').split('?')[0];
@@ -3108,14 +3123,18 @@ const overlayServer = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(content, 'utf-8');
         });
-    } else if (req.url.startsWith('/media/')) {
+    } else if (parsedPath.startsWith('/media/')) {
         // Servir arquivos de mídia salvos pelo usuário (logos, vídeos de patrocinadores)
         const mediaDir = path.join(app.getPath('userData'), 'media');
         if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
         
-        const fileName = decodeURIComponent(req.url.replace('/media/', ''));
-        const filePath = path.join(mediaDir, fileName);
-        
+        const filePath = resolveInsideDir(mediaDir, parsedPath.slice('/media/'.length));
+        if (!filePath) {
+            res.writeHead(404);
+            res.end('Not found');
+            return;
+        }
+
         fs.readFile(filePath, (err, content) => {
             if (err) {
                 res.writeHead(404);
@@ -3132,9 +3151,14 @@ const overlayServer = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(content);
         });
-    } else {
-        // Servir assets do app caso o overlay os requisite
-        const filePath = path.join(__dirname, req.url);
+    } else if (parsedPath.startsWith('/assets/')) {
+        // Servir apenas a pasta assets/ do app (logos usados pela tela verde)
+        const filePath = resolveInsideDir(path.join(__dirname, 'assets'), parsedPath.slice('/assets/'.length));
+        if (!filePath) {
+            res.writeHead(404);
+            res.end('Not found');
+            return;
+        }
         fs.readFile(filePath, (err, content) => {
             if (err) {
                 res.writeHead(404);
@@ -3151,6 +3175,9 @@ const overlayServer = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(content, 'utf-8');
         });
+    } else {
+        res.writeHead(404);
+        res.end('Not found');
     }
 });
 
@@ -3173,8 +3200,9 @@ ipcMain.handle('upload-media', async (event, sourcePath) => {
 ipcMain.handle('delete-media', async (event, fileName) => {
     try {
         const mediaDir = path.join(app.getPath('userData'), 'media');
-        const filePath = path.join(mediaDir, fileName);
-        if (fs.existsSync(filePath)) {
+        const safeName = path.basename(String(fileName || ''));
+        const filePath = safeName ? path.join(mediaDir, safeName) : null;
+        if (filePath && fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
         return { success: true };
@@ -3208,7 +3236,9 @@ wssOverlay.on('connection', (ws) => {
     });
 });
 
-overlayServer.listen(3005, () => {
+// Escuta só no loopback: OBS/vMix no mesmo PC continuam funcionando, mas outros
+// computadores da rede não conseguem acessar o servidor nem o WebSocket de comandos.
+overlayServer.listen(3005, '127.0.0.1', () => {
     console.log('Overlay server running at http://localhost:3005/');
 });
 
