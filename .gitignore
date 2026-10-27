@@ -32,3 +32,6 @@ yarn-error.log*
 .vercel
 temp_deploy/
 scratch/
+
+# gerado pelo TypeScript; versionado quebra o build do Nixpacks (cache montado nesse caminho)
+*.tsbuildinfo
