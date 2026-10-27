@@ -326,41 +326,81 @@
   border-radius: 28px;
 }
 
-/* Faixa de plataformas */
+/* Faixa de eventos em destaque da semana (FaixaEventos.tsx) */
 .faixa {
   border-block: 1px solid var(--linha);
-  padding: 22px 0;
+  padding: 22px 0 26px;
+}
+.faixa-titulo {
+  margin-bottom: 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pedra);
+}
+.faixa-titulo strong {
+  color: var(--ouro);
+}
+.faixa-mascara {
   overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
 .faixa-trilho {
   display: flex;
   width: max-content;
-  animation: rola 40s linear infinite;
+  animation: rola 45s linear infinite;
+}
+.faixa-mascara:hover .faixa-trilho {
+  animation-play-state: paused;
 }
 .faixa ul {
   display: flex;
+  gap: 14px;
+  padding: 0 7px;
   list-style: none;
-  padding: 0;
 }
-.faixa li {
+.faixa-evento {
   display: flex;
   align-items: center;
-  gap: 36px;
-  padding-right: 36px;
+  gap: 14px;
+  height: 84px;
+  padding: 10px 22px 10px 10px;
+  border-radius: 18px;
+  border: 1px solid var(--linha);
+  background: linear-gradient(180deg, #141415, #0a0a0b);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.2s ease, transform 0.2s var(--mola);
+}
+.faixa-evento:hover {
+  border-color: rgba(245, 179, 1, 0.45);
+  transform: translateY(-2px);
+}
+.faixa-evento img {
+  height: 64px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  border-radius: 10px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8));
+}
+.faixa-evento span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.faixa-evento strong {
   font-family: var(--fonte-display);
   font-style: italic;
   font-weight: 700;
-  font-size: 1.35rem;
-  color: var(--pedra);
-  white-space: nowrap;
+  font-size: 1.1rem;
+  color: var(--osso);
 }
-.faixa li::after {
-  content: "";
-  width: 12px;
-  height: 12px;
-  background: var(--ouro);
-  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+.faixa-evento small {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--pedra);
 }
 @keyframes rola {
   to {

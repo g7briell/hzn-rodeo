@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import "./_site/site.css";
 import { fonteDisplay, fonteTexto } from "./_site/fonts";
 import TourTelas from "./_site/TourTelas";
-import { DUVIDAS, INCLUSO, LINKS, PLANOS, PLATAFORMAS, WHATSAPP_EXIBICAO, whatsapp } from "./_site/content";
+import FaixaEventos from "./_site/FaixaEventos";
+import { DUVIDAS, INCLUSO, LINKS, PLANOS, WHATSAPP_EXIBICAO, whatsapp } from "./_site/content";
 
 export const metadata: Metadata = {
   title: "RodeoApp | Sistema para rodeio: sorteio, notas, ranking e telão",
@@ -106,17 +107,7 @@ export default function Site() {
           <p className="largura palco-legenda">Telas reais do app e do portal do juiz, com um evento de demonstração.</p>
         </section>
 
-        <div className="faixa" aria-label="Onde o RodeoApp funciona">
-          <div className="faixa-trilho">
-            {[0, 1].map((copia) => (
-              <ul key={copia} aria-hidden={copia === 1}>
-                {PLATAFORMAS.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
-            ))}
-          </div>
-        </div>
+        <FaixaEventos />
 
         <section className="secao" id="recursos" aria-labelledby="recursos-titulo">
           <div className="largura">
