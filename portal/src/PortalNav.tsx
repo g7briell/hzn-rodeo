@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-// Navegação da área logada do portal: menu lateral no computador e barra inferior no celular.
+// Navegação da área logada do portal: barra superior no computador e dock flutuante no celular.
 
 export type PortalTab = 'home' | 'dashboard' | 'explore' | 'feed' | 'boiadas' | 'minha-boiada' | 'profile' | 'aovivo';
 
@@ -52,6 +52,13 @@ const ICONES = {
     </>
   ),
   sair: <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 16l-4-4 4-4M6 12h10" />,
+  busca: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.2-4.2" />
+    </>
+  ),
+  seta: <path d="m7 10 5 5 5-5" />,
   mais: (
     <>
       <circle cx="5.5" cy="12" r="1.4" />
@@ -69,27 +76,13 @@ function Icone({ nome }: { nome: keyof typeof ICONES }) {
   );
 }
 
-type Props = {
-  currentTab: string;
-  onNavigate: (tab: PortalTab) => void;
-  onLogout: () => void;
-  isAdmin: boolean;
-  isTropeiro: boolean;
-  nome?: string;
-  email?: string;
-  foto?: string;
-  hideMobile?: boolean;
-};
-
-function itensPrincipais(): Item[] {
-  return [
-    { tab: 'home', label: 'Início', icon: 'inicio' },
-    { tab: 'explore', label: 'Eventos', icon: 'eventos' },
-    { tab: 'aovivo', label: 'Ao vivo', icon: 'aovivo' },
-    { tab: 'feed', label: 'Notícias', icon: 'feed' },
-    { tab: 'boiadas', label: 'Boiadas', icon: 'boiadas' },
-  ];
-}
+const PRINCIPAIS: Item[] = [
+  { tab: 'home', label: 'Início', icon: 'inicio' },
+  { tab: 'explore', label: 'Eventos', icon: 'eventos' },
+  { tab: 'aovivo', label: 'Ao vivo', icon: 'aovivo' },
+  { tab: 'feed', label: 'Notícias', icon: 'feed' },
+  { tab: 'boiadas', label: 'Boiadas', icon: 'boiadas' },
+];
 
 function itensConta(isAdmin: boolean, isTropeiro: boolean): Item[] {
   const lista: Item[] = [];
@@ -102,58 +95,150 @@ function itensConta(isAdmin: boolean, isTropeiro: boolean): Item[] {
 function Rotulo({ item }: { item: Item }) {
   return (
     <>
-      <Icone nome={item.icon} />
-      <span>{item.label}</span>
-      {item.tab === 'aovivo' && <span className="pnav-live" aria-hidden="true" />}
+      <span className="pnav-icone-caixa">
+        <Icone nome={item.icon} />
+        {item.tab === 'aovivo' && <span className="pnav-live" aria-hidden="true" />}
+      </span>
+      <span className="pnav-rotulo">{item.label}</span>
     </>
   );
 }
 
-export function PortalSidebar({ currentTab, onNavigate, onLogout, isAdmin, isTropeiro, nome, email, foto }: Props) {
-  const botao = (item: Item) => (
-    <button
-      key={item.tab}
-      type="button"
-      className={`pnav-item${currentTab === item.tab ? ' is-active' : ''}`}
-      aria-current={currentTab === item.tab ? 'page' : undefined}
-      onClick={() => onNavigate(item.tab)}
-    >
-      <Rotulo item={item} />
-    </button>
-  );
+// Fecha um menu ao clicar fora ou apertar Esc
+function useFechar(aberto: boolean, fechar: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const clique = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) fechar();
+    };
+    const tecla = (e: KeyboardEvent) => e.key === 'Escape' && fechar();
+    document.addEventListener('mousedown', clique);
+    window.addEventListener('keydown', tecla);
+    return () => {
+      document.removeEventListener('mousedown', clique);
+      window.removeEventListener('keydown', tecla);
+    };
+  }, [aberto, fechar]);
+  return ref;
+}
+
+type Props = {
+  currentTab: string;
+  onNavigate: (tab: PortalTab) => void;
+  onLogout: () => void;
+  isAdmin: boolean;
+  isTropeiro: boolean;
+  nome?: string;
+  email?: string;
+  foto?: string;
+  searchTerm?: string;
+  onSearch?: (v: string) => void;
+  searchPlaceholder?: string;
+  hideMobile?: boolean;
+};
+
+export function PortalTopBar(props: Props) {
+  const { currentTab, onNavigate, onLogout, isAdmin, isTropeiro, nome, email, foto, searchTerm, onSearch, searchPlaceholder } = props;
+  const [menuAberto, setMenuAberto] = useState(false);
+  const ref = useFechar(menuAberto, () => setMenuAberto(false));
+  const conta = itensConta(isAdmin, isTropeiro);
+  const contaAtiva = conta.some(i => i.tab === currentTab);
 
   return (
-    <aside className="dashboard-sidebar pnav-sidebar">
-      <button type="button" className="pnav-marca" onClick={() => onNavigate('home')} aria-label="Início do portal">
-        <img src="/header_logo.png" alt="RodeoApp" />
-      </button>
-
-      <nav className="pnav-grupo" aria-label="Portal">
-        {itensPrincipais().map(botao)}
-      </nav>
-
-      <nav className="pnav-grupo pnav-grupo-conta" aria-label="Sua conta">
-        <p className="pnav-titulo">Sua conta</p>
-        {itensConta(isAdmin, isTropeiro).map(botao)}
-      </nav>
-
-      <div className="pnav-usuario">
-        <img src={foto || '/novacontasfoto.jpg'} alt="" className="pnav-avatar" />
-        <div className="pnav-usuario-texto">
-          <strong>{nome || 'Minha conta'}</strong>
-          {email && <span>{email}</span>}
-        </div>
-        <button type="button" className="pnav-sair" onClick={onLogout} title="Sair da conta" aria-label="Sair da conta">
-          <Icone nome="sair" />
+    <header className="dashboard-sidebar pnav-topo">
+      <div className="pnav-topo-linha">
+        <button type="button" className="pnav-marca" onClick={() => onNavigate('home')} aria-label="Início do portal">
+          <img src="/header_logo.png" alt="RodeoApp" />
         </button>
+
+        <nav className="pnav-abas" aria-label="Portal">
+          {PRINCIPAIS.map(item => (
+            <button
+              key={item.tab}
+              type="button"
+              className={`pnav-aba-topo${currentTab === item.tab ? ' is-active' : ''}`}
+              aria-current={currentTab === item.tab ? 'page' : undefined}
+              onClick={() => onNavigate(item.tab)}
+            >
+              <Rotulo item={item} />
+            </button>
+          ))}
+        </nav>
+
+        <div className="pnav-direita">
+          {onSearch && (
+            <label className="pnav-busca">
+              <Icone nome="busca" />
+              <input
+                type="search"
+                placeholder={searchPlaceholder || 'Buscar...'}
+                value={searchTerm || ''}
+                onChange={e => onSearch(e.target.value)}
+                disabled={currentTab === 'profile'}
+                aria-label="Buscar"
+              />
+            </label>
+          )}
+
+          <div className="pnav-conta" ref={ref}>
+            <button
+              type="button"
+              className={`pnav-conta-botao${contaAtiva || menuAberto ? ' is-active' : ''}`}
+              aria-haspopup="menu"
+              aria-expanded={menuAberto}
+              onClick={() => setMenuAberto(v => !v)}
+            >
+              <img src={foto || '/novacontasfoto.jpg'} alt="" className="pnav-avatar" />
+              <span className="pnav-conta-nome">{nome || 'Minha conta'}</span>
+              <Icone nome="seta" />
+            </button>
+            {menuAberto && (
+              <div className="pnav-menu" role="menu">
+                <div className="pnav-menu-cabeca">
+                  <strong>{nome || 'Minha conta'}</strong>
+                  {email && <span>{email}</span>}
+                </div>
+                {conta.map(item => (
+                  <button
+                    key={item.tab}
+                    type="button"
+                    role="menuitem"
+                    className={`pnav-item${currentTab === item.tab ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setMenuAberto(false);
+                      onNavigate(item.tab);
+                    }}
+                  >
+                    <Rotulo item={item} />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="pnav-item pnav-item-sair"
+                  onClick={() => {
+                    setMenuAberto(false);
+                    onLogout();
+                  }}
+                >
+                  <span className="pnav-icone-caixa">
+                    <Icone nome="sair" />
+                  </span>
+                  <span className="pnav-rotulo">Sair da conta</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </aside>
+    </header>
   );
 }
 
 export function PortalMobileNav({ currentTab, onNavigate, onLogout, isAdmin, isTropeiro, hideMobile }: Props) {
   const [maisAberto, setMaisAberto] = useState(false);
-  const fixos: Item[] = itensPrincipais().filter(i => i.tab !== 'feed');
+  const fixos = PRINCIPAIS.filter(i => i.tab !== 'feed');
   const extras: Item[] = [{ tab: 'feed', label: 'Notícias', icon: 'feed' }, ...itensConta(isAdmin, isTropeiro)];
   const extraAtivo = extras.some(i => i.tab === currentTab);
 
@@ -188,33 +273,40 @@ export function PortalMobileNav({ currentTab, onNavigate, onLogout, isAdmin, isT
               </button>
             ))}
             <button type="button" className="pnav-item pnav-item-sair" onClick={() => { setMaisAberto(false); onLogout(); }}>
-              <Icone nome="sair" />
-              <span>Sair da conta</span>
+              <span className="pnav-icone-caixa">
+                <Icone nome="sair" />
+              </span>
+              <span className="pnav-rotulo">Sair da conta</span>
             </button>
           </div>
         </div>
       )}
 
-      <nav className="mobile-bottom-nav pnav-barra" aria-label="Portal">
-        {fixos.map(item => (
-          <button
-            key={item.tab}
-            type="button"
-            className={`pnav-aba${currentTab === item.tab ? ' is-active' : ''}`}
-            aria-current={currentTab === item.tab ? 'page' : undefined}
-            onClick={() => ir(item.tab)}
-          >
-            <Rotulo item={item} />
-          </button>
-        ))}
+      <nav className="mobile-bottom-nav pnav-dock" aria-label="Portal">
+        {fixos.map(item => {
+          const ativo = !maisAberto && currentTab === item.tab;
+          return (
+            <button
+              key={item.tab}
+              type="button"
+              className={`pnav-aba${ativo ? ' is-active' : ''}`}
+              aria-current={ativo ? 'page' : undefined}
+              onClick={() => ir(item.tab)}
+            >
+              <Rotulo item={item} />
+            </button>
+          );
+        })}
         <button
           type="button"
           className={`pnav-aba${extraAtivo || maisAberto ? ' is-active' : ''}`}
           aria-expanded={maisAberto}
           onClick={() => setMaisAberto(v => !v)}
         >
-          <Icone nome="mais" />
-          <span>Mais</span>
+          <span className="pnav-icone-caixa">
+            <Icone nome="mais" />
+          </span>
+          <span className="pnav-rotulo">Mais</span>
         </button>
       </nav>
     </>

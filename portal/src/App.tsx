@@ -3,7 +3,7 @@ import './index.css';
 import { supabase } from './supabaseClient';
 import AdminDashboard from './AdminDashboard';
 import { PdfImportModal } from './components/PdfImportModal';
-import { PortalSidebar, PortalMobileNav, type PortalTab } from './PortalNav';
+import { PortalTopBar, PortalMobileNav, type PortalTab } from './PortalNav';
 
 
 const formatSide = (s: any) => {
@@ -6340,8 +6340,8 @@ Instruções importantes:
       )}
 
       <div className="dashboard-layout">
-        {/* Menu lateral (computador) */}
-        <PortalSidebar
+        {/* Barra superior (computador) */}
+        <PortalTopBar
           currentTab={currentTab}
           onNavigate={navegarPortal}
           onLogout={() => setIsLogoutConfirmOpen(true)}
@@ -6350,6 +6350,14 @@ Instruções importantes:
           nome={userProfile?.nome}
           email={user?.email}
           foto={userFoto}
+          searchTerm={searchTerm}
+          onSearch={setSearchTerm}
+          searchPlaceholder={
+            currentTab === 'explore' ? "Buscar eventos ou locais..." :
+            currentTab === 'feed' ? "Buscar notícias..." :
+            currentTab === 'boiadas' ? "Buscar boiada ou touro..." :
+            "Buscar..."
+          }
         />
 
         {/* Main Content Area */}
