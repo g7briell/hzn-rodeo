@@ -1,0 +1,14 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/admin-delete-event/route": "app/api/admin-delete-event/route.js",
+  "/api/search-lives/route": "app/api/search-lives/route.js",
+  "/api/admin-db/route": "app/api/admin-db/route.js",
+  "/api/ai-pdf/route": "app/api/ai-pdf/route.js",
+  "/api/send-otp/route": "app/api/send-otp/route.js",
+  "/api/youtube-viewers/route": "app/api/youtube-viewers/route.js",
+  "/api/sponsors/route": "app/api/sponsors/route.js",
+  "/api/send-license/route": "app/api/send-license/route.js",
+  "/icon.png/route": "app/icon.png/route.js",
+  "/admin/page": "app/admin/page.js",
+  "/page": "app/page.js"
+}

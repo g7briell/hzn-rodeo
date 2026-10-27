@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RODEOAPP • TELA VERDE (CHROMA KEY OVERLAY)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        html, body {
+            background-color: #00FF00 !important; /* Puro Verde Chroma Key Broadcast (RGB 0, 255, 0) */
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Animações Broadcast Modernas */
+        @keyframes slideInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(140px) scale(0.95);
+            }
+            70% {
+                transform: translateY(-6px) scale(1.01);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        @keyframes slideOutDown {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(140px) scale(0.95);
+            }
+        }
+        @keyframes fadeInCenter {
+            0% {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes fadeOutCenter {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+        }
+
+        .anim-slide-in {
+            animation: slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-slide-out {
+            animation: slideOutDown 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+        }
+        .anim-fade-in {
+            animation: fadeInCenter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-fade-out {
+            animation: fadeOutCenter 0.35s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+        }
+
+        /* ============================================================ */
+        /* ANIMAÇÃO BROADCAST - clip-path GPU reveal (ZERO LAYOUT REFLOW) */
+        /* ============================================================ */
+        @keyframes clipReveal {
+            0%   { clip-path: inset(0 100% 0 0 round 1.5rem); -webkit-clip-path: inset(0 100% 0 0 round 1.5rem); }
+            100% { clip-path: inset(0 0%   0 0 round 1.5rem); -webkit-clip-path: inset(0 0%   0 0 round 1.5rem); }
+        }
+
+        @keyframes bladeTravel {
+            0%   { left: 0%;   opacity: 1; }
+            85%  { left: 98%;  opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        @keyframes pillDropIn {
+            0%   { opacity: 0; transform: translateY(14px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes outroSlideAway {
+            0%   { opacity: 1; transform: translate3d(0, 0, 0); }
+            100% { opacity: 0; transform: translate3d(120px, 0, 0); }
+        }
+
+        @keyframes logoOutroPop {
+            0%   { transform: scale(0); opacity: 0; }
+            70%  { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .anim-clip {
+            animation: clipReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            will-change: clip-path;
+        }
+        .anim-blade {
+            animation: bladeTravel 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .anim-pill {
+            animation: pillDropIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+        }
+        .anim-outro-slide {
+            animation: outroSlideAway 0.4s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+        }
+
+        /* Efeitos Visuais dos Painéis de TV */
+        .broadcast-wine-bar {
+            background: linear-gradient(90deg, #580009 0%, #2f0005 35%, #120002 75%, #050001 100%);
+            border: 2.5px solid #b91c1c;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.25), 0 0 35px rgba(220,38,38,0.4);
+        }
+
+        .broadcast-leaderboard {
+            background: linear-gradient(180deg, #65000c 0%, #300005 35%, #120002 75%, #050001 100%);
+            border: 2.5px solid #b91c1c;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.25), 0 0 50px rgba(220,38,38,0.4);
+        }
+
+        .red-divider {
+            width: 2px;
+            height: 50px;
+            background: linear-gradient(180deg, rgba(220,38,38,0.2) 0%, #e11d48 50%, rgba(220,38,38,0.2) 100%);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative bg-[#00FF00] overflow-hidden">
+
+    <!-- Indicador de Status Inicial (Discreto - Some após 4s para manter o chroma 100% limpo) -->
+    <div id="status-pill" class="fixed bottom-5 right-5 z-50 transition-opacity duration-1000 opacity-100 pointer-events-none">
+        <div class="bg-black/90 text-white border border-white/20 px-4 py-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 text-xs font-bold">
+            <span id="status-ws-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#f59e0b]"></span>
+            <span class="tracking-wider uppercase font-black text-yellow-400">RODEOAPP</span>
+            <span class="text-slate-400">|</span>
+            <span class="uppercase tracking-wide text-slate-200">TELA VERDE ATIVA</span>
+            <span class="text-slate-400">|</span>
+            <span id="status-event-name" class="text-emerald-400 font-mono text-[11px]">EVENTO: CARREGANDO...</span>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 1: TARJA INFERIOR DO COMPETIDOR (LOWER THIRD) -->
+    <!-- ============================================================ -->
+    <div id="overlay-matchup-container" class="fixed bottom-12 left-16 z-40 hidden">
+
+        <!-- Pílula Superior de Round — anima depois da barra -->
+        <div id="matchup-round-pill" class="inline-block bg-[#85000f] text-white font-black text-sm sm:text-base uppercase tracking-widest px-8 py-1.5 rounded-t-2xl border-t-2 border-x-2 border-red-500 shadow-lg ml-6" style="opacity: 0;">
+            <span id="matchup-round-badge">ROUND 1</span>
+        </div>
+
+        <!-- Wrapper da barra com largura fixa 1080px -->
+        <div id="matchup-bar-wrapper" style="position: relative; width: 1080px;">
+
+            <!-- Barra Principal Vinho com clip-path GPU -->
+            <div id="matchup-main-bar"
+                 class="broadcast-wine-bar relative overflow-hidden"
+                 style="width: 1080px; border-radius: 1.5rem; clip-path: inset(0 100% 0 0 round 1.5rem); -webkit-clip-path: inset(0 100% 0 0 round 1.5rem);">
+
+                <!-- Camada 1: Conteúdo Principal do Competidor -->
+                <div id="matchup-content-layer" class="px-8 py-5 flex items-center gap-6 relative z-10" style="width: 1080px;">
+                    <!-- Nome e Cidade/Touro do Competidor -->
+                    <div class="flex-1 min-w-[340px]">
+                        <h2 id="matchup-rider-name" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight drop-shadow-md truncate">
+                            NOME DO COMPETIDOR
+                        </h2>
+                        <p id="matchup-rider-subline" class="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-100 mt-1 truncate">
+                            CIDADE, UF • VS NOME DO TOURO (COMPANHIA)
+                        </p>
+                    </div>
+
+                    <!-- Divisor Estilizado em Raio -->
+                    <div class="px-2 flex items-center justify-center shrink-0">
+                        <svg class="w-6 h-10 text-red-500 fill-current drop-shadow-[0_0_12px_rgba(239,68,68,0.95)] animate-pulse" viewBox="0 0 24 24">
+                            <path d="M13 1L3 13h8l-2 10 12-14h-8l3-8z"/>
+                        </svg>
+                    </div>
+
+                    <!-- Coluna: DIFERENÇA DO LÍDER -->
+                    <div class="text-center min-w-[100px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">DIF. LÍDER</span>
+                        <span id="matchup-dif-lider" class="text-3xl sm:text-4xl font-black text-yellow-400 font-mono leading-none tracking-tight">0,00</span>
+                    </div>
+
+                    <div class="red-divider"></div>
+
+                    <!-- Coluna: TOTAL -->
+                    <div class="text-center min-w-[100px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">TOTAL</span>
+                        <span id="matchup-total-score" class="text-3xl sm:text-4xl font-black text-white font-mono leading-none tracking-tight">0,00</span>
+                    </div>
+
+                    <div class="red-divider"></div>
+
+                    <!-- Coluna: POSIÇÃO -->
+                    <div class="text-center min-w-[90px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">POSIÇÃO</span>
+                        <span id="matchup-posicao" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">1º</span>
+                    </div>
+
+                    <div class="red-divider"></div>
+
+                    <!-- Coluna: PARADAS -->
+                    <div class="text-center min-w-[90px]">
+                        <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">PARADAS</span>
+                        <span id="matchup-paradas" class="text-3xl sm:text-4xl font-black text-white leading-none tracking-tight">0/1</span>
+                    </div>
+                </div>
+
+                <!-- Camada 2: Faixa de Saída (Outro) com a Logo do Evento no Centro -->
+                <div id="matchup-outro-layer" class="absolute inset-0 z-20 bg-gradient-to-r from-[#70000a] via-[#c01826] to-[#70000a] flex items-center justify-center border-y-2 border-red-400 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)] opacity-0 pointer-events-none transition-opacity duration-300">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-[-20deg]"></div>
+                    <div id="matchup-outro-logo-box" class="h-20 max-w-[320px] flex items-center justify-center transform scale-0 transition-transform duration-500 z-10">
+                        <img id="matchup-outro-logo-img" src="assets/splash_logo.png" alt="Logo" class="max-h-full max-w-full object-contain filter drop-shadow-[0_8px_25px_rgba(0,0,0,0.95)]">
+                    </div>
+                </div>
+
+            </div><!-- /#matchup-main-bar -->
+
+            <!-- Lâmina branca na borda que cavalga a revelação -->
+            <div id="matchup-blade" class="pointer-events-none"
+                 style="position: absolute; top: 0; bottom: 0; left: 0; width: 8px;
+                        background: linear-gradient(to right, transparent, white);
+                        box-shadow: 0 0 15px #fff, 0 0 25px #ef4444;
+                        z-index: 50; opacity: 0;"></div>
+
+        </div><!-- /#matchup-bar-wrapper -->
+
+    </div><!-- /#overlay-matchup-container -->
+
+
+
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 2: TABELA DE CLASSIFICAÇÃO GERAL (CENTRO DA TELA - IMAGEM 3) -->
+    <!-- ============================================================ -->
+    <div id="overlay-ranking-container" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 hidden pointer-events-none">
+        <div class="w-[1020px] max-w-[92vw]">
+            <!-- Título do Evento e Modalidade -->
+            <div class="mb-4 pl-3">
+                <h1 id="ranking-event-name" class="text-5xl sm:text-6xl font-black italic uppercase tracking-tight text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.95)]">
+                    BARRETOS 2026
+                </h1>
+                <p id="ranking-event-modality" class="text-lg sm:text-xl font-black uppercase tracking-wider text-slate-200 mt-1">
+                    CLASSIFICAÇÃO GERAL – MODALIDADE TOURO
+                </p>
+            </div>
+
+            <!-- Tabela do Top 10 com Visual Broadcast Ampliado -->
+            <div class="broadcast-leaderboard rounded-3xl p-6 w-full shadow-2xl">
+                <div id="ranking-rows-container" class="space-y-3">
+                    <!-- Linhas do Ranking injetadas dinamicamente via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 3: DETALHAMENTO DE NOTAS DOS JUÍZES (IMAGEM 4) -->
+    <!-- ============================================================ -->
+    <div id="overlay-score-container" class="fixed bottom-12 left-16 z-40 hidden">
+        <div class="flex items-center gap-6">
+            <!-- Logo Transparente em PNG Real (Sem círculo branco, sem borda vermelha) -->
+            <div class="w-32 h-28 flex items-center justify-center shrink-0">
+                <img id="score-event-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain filter drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]">
+            </div>
+
+            <!-- Caixa de Detalhamento Inteligente de Juízes -->
+            <div class="broadcast-wine-bar rounded-3xl px-8 py-5 min-w-[660px] flex items-center gap-8">
+                <!-- Seção Esquerda: Grade de Juízes -->
+                <div class="flex-1 min-w-[340px]">
+                    <!-- Cabeçalho Dinâmico das Colunas dos Juízes (Sem "Categoria") -->
+                    <div class="flex items-center pb-2.5 mb-2.5 border-b border-white/20">
+                        <div class="w-24 sm:w-28 shrink-0"></div>
+                        <div id="score-judges-header" class="flex-1">
+                            <!-- Injetado dinamicamente: JUIZ 1, JUIZ 2, etc. -->
+                        </div>
+                    </div>
+
+                    <!-- Linhas das Notas: ATLETA e ANIMAL -->
+                    <div class="space-y-3">
+                        <!-- Linha ATLETA -->
+                        <div class="flex items-center">
+                            <span class="w-24 sm:w-28 shrink-0 text-slate-300 font-extrabold text-sm tracking-wider uppercase">ATLETA</span>
+                            <div id="score-atleta-row" class="flex-1">
+                                <!-- Injetado dinamicamente -->
+                            </div>
+                        </div>
+                        <div class="border-t border-white/10"></div>
+                        <!-- Linha ANIMAL -->
+                        <div class="flex items-center">
+                            <span class="w-24 sm:w-28 shrink-0 text-slate-300 font-extrabold text-sm tracking-wider uppercase">ANIMAL</span>
+                            <div id="score-animal-row" class="flex-1">
+                                <!-- Injetado dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Divisor Vertical Vermelho -->
+                <div class="red-divider h-20 shrink-0"></div>
+
+                <!-- Seção Direita: NOTA TOTAL DA MONTARIA -->
+                <div class="min-w-[130px] text-center shrink-0">
+                    <span class="text-xs font-black uppercase tracking-widest text-yellow-400 block mb-0.5">TOTAL</span>
+                    <div id="score-val-grand-total" class="text-5xl sm:text-6xl font-black text-white font-mono tracking-tighter leading-none drop-shadow-xl">
+                        0,00
+                    </div>
+                    <div id="score-val-status-label" class="text-xs font-black uppercase tracking-wider text-slate-300 mt-1">
+                        PONTOS
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- GRÁFICO 4: MOSTRAR APENAS NOTA (TOTAL DESTACADO) -->
+    <!-- ============================================================ -->
+    <div id="overlay-total-only-container" class="fixed bottom-12 left-16 z-40 hidden">
+        <div class="flex items-center gap-6">
+            <!-- Logo Transparente em PNG Real (Sem círculo branco, sem borda vermelha) -->
+            <div class="w-32 h-28 flex items-center justify-center shrink-0">
+                <img id="total-only-logo" src="assets/splash_logo.png" alt="Logo" class="max-w-full max-h-full object-contain filter drop-shadow-[0_10px_25px_rgba(0,0,0,0.9)]">
+            </div>
+
+            <!-- Barra Destacada com Nome, Touro e NOTA TOTAL -->
+            <div class="broadcast-wine-bar rounded-3xl px-8 py-5 flex items-center gap-8 min-w-[650px]">
+                <div class="flex-1 min-w-[260px]">
+                    <span id="total-only-round" class="text-xs font-black uppercase tracking-widest text-yellow-400 block mb-0.5">NOTA FINAL DA MONTARIA</span>
+                    <h2 id="total-only-rider" class="text-3xl sm:text-4xl font-black italic uppercase tracking-wide text-white leading-tight truncate">
+                        NOME DO COMPETIDOR
+                    </h2>
+                    <p id="total-only-bull" class="text-sm font-bold uppercase tracking-wider text-slate-200 mt-1 truncate">
+                        TOURO (COMPANHIA)
+                    </p>
+                </div>
+
+                <div class="red-divider"></div>
+
+                <div class="text-center min-w-[150px]">
+                    <span class="text-xs font-black uppercase tracking-widest text-slate-300 block mb-0.5">NOTA TOTAL</span>
+                    <div id="total-only-score" class="text-5xl sm:text-6xl font-black text-white font-mono leading-none tracking-tight">
+                        84,50
+                    </div>
+                    <span id="total-only-unit" class="text-xs font-black uppercase tracking-wider text-yellow-400 mt-1 block">PONTOS</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- SCRIPT CONTROLADOR DO OVERLAY -->
+    <!-- ============================================================ -->
+    <script>
+        // Fallback de logo oficial do RodeoApp
+        const DEFAULT_LOGO = 'assets/splash_logo.png';
+
+        // Parâmetros da URL (?event=... ou ?shareId=... ou ?id=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventParam = urlParams.get('event') || urlParams.get('shareId') || urlParams.get('id') || 'padrao';
+        
+        window.activeEventParam = eventParam;
+        console.log('[RODEOAPP OVERLAY] Conectado ao evento:', eventParam);
+
+        // Status inicial
+        const statusLabel = document.getElementById('status-event-name');
+        if (statusLabel) {
+            statusLabel.innerText = 'EVENTO: ' + eventParam.toUpperCase();
+        }
+
+        setTimeout(() => {
+            const pill = document.getElementById('status-pill');
+            if (pill) pill.style.opacity = '0';
+        }, 5000);
+
+        // ==========================================
+        // RENDERIZADOR: TARJA DO COMPETIDOR (GRAF 1)
+        // ==========================================
+        let matchupOutroTimeout = null;
+        let matchupOutroHideTimeout = null;
+
+        function showMatchupLowerThird(data) {
+            if (!data) return;
+            console.log('[OVERLAY] Exibindo Tarja do Competidor (Estilo Vídeo):', data);
+            const container = document.getElementById('overlay-matchup-container');
+            if (!container) return;
+
+            // Cancelar qualquer transição de saída em andamento
+            if (matchupOutroTimeout) { clearTimeout(matchupOutroTimeout); matchupOutroTimeout = null; }
+            if (matchupOutroHideTimeout) { clearTimeout(matchupOutroHideTimeout); matchupOutroHideTimeout = null; }
+
+            // Preencher dados dinâmicos
+            document.getElementById('matchup-round-badge').innerText = (data.roundText || 'ROUND 1').toUpperCase();
+            document.getElementById('matchup-rider-name').innerText = (data.riderName || 'COMPETIDOR').toUpperCase();
+            document.getElementById('matchup-rider-subline').innerText = (data.subline || data.cidade || 'BRASIL').toUpperCase();
+            document.getElementById('matchup-dif-lider').innerText = data.difLider || '0,00';
+            document.getElementById('matchup-total-score').innerText = data.total || '0,00';
+            document.getElementById('matchup-posicao').innerText = data.posicao || '1º';
+            document.getElementById('matchup-paradas').innerText = data.paradas || '0/1';
+
+            // Logo do Evento para a saída (outro)
+            const outroLogo = document.getElementById('matchup-outro-logo-img');
+            if (outroLogo) {
+                outroLogo.src = data.eventLogo || DEFAULT_LOGO;
+                outroLogo.onerror = () => { outroLogo.src = DEFAULT_LOGO; };
+            }
+
+
+            const pill = document.getElementById('matchup-round-pill');
+            const mainBar = document.getElementById('matchup-main-bar');
+            const blade = document.getElementById('matchup-blade');
+            const outroLayer = document.getElementById('matchup-outro-layer');
+            const logoBox = document.getElementById('matchup-outro-logo-box');
+
+            // ─── RESETAR ESTADO PARA REVELAÇÃO POR CLIP-PATH (GPU) ───
+            // Barra começa 100% clipada da direita → totalmente invisível no frame 0.
+            // Nenhum layout reflow: a barra e todo o texto já estão em 1080px.
+            if (pill) {
+                pill.classList.remove('anim-pill');
+                pill.style.opacity = '0';
+            }
+            if (mainBar) {
+                mainBar.classList.remove('anim-clip');
+                mainBar.style.clipPath = 'inset(0 100% 0 0 round 1.5rem)';
+                mainBar.style.webkitClipPath = 'inset(0 100% 0 0 round 1.5rem)';
+            }
+            if (blade) {
+                blade.classList.remove('anim-blade');
+                blade.style.opacity = '0';
+            }
+            if (outroLayer) {
+                outroLayer.classList.remove('opacity-100');
+                outroLayer.classList.add('opacity-0');
+            }
+            if (logoBox) {
+                logoBox.style.animation = 'none';
+                logoBox.style.transform = 'scale(0)';
+            }
+
+            // Remover classes de animação de saída residuais e exibir container
+            container.classList.remove('anim-outro-slide', 'hidden');
+
+            // Forçar reflow síncrono para garantir que o clip-path a 100% está aplicado
+            void mainBar.offsetWidth;
+
+            // Disparar animação via double-rAF para sincronia perfeita com o compositor do OBS
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (mainBar) mainBar.classList.add('anim-clip');
+                    if (blade) blade.classList.add('anim-blade');
+                    if (pill) pill.classList.add('anim-pill');
+                });
+            });
+        }
+
+        function hideMatchupLowerThird() {
+            console.log('[OVERLAY] Ocultando Tarja com Outro de Logo do Evento');
+            const container = document.getElementById('overlay-matchup-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            if (matchupOutroTimeout) clearTimeout(matchupOutroTimeout);
+            if (matchupOutroHideTimeout) clearTimeout(matchupOutroHideTimeout);
+
+            const pill = document.getElementById('matchup-round-pill');
+            const outroLayer = document.getElementById('matchup-outro-layer');
+            const logoBox = document.getElementById('matchup-outro-logo-box');
+
+            // 1. Ocultar pílula
+            if (pill) pill.style.opacity = '0';
+
+            // 2. Revelar a Faixa Vermelha e logo do Evento (PNG puro, sem bola/círculo)
+            if (outroLayer) {
+                outroLayer.classList.remove('opacity-0');
+                outroLayer.classList.add('opacity-100');
+            }
+            if (logoBox) {
+                logoBox.style.animation = 'logoOutroPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+            }
+
+            // 3. Exibir a faixa com a logo por 1.2s e depois recolher para fora da tela
+            matchupOutroTimeout = setTimeout(() => {
+                container.classList.add('anim-outro-slide');
+
+                matchupOutroHideTimeout = setTimeout(() => {
+                    container.classList.add('hidden');
+                    container.classList.remove('anim-outro-slide');
+                    // Limpar estado para próxima entrada
+                    const mainBar = document.getElementById('matchup-main-bar');
+                    const blade = document.getElementById('matchup-blade');
+                    if (mainBar) {
+                        mainBar.classList.remove('anim-clip');
+                        mainBar.style.clipPath = 'inset(0 100% 0 0 round 1.5rem)';
+                        mainBar.style.webkitClipPath = 'inset(0 100% 0 0 round 1.5rem)';
+                    }
+                    if (blade) {
+                        blade.classList.remove('anim-blade');
+                        blade.style.opacity = '0';
+                    }
+                    if (outroLayer) {
+                        outroLayer.classList.remove('opacity-100');
+                        outroLayer.classList.add('opacity-0');
+                    }
+                    if (logoBox) {
+                        logoBox.style.animation = 'none';
+                        logoBox.style.transform = 'scale(0)';
+                    }
+                }, 400);
+            }, 1200);
+        }
+
+        // ==========================================
+        // RENDERIZADOR: TABELA DE CLASSIFICAÇÃO (GRAF 2)
+        // ==========================================
+        function showRankingLeaderboard(data) {
+            if (!data) return;
+            console.log('[OVERLAY] Exibindo Classificação Geral:', data);
+            const container = document.getElementById('overlay-ranking-container');
+            const rowsContainer = document.getElementById('ranking-rows-container');
+            if (!container || !rowsContainer) return;
+
+            document.getElementById('ranking-event-name').innerText = (data.eventName || 'RODEOAPP').toUpperCase();
+            document.getElementById('ranking-event-modality').innerText = (data.modality || 'CLASSIFICAÇÃO GERAL – MODALIDADE TOURO').toUpperCase();
+
+            const items = data.items || [];
+            rowsContainer.innerHTML = items.map((item, idx) => {
+                let deltaHtml = '';
+                const delta = item.delta || 0;
+                if (delta > 0) {
+                    deltaHtml = `<span class="text-emerald-400 font-black text-xl sm:text-2xl flex items-center justify-end gap-1.5 w-20">▲ +${delta}</span>`;
+                } else if (delta < 0) {
+                    deltaHtml = `<span class="text-red-500 font-black text-xl sm:text-2xl flex items-center justify-end gap-1.5 w-20">▼ ${delta}</span>`;
+                } else {
+                    deltaHtml = `<span class="text-yellow-400 font-black text-xl sm:text-2xl flex items-center justify-end gap-1.5 w-20">■ 0</span>`;
+                }
+
+                const scoreStr = typeof item.totalPontos === 'number' ? item.totalPontos.toFixed(2).replace('.', ',') : (item.totalPontos || '0,00');
+
+                return `
+                    <div class="flex items-center justify-between py-2.5 px-5 rounded-2xl bg-black/50 border border-white/10 text-white shadow-md">
+                        <div class="flex items-center flex-1 min-w-0 mr-6">
+                            <span class="w-12 text-right font-black text-xl sm:text-2xl text-slate-200 mr-4">${item.posicao || (idx + 1)}º</span>
+                            <div class="w-0.5 h-6 bg-red-600 mr-4"></div>
+                            <span class="font-black text-lg sm:text-xl uppercase tracking-tight truncate">${item.nomeFormatado || item.nome}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="font-mono font-black text-2xl sm:text-3xl text-white">${scoreStr}</span>
+                            <div class="w-0.5 h-6 bg-red-600"></div>
+                            ${deltaHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.classList.remove('hidden', 'anim-fade-out');
+            container.classList.add('anim-fade-in');
+        }
+
+        function hideRankingLeaderboard() {
+            console.log('[OVERLAY] Ocultando Classificação Geral');
+            const container = document.getElementById('overlay-ranking-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            container.classList.remove('anim-fade-in');
+            container.classList.add('anim-fade-out');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                container.classList.remove('anim-fade-out');
+            }, 350);
+        }
+
+        let scoreAutoHideTimeout = null;
+        let totalOnlyAutoHideTimeout = null;
+
+        // ==========================================
+        // RENDERIZADOR: TARJA DE NOTAS DETALHADA (GRAF 3)
+        // ==========================================
+        function showScoreLowerThird(data) {
+            if (!data) return;
+            console.log('[OVERLAY] Exibindo Detalhamento de Notas:', data);
+            const container = document.getElementById('overlay-score-container');
+            if (!container) return;
+
+            // Logo do Evento transparente em PNG real
+            const logoImg = document.getElementById('score-event-logo');
+            logoImg.src = data.eventLogo || DEFAULT_LOGO;
+            logoImg.onerror = () => { logoImg.src = DEFAULT_LOGO; };
+
+            const judges = data.judges || [];
+            const isSingleJudge = (judges.length === 1);
+
+            const headerJudgesEl = document.getElementById('score-judges-header');
+            const atletaRowEl = document.getElementById('score-atleta-row');
+            const animalRowEl = document.getElementById('score-animal-row');
+
+            if (isSingleJudge) {
+                const j1 = judges[0] || { nome: 'JUIZ 1', atleta: '--,--', animal: '--,--' };
+                headerJudgesEl.innerHTML = `
+                    <div class="text-center font-black text-white text-base uppercase tracking-wider">${j1.nome || 'JUIZ 1'}</div>
+                `;
+                atletaRowEl.innerHTML = `
+                    <div class="text-center font-mono font-black text-white text-2xl tracking-tight leading-none">${j1.atleta}</div>
+                `;
+                animalRowEl.innerHTML = `
+                    <div class="text-center font-mono font-black text-white text-2xl tracking-tight leading-none">${j1.animal}</div>
+                `;
+            } else if (judges.length === 2) {
+                const j1 = judges[0];
+                const j2 = judges[1];
+                headerJudgesEl.innerHTML = `
+                    <div class="grid grid-cols-2 text-center font-black text-white text-sm uppercase tracking-wider">
+                        <span>${j1.nome || 'JUIZ 1'}</span>
+                        <span>${j2.nome || 'JUIZ 2'}</span>
+                    </div>
+                `;
+                atletaRowEl.innerHTML = `
+                    <div class="grid grid-cols-2 text-center font-mono font-black text-white text-2xl tracking-tight leading-none">
+                        <span>${j1.atleta}</span>
+                        <span>${j2.atleta}</span>
+                    </div>
+                `;
+                animalRowEl.innerHTML = `
+                    <div class="grid grid-cols-2 text-center font-mono font-black text-white text-2xl tracking-tight leading-none">
+                        <span>${j1.animal}</span>
+                        <span>${j2.animal}</span>
+                    </div>
+                `;
+            } else {
+                const count = Math.max(1, judges.length);
+                const colHeaders = judges.map(j => `<span>${j.nome || ('JUIZ ' + j.juizNum)}</span>`).join('');
+                const atletaCols = judges.map(j => `<span>${j.atleta}</span>`).join('');
+                const animalCols = judges.map(j => `<span>${j.animal}</span>`).join('');
+
+                headerJudgesEl.innerHTML = `
+                    <div class="grid text-center font-black text-white text-sm uppercase tracking-wider" style="grid-template-columns: repeat(${count}, minmax(0, 1fr));">
+                        ${colHeaders}
+                    </div>
+                `;
+                atletaRowEl.innerHTML = `
+                    <div class="grid text-center font-mono font-black text-white text-2xl tracking-tight leading-none" style="grid-template-columns: repeat(${count}, minmax(0, 1fr));">
+                        ${atletaCols}
+                    </div>
+                `;
+                animalRowEl.innerHTML = `
+                    <div class="grid text-center font-mono font-black text-white text-2xl tracking-tight leading-none" style="grid-template-columns: repeat(${count}, minmax(0, 1fr));">
+                        ${animalCols}
+                    </div>
+                `;
+            }
+
+            document.getElementById('score-val-grand-total').innerText = data.grandTotal || '0,00';
+            
+            const statusLabel = document.getElementById('score-val-status-label');
+            if (data.hasFall) {
+                statusLabel.innerText = `QUEDA (${data.fallTime || '0.00s'})`;
+                statusLabel.className = "text-xs font-black uppercase tracking-wider text-red-500 mt-1";
+            } else {
+                statusLabel.innerText = "PONTOS";
+                statusLabel.className = "text-xs font-black uppercase tracking-wider text-slate-300 mt-1";
+            }
+
+            container.classList.remove('hidden', 'anim-slide-out');
+            container.classList.add('anim-slide-in');
+
+            // Fica 10 segundos na tela e depois some automaticamente
+            if (scoreAutoHideTimeout) clearTimeout(scoreAutoHideTimeout);
+            scoreAutoHideTimeout = setTimeout(() => {
+                hideScoreLowerThird();
+            }, 10000);
+        }
+
+        function hideScoreLowerThird() {
+            if (scoreAutoHideTimeout) clearTimeout(scoreAutoHideTimeout);
+            console.log('[OVERLAY] Ocultando Detalhamento de Notas');
+            const container = document.getElementById('overlay-score-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            container.classList.remove('anim-slide-in');
+            container.classList.add('anim-slide-out');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                container.classList.remove('anim-slide-out');
+            }, 400);
+        }
+
+        // ==========================================
+        // RENDERIZADOR: MOSTRAR APENAS NOTA (GRAF 4)
+        // ==========================================
+        function showTotalOnlyLowerThird(data) {
+            if (!data) return;
+            console.log('[OVERLAY] Exibindo Apenas Nota Total:', data);
+            const container = document.getElementById('overlay-total-only-container');
+            if (!container) return;
+
+            const logoImg = document.getElementById('total-only-logo');
+            logoImg.src = data.eventLogo || DEFAULT_LOGO;
+            logoImg.onerror = () => { logoImg.src = DEFAULT_LOGO; };
+
+            document.getElementById('total-only-rider').innerText = (data.riderName || 'COMPETIDOR').toUpperCase();
+            
+            const bullInfo = data.bullName ? `${data.bullName}${data.bullCia ? ` (${data.bullCia})` : ''}` : '';
+            document.getElementById('total-only-bull').innerText = bullInfo.toUpperCase();
+
+            const scoreVal = document.getElementById('total-only-score');
+            const unitEl = document.getElementById('total-only-unit');
+
+            if (data.hasFall) {
+                scoreVal.innerText = `QUEDA (${data.fallTime || '0.00s'})`;
+                scoreVal.className = "text-3xl sm:text-4xl font-black text-red-500 font-mono leading-none tracking-tight";
+                unitEl.innerText = "NÃO PAROU";
+                unitEl.className = "text-xs font-black uppercase tracking-wider text-red-400 mt-1 block";
+            } else {
+                scoreVal.innerText = data.grandTotal || '0,00';
+                scoreVal.className = "text-5xl sm:text-6xl font-black text-white font-mono leading-none tracking-tight";
+                unitEl.innerText = "PONTOS";
+                unitEl.className = "text-xs font-black uppercase tracking-wider text-yellow-400 mt-1 block";
+            }
+
+            container.classList.remove('hidden', 'anim-slide-out');
+            container.classList.add('anim-slide-in');
+
+            // Fica 10 segundos na tela e depois some automaticamente
+            if (totalOnlyAutoHideTimeout) clearTimeout(totalOnlyAutoHideTimeout);
+            totalOnlyAutoHideTimeout = setTimeout(() => {
+                hideTotalOnlyLowerThird();
+            }, 10000);
+        }
+
+        function hideTotalOnlyLowerThird() {
+            if (totalOnlyAutoHideTimeout) clearTimeout(totalOnlyAutoHideTimeout);
+            console.log('[OVERLAY] Ocultando Apenas Nota');
+            const container = document.getElementById('overlay-total-only-container');
+            if (!container || container.classList.contains('hidden')) return;
+
+            container.classList.remove('anim-slide-in');
+            container.classList.add('anim-slide-out');
+            setTimeout(() => {
+                container.classList.add('hidden');
+                container.classList.remove('anim-slide-out');
+            }, 400);
+        }
+
+        // ==========================================
+        // DISPATCHER DE COMANDOS OVERLAY
+        // ==========================================
+        function handleOverlayCommand(payload) {
+            if (!payload || !payload.action) return;
+            console.log('⚡ [RODEOAPP OVERLAY RECEBIDO]:', payload.action, payload.data);
+            try {
+                switch (payload.action) {
+                    case 'show_matchup':
+                        showMatchupLowerThird(payload.data);
+                        break;
+                    case 'hide_matchup':
+                        hideMatchupLowerThird();
+                        break;
+                    case 'show_ranking':
+                        showRankingLeaderboard(payload.data);
+                        break;
+                    case 'hide_ranking':
+                        hideRankingLeaderboard();
+                        break;
+                    case 'show_score':
+                        showScoreLowerThird(payload.data);
+                        break;
+                    case 'hide_score':
+                        hideScoreLowerThird();
+                        break;
+                    case 'show_total_only':
+                        showTotalOnlyLowerThird(payload.data);
+                        break;
+                    case 'hide_total_only':
+                        hideTotalOnlyLowerThird();
+                        break;
+                    case 'clear':
+                        hideMatchupLowerThird();
+                        hideRankingLeaderboard();
+                        hideScoreLowerThird();
+                        hideTotalOnlyLowerThird();
+                        break;
+                }
+            } catch(e) {
+                console.error('[ERRO AO EXECUTAR OVERLAY COMMAND]:', e);
+            }
+        }
+
+        // ==========================================
+        // CONEXÕES REALTIME: WEBSOCKET & ABLY
+        // ==========================================
+        // 1. WebSocket Local com Auto-Reconexão Contínua (OBS Studio / vMix)
+        let ws = null;
+        let wsReconnectTimer = null;
+
+        function connectLocalWebSocket() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                return;
+            }
+
+            try {
+                const wsUrl = (window.location.protocol.startsWith('http') && window.location.host && window.location.host.includes(':3005'))
+                    ? `ws://${window.location.host}`
+                    : 'ws://127.0.0.1:3005';
+
+                console.log('[OVERLAY WS] Conectando a:', wsUrl);
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    console.log('🟢 [OVERLAY WS] Conectado com sucesso na porta 3005!');
+                    const statusDot = document.getElementById('status-ws-dot');
+                    if (statusDot) {
+                        statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+                    }
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleOverlayCommand(data);
+                    } catch(e) {
+                        console.error('[OVERLAY WS PARSE ERR]', e);
+                    }
+                };
+
+                ws.onclose = () => {
+                    console.warn('🟡 [OVERLAY WS] Conexão encerrada. Reconectando em 1.5s...');
+                    ws = null;
+                    clearTimeout(wsReconnectTimer);
+                    wsReconnectTimer = setTimeout(connectLocalWebSocket, 1500);
+                };
+
+                ws.onerror = (err) => {
+                    console.warn('🔴 [OVERLAY WS] Falha de conexão. Tentando novamente...');
+                    try { ws.close(); } catch(e) {}
+                };
+            } catch(e) {
+                console.error('[OVERLAY WS INIT ERR]', e);
+                clearTimeout(wsReconnectTimer);
+                wsReconnectTimer = setTimeout(connectLocalWebSocket, 2000);
+            }
+        }
+
+        connectLocalWebSocket();
+
+        // 2. Ably Realtime (web.rodeoapp.pro / Nuvem Oficial)
+        const ABLY_OFFICIAL_KEY = 'ZpXrAw.0ShBdA:PN-cy5nGO2hVtllKkQIQppoPtl4FGufzq58uT9WHXts';
+        try {
+            if (typeof Ably !== 'undefined') {
+                const cleanParam = String(eventParam || 'padrao').trim().toLowerCase();
+                const channelName = `rodeoapp-event-${cleanParam}`;
+                const channel = ably.channels.get(channelName);
+                channel.subscribe('overlay_command', (msg) => {
+                    if (msg && msg.data) {
+                        console.log('[ABLY OVERLAY MSG]:', msg.data);
+                        handleOverlayCommand(msg.data);
+                    }
+                });
+                console.log('[OVERLAY ABLY] Inscrito com sucesso no canal:', channelName);
+            }
+        } catch(e) {
+            console.warn('[OVERLAY ABLY] Falha ao inicializar Ably:', e);
+        }
+    </script>
+</body>
+</html>
