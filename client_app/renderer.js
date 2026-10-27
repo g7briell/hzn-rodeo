@@ -1458,7 +1458,7 @@ async function renderEvents() {
                     ${ev.logo ? `<img src="${ev.logo}" class="w-14 h-14 sm:w-20 sm:h-20 object-contain rounded-2xl bg-black/40 p-2 border border-white/10 shadow-lg flex-shrink-0">` : `<div class="w-14 h-14 sm:w-20 sm:h-20 bg-slate-900 rounded-2xl border border-white/5 flex items-center justify-center text-slate-700 font-black italic text-[10px] sm:text-xs flex-shrink-0">LOGO</div>`}
                     <div class="flex-1 min-w-0">
                         <div class="text-[10px] font-black text-accent uppercase tracking-widest mb-1 sm:mb-2">${ev.type}</div>
-                        <h4 class="text-xl sm:text-3xl font-black italic mb-1 uppercase tracking-tighter truncate">${ev.name}</h4>
+                        <h4 class="text-xl sm:text-3xl font-black italic mb-1 uppercase tracking-tighter leading-tight break-words pr-1" style="overflow-wrap:anywhere">${ev.name}</h4>
                         <div class="flex gap-2 flex-wrap items-center mt-2 mb-2">
                             <button onclick="event.stopPropagation(); sendEventToPortal('${ev.id}')" class="bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 border border-blue-500/20 shadow-lg w-fit">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 8m4-4v12"/></svg>
@@ -1473,7 +1473,7 @@ async function renderEvents() {
                         <p class="text-slate-500 font-bold text-xs sm:text-sm uppercase">${ev.city}</p>
                     </div>
                 </div>
-                <div class="text-xs font-black bg-slate-950 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-800 self-end sm:self-start">${ev.days}D / ${ev.judges}J</div>
+                <div class="flex-shrink-0 whitespace-nowrap text-xs font-black bg-slate-950 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-800 self-end sm:self-start tracking-wide">${ev.days}D <span class="text-slate-600">·</span> ${ev.judges}J</div>
             </div>
             <div class="absolute top-4 right-4 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                 <button onclick="openModalEvento('${ev.id}')" class="p-2 sm:p-3 bg-yellow-500/10 text-yellow-500 rounded-xl hover:bg-yellow-500 hover:text-black transition-all shadow-xl border border-yellow-500/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>
