@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Email and code are required" }, { status: 400 });
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY || 're_D1XyZvJG_MQUuGogK8Pej1kDnhYCeGGcw');
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     const data = await resend.emails.send({
       from: 'RodeoApp <portal@rodeoapp.pro>',

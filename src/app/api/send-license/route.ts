@@ -1,12 +1,11 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 
-// Chave injetada diretamente para garantir o funcionamento imediato
-const resend = new Resend('re_dA2RnhAT_KU4HWy77SeuyUBPtunwENnV8');
-
 export async function POST(req: Request) {
   try {
     const { email, nome, token, validade } = await req.json();
+    // A chave vem só do ambiente (RESEND_API_KEY no Dokploy), nunca do código
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     const data = await resend.emails.send({
       from: 'RODEOAPP <contato@rodeoapp.pro>', 
