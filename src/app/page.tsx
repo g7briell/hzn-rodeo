@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./_site/site.css";
 import { fonteDisplay, fonteTexto } from "./_site/fonts";
 import TourTelas from "./_site/TourTelas";
-import { DUVIDAS, INCLUSO, LINKS, PLANOS, RECURSOS, WHATSAPP_EXIBICAO, whatsapp } from "./_site/content";
+import { DUVIDAS, INCLUSO, LINKS, PLANOS, PLATAFORMAS, WHATSAPP_EXIBICAO, whatsapp } from "./_site/content";
 
 export const metadata: Metadata = {
   title: "RodeoApp | Sistema para rodeio: sorteio, notas, ranking e telão",
@@ -18,6 +18,29 @@ export const metadata: Metadata = {
 
 const CONTATO = whatsapp("Olá! Quero conhecer o RodeoApp para o meu rodeio.");
 
+function Tela({ src, alt, prioridade }: { src: string; alt: string; prioridade?: boolean }) {
+  return (
+    <div className="tela-moldura">
+      <img
+        src={src}
+        alt={alt}
+        width={2160}
+        height={1350}
+        loading={prioridade ? undefined : "lazy"}
+        fetchPriority={prioridade ? "high" : undefined}
+      />
+    </div>
+  );
+}
+
+function Celular({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="celular">
+      <img src={src} alt={alt} width={975} height={2110} loading="lazy" />
+    </div>
+  );
+}
+
 export default function Site() {
   return (
     <div className={`site ${fonteDisplay.variable} ${fonteTexto.variable}`}>
@@ -26,15 +49,15 @@ export default function Site() {
       </a>
 
       <header className="topo">
-        <div className="largura topo-linha">
+        <div className="topo-pilula">
           <a href="/" className="topo-logo" aria-label="RodeoApp, início">
             <img src="/brand/logo-wordmark-720.png" alt="RodeoApp.pro" width={720} height={90} />
           </a>
           <nav className="topo-nav" aria-label="Principal">
-            <a href="#telas">O sistema</a>
+            <a href="#recursos">Recursos</a>
+            <a href="#telas">Telas</a>
             <a href="#planos">Planos</a>
             <a href="#duvidas">Dúvidas</a>
-            <a href={LINKS.portal}>Portal</a>
           </nav>
           <a className="botao botao-ouro botao-pequeno" href={CONTATO} target="_blank" rel="noopener">
             Falar com a gente
@@ -44,36 +67,114 @@ export default function Site() {
 
       <main id="conteudo">
         <section className="hero">
-          <div className="largura hero-grade">
-            <div className="hero-texto">
-              <h1>
-                Do sorteio ao ranking, <span>a mesa do rodeio</span> num programa só.
-              </h1>
-              <p className="hero-sub">
-                O RodeoApp organiza peões, boiadas e juízes, faz o sorteio, recebe as notas pelo celular e põe o
-                ranking no telão. Funciona sem internet, no Windows, no Mac e no navegador.
-              </p>
-              <div className="hero-acoes">
-                <a className="botao botao-ouro" href={CONTATO} target="_blank" rel="noopener">
-                  Quero usar no meu rodeio
-                </a>
-                <a className="botao botao-linha" href={LINKS.download} target="_blank" rel="noopener">
-                  Baixar para Windows ou Mac
-                </a>
-              </div>
+          <div className="hero-luzes" aria-hidden="true" />
+          <div className="largura hero-texto">
+            <h1>
+              A mesa do rodeio,
+              <br />
+              do sorteio ao ranking.
+            </h1>
+            <p className="hero-sub">
+              Sorteio, nota dos juízes no celular, ranking ao vivo, telão e relatório oficial num programa só. Roda
+              sem internet, no Windows, no Mac e no navegador.
+            </p>
+            <div className="hero-acoes">
+              <a className="botao botao-ouro" href={CONTATO} target="_blank" rel="noopener">
+                Quero usar no meu rodeio
+              </a>
+              <a className="botao botao-linha" href={LINKS.download} target="_blank" rel="noopener">
+                Baixar o programa
+              </a>
             </div>
-            <figure className="hero-tela">
-              <div className="tela-moldura">
-                <img
-                  src="/site/app-ranking.jpg"
-                  alt="Tela de ranking atualizado do RodeoApp com dez competidores e seus pontos"
-                  width={2160}
-                  height={1350}
-                  fetchPriority="high"
-                />
-              </div>
-              <figcaption>Ranking de um evento de demonstração, direto do app.</figcaption>
-            </figure>
+          </div>
+
+          <div className="largura palco">
+            <div className="palco-tela">
+              <Tela
+                src="/site/app-ranking.jpg"
+                alt="Tela de ranking atualizado do RodeoApp com competidores e pontos"
+                prioridade
+              />
+            </div>
+            <div className="palco-celular">
+              <Celular
+                src="/site/juiz-3.jpg"
+                alt="Portal do juiz no celular com o teclado de notas mostrando 22,50 para o touro"
+              />
+            </div>
+          </div>
+          <p className="largura palco-legenda">Telas reais do app e do portal do juiz, com um evento de demonstração.</p>
+        </section>
+
+        <div className="faixa" aria-label="Onde o RodeoApp funciona">
+          <div className="faixa-trilho">
+            {[0, 1].map((copia) => (
+              <ul key={copia} aria-hidden={copia === 1}>
+                {PLATAFORMAS.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            ))}
+          </div>
+        </div>
+
+        <section className="secao" id="recursos" aria-labelledby="recursos-titulo">
+          <div className="largura">
+            <h2 id="recursos-titulo" className="titulo-secao">
+              Tudo o que a mesa precisa na noite do rodeio
+            </h2>
+            <div className="bento">
+              <article className="bloco bloco-juiz">
+                <div className="bloco-texto">
+                  <h3>O juiz lança a nota no celular</h3>
+                  <p>
+                    Cada juiz entra em juiz.rodeoapp.pro, vê a ordem das montarias e digita touro e peão de 0,25 em
+                    0,25. A soma chega na mesa na hora.
+                  </p>
+                </div>
+                <div className="bloco-celulares">
+                  <Celular src="/site/juiz-2.jpg" alt="Lista de montarias do round no celular do juiz" />
+                  <Celular src="/site/juiz-3.jpg" alt="Teclado de notas do juiz no celular" />
+                </div>
+              </article>
+
+              <article className="bloco bloco-painel">
+                <div className="bloco-texto">
+                  <h3>A mesa inteira numa tela</h3>
+                  <p>Cadastro, sorteio, notas, rankings e relatórios a um clique.</p>
+                </div>
+                <Tela src="/site/app-controle.jpg" alt="Painel de controle de um evento no RodeoApp" />
+              </article>
+
+              <article className="bloco bloco-offline">
+                <span className="bloco-icone" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0M12 19h.01M3 3l18 18" />
+                  </svg>
+                </span>
+                <h3>Caiu a internet? O rodeio continua.</h3>
+                <p>Tudo fica salvo no computador da mesa e sincroniza quando o sinal volta.</p>
+              </article>
+
+              <article className="bloco bloco-telao">
+                <span className="bloco-icone" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <rect x="2.5" y="4" width="19" height="13" rx="2" />
+                    <path d="M8 21h8M12 17v4" />
+                  </svg>
+                </span>
+                <h3>Nota no telão e na live</h3>
+                <p>Tela verde para chroma key e links por evento para OBS Studio, vMix e Wirecast.</p>
+              </article>
+
+              <article className="bloco bloco-relatorio">
+                <div className="bloco-texto">
+                  <h3>Papel oficial pronto para assinar</h3>
+                  <p>Ranking, súmula, sorteio e ordem de embretamento em A4, PDF ou Excel.</p>
+                </div>
+                <Tela src="/site/app-relatorio.jpg" alt="Relatório oficial do ranking geral em A4" />
+              </article>
+            </div>
           </div>
         </section>
 
@@ -82,43 +183,8 @@ export default function Site() {
             <h2 id="telas-titulo" className="titulo-secao">
               A noite inteira, tela por tela
             </h2>
-            <p className="intro-secao">
-              Estas são as telas que a mesa usa do cadastro à premiação. Nada de mockup: é o programa rodando.
-            </p>
+            <p className="intro-secao">Do cadastro à premiação, na ordem em que a mesa usa.</p>
             <TourTelas />
-          </div>
-        </section>
-
-        <section className="secao secao-couro" aria-labelledby="arena-titulo">
-          <div className="largura arena">
-            <div className="arena-cabeca">
-              <h2 id="arena-titulo" className="titulo-secao">
-                Feito para a arena, não para o escritório
-              </h2>
-              <p className="intro-secao">
-                Rodeio acontece de noite, com som alto, gente em volta da mesa e sinal ruim. O sistema foi desenhado
-                para isso.
-              </p>
-              <figure className="arena-tela">
-                <div className="tela-moldura">
-                  <img
-                    src="/site/app-home.jpg"
-                    alt="Janela de lançamento de nota mostrando o competidor contra o touro e o tempo de queda"
-                    width={2160}
-                    height={1350}
-                    loading="lazy"
-                  />
-                </div>
-              </figure>
-            </div>
-            <ul className="arena-lista">
-              {RECURSOS.map((r) => (
-                <li key={r.titulo}>
-                  <h3>{r.titulo}</h3>
-                  <p>{r.texto}</p>
-                </li>
-              ))}
-            </ul>
           </div>
         </section>
 
@@ -174,15 +240,13 @@ export default function Site() {
         </section>
 
         <section className="chamada" aria-labelledby="chamada-titulo">
-          <div className="largura chamada-grade">
+          <div className="largura chamada-caixa">
             <img src="/brand/selo-cor.png" alt="" width={1000} height={543} className="chamada-selo" />
-            <div>
-              <h2 id="chamada-titulo">Tem rodeio chegando?</h2>
-              <p>Chama no WhatsApp. A gente mostra o sistema e deixa tudo pronto antes da primeira montaria.</p>
-              <a className="botao botao-ouro" href={CONTATO} target="_blank" rel="noopener">
-                Chamar no WhatsApp {WHATSAPP_EXIBICAO}
-              </a>
-            </div>
+            <h2 id="chamada-titulo">Tem rodeio chegando?</h2>
+            <p>Chama no WhatsApp. A gente mostra o sistema e deixa tudo pronto antes da primeira montaria.</p>
+            <a className="botao botao-ouro" href={CONTATO} target="_blank" rel="noopener">
+              Chamar no WhatsApp {WHATSAPP_EXIBICAO}
+            </a>
           </div>
         </section>
       </main>

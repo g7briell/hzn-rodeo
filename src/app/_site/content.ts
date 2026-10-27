@@ -15,6 +15,19 @@ export const LINKS = {
   portal: "https://portal.rodeoapp.pro",
 };
 
+export const PLATAFORMAS = [
+  "Windows",
+  "macOS",
+  "Navegador",
+  "Celular do juiz",
+  "OBS Studio",
+  "vMix",
+  "Wirecast",
+  "PDF",
+  "Excel",
+  "Funciona offline",
+];
+
 export type Tela = {
   id: string;
   nome: string;
