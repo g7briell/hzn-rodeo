@@ -3,6 +3,7 @@ import './index.css';
 import { supabase } from './supabaseClient';
 import AdminDashboard from './AdminDashboard';
 import { PdfImportModal } from './components/PdfImportModal';
+import { PortalSidebar, PortalMobileNav, type PortalTab } from './PortalNav';
 
 
 const formatSide = (s: any) => {
@@ -172,6 +173,15 @@ function App() {
     }
   }, [selectedLive?.id, selectedLive?.enquete]);
   const [liveChatMessages, setLiveChatMessages] = useState<any[]>([]);
+  // Troca de aba pelo menu lateral ou pela barra inferior
+  const navegarPortal = (tab: PortalTab) => {
+    setCurrentTab(tab);
+    setSearchTerm('');
+    if (tab === 'aovivo') {
+      setSelectedLive(null);
+      setLiveChatMessages([]);
+    }
+  };
   const [liveChatInput, setLiveChatInput] = useState('');
   const [liveOnlineCounts, setLiveOnlineCounts] = useState<{[key: number]: number}>({});
   const [ytOnlineCounts, setYtOnlineCounts] = useState<{[key: number]: number}>({});
@@ -6330,108 +6340,17 @@ Instruções importantes:
       )}
 
       <div className="dashboard-layout">
-        {/* Left Sidebar */}
-        <aside className="dashboard-sidebar">
-          <div className="sidebar-logo">
-            <img src="/header_logo.png" alt="RodeoApp" style={{ height: "auto", maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }} />
-          </div>
-          
-          <nav className="sidebar-menu">
-            <button 
-              className={`menu-item ${currentTab === 'home' ? 'active' : ''}`} 
-              onClick={() => { setCurrentTab('home'); setSearchTerm(''); }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              Home
-            </button>
-            {isAdmin && (
-              <button 
-                className={`menu-item ${currentTab === 'dashboard' ? 'active' : ''}`} 
-                onClick={() => { setCurrentTab('dashboard'); setSearchTerm(''); }}
-                style={{ color: '#00ff00' }}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                Dashboard
-              </button>
-            )}
-            <button 
-              className={`menu-item ${currentTab === 'explore' ? 'active' : ''}`} 
-              onClick={() => { setCurrentTab('explore'); setSearchTerm(''); }}
-            >
-              <svg viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              Eventos
-            </button>
-            
-            <button 
-              className={`menu-item ${currentTab === 'feed' ? 'active' : ''}`} 
-              onClick={() => { setCurrentTab('feed'); setSearchTerm(''); }}
-            >
-              <svg viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-              </svg>
-              Feed
-            </button>
-
-            <button 
-              className={`menu-item ${currentTab === 'boiadas' ? 'active' : ''}`} 
-              onClick={() => { setCurrentTab('boiadas'); setSearchTerm(''); }}
-            >
-              <svg viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-              Boiadas
-            </button>
-            
-            {(isAdmin || userProfile?.cargo === 'tropeiro') && (
-              <button 
-                className={`menu-item ${currentTab === 'minha-boiada' ? 'active' : ''}`} 
-                onClick={() => { setCurrentTab('minha-boiada'); setSearchTerm(''); }}
-              >
-                <svg viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                Minha Boiada
-              </button>
-            )}
-            
-            <button 
-              className={`menu-item ${currentTab === 'profile' ? 'active' : ''}`} 
-              onClick={() => { setCurrentTab('profile'); setSearchTerm(''); }}
-            >
-              <svg viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              My Profile
-            </button>
-
-            <button 
-              className={`menu-item ${currentTab === 'aovivo' ? 'active' : ''}`} 
-              onClick={() => { setCurrentTab('aovivo'); setSelectedLive(null); setLiveChatMessages([]); setSearchTerm(''); }}
-              style={{ position: 'relative' }}
-            >
-              <span className="relative flex h-2 w-2 mr-2" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
-              AoVivo
-            </button>
-          </nav>
-
-          <div className="sidebar-footer">
-            <button className="menu-item logout-btn" onClick={() => setIsLogoutConfirmOpen(true)}>
-              <svg viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Sair
-            </button>
-          </div>
-        </aside>
+        {/* Menu lateral (computador) */}
+        <PortalSidebar
+          currentTab={currentTab}
+          onNavigate={navegarPortal}
+          onLogout={() => setIsLogoutConfirmOpen(true)}
+          isAdmin={isAdmin}
+          isTropeiro={userProfile?.cargo === 'tropeiro'}
+          nome={userProfile?.nome}
+          email={user?.email}
+          foto={userFoto}
+        />
 
         {/* Main Content Area */}
         <main className="dashboard-main">
@@ -6443,9 +6362,7 @@ Instruções importantes:
                   onClick={() => { setCurrentTab('home'); setSearchTerm(''); }}
                   style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
-                  <span style={{ fontSize: '1.25rem', fontWeight: 900, fontStyle: 'italic', color: '#fff', letterSpacing: '-0.03em' }}>
-                    RODEO<span style={{ color: '#eab308' }}>APP.PRO</span>
-                  </span>
+                  <img src="/header_logo.png" alt="RodeoApp" style={{ height: 22, width: 'auto', display: 'block' }} />
                 </div>
               ) : (
                 <div className="header-search">
@@ -6481,27 +6398,6 @@ Instruções importantes:
                   style={{ cursor: 'pointer' }}
                   title="Meu Perfil"
                 />
-                {user && (
-                  <button 
-                    onClick={() => setIsLogoutConfirmOpen(true)}
-                    style={{ 
-                      background: 'rgba(239, 68, 68, 0.15)', 
-                      border: '1px solid rgba(239, 68, 68, 0.3)', 
-                      color: '#ef4444', 
-                      padding: isMobile ? '6px 10px' : '6px 12px', 
-                      borderRadius: '12px', 
-                      fontSize: '11px', 
-                      fontWeight: 900, 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                    title="Sair da Conta"
-                  >
-                    🚪 {isMobile ? '' : 'Sair'}
-                  </button>
-                )}
               </div>
             </header>
           )}
@@ -7755,44 +7651,15 @@ Instruções importantes:
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation */}
-        {!selectedLive && (
-          <nav className="mobile-bottom-nav">
-          <button className={`mobile-nav-item ${currentTab === 'home' ? 'active' : ''}`} onClick={() => { setCurrentTab('home'); setSearchTerm(''); }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Home
-          </button>
-          {isAdmin && (
-            <button className={`mobile-nav-item ${currentTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentTab('dashboard'); setSearchTerm(''); }} style={{ color: currentTab === 'dashboard' ? '#00ff00' : 'var(--text-muted)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Admin
-            </button>
-          )}
-          <button className={`mobile-nav-item ${currentTab === 'explore' ? 'active' : ''}`} onClick={() => { setCurrentTab('explore'); setSearchTerm(''); }}>
-            <svg viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            Eventos
-          </button>
-          <button className={`mobile-nav-item ${currentTab === 'feed' ? 'active' : ''}`} onClick={() => { setCurrentTab('feed'); setSearchTerm(''); }}>
-            <svg viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
-            Feed
-          </button>
-          <button className={`mobile-nav-item ${currentTab === 'boiadas' ? 'active' : ''}`} onClick={() => { setCurrentTab('boiadas'); setSearchTerm(''); }}>
-            <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-            Boiadas
-          </button>
-          <button className={`mobile-nav-item ${currentTab === 'profile' ? 'active' : ''}`} onClick={() => { setCurrentTab('profile'); setSearchTerm(''); }}>
-            <svg viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-            Perfil
-          </button>
-          <button className={`mobile-nav-item ${currentTab === 'aovivo' ? 'active' : ''}`} onClick={() => { setCurrentTab('aovivo'); setSelectedLive(null); setLiveChatMessages([]); setSearchTerm(''); }}>
-            <span className="relative flex h-2.5 w-2.5 mb-1" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-            </span>
-            AoVivo
-          </button>
-        </nav>
-        )}
+        {/* Barra inferior (celular) */}
+        <PortalMobileNav
+          currentTab={currentTab}
+          onNavigate={navegarPortal}
+          onLogout={() => setIsLogoutConfirmOpen(true)}
+          isAdmin={isAdmin}
+          isTropeiro={userProfile?.cargo === 'tropeiro'}
+          hideMobile={!!selectedLive}
+        />
       </div>
 
       {/* ==================================== */}
