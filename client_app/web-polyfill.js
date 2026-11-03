@@ -115,7 +115,7 @@
       if (list && list.length > 0) targetRecordId = list[0].id;
     }
     if (!targetRecordId && ev.share_id) {
-      const list = await _fetchJSONOrThrow(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&detalhes->>share_id=eq.${encodeURIComponent(ev.share_id)}&limit=1`, { headers: SUPABASE_HEADERS });
+      const list = await _fetchJSONOrThrow(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=id&detalhes->>share_id=eq.${encodeURIComponent(String(ev.share_id).trim().toLowerCase())}&limit=1`, { headers: SUPABASE_HEADERS });
       if (list && list.length > 0) targetRecordId = list[0].id;
     }
     if (!targetRecordId && ev.name) {
@@ -124,10 +124,12 @@
     }
 
     if (targetRecordId) {
+      // Evento compartilhado pode ser de outro usuário: atualizar não muda o dono (igual ao desktop)
+      const { organizador_email, ...updatePayload } = payload;
       await _fetchJSONOrThrow(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?id=eq.${targetRecordId}`, {
         method: 'PATCH',
         headers: SUPABASE_HEADERS,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(updatePayload)
       });
     } else {
       payload.id = _newCloudId();
@@ -353,18 +355,35 @@
         const cleanEmail = (email || '').trim().toLowerCase();
         if (!cleanEmail) return { success: false, error: "Email do usuário não informado." };
 
-        // Só os eventos deste organizador (igual ao desktop). Eventos compartilhados de outros
-        // organizadores entram pelo "importar evento", não pelo sync automático.
+        // Eventos deste organizador + os importados de outros por ID/senha (igual ao desktop)
         const url = `https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&organizador_email=ilike.${encodeURIComponent(cleanEmail)}&order=created_at.desc&limit=500`;
         const res = await fetch(url, { headers: SUPABASE_HEADERS });
         if (!res.ok) {
           throw new Error(`Erro no servidor de banco de dados (${res.status} ${res.statusText})`);
         }
-        const cloudEvents = await res.json();
+        const cloudEvents = (await res.json()) || [];
 
         const key = getStorageKey(cleanEmail, 'events');
         let localEvents = JSON.parse(localStorage.getItem(key) || '[]');
         const changedIds = [];
+
+        const ownIds = new Set(cloudEvents.map(c => String(c.id)));
+        const sharedIds = [...new Set(localEvents
+          .map(e => String(e.share_id || '').trim().toLowerCase())
+          .filter(Boolean))];
+        if (sharedIds.length > 0) {
+          try {
+            const inList = sharedIds.map(s => `"${s.replace(/"/g, '')}"`).join(',');
+            const sharedRes = await fetch(`https://api.rodeoapp.pro/rest/v1/eventos_oficiais?select=*&detalhes->>share_id=in.(${encodeURIComponent(inList)})`, { headers: SUPABASE_HEADERS });
+            if (sharedRes.ok) {
+              ((await sharedRes.json()) || []).forEach(s => {
+                if (!ownIds.has(String(s.id))) cloudEvents.push(s);
+              });
+            }
+          } catch (sharedErr) {
+            console.error("Erro ao buscar eventos compartilhados (web):", sharedErr);
+          }
+        }
 
         if (Array.isArray(cloudEvents)) {
           cloudEvents.forEach(cloudEv => {
@@ -391,7 +410,8 @@
             const idx = localEvents.findIndex(l =>
               (l.id && cloudLocal.id && String(l.id) === String(cloudLocal.id)) ||
               (l.id && cloudEv.id && String(l.id) === String(cloudEv.id)) ||
-              (l.share_id && cloudEv.detalhes && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id) ||
+              (l.share_id && cloudEv.detalhes && cloudEv.detalhes.share_id &&
+                String(l.share_id).trim().toLowerCase() === String(cloudEv.detalhes.share_id).trim().toLowerCase()) ||
               (l.name && cloudLocal.name && l.name.trim().toLowerCase() === cloudLocal.name.trim().toLowerCase())
             );
 
@@ -1339,7 +1359,7 @@
         }
 
         const localDataObj = cloudEvent.detalhes.localData;
-        localDataObj.share_id = shareId.trim();
+        localDataObj.share_id = cleanShareId;
         localDataObj.share_password = password.trim();
 
         const events = await window.electronAPI.getLocalEvents(email);
