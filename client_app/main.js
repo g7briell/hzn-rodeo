@@ -667,7 +667,7 @@ async function pushEventToCloud(cleanEmail, ev) {
       if (byId && byId.length > 0) cloudId = byId[0].id;
     }
     if (!cloudId && ev.share_id) {
-      const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', ev.share_id).limit(1);
+      const { data: byShare } = await supabase.from('eventos_oficiais').select('id').eq('detalhes->>share_id', String(ev.share_id).trim().toLowerCase()).limit(1);
       if (byShare && byShare.length > 0) cloudId = byShare[0].id;
     }
     if (!cloudId && ev.name) {
@@ -682,7 +682,10 @@ async function pushEventToCloud(cleanEmail, ev) {
   }
 
   if (cloudId) {
-    const { error } = await supabase.from('eventos_oficiais').update(payload).eq('id', cloudId);
+    // Evento compartilhado pode ser de outro usuário: atualizar não muda o dono,
+    // senão o dono deixa de enxergar o próprio evento no sync dele
+    const { organizador_email, ...updatePayload } = payload;
+    const { error } = await supabase.from('eventos_oficiais').update(updatePayload).eq('id', cloudId);
     if (error) throw error;
   } else {
     const newId = require('crypto').randomUUID();
@@ -2958,7 +2961,8 @@ ipcMain.handle('pull-event-from-cloud', async (event, { email, shareId, password
         // Verifica se já existe localmente
         const existingIndex = localData.eventos.findIndex(e => String(e.id) === String(localDataObj.id) || (e.share_id && e.share_id.toLowerCase() === cleanShareId));
         
-        localDataObj.share_id = shareId.trim();
+        // Mesmo formato da nuvem (minúsculo), senão o envio não acha o evento e cria uma cópia
+        localDataObj.share_id = cleanShareId;
         localDataObj.share_password = password.trim();
 
         if (existingIndex > -1) {
@@ -3085,18 +3089,38 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
         if (!cleanEmail) return { success: false, error: "E-mail do usuário não informado." };
 
         // Busca rápida apenas dos eventos deste organizador
-        const { data: cloudEvents, error } = await supabase.from('eventos_oficiais')
+        const { data: ownCloudEvents, error } = await supabase.from('eventos_oficiais')
             .select('id, nome, local, data_inicio, data_fim, organizador_email, status, detalhes, created_at')
             .eq('organizador_email', cleanEmail)
             .order('created_at', { ascending: false })
             .limit(50);
 
         if (error) throw error;
+        const cloudEvents = [...(ownCloudEvents || [])];
 
         const sport = currentSportSession;
         const localData = getLocalData(cleanEmail, sport);
         localData.eventos = localData.eventos || [];
         const changedIds = [];
+
+        // Eventos de outros usuários que foram importados aqui por ID/senha:
+        // também busca, para receber o que o dono e os outros aparelhos alteraram
+        const ownIds = new Set((cloudEvents || []).map(c => String(c.id)));
+        const sharedIds = [...new Set(localData.eventos
+            .map(e => String(e.share_id || '').trim().toLowerCase())
+            .filter(Boolean))];
+        if (sharedIds.length > 0) {
+            const { data: sharedEvents, error: sharedErr } = await supabase.from('eventos_oficiais')
+                .select('id, nome, local, data_inicio, data_fim, organizador_email, status, detalhes, created_at')
+                .in('detalhes->>share_id', sharedIds);
+            if (sharedErr) {
+                console.error("Erro ao buscar eventos compartilhados:", sharedErr);
+            } else {
+                (sharedEvents || []).forEach(s => {
+                    if (!ownIds.has(String(s.id))) cloudEvents.push(s);
+                });
+            }
+        }
 
         if (Array.isArray(cloudEvents) && cloudEvents.length > 0) {
             cloudEvents.forEach(cloudEv => {
@@ -3123,7 +3147,8 @@ ipcMain.handle('sync-user-cloud-events', async (event, email) => {
                 const idx = localData.eventos.findIndex(l => 
                     (l.id && cloudLocal.id && String(l.id) === String(cloudLocal.id)) ||
                     (l.id && cloudEv.id && String(l.id) === String(cloudEv.id)) ||
-                    (l.share_id && cloudEv.detalhes && cloudEv.detalhes.share_id && l.share_id === cloudEv.detalhes.share_id) ||
+                    (l.share_id && cloudEv.detalhes && cloudEv.detalhes.share_id &&
+                        String(l.share_id).trim().toLowerCase() === String(cloudEv.detalhes.share_id).trim().toLowerCase()) ||
                     (l.name && cloudLocal.name && l.name.trim().toLowerCase() === cloudLocal.name.trim().toLowerCase())
                 );
 

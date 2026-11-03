@@ -179,10 +179,24 @@ window.persistAndSyncEvent = async (eventObj) => {
     try {
         // Atualiza localmente e despacha sync em background direto sem re-renderizar o DOM em loop
         await window.electronAPI.updateLocalEvent(email, eventObj);
+        notifyEventChangedViaAbly();
     } catch (err) {
         console.error("Erro ao persistir evento:", err);
     }
 };
+
+// Avisa os outros aparelhos conectados no mesmo evento (inclusive de outros usuários)
+// para buscarem a versão nova na hora, sem esperar o ciclo de 30s.
+// O aviso sai depois do envio para a nuvem, que roda em segundo plano.
+const notifyEventChangedViaAbly = debounce(() => {
+    try {
+        if (currentAblyChannel && ablyRealtimeClient && ablyRealtimeClient.connection.state === 'connected') {
+            currentAblyChannel.publish('admin-event-changed', { at: Date.now() });
+        }
+    } catch (e) {
+        console.warn('[ABLY] Falha ao avisar alteração do evento:', e);
+    }
+}, 2500);
 
 // Guarda índice do sorteio detalhado aberto (para restaurar após sync)
 let _openSorteioDetailIdx = null;
@@ -4022,7 +4036,18 @@ window.initAblyRealtimeForEvent = (shareId) => {
             }
         });
 
-        // 5. Escutar atualização completa do evento emitida pelo Juiz ou Admin
+        // 5. Outro aparelho/usuário alterou o evento e já mandou para a nuvem: busca agora
+        currentAblyChannel.subscribe('admin-event-changed', (message) => {
+            if (ablyRealtimeClient && message.clientId === ablyRealtimeClient.auth.clientId) return;
+            // Mesmo cuidado do ciclo de 30s: não mexe no meio de um sorteio manual
+            const sorteioView = document.getElementById('sorteio-manual-view');
+            const step1 = document.getElementById('step-1');
+            if (sorteioView && !sorteioView.classList.contains('hidden') && step1 && step1.classList.contains('hidden')) return;
+            console.log('[ABLY REALTIME] Evento alterado em outro aparelho, sincronizando.');
+            window.syncUserEventsWithCloud();
+        });
+
+        // 6. Escutar atualização completa do evento emitida pelo Juiz ou Admin
         currentAblyChannel.subscribe('admin-event-updated', async (message) => {
             console.log('[ABLY REALTIME] Evento atualizado remotamente:', message.data);
             if (message.data && message.data.localData) {
