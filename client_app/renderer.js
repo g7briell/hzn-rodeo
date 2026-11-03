@@ -882,12 +882,20 @@ async function showIntro(htmlText, days, nome, expiry) {
         'http://localhost:3000/api/sponsors'
     ];
 
+    // Sem limite de tempo, um servidor fora do ar deixava o app preso na tela do logo por minutos
+    const fetchWithTimeout = (url, opts = {}, ms = 4000) => {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+    };
+
     for (const portalUrl of portalUrls) {
         if (activeIntroRunId !== currentRunId) return;
         try {
-            const response = await fetch(portalUrl);
+            const response = await fetchWithTimeout(portalUrl);
             if (activeIntroRunId !== currentRunId) return;
-            if (response.ok) {
+            // O portal responde HTML (200) nessa rota; só aceita se vier JSON
+            if (response.ok && (response.headers.get('content-type') || '').includes('json')) {
                 appSponsors = await response.json();
                 fetchSuccess = true;
                 break;
@@ -903,7 +911,7 @@ async function showIntro(htmlText, days, nome, expiry) {
         try {
             const url = 'https://api.rodeoapp.pro/rest/v1/patrocinios?select=*&status=eq.ativo&tipo=eq.app';
             const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMTE3MzYwLCJleHAiOjIwOTU0NzczNjB9.ZknzukXlmPHPJRq7xEN-2jiUz3z0lFxF99Cj-RNUQAw';
-            const response = await fetch(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
+            const response = await fetchWithTimeout(url, { headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` } });
             if (activeIntroRunId !== currentRunId) return;
             if (response.ok) {
                 appSponsors = await response.json();
