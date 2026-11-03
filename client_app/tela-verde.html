@@ -6,7 +6,8 @@
     <title>RODEOAPP • TELA VERDE (CHROMA KEY OVERLAY)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+    <script src="/vendor/ably.min.js"></script>
+    <script>if (typeof Ably === 'undefined') document.write('<script src="https://cdn.ably.com/lib/ably.min-1.js"><\/script>');</script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {

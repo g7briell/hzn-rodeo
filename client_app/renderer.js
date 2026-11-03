@@ -3929,7 +3929,11 @@ const DEFAULT_ABLY_KEY = 'ZpXrAw.0ShBdA:PN-cy5nGO2hVtllKkQIQppoPtl4FGufzq58uT9WH
 window.initAblyRealtimeForEvent = (shareId) => {
     if (!shareId) return;
     if (typeof Ably === 'undefined') {
-        console.warn("Ably Realtime SDK ainda não carregado.");
+        // Antes saía em silêncio e o selo ficava preso em "AGUARDANDO"
+        console.warn("Ably Realtime SDK ainda não carregado. Tentando de novo em 3s.");
+        updateAblyStatusIndicator('failed');
+        clearTimeout(window._ablyRetryTimer);
+        window._ablyRetryTimer = setTimeout(() => window.initAblyRealtimeForEvent(shareId), 3000);
         return;
     }
 
@@ -3950,6 +3954,9 @@ window.initAblyRealtimeForEvent = (shareId) => {
         currentAblyChannel = ablyRealtimeClient.channels.get(channelName);
 
         // Status de conexão do Ably
+        updateAblyStatusIndicator('connecting');
+        ablyRealtimeClient.connection.on('connecting', () => updateAblyStatusIndicator('connecting'));
+        ablyRealtimeClient.connection.on('suspended', () => updateAblyStatusIndicator('disconnected'));
         ablyRealtimeClient.connection.on('connected', () => {
             console.log(`[ABLY REALTIME] Conectado com sucesso ao canal ${channelName}`);
             updateAblyStatusIndicator('connected');
@@ -4036,6 +4043,7 @@ window.initAblyRealtimeForEvent = (shareId) => {
 };
 
 window.closeAblyRealtime = () => {
+    clearTimeout(window._ablyRetryTimer);
     try {
         if (currentAblyChannel) {
             currentAblyChannel.unsubscribe();
@@ -4067,6 +4075,17 @@ function updateAblyStatusIndicator(status) {
         if (transText) {
             transText.innerText = "ABLY: AO VIVO NA ARENA";
             transText.className = "text-[9px] font-black uppercase tracking-widest text-emerald-400";
+        }
+    } else if (status === 'connecting') {
+        if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+        if (text) {
+            text.innerText = "ABLY: CONECTANDO...";
+            text.className = "text-[9px] font-black uppercase tracking-widest text-amber-400";
+        }
+        if (transDot) transDot.className = "w-2 h-2 rounded-full bg-yellow-500 animate-pulse";
+        if (transText) {
+            transText.innerText = "CONECTANDO ABLY";
+            transText.className = "text-[9px] font-black text-yellow-500 uppercase tracking-widest";
         }
     } else if (status === 'disconnected' || status === 'closed') {
         if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
@@ -6942,6 +6961,39 @@ window.sendEventToPortal = async (id) => {
     }
 };
 
+// Aviso no modal customizado (#modal-alert). Resolve quando o usuário clica em OK.
+let modalAlertResolve = null;
+
+function showAlert(message, title = 'AVISO') {
+    const modal = document.getElementById('modal-alert');
+    const titleEl = document.getElementById('modal-alert-title');
+    const msgEl = document.getElementById('modal-alert-message');
+    if (!modal || !titleEl || !msgEl) {
+        alert(message);
+        return Promise.resolve();
+    }
+    if (modalAlertResolve) modalAlertResolve();
+    titleEl.innerText = title;
+    msgEl.innerText = message;
+    modal.classList.remove('hidden');
+    return new Promise(resolve => { modalAlertResolve = resolve; });
+}
+
+window.closeModalAlert = () => {
+    document.getElementById('modal-alert')?.classList.add('hidden');
+    if (modalAlertResolve) {
+        const resolve = modalAlertResolve;
+        modalAlertResolve = null;
+        resolve();
+    }
+};
+
+window.openPullEventFromTransmissao = () => {
+    const pullModal = document.getElementById('modal-pull-event');
+    if (pullModal) pullModal.classList.remove('hidden');
+    document.getElementById('pull-share-id')?.focus();
+};
+
 window.executePullEvent = async (e) => {
     e.preventDefault();
     const shareId = document.getElementById('pull-share-id').value;
@@ -6965,8 +7017,8 @@ window.executePullEvent = async (e) => {
             
             // Recarrega a lista de eventos da transmissão se o modal estiver aberto
             const transEventsModal = document.getElementById('modal-transmissao-eventos');
-            if (transEventsModal && !transEventsModal.classList.contains('hidden')) {
-                openTransmissaoEventsModal();
+            if (transEventsModal && !transEventsModal.classList.contains('hidden') && typeof window.openTransmissaoEventsModal === 'function') {
+                window.openTransmissaoEventsModal();
             }
         } else {
             await showAlert("Erro ao importar evento: " + (res.error || "Erro desconhecido"), "ERRO");
@@ -7243,7 +7295,9 @@ function openTransmissaoLiveDashboard(ev) {
 
     // Estado da Montaria
     if (transmissaoActiveMatchup) {
-        renderTransmissaoActiveMatchup();
+        // Os campos do card já foram preenchidos em activateTransmissaoMatchup
+        document.getElementById('trans-waiting-card')?.classList.add('hidden');
+        document.getElementById('trans-active-card')?.classList.remove('hidden');
     } else {
         document.getElementById('trans-waiting-card')?.classList.remove('hidden');
         document.getElementById('trans-active-card')?.classList.add('hidden');

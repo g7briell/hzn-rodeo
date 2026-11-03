@@ -3236,6 +3236,17 @@ const overlayServer = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(content, 'utf-8');
         });
+    } else if (parsedPath === '/vendor/ably.min.js') {
+        // SDK do Ably embutido, para a tela verde não depender da CDN
+        fs.readFile(path.join(__dirname, 'vendor', 'ably.min.js'), (err, content) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('Not found');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
+            res.end(content);
+        });
     } else if (parsedPath.startsWith('/media/')) {
         // Servir arquivos de mídia salvos pelo usuário (logos, vídeos de patrocinadores)
         const mediaDir = path.join(app.getPath('userData'), 'media');
